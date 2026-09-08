@@ -52,6 +52,49 @@ bool FGameplayValidationReflectionUtils::HasProperty(
     return FindProperty(Class, CandidateNames) != nullptr;
 }
 
+bool FGameplayValidationReflectionUtils::GetBoolProperty(
+    const UObject* Object,
+    const TArray<FName>& CandidateNames,
+    bool& OutValue)
+{
+    if (!IsValid(Object))
+    {
+        return false;
+    }
+
+    const FBoolProperty* Property = CastField<FBoolProperty>(FindProperty(Object->GetClass(), CandidateNames));
+    if (!Property)
+    {
+        return false;
+    }
+
+    OutValue = Property->GetPropertyValue_InContainer(Object);
+    return true;
+}
+
+bool FGameplayValidationReflectionUtils::GetNumericProperty(
+    const UObject* Object,
+    const TArray<FName>& CandidateNames,
+    double& OutValue)
+{
+    if (!IsValid(Object))
+    {
+        return false;
+    }
+
+    const FNumericProperty* Property = CastField<FNumericProperty>(FindProperty(Object->GetClass(), CandidateNames));
+    if (!Property)
+    {
+        return false;
+    }
+
+    const void* ValueAddress = Property->ContainerPtrToValuePtr<void>(Object);
+    OutValue = Property->IsFloatingPoint()
+        ? Property->GetFloatingPointPropertyValue(ValueAddress)
+        : static_cast<double>(Property->GetSignedIntPropertyValue(ValueAddress));
+    return true;
+}
+
 UObject* FGameplayValidationReflectionUtils::GetObjectProperty(
     const UObject* Object,
     const TArray<FName>& CandidateNames)

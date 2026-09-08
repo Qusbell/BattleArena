@@ -484,3 +484,9 @@ bool UCustomWrapperLibrary::SuggestJumpPadVelocityByApexTime(
 	OutLaunchVelocity = FVector(Vx, Vy, Vz);
 	return true;
 }
+
+
+FGameplayTag UCustomWrapperLibrary::GetDirectParentGameplayTag(const FGameplayTag& Tag)
+{
+	return Tag.RequestDirectParent();
+}
