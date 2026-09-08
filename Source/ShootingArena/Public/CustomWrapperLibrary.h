@@ -1,9 +1,9 @@
 ﻿
 #pragma once
 
+#include "GameplayTagContainer.h"
 #include "CoreMinimal.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
-
 #include "NavigationData.h"
 #include "NavFilters/NavigationQueryFilter.h"
 
@@ -160,4 +160,21 @@ public:
 		float GravityZOverride = 0.0f
 	);
 
+
+	/**
+    * GameplayTag의 마지막 계층을 제거한 Direct Parent Tag를 반환합니다.
+    *
+    * 예:
+    * A.B.C -> A.B
+    * A.B   -> A
+    *
+    * @param Tag 부모 태그를 가져올 GameplayTag
+    * @return 한 단계 위의 부모 GameplayTag.
+    *         부모가 없거나 유효하지 않은 경우 Invalid GameplayTag를 반환
+    */
+	UFUNCTION(BlueprintPure, Category = "Gameplay|GameplayTag",
+		meta = (Keywords = "GameplayTag Parent Direct Parent Remove Last Tag"))
+	static FGameplayTag GetDirectParentGameplayTag(
+		const FGameplayTag& Tag
+	);
 };

@@ -11,6 +11,8 @@ class FGameplayValidationReflectionUtils
 {
 public:
     static bool HasProperty(const UClass* Class, const TArray<FName>& CandidateNames);
+    static bool GetBoolProperty(const UObject* Object, const TArray<FName>& CandidateNames, bool& OutValue);
+    static bool GetNumericProperty(const UObject* Object, const TArray<FName>& CandidateNames, double& OutValue);
     static UObject* GetObjectProperty(const UObject* Object, const TArray<FName>& CandidateNames);
     static AActor* GetActorProperty(const UObject* Object, const TArray<FName>& CandidateNames);
 
