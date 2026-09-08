@@ -1,16 +1,16 @@
 [
 	{
 		"Name": "Dummy",
-		"Aim_Skill": 0.80000000000000004,
-		"Aim_Accuracy": 0.80000000000000004,
-		"View_Max_Change": 302,
-		"ReactionTime": 0.29999999999999999,
-		"Aggression": 0.55000000000000004,
-		"Self_Preservation": 0.45000000000000001,
-		"Fire_Throttle": 0.29999999999999999,
-		"Aggression_Threshold": 0.5,
-		"Attack_Skill": 0.59999999999999998,
-		"Jumper": 0.40000000000000002
+		"Aim_Skill": 0.5,
+		"Aim_Accuracy": 0.5,
+		"View_Max_Change": 120,
+		"ReactionTime": 0.10000000000000001,
+		"Aggression": 0.29999999999999999,
+		"Self_Preservation": 0.69999999999999996,
+		"Fire_Throttle": 0,
+		"Aggression_Threshold": 0,
+		"Attack_Skill": 0,
+		"Jumper": 0.94999999999999996
 	},
 	{
 		"Name": "BGH_Easy",
