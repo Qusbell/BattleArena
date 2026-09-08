@@ -1,15 +1,15 @@
 [
 	{
 		"Name": "Dummy",
-		"Aim_Skill": 0.01,
-		"Aim_Accuracy": 0.01,
-		"View_Max_Change": 270,
-		"ReactionTime": 0.5,
-		"Aggression": 0.20000000000000001,
-		"Self_Preservation": 0.80000000000000004,
-		"Fire_Throttle": 0.10000000000000001,
-		"Aggression_Threshold": 0.90000000000000002,
-		"Attack_Skill": 0.40000000000000002,
+		"Aim_Skill": 0.5,
+		"Aim_Accuracy": 0.5,
+		"View_Max_Change": 120,
+		"ReactionTime": 0.10000000000000001,
+		"Aggression": 0.29999999999999999,
+		"Self_Preservation": 0.69999999999999996,
+		"Fire_Throttle": 0,
+		"Aggression_Threshold": 0,
+		"Attack_Skill": 0,
 		"Jumper": 0.94999999999999996
 	},
 	{
@@ -215,7 +215,7 @@
 		"ReactionTime": 0.5,
 		"Aggression": 0.20000000000000001,
 		"Self_Preservation": 0.80000000000000004,
-		"Fire_Throttle": 0.10000000000000001,
+		"Fire_Throttle": 0,
 		"Aggression_Threshold": 0.90000000000000002,
 		"Attack_Skill": 0.40000000000000002,
 		"Jumper": 0.94999999999999996
@@ -228,7 +228,7 @@
 		"ReactionTime": 0.29999999999999999,
 		"Aggression": 0.20000000000000001,
 		"Self_Preservation": 0.80000000000000004,
-		"Fire_Throttle": 0.10000000000000001,
+		"Fire_Throttle": 0.050000000000000003,
 		"Aggression_Threshold": 0.90000000000000002,
 		"Attack_Skill": 0.5,
 		"Jumper": 0.94999999999999996
