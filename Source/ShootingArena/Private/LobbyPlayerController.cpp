@@ -99,6 +99,24 @@ void ALobbyPlayerController::Server_SetReady_Implementation(bool bReady)
 	LobbyGameState->OnLobbyStateChanged();
 }
 
+void ALobbyPlayerController::Server_ToggleReady_Implementation()
+{
+	ALobbyGameState* LobbyGameState = GetLobbyGameState();
+	if (!LobbyGameState || !PlayerState)
+	{
+		return;
+	}
+
+	const int32 SlotIndex = LobbyGameState->FindSlotIndexForPlayer(PlayerState);
+	if (!LobbyGameState->Slots.IsValidIndex(SlotIndex))
+	{
+		return;
+	}
+
+	LobbyGameState->Slots[SlotIndex].bReady = !LobbyGameState->Slots[SlotIndex].bReady;
+	LobbyGameState->OnLobbyStateChanged();
+}
+
 void ALobbyPlayerController::Server_SetPlayerName_Implementation(const FString& NewName)
 {
 	if (!PlayerState)
