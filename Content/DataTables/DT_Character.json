@@ -8,6 +8,14 @@
 		]
 	},
 	{
+		"Name": "Dummy2",
+		"Character_Name": "Dummy2",
+		"Character_Sprite": "None",
+		"Characteristic_ID": [
+			"Dummy2"
+		]
+	},
+	{
 		"Name": "C01",
 		"Character_Name": "27세변건호의인생최후의끌어치기",
 		"Character_Sprite": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Map_Image/스타크래프트.스타크래프트'",
