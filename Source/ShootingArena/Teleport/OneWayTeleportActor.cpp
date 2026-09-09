@@ -12,6 +12,8 @@
 #include "Materials/MaterialInterface.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Sound/SoundBase.h"
+#include "Engine/TextureRenderTarget2D.h"
+#include "Math/RotationMatrix.h"
 #include "TimerManager.h"
 #include "UObject/ConstructorHelpers.h"
 
@@ -96,6 +98,22 @@ AOneWayTeleportActor::AOneWayTeleportActor()
 		portalVisual->SetStaticMesh(cubeMesh.Object);
 	}
 
+	// 실제 출구 화면은 기존 Collision 시각화 Cube와 분리된 전면 Plane에 표시합니다.
+	portalScreen = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PortalScreen"));
+	portalScreen->SetupAttachment(root);
+	portalScreen->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	portalScreen->SetGenerateOverlapEvents(false);
+	portalScreen->SetCanEverAffectNavigation(false);
+	portalScreen->SetCastShadow(false);
+	portalScreen->SetHiddenInGame(true);
+
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> planeMesh(
+		TEXT("/Engine/BasicShapes/Plane.Plane"));
+	if (planeMesh.Succeeded())
+	{
+		portalScreen->SetStaticMesh(planeMesh.Object);
+	}
+
 #if WITH_EDITORONLY_DATA
 	// ---------------------------------------------------------------------
 	// 에디터 선택용 Handle
@@ -177,6 +195,22 @@ void AOneWayTeleportActor::UpdatePortalVisual()
 	// 체크 해제 시 실제 게임에서만 숨깁니다.
 	portalVisual->SetHiddenInGame(!bShowPortalInGame);
 
+	if (IsValid(portalScreen))
+	{
+		// Basic Plane의 법선(+Z)을 포탈 전면(EntryCollision Forward)에 정확히 맞춥니다.
+		// Relative Euler 값을 더하면 부모/인스턴스 회전에서 Plane이 바닥으로 눕기 때문에,
+		// 전면과 위쪽 벡터를 기준으로 월드 회전을 직접 생성합니다.
+		const FVector screenNormal = entryCollision->GetForwardVector();
+		const FVector screenUp = entryCollision->GetUpVector();
+		const FVector screenBoxExtent = entryCollision->GetScaledBoxExtent();
+		const FTransform screenTransform(
+			FRotationMatrix::MakeFromZY(screenNormal, screenUp).ToQuat(),
+			entryCollision->GetComponentLocation()
+				+ screenNormal * (screenBoxExtent.X + 0.5f),
+			FVector(screenBoxExtent.Y / 50.0f, screenBoxExtent.Z / 50.0f, 1.0f));
+		portalScreen->SetWorldTransform(screenTransform);
+	}
+
 #if WITH_EDITORONLY_DATA
 	if (IsValid(editorSelectionHandle))
 	{
@@ -217,6 +251,162 @@ void AOneWayTeleportActor::UpdatePortalVisual()
 			TEXT("Opacity"),
 			portalOpacity);
 	}
+}
+
+bool AOneWayTeleportActor::CanDisplayPortalView(
+	const APlayerController* playerController,
+	const FVector& cameraLocation,
+	const FVector& aimDirection,
+	float& outDistance,
+	float& outScore) const
+{
+	outDistance = 0.0f;
+	outScore = 0.0f;
+
+	if (!IsValid(playerController)
+		|| !IsValid(entryCollision)
+		|| !IsValid(exitTarget)
+		|| !IsValid(teleportDA)
+		|| !bEnablePortalView)
+	{
+		return false;
+	}
+
+	const FVector portalLocation = entryCollision->GetComponentLocation();
+	const FVector toPortal = portalLocation - cameraLocation;
+	outDistance = toPortal.Length();
+	if (outDistance > teleportDA->viewDistance || outDistance <= KINDA_SMALL_NUMBER)
+	{
+		return false;
+	}
+
+	const FVector directionToPortal = toPortal / outDistance;
+	const float aimDot = FVector::DotProduct(aimDirection.GetSafeNormal(), directionToPortal);
+	// 기획에는 "포탈을 향해 볼 때"만 정의되어 있으므로, 정면 중앙을 조준했는지까지
+	// 강제하지 않습니다. 카메라 앞 반구에 있는 동안에는 화면을 계속 갱신해 포탈이
+	// 화면 가장자리에 걸쳐도 빈 화면으로 바뀌지 않게 합니다.
+	if (aimDot <= 0.0f)
+	{
+		return false;
+	}
+
+	FCollisionQueryParams traceParams(SCENE_QUERY_STAT(PortalViewOcclusion), false);
+	traceParams.AddIgnoredActor(this);
+	traceParams.AddIgnoredActor(playerController->GetPawn());
+	FHitResult hit;
+	if (GetWorld()->LineTraceSingleByChannel(
+		hit,
+		cameraLocation,
+		portalLocation,
+		ECC_Visibility,
+		traceParams))
+	{
+		return false;
+	}
+
+	// 여러 포탈이 카메라 앞에 있을 때에는 더 정면이고 가까운 Portal을 우선 선택합니다.
+	outScore = aimDot * 2.0f - outDistance / FMath::Max(teleportDA->viewDistance, 1.0f);
+	return true;
+}
+
+FTransform AOneWayTeleportActor::GetPortalViewCameraTransform(
+	const FTransform& cameraTransform) const
+{
+	if (!IsValid(entryCollision) || !IsValid(exitTarget))
+	{
+		return FTransform::Identity;
+	}
+
+	// 출구 카메라 위치는 항상 ExitTarget의 Launch 방향 바로 앞에 고정합니다.
+	// 플레이어-입구 사이의 전체 위치 오프셋을 출구로 복사하면, 포탈에서 멀리
+	// 주시할 때 카메라가 출구에서 수천 uu 떨어져 맵 밖을 찍을 수 있습니다.
+	const FQuat entryRotation = entryCollision->GetComponentQuat();
+	const FVector launchForward = GetExitLaunchForward();
+	const FVector localAim = entryRotation.UnrotateVector(
+		cameraTransform.GetRotation().GetForwardVector());
+	// 입구를 향한 -X 방향을 출구의 +X(Launch) 방향으로 뒤집어 대응합니다.
+	const FVector mappedLocalAim(-localAim.X, -localAim.Y, localAim.Z);
+	FVector exitAim = exitTarget->GetActorQuat().RotateVector(mappedLocalAim);
+	if (exitAim.IsNearlyZero())
+	{
+		exitAim = launchForward;
+	}
+
+	const FQuat exitCameraRotation = FRotationMatrix::MakeFromXZ(
+		exitAim.GetSafeNormal(),
+		FVector::UpVector).ToQuat();
+	const FVector exitCameraLocation = exitTarget->GetActorLocation()
+		+ launchForward * 5.0f;
+	return FTransform(exitCameraRotation, exitCameraLocation);
+}
+
+float AOneWayTeleportActor::GetPortalViewOpacity(float distance) const
+{
+	if (!IsValid(teleportDA))
+	{
+		return 1.0f;
+	}
+
+	const float viewDistance = teleportDA->viewDistance;
+	const float distanceAlpha = FMath::Clamp(
+		distance / FMath::Max(viewDistance, KINDA_SMALL_NUMBER),
+		0.0f,
+		1.0f);
+	return FMath::Lerp(
+		teleportDA->portalScreenNearOpacity,
+		teleportDA->portalScreenFarOpacity,
+		distanceAlpha);
+}
+
+void AOneWayTeleportActor::ApplyPortalView(
+	UTextureRenderTarget2D* renderTarget,
+	float blurStrength,
+	float screenOpacity)
+{
+	if (!IsValid(portalScreen) || !IsValid(renderTarget))
+	{
+		return;
+	}
+
+	UMaterialInterface* material = portalScreenMaterial;
+	if (!IsValid(material))
+	{
+		material = portalVisualMaterial;
+	}
+
+	if (!IsValid(material))
+	{
+		return;
+	}
+
+	if (!IsValid(portalScreenMID) || portalScreenMID->Parent != material)
+	{
+		portalScreenMID = UMaterialInstanceDynamic::Create(material, this);
+		portalScreen->SetMaterial(0, portalScreenMID);
+	}
+
+	portalScreenMID->SetTextureParameterValue(TEXT("PortalTexture"), renderTarget);
+	portalScreenMID->SetScalarParameterValue(TEXT("BlurStrength"), blurStrength);
+	portalScreenMID->SetScalarParameterValue(TEXT("PortalOpacity"), screenOpacity);
+	portalScreenMID->SetVectorParameterValue(TEXT("FrameColor"), portalFrameColor);
+	portalScreenMID->SetScalarParameterValue(TEXT("FrameGlowIntensity"), portalFrameGlowIntensity);
+	portalScreenMID->SetScalarParameterValue(TEXT("FrameThickness"), portalFrameThickness);
+	portalScreen->SetHiddenInGame(false);
+}
+
+void AOneWayTeleportActor::ClearPortalView()
+{
+	if (IsValid(portalScreen))
+	{
+		portalScreen->SetHiddenInGame(true);
+	}
+}
+
+FVector AOneWayTeleportActor::GetExitLaunchForward() const
+{
+	return IsValid(exitTarget)
+		? exitTarget->GetActorForwardVector()
+		: FVector::ForwardVector;
 }
 
 void AOneWayTeleportActor::OnEntryBeginOverlap(
