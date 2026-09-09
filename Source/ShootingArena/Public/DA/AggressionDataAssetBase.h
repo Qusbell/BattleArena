@@ -87,6 +87,16 @@ public:
     float WeaponBaseMax = 1000.0f;
 
 
+	// 추적 상태에서 최대 추적 시간
+    UPROPERTY(
+        EditDefaultsOnly,
+        BlueprintReadOnly,
+        Category = "Aggression|Chase",
+        meta = (ClampMin = "0.0")
+    )
+    float ChaseMaxTime = 5.0f;
+
+
 #if WITH_EDITOR
 
 public:
