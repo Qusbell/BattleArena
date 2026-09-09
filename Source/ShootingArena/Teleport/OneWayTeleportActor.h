@@ -11,7 +11,9 @@ class UPrimitiveComponent;
 class UMaterialInterface;
 class UMaterialInstanceDynamic;
 class UTeleportDataAsset;
+class UTextureRenderTarget2D;
 class ACharacter;
+class APlayerController;
 
 /**
  * 기획서 기준 단방향 텔레포트 Actor입니다.
@@ -32,6 +34,26 @@ class SHOOTINGARENA_API AOneWayTeleportActor : public AActor
 
 public:
 	AOneWayTeleportActor();
+
+	/** PortalViewSubsystem이 로컬 플레이어의 주시 대상인지 판정할 때 사용합니다. */
+	bool CanDisplayPortalView(
+		const APlayerController* playerController,
+		const FVector& cameraLocation,
+		const FVector& aimDirection,
+		float& outDistance,
+		float& outScore) const;
+
+	/** 입구 카메라 시점을 출구 Launch 방향 기준의 카메라 시점으로 변환합니다. */
+	FTransform GetPortalViewCameraTransform(const FTransform& cameraTransform) const;
+
+	/** 로컬 클라이언트의 Render Target과 거리 기반 화면 값을 포탈 화면에 적용합니다. */
+	void ApplyPortalView(UTextureRenderTarget2D* renderTarget, float blurStrength, float screenOpacity);
+	void ClearPortalView();
+	float GetPortalViewOpacity(float distance) const;
+
+	AActor* GetExitTarget() const { return exitTarget.Get(); }
+	const UTeleportDataAsset* GetTeleportDataAsset() const { return teleportDA.Get(); }
+	FVector GetExitLaunchForward() const;
 
 protected:
 	virtual void BeginPlay() override;
@@ -54,6 +76,10 @@ protected:
 	 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Teleport|Components")
 	TObjectPtr<UStaticMeshComponent> portalVisual;
+
+	/** 출구 화면을 표시하는 입구 전면의 평면입니다. Collision에는 영향을 주지 않습니다. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Teleport|Components")
+	TObjectPtr<UStaticMeshComponent> portalScreen;
 
 #if WITH_EDITORONLY_DATA
 	/**
@@ -82,6 +108,10 @@ protected:
 	/** false이면 진입해도 텔레포트하지 않습니다. 런타임에는 서버에서 변경하세요. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Teleport")
 	bool bTeleportEnabled = true;
+
+	/** false이면 이 포탈만 출구 화면을 표시하지 않습니다. 텔레포트 이동에는 영향을 주지 않습니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Teleport")
+	bool bEnablePortalView = true;
 
 	/**
 	 * 텔레포트 직후 다른 Portal의 Collision에 겹쳐도 다시 이동하지 않는 보호 시간입니다.
@@ -117,6 +147,27 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Teleport|Visual")
 	TObjectPtr<UMaterialInterface> portalVisualMaterial;
 
+	/**
+	 * PortalTexture(Texture), BlurStrength(Scalar), PortalOpacity(Scalar),
+	 * FrameColor(Vector), FrameGlowIntensity(Scalar), FrameThickness(Scalar) 파라미터를 가진 포탈 화면용 Material입니다.
+	 */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Teleport|Visual")
+	TObjectPtr<UMaterialInterface> portalScreenMaterial;
+
+	/** 포탈 화면 가장자리 띠의 발광 색입니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View|Appearance")
+	FLinearColor portalFrameColor = FLinearColor(0.0f, 0.65f, 1.0f, 1.0f);
+
+	/** 포탈 화면 가장자리 띠의 Emissive 세기입니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View|Appearance",
+		meta = (ClampMin = "0.0", UIMin = "0.0"))
+	float portalFrameGlowIntensity = 12.0f;
+
+	/** 화면 UV 기준 테두리 띠의 두께입니다. 0.025는 각 가장자리 약 2.5%입니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View|Appearance",
+		meta = (ClampMin = "0.001", ClampMax = "0.25", UIMin = "0.001", UIMax = "0.25"))
+	float portalFrameThickness = 0.025f;
+
 	// ---------------------------------------------------------------------
 	// Overlap
 	// ---------------------------------------------------------------------
@@ -150,6 +201,10 @@ private:
 	/** PortalVisual 색/투명도 갱신용 MID */
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInstanceDynamic> portalVisualMID;
+
+	/** 각 클라이언트가 독립적으로 생성하는 포탈 화면용 MID입니다. */
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> portalScreenMID;
 
 	void UpdatePortalVisual();
 };

@@ -39,4 +39,47 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Sound",
 		meta = (ClampMin = "0.0", UIMin = "0.0"))
 	float soundVolumeMultiplier = 1.0f;
+
+	/** 이 거리 안에서만 포탈 출구 화면을 갱신합니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View",
+		meta = (ClampMin = "0.0", UIMin = "0.0"))
+	float viewDistance = 2000.0f;
+
+	/**
+	 * 이 거리 안으로 들어오면 화면이 Far Blur에서 Near Blur로 점차 선명해지기 시작합니다.
+	 * View Distance보다 크게 설정해도 실제 값은 View Distance까지로 제한됩니다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View",
+		meta = (ClampMin = "0.0", UIMin = "0.0"))
+	float clarityStartDistance = 1200.0f;
+
+	/** 포탈에 도달했을 때의 화면 불투명도입니다. 0보다 크게 두면 도달 시에도 화면이 남습니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View",
+		meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
+	float portalScreenNearOpacity = 0.35f;
+
+	/** View Distance 끝에서의 화면 불투명도입니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View",
+		meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
+	float portalScreenFarOpacity = 1.0f;
+
+	/** 포탈에 가까울 때 적용할 흐림 강도입니다. 0이면 흐림이 없습니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View",
+		meta = (ClampMin = "0.0", UIMin = "0.0"))
+	float blurAtNearDistance = 0.0f;
+
+	/** 주시 가능 거리 끝에서 적용할 흐림 강도입니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View",
+		meta = (ClampMin = "0.0", UIMin = "0.0"))
+	float blurAtFarDistance = 8.0f;
+
+	/** 클라이언트별 로컬 Render Target 한 변의 픽셀 크기입니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View",
+		meta = (ClampMin = "128", ClampMax = "2048", UIMin = "128", UIMax = "2048"))
+	int32 portalViewRenderTargetSize = 1024;
+
+	/** 포탈 화면 갱신 빈도입니다. 0이면 매 프레임 갱신합니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View",
+		meta = (ClampMin = "0.0", UIMin = "0.0"))
+	float portalViewUpdateRate = 30.0f;
 };
