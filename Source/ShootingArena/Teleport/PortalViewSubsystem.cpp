@@ -17,6 +17,13 @@ namespace PortalViewPrivate
 		float distance = 0.0f;
 		float score = 0.0f;
 	};
+
+	struct FReadyPortalCapture
+	{
+		TObjectPtr<AOneWayTeleportActor> portal;
+		float score = 0.0f;
+		float accumulatedWaitTime = 0.0f;
+	};
 }
 
 void UPortalViewSubsystem::Initialize(FSubsystemCollectionBase& collection)
@@ -96,11 +103,17 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 	}
 
 	TSet<TWeakObjectPtr<AOneWayTeleportActor>> visiblePortals;
+	TArray<PortalViewPrivate::FReadyPortalCapture> readyCaptures;
 	for (const PortalViewPrivate::FPortalCandidate& candidate : candidates)
 	{
 		AOneWayTeleportActor* portal = candidate.portal.Get();
+		if (!IsValid(portal))
+		{
+			continue;
+		}
+
 		const UTeleportDataAsset* settings = portal->GetTeleportDataAsset();
-		if (!IsValid(portal) || !IsValid(settings))
+		if (!IsValid(settings))
 		{
 			continue;
 		}
@@ -136,19 +149,58 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 			continue;
 		}
 
-		view.captureAccumulator = 0.0f;
+		readyCaptures.Add({ portal, candidate.score, view.captureAccumulator });
+	}
+
+	// 예산에서 밀린 포탈은 누적 대기 시간이 계속 증가합니다. 다음 프레임에는 가장 오래
+	// 기다린 포탈부터 처리하므로, 가까운 포탈만 계속 갱신되고 나머지가 멈추는 현상을 막습니다.
+	readyCaptures.Sort([](
+		const PortalViewPrivate::FReadyPortalCapture& left,
+		const PortalViewPrivate::FReadyPortalCapture& right)
+	{
+		if (!FMath::IsNearlyEqual(left.accumulatedWaitTime, right.accumulatedWaitTime))
+		{
+			return left.accumulatedWaitTime > right.accumulatedWaitTime;
+		}
+
+		return left.score > right.score;
+	});
+
+	const int32 captureBudget = IsValid(firstSettings)
+		? FMath::Max(0, firstSettings->maxPortalCapturesPerFrame)
+		: 0;
+	const int32 captureCount = captureBudget > 0
+		? FMath::Min(captureBudget, readyCaptures.Num())
+		: readyCaptures.Num();
+
+	for (int32 captureIndex = 0; captureIndex < captureCount; ++captureIndex)
+	{
+		AOneWayTeleportActor* portal = readyCaptures[captureIndex].portal.Get();
+		if (!IsValid(portal))
+		{
+			continue;
+		}
+
+		FPortalViewInstance* view = portalViews.Find(TWeakObjectPtr<AOneWayTeleportActor>(portal));
+		if (view == nullptr || !IsValid(view->renderTarget) || !IsValid(view->sceneCapture)
+			|| !IsValid(portal->GetExitTarget()))
+		{
+			continue;
+		}
+
+		view->captureAccumulator = 0.0f;
 		const FTransform cameraTransform(cameraRotation, cameraLocation);
-		view.sceneCapture->SetWorldTransform(portal->GetPortalViewCameraTransform(cameraTransform));
-		view.sceneCapture->TextureTarget = view.renderTarget;
-		view.sceneCapture->ClipPlaneBase = portal->GetExitTarget()->GetActorLocation();
-		view.sceneCapture->ClipPlaneNormal = portal->GetExitLaunchForward();
-		view.sceneCapture->HiddenActors.Empty();
-		view.sceneCapture->HiddenActors.Add(portal);
+		view->sceneCapture->SetWorldTransform(portal->GetPortalViewCameraTransform(cameraTransform));
+		view->sceneCapture->TextureTarget = view->renderTarget;
+		view->sceneCapture->ClipPlaneBase = portal->GetExitTarget()->GetActorLocation();
+		view->sceneCapture->ClipPlaneNormal = portal->GetExitLaunchForward();
+		view->sceneCapture->HiddenActors.Empty();
+		view->sceneCapture->HiddenActors.Add(portal);
 		if (AOneWayTeleportActor* exitPortal = Cast<AOneWayTeleportActor>(portal->GetExitTarget()))
 		{
-			view.sceneCapture->HiddenActors.Add(exitPortal);
+			view->sceneCapture->HiddenActors.Add(exitPortal);
 		}
-		view.sceneCapture->CaptureScene();
+		view->sceneCapture->CaptureScene();
 	}
 
 	for (auto iterator = portalViews.CreateIterator(); iterator; ++iterator)
@@ -175,11 +227,15 @@ FPortalViewInstance& UPortalViewSubsystem::FindOrCreateView(AOneWayTeleportActor
 	}
 
 	FPortalViewInstance& newView = portalViews.Add(portalKey);
-	newView.sceneCapture = NewObject<USceneCaptureComponent2D>(this);
+	// SceneCapture를 Subsystem 소유로 등록하면 레벨 전환/GC 중 Subsystem은 이미
+	// unreachable인데 렌더 업데이트가 남을 수 있다. 포탈 Actor의 런타임 컴포넌트로
+	// 소유시켜 Actor의 종료 순서에 맞춰 안전하게 unregister 되도록 한다.
+	newView.sceneCapture = NewObject<USceneCaptureComponent2D>(portal, NAME_None, RF_Transient);
+	portal->AddInstanceComponent(newView.sceneCapture);
 	newView.sceneCapture->bCaptureEveryFrame = false;
 	newView.sceneCapture->bCaptureOnMovement = false;
 	newView.sceneCapture->bEnableClipPlane = true;
-	newView.sceneCapture->RegisterComponentWithWorld(GetWorld());
+	newView.sceneCapture->RegisterComponent();
 	return newView;
 }
 
@@ -191,7 +247,8 @@ void UPortalViewSubsystem::EnsureRenderTarget(FPortalViewInstance& view, int32 s
 		return;
 	}
 
-	view.renderTarget = NewObject<UTextureRenderTarget2D>(this);
+	// RenderTarget도 포탈 수명에 묶인 임시 런타임 리소스입니다.
+	view.renderTarget = NewObject<UTextureRenderTarget2D>(view.sceneCapture->GetOwner(), NAME_None, RF_Transient);
 	view.renderTarget->ClearColor = FLinearColor::Black;
 	view.renderTarget->InitAutoFormat(clampedSize, clampedSize);
 	view.renderTarget->UpdateResourceImmediate(true);

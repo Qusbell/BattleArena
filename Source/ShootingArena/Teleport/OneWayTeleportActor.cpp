@@ -12,6 +12,7 @@
 #include "Materials/MaterialInterface.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "NiagaraComponent.h"
+#include "NiagaraEmitterHandle.h"
 #include "NiagaraSystem.h"
 #include "Sound/SoundBase.h"
 #include "Engine/TextureRenderTarget2D.h"
@@ -21,6 +22,73 @@
 
 namespace OneWayTeleportPrivate
 {
+	/**
+	 * 카메라 앞에 있다는 것만으로는 실제 모니터에 보인다는 뜻이 아닙니다.
+	 * Collision의 월드 Bounds를 화면으로 투영해 뷰포트와 겹치는 경우만 true를 반환합니다.
+	 */
+	bool IsPortalBoundsInViewport(
+		const APlayerController* playerController,
+		const UBoxComponent* collision)
+	{
+		if (!IsValid(playerController) || !IsValid(collision))
+		{
+			return false;
+		}
+
+		int32 viewportWidth = 0;
+		int32 viewportHeight = 0;
+		playerController->GetViewportSize(viewportWidth, viewportHeight);
+		if (viewportWidth <= 0 || viewportHeight <= 0)
+		{
+			return false;
+		}
+
+		const FBoxSphereBounds bounds = collision->Bounds;
+		const FVector extent = bounds.BoxExtent;
+		const FVector origin = bounds.Origin;
+		FVector2D minimum(FLT_MAX, FLT_MAX);
+		FVector2D maximum(-FLT_MAX, -FLT_MAX);
+		bool bHasProjectedPoint = false;
+
+		// 중심과 AABB의 여덟 꼭짓점을 검사합니다. 중심은 포탈이 화면 전체보다 커서
+		// 꼭짓점이 모두 화면 밖에 있는 경우도 잡아냅니다.
+		for (int32 pointIndex = -1; pointIndex < 8; ++pointIndex)
+		{
+			FVector worldPoint = origin;
+			if (pointIndex >= 0)
+			{
+				worldPoint += FVector(
+					(pointIndex & 1) ? extent.X : -extent.X,
+					(pointIndex & 2) ? extent.Y : -extent.Y,
+					(pointIndex & 4) ? extent.Z : -extent.Z);
+			}
+
+			FVector2D screenPoint;
+			if (!playerController->ProjectWorldLocationToScreen(worldPoint, screenPoint, false))
+			{
+				continue;
+			}
+
+			bHasProjectedPoint = true;
+			minimum.X = FMath::Min(minimum.X, screenPoint.X);
+			minimum.Y = FMath::Min(minimum.Y, screenPoint.Y);
+			maximum.X = FMath::Max(maximum.X, screenPoint.X);
+			maximum.Y = FMath::Max(maximum.Y, screenPoint.Y);
+		}
+
+		if (!bHasProjectedPoint)
+		{
+			return false;
+		}
+
+		// 가장자리에 걸친 포탈이 매 프레임 생성/제거되는 것을 막기 위한 작은 여유입니다.
+		constexpr float ViewportMargin = 32.0f;
+		return maximum.X >= -ViewportMargin
+			&& minimum.X <= static_cast<float>(viewportWidth) + ViewportMargin
+			&& maximum.Y >= -ViewportMargin
+			&& minimum.Y <= static_cast<float>(viewportHeight) + ViewportMargin;
+	}
+
 	// 모든 Portal이 공유합니다. 따라서 A -> B로 이동하면서 B의 Overlap이 즉시
 	// 발생해도 B가 같은 Character를 다시 텔레포트하지 않습니다.
 	TMap<TWeakObjectPtr<AActor>, double> ReentryUnlockTimes;
@@ -253,7 +321,9 @@ void AOneWayTeleportActor::UpdatePortalVisual()
 		const FTransform screenTransform(
 			FRotationMatrix::MakeFromZY(screenNormal, screenUp).ToQuat(),
 			entryCollision->GetComponentLocation()
-				+ screenNormal * (screenBoxExtent.X + 0.5f),
+				// Collision의 X Extent는 진입 판정 깊이일 뿐 화면 위치가 아닙니다.
+				// 그 값을 더하면 게임 시작 시 Portal Screen이 프레임 밖 전방으로 튀어나옵니다.
+				+ screenNormal * 0.5f,
 			// local X는 화면 가로(U)입니다. 음수 Scale로 SceneCapture의 좌우 반전을 보정합니다.
 			screenScale);
 		portalScreen->SetWorldTransform(screenTransform);
@@ -332,10 +402,14 @@ bool AOneWayTeleportActor::CanDisplayPortalView(
 
 	const FVector directionToPortal = toPortal / outDistance;
 	const float aimDot = FVector::DotProduct(aimDirection.GetSafeNormal(), directionToPortal);
-	// 기획에는 "포탈을 향해 볼 때"만 정의되어 있으므로, 정면 중앙을 조준했는지까지
-	// 강제하지 않습니다. 카메라 앞 반구에 있는 동안에는 화면을 계속 갱신해 포탈이
-	// 화면 가장자리에 걸쳐도 빈 화면으로 바뀌지 않게 합니다.
+	// 카메라 뒤쪽은 투영할 필요가 없습니다.
 	if (aimDot <= 0.0f)
+	{
+		return false;
+	}
+
+	// 카메라 앞 반구여도 좌우/상하 화면 밖이면 SceneCapture와 RenderTarget을 만들지 않습니다.
+	if (!OneWayTeleportPrivate::IsPortalBoundsInViewport(playerController, entryCollision))
 	{
 		return false;
 	}
@@ -552,7 +626,19 @@ void AOneWayTeleportActor::UpdatePortalVFX()
 	// 0보다 큰 값은 원본 Niagara의 표현을 그대로 유지합니다.
 	auto SetEmitterVisibleForAlpha = [this](const TCHAR* emitterName, float alpha)
 	{
-		portalVFX->SetEmitterEnable(FName(emitterName), alpha > KINDA_SMALL_NUMBER);
+		const FName emitterFName(emitterName);
+		const bool bEmitterExists = portalVFXSystem->GetEmitterHandles().ContainsByPredicate(
+			[emitterFName](const FNiagaraEmitterHandle& emitterHandle)
+			{
+				return emitterHandle.GetName() == emitterFName;
+			});
+
+		// 시스템마다 가진 emitter 구성이 다릅니다. 존재하지 않는 이름으로
+		// SetEmitterEnable을 호출하면 Niagara가 매번 경고를 출력하므로 건너뜁니다.
+		if (bEmitterExists)
+		{
+			portalVFX->SetEmitterEnable(emitterFName, alpha > KINDA_SMALL_NUMBER);
+		}
 	};
 	SetEmitterVisibleForAlpha(TEXT("Background"), portalVFXBackgroundAlpha);
 	// 일부 Vortex 에셋은 배경을 Background가 아니라 Texture emitter로 렌더링한다.
