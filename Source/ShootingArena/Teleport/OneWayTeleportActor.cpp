@@ -11,6 +11,8 @@
 #include "GameFramework/PlayerController.h"
 #include "Materials/MaterialInterface.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "NiagaraComponent.h"
+#include "NiagaraSystem.h"
 #include "Sound/SoundBase.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "Math/RotationMatrix.h"
@@ -114,6 +116,12 @@ AOneWayTeleportActor::AOneWayTeleportActor()
 		portalScreen->SetStaticMesh(planeMesh.Object);
 	}
 
+	portalVFX = CreateDefaultSubobject<UNiagaraComponent>(TEXT("PortalVFX"));
+	portalVFX->SetupAttachment(root);
+	portalVFX->SetAutoActivate(true);
+	portalVFX->SetCastShadow(false);
+	portalVFX->SetHiddenInGame(true);
+
 #if WITH_EDITORONLY_DATA
 	// ---------------------------------------------------------------------
 	// 에디터 선택용 Handle
@@ -160,6 +168,7 @@ void AOneWayTeleportActor::OnConstruction(const FTransform& Transform)
 void AOneWayTeleportActor::BeginPlay()
 {
 	Super::BeginPlay();
+	UpdatePortalVisual();
 
 	entryCollision->OnComponentBeginOverlap.AddUniqueDynamic(
 		this,
@@ -176,6 +185,41 @@ void AOneWayTeleportActor::UpdatePortalVisual()
 	if (!IsValid(entryCollision) || !IsValid(portalVisual))
 	{
 		return;
+	}
+
+	// 새 Portal Shape Mesh를 지정하지 않은 기존 Blueprint/레벨 인스턴스는 기획에서 설정한
+	// PortalVisual의 Mesh를 기준으로 삼습니다. 이전 구현이 PortalScreen의 기본 Plane을
+	// 기준으로 삼아 기존 기획 Mesh와 Collision/VFX 크기가 달라지던 문제를 막습니다.
+	UStaticMesh* resolvedPortalShapeMesh = portalShapeMesh.Get();
+	if (!IsValid(resolvedPortalShapeMesh) && IsValid(portalVisual))
+	{
+		UStaticMesh* portalVisualMesh = portalVisual->GetStaticMesh();
+		// C++ 기본값 Cube는 기획 Mesh가 아니므로, 이 경우에는 기존처럼 PortalScreen을 사용합니다.
+		if (IsValid(portalVisualMesh)
+			&& portalVisualMesh->GetPathName() != TEXT("/Engine/BasicShapes/Cube.Cube"))
+		{
+			resolvedPortalShapeMesh = portalVisualMesh;
+		}
+	}
+
+	if (IsValid(portalScreen) && IsValid(resolvedPortalShapeMesh))
+	{
+		portalScreen->SetStaticMesh(resolvedPortalShapeMesh);
+	}
+	else if (IsValid(portalScreen))
+	{
+		resolvedPortalShapeMesh = portalScreen->GetStaticMesh();
+	}
+
+	// Mesh의 local X/Y는 화면 가로/세로입니다. BoxComponent의 local X는 포탈 법선
+	// (앞뒤 두께)이므로 축을 맞춰 Bounds만 자동 반영하고, 디자이너가 잡은 위치·회전은 유지합니다.
+	if (bAutoFitCollisionToPortalMesh && IsValid(resolvedPortalShapeMesh))
+	{
+		const FVector meshExtent = resolvedPortalShapeMesh->GetBounds().BoxExtent;
+		entryCollision->SetBoxExtent(FVector(
+			portalCollisionDepth * 0.5f,
+			FMath::Max(meshExtent.X * portalShapeScale.X, 1.0f),
+			FMath::Max(meshExtent.Y * portalShapeScale.Y, 1.0f)));
 	}
 
 	// ---------------------------------------------------------------------
@@ -203,13 +247,19 @@ void AOneWayTeleportActor::UpdatePortalVisual()
 		const FVector screenNormal = entryCollision->GetForwardVector();
 		const FVector screenUp = entryCollision->GetUpVector();
 		const FVector screenBoxExtent = entryCollision->GetScaledBoxExtent();
+		const FVector screenScale = bAutoFitCollisionToPortalMesh
+			? FVector(-portalShapeScale.X, portalShapeScale.Y, 1.0f)
+			: FVector(-screenBoxExtent.Y / 50.0f, screenBoxExtent.Z / 50.0f, 1.0f);
 		const FTransform screenTransform(
 			FRotationMatrix::MakeFromZY(screenNormal, screenUp).ToQuat(),
 			entryCollision->GetComponentLocation()
 				+ screenNormal * (screenBoxExtent.X + 0.5f),
-			FVector(screenBoxExtent.Y / 50.0f, screenBoxExtent.Z / 50.0f, 1.0f));
+			// local X는 화면 가로(U)입니다. 음수 Scale로 SceneCapture의 좌우 반전을 보정합니다.
+			screenScale);
 		portalScreen->SetWorldTransform(screenTransform);
 	}
+
+	UpdatePortalVFX();
 
 #if WITH_EDITORONLY_DATA
 	if (IsValid(editorSelectionHandle))
@@ -324,8 +374,9 @@ FTransform AOneWayTeleportActor::GetPortalViewCameraTransform(
 	const FVector launchForward = GetExitLaunchForward();
 	const FVector localAim = entryRotation.UnrotateVector(
 		cameraTransform.GetRotation().GetForwardVector());
-	// 입구를 향한 -X 방향을 출구의 +X(Launch) 방향으로 뒤집어 대응합니다.
-	const FVector mappedLocalAim(-localAim.X, -localAim.Y, localAim.Z);
+	// 입구를 향한 -X 방향만 출구의 +X(Launch) 방향으로 넘깁니다.
+	// Y(포탈의 좌/우 축)까지 반전하면 출구 화면이 거울처럼 좌우 반전됩니다.
+	const FVector mappedLocalAim(-localAim.X, localAim.Y, localAim.Z);
 	FVector exitAim = exitTarget->GetActorQuat().RotateVector(mappedLocalAim);
 	if (exitAim.IsNearlyZero())
 	{
@@ -388,10 +439,134 @@ void AOneWayTeleportActor::ApplyPortalView(
 	portalScreenMID->SetTextureParameterValue(TEXT("PortalTexture"), renderTarget);
 	portalScreenMID->SetScalarParameterValue(TEXT("BlurStrength"), blurStrength);
 	portalScreenMID->SetScalarParameterValue(TEXT("PortalOpacity"), screenOpacity);
-	portalScreenMID->SetVectorParameterValue(TEXT("FrameColor"), portalFrameColor);
-	portalScreenMID->SetScalarParameterValue(TEXT("FrameGlowIntensity"), portalFrameGlowIntensity);
+	portalScreenMID->SetVectorParameterValue(
+		TEXT("FrameColor"),
+		bEnableMaterialFrame ? portalFrameColor : FLinearColor::Transparent);
+	portalScreenMID->SetScalarParameterValue(
+		TEXT("FrameGlowIntensity"),
+		bEnableMaterialFrame ? portalFrameGlowIntensity : 0.0f);
 	portalScreenMID->SetScalarParameterValue(TEXT("FrameThickness"), portalFrameThickness);
 	portalScreen->SetHiddenInGame(false);
+}
+
+void AOneWayTeleportActor::UpdatePortalVFX()
+{
+	if (!IsValid(portalVFX) || !IsValid(entryCollision))
+	{
+		return;
+	}
+
+	portalVFX->SetAsset(portalVFXSystem);
+	// Vortex의 중앙 배경/소용돌이 알파는 아래 User 파라미터로 투명하게 만들어
+	// 출구 Render Target을 가리지 않습니다.
+	const bool bShowVFX = bEnablePortalVFX && IsValid(portalVFXSystem);
+	portalVFX->SetVisibility(bShowVFX, true);
+	portalVFX->SetHiddenInGame(!bShowVFX);
+	if (!bShowVFX)
+	{
+		return;
+	}
+
+	const FVector portalNormal = entryCollision->GetForwardVector();
+	const FVector portalUp = entryCollision->GetUpVector();
+	const FVector portalRight = entryCollision->GetRightVector();
+	const FVector extent = entryCollision->GetScaledBoxExtent();
+	const FVector fullSize = extent * 2.0f;
+	FVector portalSurfaceSize(fullSize.Y, fullSize.Z, fullSize.X);
+
+	// Portal Shape Scale은 Screen/Collision/VFX가 공유하는 유일한 크기 기준입니다.
+	// Collision의 여유 두께나 Niagara의 현재 파티클 Bounds가 이 기준을 바꾸지 않게,
+	// PortalScreen에 적용한 같은 Mesh Bounds와 Shape Scale로 화면 크기를 계산합니다.
+	if (IsValid(portalScreen) && IsValid(portalScreen->GetStaticMesh()))
+	{
+		const FVector screenExtent = portalScreen->GetStaticMesh()->GetBounds().BoxExtent;
+		const float screenWidth = 2.0f * screenExtent.X * FMath::Abs(portalShapeScale.X);
+		const float screenHeight = 2.0f * screenExtent.Y * FMath::Abs(portalShapeScale.Y);
+		if (screenWidth > KINDA_SMALL_NUMBER && screenHeight > KINDA_SMALL_NUMBER)
+		{
+			portalSurfaceSize.X = screenWidth;
+			portalSurfaceSize.Y = screenHeight;
+		}
+	}
+
+	FVector vfxScale(portalSurfaceSize.X / 100.0f, portalSurfaceSize.Y / 100.0f, 1.0f);
+
+	// Niagara 이펙트는 각각 제작 당시의 기본 Bounds가 다릅니다. Vortex처럼 기본 크기가
+	// 큰 시스템은 100cm 기준의 단순 Scale로는 포탈 밖으로 넘치므로, 유효한 고정 Bounds를
+	// 포탈의 가로(X)/세로(Y) 크기에 정규화합니다.
+	const FBox systemBounds = portalVFXSystem->GetFixedBounds();
+	const FVector systemSize = systemBounds.GetSize();
+	if (systemBounds.IsValid
+		&& FMath::IsFinite(systemSize.X) && FMath::IsFinite(systemSize.Y)
+		&& systemSize.X > KINDA_SMALL_NUMBER && systemSize.Y > KINDA_SMALL_NUMBER)
+	{
+		vfxScale.X = portalSurfaceSize.X / systemSize.X;
+		vfxScale.Y = portalSurfaceSize.Y / systemSize.Y;
+	}
+
+	// AdvancedPortalsSystemVFX의 시각적인 발광 외곽은 System Fixed Bounds보다 약 1.67배
+	// 크게 잡혀 있습니다. 이 보정을 코드에 고정해 Details의 Portal VFX Scale (1,1,1)이
+	// 기존 Portal Shape Scale과 정확히 맞는 기본값이 되게 합니다.
+	constexpr float PortalVFXVisualSizeCorrection = 0.6f;
+	vfxScale.X *= PortalVFXVisualSizeCorrection;
+	vfxScale.Y *= PortalVFXVisualSizeCorrection;
+
+	// Niagara 기본 평면(XY)을 포탈 전면에 맞추고, 원형 이펙트는 Collision의 가로/세로에
+	// 맞춰 자동으로 타원형이 됩니다. Niagara System에 User.Size가 있으면 같은 크기도 전달합니다.
+	const FTransform vfxTransform(
+		FRotationMatrix::MakeFromXY(portalRight, portalUp).ToQuat(),
+		entryCollision->GetComponentLocation()
+			+ portalNormal * (extent.X + 2.0f),
+		vfxScale * portalVFXScale);
+	portalVFX->SetWorldTransform(vfxTransform);
+	portalVFX->SetVariableVec3(TEXT("User.Size"), portalSurfaceSize);
+	// AdvancedPortalsSystemVFX의 Vortex에는 중앙을 채우는 이미터가 Background/Vortex/Circle로
+	// 나뉘어 있습니다. 모두 포탈 화면 위에 렌더링되므로, 테두리 전용 사용에서는 각각 0으로
+	// 설정해야 출구 Render Target을 가리지 않습니다. 에셋에 없는 User 파라미터는 무시됩니다.
+	// Vortex 2~10은 User.* 이름이 아니라 각 이미터의 실제 런타임 AlphaScale을 읽습니다.
+	// 1번처럼 User.*를 쓰는 구형 변형도 함께 지원합니다.
+	portalVFX->SetVariableFloat(TEXT("Background.AlphaScale"), portalVFXBackgroundAlpha);
+	portalVFX->SetVariableFloat(TEXT("Vortex.AlphaScale"), portalVFXVortexAlpha);
+	portalVFX->SetVariableFloat(TEXT("Circle.AlphaScale"), portalVFXCircleAlpha);
+	portalVFX->SetVariableFloat(TEXT("Ring.AlphaScale"), portalVFXRingAlpha);
+	portalVFX->SetVariableFloat(TEXT("Energy.AlphaScale"), portalVFXEnergyAlpha);
+	portalVFX->SetVariableFloat(TEXT("User.Background Control"), portalVFXBackgroundControl);
+	portalVFX->SetVariableFloat(TEXT("User.Background Alpha"), portalVFXBackgroundAlpha);
+	portalVFX->SetVariableFloat(TEXT("User.Vortex Alpha"), portalVFXVortexAlpha);
+	portalVFX->SetVariableFloat(TEXT("User.Circle Alpha"), portalVFXCircleAlpha);
+	portalVFX->SetVariableFloat(TEXT("User.Distortion Control"), portalVFXDistortionControl);
+	portalVFX->SetVariableFloat(TEXT("User.Ring Alpha"), portalVFXRingAlpha);
+	portalVFX->SetVariableFloat(TEXT("User.Energy Alpha"), portalVFXEnergyAlpha);
+
+	// NS_Portal_Vortex_1은 Energy.AlphaScale을 외부로 노출하지 않은 구형 시스템입니다.
+	// 해당 Energy 이미터가 실제로 읽는 User.Color Vortex의 Alpha로 Energy Alpha를 전달합니다.
+	if (portalVFXSystem->GetFName() == TEXT("NS_Portal_Vortex_1"))
+	{
+		portalVFX->SetVariableLinearColor(
+			TEXT("User.Color Vortex"),
+			FLinearColor(1.0f, 1.0f, 1.0f, portalVFXEnergyAlpha));
+	}
+
+	// 이 팩의 AlphaScale은 Niagara 내부 상수라 Component에서 연속값으로 덮어쓸 수 없습니다.
+	// 다만 0일 때는 실제 이미터를 꺼서, 모든 Alpha가 0인데 화면에 남는 문제를 방지합니다.
+	// 0보다 큰 값은 원본 Niagara의 표현을 그대로 유지합니다.
+	auto SetEmitterVisibleForAlpha = [this](const TCHAR* emitterName, float alpha)
+	{
+		portalVFX->SetEmitterEnable(FName(emitterName), alpha > KINDA_SMALL_NUMBER);
+	};
+	SetEmitterVisibleForAlpha(TEXT("Background"), portalVFXBackgroundAlpha);
+	// 일부 Vortex 에셋은 배경을 Background가 아니라 Texture emitter로 렌더링한다.
+	// 따라서 Background Alpha가 두 emitter를 함께 제어해야 0일 때 배경이 남지 않는다.
+	SetEmitterVisibleForAlpha(TEXT("Texture"), portalVFXBackgroundAlpha);
+	SetEmitterVisibleForAlpha(TEXT("Vortex"), portalVFXVortexAlpha);
+	SetEmitterVisibleForAlpha(TEXT("Circle"), portalVFXCircleAlpha);
+	SetEmitterVisibleForAlpha(TEXT("Distortion"), portalVFXDistortionControl);
+	SetEmitterVisibleForAlpha(TEXT("Ring"), portalVFXRingAlpha);
+	SetEmitterVisibleForAlpha(TEXT("Energy"), portalVFXEnergyAlpha);
+	// 이 Niagara들은 User Alpha를 Spawn 단계에서 읽습니다. Asset/인스턴스 값 변경 후
+	// 다시 초기화해야 Background Alpha가 실제 파티클에 반영됩니다.
+	portalVFX->ReinitializeSystem();
+
 }
 
 void AOneWayTeleportActor::ClearPortalView()

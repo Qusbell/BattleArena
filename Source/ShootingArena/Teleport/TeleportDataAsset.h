@@ -78,6 +78,14 @@ public:
 		meta = (ClampMin = "128", ClampMax = "2048", UIMin = "128", UIMax = "2048"))
 	int32 portalViewRenderTargetSize = 1024;
 
+	/**
+	 * 한 로컬 클라이언트가 동시에 갱신할 최대 포탈 수입니다. 0이면 화면에 보이는 포탈을 모두 갱신합니다.
+	 * 성능 문제가 확인된 플랫폼에서만 양수로 제한하세요. 점수가 높은(더 가깝고 정면인) 포탈부터 유지됩니다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View",
+		meta = (ClampMin = "0", UIMin = "0", UIMax = "16"))
+	int32 maxSimultaneousPortalViews = 0;
+
 	/** 포탈 화면 갱신 빈도입니다. 0이면 매 프레임 갱신합니다. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View",
 		meta = (ClampMin = "0.0", UIMin = "0.0"))

@@ -21,7 +21,8 @@ public class ShootingArena : ModuleRules
             "SlateCore",
             "Sockets",
             "Networking",
-             "GameplayTags"
+             "GameplayTags",
+             "Niagara"
         } );
 
         PrivateDependencyModuleNames.AddRange(new string[] { "NetCore" });
