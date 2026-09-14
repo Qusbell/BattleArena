@@ -8,6 +8,13 @@ class AOneWayTeleportActor;
 class USceneCaptureComponent2D;
 class UTextureRenderTarget2D;
 
+struct FPortalViewInstance
+{
+	TObjectPtr<USceneCaptureComponent2D> sceneCapture;
+	TObjectPtr<UTextureRenderTarget2D> renderTarget;
+	float captureAccumulator = 0.0f;
+};
+
 /**
  * 각 클라이언트의 로컬 카메라 기준으로만 포탈 화면을 계산하고 렌더링합니다.
  * 서버와 다른 클라이언트에는 Render Target, Material 상태를 복제하지 않습니다.
@@ -24,15 +31,10 @@ public:
 	virtual TStatId GetStatId() const override;
 
 private:
-	void EnsureRenderTarget(int32 size);
-	void ClearActivePortal();
+	FPortalViewInstance& FindOrCreateView(AOneWayTeleportActor* portal);
+	void EnsureRenderTarget(FPortalViewInstance& view, int32 size);
+	void ClearPortalView(AOneWayTeleportActor* portal, FPortalViewInstance& view);
+	void ClearAllPortalViews();
 
-	UPROPERTY(Transient)
-	TObjectPtr<USceneCaptureComponent2D> sceneCapture;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UTextureRenderTarget2D> renderTarget;
-
-	TWeakObjectPtr<AOneWayTeleportActor> activePortal;
-	float captureAccumulator = 0.0f;
+	TMap<TWeakObjectPtr<AOneWayTeleportActor>, FPortalViewInstance> portalViews;
 };

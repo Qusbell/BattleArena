@@ -12,6 +12,9 @@ class UMaterialInterface;
 class UMaterialInstanceDynamic;
 class UTeleportDataAsset;
 class UTextureRenderTarget2D;
+class UNiagaraComponent;
+class UNiagaraSystem;
+class UStaticMesh;
 class ACharacter;
 class APlayerController;
 
@@ -80,6 +83,10 @@ protected:
 	/** 출구 화면을 표시하는 입구 전면의 평면입니다. Collision에는 영향을 주지 않습니다. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Teleport|Components")
 	TObjectPtr<UStaticMeshComponent> portalScreen;
+
+	/** 포탈 전면에 붙는 Niagara 테두리/에너지 효과입니다. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Teleport|Components")
+	TObjectPtr<UNiagaraComponent> portalVFX;
 
 #if WITH_EDITORONLY_DATA
 	/**
@@ -154,6 +161,79 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Teleport|Visual")
 	TObjectPtr<UMaterialInterface> portalScreenMaterial;
 
+	/** 포탈 화면 및 VFX 크기의 기준이 되는 Mesh입니다. 비워두면 기존 PortalScreen Mesh를 그대로 사용합니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Visual")
+	TObjectPtr<UStaticMesh> portalShapeMesh;
+
+	/** true이면 portalShapeMesh의 가로·세로 Bounds를 읽어 EntryCollision 크기를 자동으로 맞춥니다. 위치·회전은 건드리지 않습니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Visual")
+	bool bAutoFitCollisionToPortalMesh = true;
+
+	/** 포탈 Mesh의 가로(X)·세로(Y) 배율입니다. PortalScreen, Collision, VFX가 함께 같은 비율로 커집니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Visual",
+		meta = (ClampMin = "0.01", UIMin = "0.01"))
+	FVector2D portalShapeScale = FVector2D(1.0f, 1.0f);
+
+	/** 자동 맞춤 Collision의 앞뒤 전체 두께입니다. 포탈 Mesh가 평면이어도 안정적으로 Overlap되도록 별도로 지정합니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Visual",
+		meta = (ClampMin = "1.0", UIMin = "1.0"))
+	float portalCollisionDepth = 100.0f;
+
+	/** false이면 화면 머티리얼의 사각 테두리 발광을 끕니다. 원형/타원형 포탈에는 Niagara VFX 사용을 권장합니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal VFX")
+	bool bEnableMaterialFrame = false;
+
+	/** 이 포탈에서 Niagara 테두리/에너지 효과를 표시할지 결정합니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal VFX")
+	bool bEnablePortalVFX = true;
+
+	/**
+	 * AdvancedPortalsSystemVFX의 NS_Portal_Vortex_1~10 등 원하는 Niagara System을 지정합니다.
+	 * 완성형 BP_Portal 프리셋은 자체 화면 Mesh를 포함하므로 여기에는 직접 지정하지 않습니다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal VFX")
+	TObjectPtr<UNiagaraSystem> portalVFXSystem;
+
+	/** 자동 맞춤 이후 이펙트별 여백을 보정하는 배율입니다. 기본값 (1,1,1)을 기준으로 사용합니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal VFX",
+		meta = (DisplayName = "VFX Scale", ClampMin = "0.01", UIMin = "0.01"))
+	FVector portalVFXScale = FVector(1.0f, 1.0f, 1.0f);
+
+	/** Niagara User.Background Alpha 값입니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal VFX",
+		meta = (DisplayName = "Background Alpha", ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
+	float portalVFXBackgroundAlpha = 0.0f;
+
+	/** Niagara User.Background Control 값입니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal VFX",
+		meta = (DisplayName = "Background Control", ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
+	float portalVFXBackgroundControl = 0.0f;
+
+	/** Niagara User.Vortex Alpha 값입니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal VFX",
+		meta = (DisplayName = "Vortex Alpha", ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
+	float portalVFXVortexAlpha = 0.0f;
+
+	/** Niagara User.Circle Alpha 값입니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal VFX",
+		meta = (DisplayName = "Circle Alpha", ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
+	float portalVFXCircleAlpha = 0.0f;
+
+	/** Niagara User.Distortion Control 값입니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal VFX",
+		meta = (DisplayName = "Distortion Control", ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
+	float portalVFXDistortionControl = 0.0f;
+
+	/** Niagara User.Ring Alpha 값입니다. Ring 이미터가 있는 Vortex에서 테두리 투명도를 제어합니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal VFX",
+		meta = (DisplayName = "Ring Alpha", ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
+	float portalVFXRingAlpha = 1.0f;
+
+	/** Niagara User.Energy Alpha 값입니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal VFX",
+		meta = (DisplayName = "Energy Alpha", ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
+	float portalVFXEnergyAlpha = 1.0f;
+
 	/** 포탈 화면 가장자리 띠의 발광 색입니다. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View|Appearance")
 	FLinearColor portalFrameColor = FLinearColor(0.0f, 0.65f, 1.0f, 1.0f);
@@ -207,4 +287,5 @@ private:
 	TObjectPtr<UMaterialInstanceDynamic> portalScreenMID;
 
 	void UpdatePortalVisual();
+	void UpdatePortalVFX();
 };

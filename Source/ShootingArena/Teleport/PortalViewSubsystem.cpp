@@ -9,6 +9,16 @@
 #include "Camera/PlayerCameraManager.h"
 #include "GameFramework/PlayerController.h"
 
+namespace PortalViewPrivate
+{
+	struct FPortalCandidate
+	{
+		TObjectPtr<AOneWayTeleportActor> portal;
+		float distance = 0.0f;
+		float score = 0.0f;
+	};
+}
+
 void UPortalViewSubsystem::Initialize(FSubsystemCollectionBase& collection)
 {
 	Super::Initialize(collection);
@@ -19,31 +29,18 @@ void UPortalViewSubsystem::Initialize(FSubsystemCollectionBase& collection)
 		return;
 	}
 
-	sceneCapture = NewObject<USceneCaptureComponent2D>(this, TEXT("PortalViewSceneCapture"));
-	sceneCapture->bCaptureEveryFrame = false;
-	sceneCapture->bCaptureOnMovement = false;
-	sceneCapture->bEnableClipPlane = true;
-	sceneCapture->RegisterComponentWithWorld(world);
 }
 
 void UPortalViewSubsystem::Deinitialize()
 {
-	ClearActivePortal();
-
-	if (IsValid(sceneCapture))
-	{
-		sceneCapture->DestroyComponent();
-	}
-
-	sceneCapture = nullptr;
-	renderTarget = nullptr;
+	ClearAllPortalViews();
 	Super::Deinitialize();
 }
 
 void UPortalViewSubsystem::Tick(float deltaTime)
 {
 	UWorld* world = GetWorld();
-	if (!IsValid(world) || !IsValid(sceneCapture) || world->GetNetMode() == NM_DedicatedServer)
+	if (!IsValid(world) || world->GetNetMode() == NM_DedicatedServer)
 	{
 		return;
 	}
@@ -52,7 +49,7 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 	if (!IsValid(playerController) || !playerController->IsLocalController()
 		|| !IsValid(playerController->PlayerCameraManager))
 	{
-		ClearActivePortal();
+		ClearAllPortalViews();
 		return;
 	}
 
@@ -60,9 +57,7 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 	const FRotator cameraRotation = playerController->PlayerCameraManager->GetCameraRotation();
 	const FVector aimDirection = cameraRotation.Vector();
 
-	AOneWayTeleportActor* bestPortal = nullptr;
-	float bestDistance = 0.0f;
-	float bestScore = -FLT_MAX;
+	TArray<PortalViewPrivate::FPortalCandidate> candidates;
 
 	for (TActorIterator<AOneWayTeleportActor> iterator(world); iterator; ++iterator)
 	{
@@ -76,81 +71,94 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 				aimDirection,
 				distance,
 				score)
-			&& score > bestScore)
+			)
 		{
-			bestPortal = portal;
-			bestDistance = distance;
-			bestScore = score;
+			candidates.Add({ portal, distance, score });
 		}
 	}
 
-	if (!IsValid(bestPortal))
+	if (candidates.IsEmpty())
 	{
-		ClearActivePortal();
+		ClearAllPortalViews();
 		return;
 	}
 
-	if (activePortal.Get() != bestPortal)
+	candidates.Sort([](const PortalViewPrivate::FPortalCandidate& left, const PortalViewPrivate::FPortalCandidate& right)
 	{
-		ClearActivePortal();
-		activePortal = bestPortal;
-		captureAccumulator = 0.0f;
+		return left.score > right.score;
+	});
+
+	const UTeleportDataAsset* firstSettings = candidates[0].portal->GetTeleportDataAsset();
+	const int32 maxViews = IsValid(firstSettings) ? firstSettings->maxSimultaneousPortalViews : 0;
+	if (maxViews > 0 && candidates.Num() > maxViews)
+	{
+		candidates.SetNum(maxViews);
 	}
 
-	const UTeleportDataAsset* settings = bestPortal->GetTeleportDataAsset();
-	if (!IsValid(settings))
+	TSet<TWeakObjectPtr<AOneWayTeleportActor>> visiblePortals;
+	for (const PortalViewPrivate::FPortalCandidate& candidate : candidates)
 	{
-		ClearActivePortal();
-		return;
+		AOneWayTeleportActor* portal = candidate.portal.Get();
+		const UTeleportDataAsset* settings = portal->GetTeleportDataAsset();
+		if (!IsValid(portal) || !IsValid(settings))
+		{
+			continue;
+		}
+
+		visiblePortals.Add(portal);
+		FPortalViewInstance& view = FindOrCreateView(portal);
+		EnsureRenderTarget(view, settings->portalViewRenderTargetSize);
+		if (!IsValid(view.renderTarget) || !IsValid(view.sceneCapture))
+		{
+			continue;
+		}
+
+		// View Distance 바깥은 CanDisplayPortalView에서 이미 제외됩니다. 이 안에서도
+		// Clarity Start Distance보다 멀면 Far Blur를 유지하고, 그 거리부터 입구까지
+		// 점차 Near Blur로 바꿉니다.
+		const float clarityStartDistance = FMath::Clamp(
+			settings->clarityStartDistance,
+			KINDA_SMALL_NUMBER,
+			settings->viewDistance);
+		const float blurAlpha = FMath::Clamp(candidate.distance / clarityStartDistance, 0.0f, 1.0f);
+		const float blurStrength = FMath::Lerp(
+			settings->blurAtNearDistance,
+			settings->blurAtFarDistance,
+			blurAlpha);
+		portal->ApplyPortalView(view.renderTarget, blurStrength, portal->GetPortalViewOpacity(candidate.distance));
+
+		view.captureAccumulator += deltaTime;
+		const float captureInterval = settings->portalViewUpdateRate > 0.0f
+			? 1.0f / settings->portalViewUpdateRate
+			: 0.0f;
+		if (captureInterval > 0.0f && view.captureAccumulator < captureInterval)
+		{
+			continue;
+		}
+
+		view.captureAccumulator = 0.0f;
+		const FTransform cameraTransform(cameraRotation, cameraLocation);
+		view.sceneCapture->SetWorldTransform(portal->GetPortalViewCameraTransform(cameraTransform));
+		view.sceneCapture->TextureTarget = view.renderTarget;
+		view.sceneCapture->ClipPlaneBase = portal->GetExitTarget()->GetActorLocation();
+		view.sceneCapture->ClipPlaneNormal = portal->GetExitLaunchForward();
+		view.sceneCapture->HiddenActors.Empty();
+		view.sceneCapture->HiddenActors.Add(portal);
+		if (AOneWayTeleportActor* exitPortal = Cast<AOneWayTeleportActor>(portal->GetExitTarget()))
+		{
+			view.sceneCapture->HiddenActors.Add(exitPortal);
+		}
+		view.sceneCapture->CaptureScene();
 	}
 
-	EnsureRenderTarget(settings->portalViewRenderTargetSize);
-	if (!IsValid(renderTarget))
+	for (auto iterator = portalViews.CreateIterator(); iterator; ++iterator)
 	{
-		return;
+		if (!visiblePortals.Contains(iterator.Key()))
+		{
+			ClearPortalView(iterator.Key().Get(), iterator.Value());
+			iterator.RemoveCurrent();
+		}
 	}
-
-	// View Distance 바깥은 CanDisplayPortalView에서 이미 제외됩니다. 이 안에서도
-	// Clarity Start Distance보다 멀면 Far Blur를 유지하고, 그 거리부터 입구까지
-	// 점차 Near Blur로 바꿉니다.
-	const float clarityStartDistance = FMath::Clamp(
-		settings->clarityStartDistance,
-		KINDA_SMALL_NUMBER,
-		settings->viewDistance);
-	const float blurAlpha = FMath::Clamp(
-		bestDistance / clarityStartDistance,
-		0.0f,
-		1.0f);
-	const float blurStrength = FMath::Lerp(
-		settings->blurAtNearDistance,
-		settings->blurAtFarDistance,
-		blurAlpha);
-	const float screenOpacity = bestPortal->GetPortalViewOpacity(bestDistance);
-	bestPortal->ApplyPortalView(renderTarget, blurStrength, screenOpacity);
-
-	captureAccumulator += deltaTime;
-	const float captureInterval = settings->portalViewUpdateRate > 0.0f
-		? 1.0f / settings->portalViewUpdateRate
-		: 0.0f;
-	if (captureInterval > 0.0f && captureAccumulator < captureInterval)
-	{
-		return;
-	}
-
-	captureAccumulator = 0.0f;
-	const FTransform cameraTransform(cameraRotation, cameraLocation);
-	const FTransform portalCameraTransform = bestPortal->GetPortalViewCameraTransform(cameraTransform);
-	sceneCapture->SetWorldTransform(portalCameraTransform);
-	sceneCapture->TextureTarget = renderTarget;
-	sceneCapture->ClipPlaneBase = bestPortal->GetExitTarget()->GetActorLocation();
-	sceneCapture->ClipPlaneNormal = bestPortal->GetExitLaunchForward();
-	sceneCapture->HiddenActors.Empty();
-	sceneCapture->HiddenActors.Add(bestPortal);
-	if (AOneWayTeleportActor* exitPortal = Cast<AOneWayTeleportActor>(bestPortal->GetExitTarget()))
-	{
-		sceneCapture->HiddenActors.Add(exitPortal);
-	}
-	sceneCapture->CaptureScene();
 }
 
 TStatId UPortalViewSubsystem::GetStatId() const
@@ -158,27 +166,56 @@ TStatId UPortalViewSubsystem::GetStatId() const
 	RETURN_QUICK_DECLARE_CYCLE_STAT(UPortalViewSubsystem, STATGROUP_Tickables);
 }
 
-void UPortalViewSubsystem::EnsureRenderTarget(int32 size)
+FPortalViewInstance& UPortalViewSubsystem::FindOrCreateView(AOneWayTeleportActor* portal)
+{
+	const TWeakObjectPtr<AOneWayTeleportActor> portalKey(portal);
+	if (FPortalViewInstance* existing = portalViews.Find(portalKey))
+	{
+		return *existing;
+	}
+
+	FPortalViewInstance& newView = portalViews.Add(portalKey);
+	newView.sceneCapture = NewObject<USceneCaptureComponent2D>(this);
+	newView.sceneCapture->bCaptureEveryFrame = false;
+	newView.sceneCapture->bCaptureOnMovement = false;
+	newView.sceneCapture->bEnableClipPlane = true;
+	newView.sceneCapture->RegisterComponentWithWorld(GetWorld());
+	return newView;
+}
+
+void UPortalViewSubsystem::EnsureRenderTarget(FPortalViewInstance& view, int32 size)
 {
 	const int32 clampedSize = FMath::Clamp(size, 128, 2048);
-	if (IsValid(renderTarget) && renderTarget->SizeX == clampedSize && renderTarget->SizeY == clampedSize)
+	if (IsValid(view.renderTarget) && view.renderTarget->SizeX == clampedSize && view.renderTarget->SizeY == clampedSize)
 	{
 		return;
 	}
 
-	renderTarget = NewObject<UTextureRenderTarget2D>(this, TEXT("PortalViewRenderTarget"));
-	renderTarget->ClearColor = FLinearColor::Black;
-	renderTarget->InitAutoFormat(clampedSize, clampedSize);
-	renderTarget->UpdateResourceImmediate(true);
+	view.renderTarget = NewObject<UTextureRenderTarget2D>(this);
+	view.renderTarget->ClearColor = FLinearColor::Black;
+	view.renderTarget->InitAutoFormat(clampedSize, clampedSize);
+	view.renderTarget->UpdateResourceImmediate(true);
 }
 
-void UPortalViewSubsystem::ClearActivePortal()
+void UPortalViewSubsystem::ClearPortalView(AOneWayTeleportActor* portal, FPortalViewInstance& view)
 {
-	if (AOneWayTeleportActor* portal = activePortal.Get())
+	if (IsValid(portal))
 	{
 		portal->ClearPortalView();
 	}
+	if (IsValid(view.sceneCapture))
+	{
+		view.sceneCapture->DestroyComponent();
+	}
+	view.sceneCapture = nullptr;
+	view.renderTarget = nullptr;
+}
 
-	activePortal.Reset();
-	captureAccumulator = 0.0f;
+void UPortalViewSubsystem::ClearAllPortalViews()
+{
+	for (auto& [portal, view] : portalViews)
+	{
+		ClearPortalView(portal.Get(), view);
+	}
+	portalViews.Empty();
 }
