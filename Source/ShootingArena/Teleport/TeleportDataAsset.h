@@ -90,4 +90,14 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View",
 		meta = (ClampMin = "0.0", UIMin = "0.0"))
 	float portalViewUpdateRate = 30.0f;
+
+	/**
+	 * 한 프레임에 새로 CaptureScene을 실행할 최대 포탈 수입니다.
+	 * 0이면 기존처럼 갱신 대상 전체를 같은 프레임에 캡처합니다.
+	 * 2048 Render Target 사용 시에는 2~3을 권장합니다. 예산을 넘긴 포탈은
+	 * 마지막 화면을 유지하고 다음 프레임에 우선 갱신됩니다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View",
+		meta = (ClampMin = "0", UIMin = "0", UIMax = "8"))
+	int32 maxPortalCapturesPerFrame = 2;
 };
