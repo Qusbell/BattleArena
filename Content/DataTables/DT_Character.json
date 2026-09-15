@@ -10,7 +10,7 @@
 	{
 		"Name": "Dummy2",
 		"Character_Name": "Dummy2",
-		"Character_Sprite": "None",
+		"Character_Sprite": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Map_Image/히드라리스크.히드라리스크'",
 		"Characteristic_ID": [
 			"Dummy2"
 		]
