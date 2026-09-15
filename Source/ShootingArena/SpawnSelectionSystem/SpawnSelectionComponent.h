@@ -8,6 +8,15 @@ class AController;
 class APawn;
 class USceneComponent;
 
+/** 스폰 포인트를 사용할 수 있는 캐릭터 유형입니다. */
+UENUM(BlueprintType)
+enum class ESpawnPointType : uint8
+{
+	Both UMETA(DisplayName = "Both"),
+	PlayerOnly UMETA(DisplayName = "Player Only"),
+	BotOnly UMETA(DisplayName = "Bot Only")
+};
+
 /**
  * 260824 스폰 기획서 기준의 Player / AI 공용 스폰 컴포넌트입니다.
  *
@@ -33,6 +42,14 @@ class USpawnSelectionComponent : public UActorComponent
 
 public:
 	USpawnSelectionComponent();
+	virtual void BeginPlay() override;
+
+	/**
+	 * 서버 BeginPlay에서 레벨의 BP_PlayerSpawnPoint를 자동 등록합니다.
+	 * 각 액터의 Blueprint 변수 Spawn_Type(ESpawnPointType)를 읽으며, 변수가 없으면 Both로 처리합니다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Spawn|Setup")
+	bool bAutoDiscoverLevelSpawnPoints = true;
 
 	// ---------------------------------------------------------------------
 	// Setup
@@ -44,6 +61,18 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category="Spawn|Setup")
 	void InitializeSpawnPoints(const TArray<USceneComponent*>& InSpawnPoints);
+
+	/** SpawnPoint와 타입을 같은 Index로 등록합니다. 타입이 없거나 길이가 부족한 항목은 Both입니다. */
+	UFUNCTION(BlueprintCallable, Category="Spawn|Setup")
+	void InitializeSpawnPointsWithTypes(const TArray<USceneComponent*>& InSpawnPoints, const TArray<ESpawnPointType>& InSpawnPointTypes);
+
+	/** 등록된 SpawnPoint 하나의 타입을 변경합니다. 찾지 못하면 false를 반환합니다. */
+	UFUNCTION(BlueprintCallable, Category="Spawn|Setup")
+	bool SetSpawnPointType(USceneComponent* SpawnPoint, ESpawnPointType SpawnPointType);
+
+	/** 등록된 SpawnPoint 하나의 타입을 반환합니다. 찾지 못하면 Both를 반환합니다. */
+	UFUNCTION(BlueprintPure, Category="Spawn|Setup")
+	ESpawnPointType GetSpawnPointType(USceneComponent* SpawnPoint) const;
 
 	/** 현재 등록된 유효 SpawnPoint 수를 반환합니다. */
 	UFUNCTION(BlueprintPure, Category="Spawn|Setup")
@@ -84,6 +113,10 @@ public:
 		FTransform& OutSpawnTransform,
 		int32& OutSpawnPointIndex);
 
+	/** Controller 유형에 맞는 SpawnPoint만 사용해 최초 스폰 위치를 선정합니다. */
+	UFUNCTION(BlueprintCallable, BlueprintPure=false, Category="Spawn|Initial")
+	bool SelectInitialSpawnTransformForController(AController* Controller, FTransform& OutSpawnTransform, int32& OutSpawnPointIndex);
+
 	/** BP에서 직접 SpawnActor가 실패했을 때 최초 배정 횟수를 되돌립니다. */
 	UFUNCTION(BlueprintCallable, Category="Spawn|Initial")
 	void ReleaseInitialSpawnSelection(int32 SpawnPointIndex);
@@ -120,6 +153,10 @@ public:
 		const FVector& DeathLocation,
 		FTransform& OutSpawnTransform,
 		int32& OutSpawnPointIndex);
+
+	/** Controller 유형에 맞는 SpawnPoint만 사용해 리스폰 위치를 선정합니다. */
+	UFUNCTION(BlueprintCallable, BlueprintPure=false, Category="Spawn|Respawn")
+	bool SelectRespawnTransformForController(AController* Controller, const FVector& DeathLocation, FTransform& OutSpawnTransform, int32& OutSpawnPointIndex);
 
 	// ---------------------------------------------------------------------
 	// High-level Spawn API
@@ -164,6 +201,13 @@ private:
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<USceneComponent>> SpawnPoints;
 
+	/** SpawnPoints와 같은 Index를 사용하는 사용 가능 캐릭터 유형입니다. 기본값은 Both입니다. */
+	UPROPERTY(Transient)
+	TArray<ESpawnPointType> SpawnPointTypes;
+
+	/** InitializeSpawnPointsWithTypes 또는 자동 탐색으로 타입 정보가 명시적으로 등록됐는지 여부입니다. */
+	bool bSpawnPointTypesConfigured = false;
+
 	/** SpawnPoints와 같은 Index를 사용하는 최초 스폰 배정 횟수입니다. */
 	TArray<int32> InitialSpawnCounts;
 
@@ -188,4 +232,16 @@ private:
 
 	/** 현재 TotalCharacterCount와 SpawnPoint 수로 최초 최대 배치 수를 다시 계산합니다. */
 	bool RecalculateInitialMaxPerPoint();
+
+	/** Controller가 해당 SpawnPoint를 사용할 수 있는지 판정합니다. Controller가 없으면 기존 호환을 위해 모두 허용합니다. */
+	bool CanControllerUseSpawnPoint(int32 SpawnPointIndex, const AController* Controller) const;
+
+	/** GameMode 그래프 변경 없이 레벨의 BP_PlayerSpawnPoint 및 Spawn_Type을 자동 등록합니다. */
+	void DiscoverLevelSpawnPoints();
+
+	/** BP_PlayerSpawnPoint의 Spawn_Type enum 값을 읽습니다. 값이 없거나 올바르지 않으면 Both입니다. */
+	ESpawnPointType ReadSpawnPointType(const AActor* SpawnPointActor) const;
+
+	/** 기존 초기화 호출이 이미 타입까지 등록된 동일 포인트 목록을 덮어쓰려는지 확인합니다. */
+	bool IsSameRegisteredSpawnPoints(const TArray<USceneComponent*>& InSpawnPoints) const;
 };
