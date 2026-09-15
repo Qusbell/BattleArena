@@ -1,11 +1,13 @@
 #include "SpawnSelectionComponent.h"
 
 #include "Components/SceneComponent.h"
+#include "EngineUtils.h"
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
+#include "UObject/UnrealType.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogSpawnSelection, Log, All);
 
@@ -18,13 +20,181 @@ USpawnSelectionComponent::USpawnSelectionComponent()
 void USpawnSelectionComponent::InitializeSpawnPoints(
 	const TArray<USceneComponent*>& InSpawnPoints)
 {
-	SpawnPoints.Reset();
+	// 기존 BP 초기화가 자동 탐색 직후 동일한 목록을 다시 넘기는 경우,
+	// BP에 타입 배열이 없다는 이유로 PlayerOnly/BotOnly 정보를 Both로 덮어쓰지 않습니다.
+	if (bSpawnPointTypesConfigured && IsSameRegisteredSpawnPoints(InSpawnPoints))
+	{
+		UE_LOG(LogSpawnSelection, Log,
+			TEXT("InitializeSpawnPoints skipped: retaining configured SpawnPoint types for %d points."),
+			SpawnPoints.Num());
+		return;
+	}
+
+	TArray<ESpawnPointType> DefaultSpawnPointTypes;
+	DefaultSpawnPointTypes.Init(ESpawnPointType::Both, InSpawnPoints.Num());
+	InitializeSpawnPointsWithTypes(InSpawnPoints, DefaultSpawnPointTypes);
+}
+
+void USpawnSelectionComponent::BeginPlay()
+{
+	Super::BeginPlay();
+
+	AActor* OwnerActor = GetOwner();
+	if (bAutoDiscoverLevelSpawnPoints && IsValid(OwnerActor) && OwnerActor->HasAuthority())
+	{
+		DiscoverLevelSpawnPoints();
+	}
+}
+
+void USpawnSelectionComponent::DiscoverLevelSpawnPoints()
+{
+	UWorld* World = GetWorld();
+	if (!IsValid(World))
+	{
+		return;
+	}
+
+	TArray<USceneComponent*> DiscoveredSpawnPoints;
+	TArray<ESpawnPointType> DiscoveredSpawnPointTypes;
+
+	for (TActorIterator<AActor> It(World); It; ++It)
+	{
+		AActor* SpawnPointActor = *It;
+		if (!IsValid(SpawnPointActor)
+			|| !SpawnPointActor->GetClass()->GetName().StartsWith(TEXT("BP_PlayerSpawnPoint")))
+		{
+			continue;
+		}
+
+		TInlineComponentArray<USceneComponent*> SceneComponents(SpawnPointActor);
+		USceneComponent* TransformComponent = nullptr;
+		for (USceneComponent* SceneComponent : SceneComponents)
+		{
+			if (IsValid(SceneComponent)
+				&& (SceneComponent->GetName().Contains(TEXT("SpawnPoint"), ESearchCase::IgnoreCase)
+					|| SceneComponent->ComponentTags.Contains(TEXT("SpawnPoint"))))
+			{
+				TransformComponent = SceneComponent;
+				break;
+			}
+		}
+
+		// 명시적으로 이름/태그가 붙은 컴포넌트가 없으면 Actor Root를 Transform으로 사용합니다.
+		if (!IsValid(TransformComponent))
+		{
+			TransformComponent = SpawnPointActor->GetRootComponent();
+		}
+
+		if (!IsValid(TransformComponent))
+		{
+			UE_LOG(LogSpawnSelection, Warning,
+				TEXT("Auto discovery skipped %s: no SceneComponent was found."),
+				*GetNameSafe(SpawnPointActor));
+			continue;
+		}
+
+		DiscoveredSpawnPoints.Add(TransformComponent);
+		const ESpawnPointType SpawnPointType = ReadSpawnPointType(SpawnPointActor);
+		DiscoveredSpawnPointTypes.Add(SpawnPointType);
+		UE_LOG(LogSpawnSelection, Log, TEXT("Auto discovery: %s -> %s"),
+			*GetNameSafe(SpawnPointActor),
+			*StaticEnum<ESpawnPointType>()->GetNameStringByValue(static_cast<int64>(SpawnPointType)));
+	}
+
+	InitializeSpawnPointsWithTypes(DiscoveredSpawnPoints, DiscoveredSpawnPointTypes);
+}
+
+ESpawnPointType USpawnSelectionComponent::ReadSpawnPointType(const AActor* SpawnPointActor) const
+{
+	if (!IsValid(SpawnPointActor))
+	{
+		return ESpawnPointType::Both;
+	}
+
+	// Blueprint 변수는 프로젝트마다 Spawn_Type 또는 spawnType으로 명명되어 있어 둘 다 지원합니다.
+	const FProperty* Property = FindFProperty<FProperty>(SpawnPointActor->GetClass(), TEXT("Spawn_Type"));
+	if (Property == nullptr)
+	{
+		Property = FindFProperty<FProperty>(SpawnPointActor->GetClass(), TEXT("spawnType"));
+	}
+	if (Property == nullptr)
+	{
+		Property = FindFProperty<FProperty>(SpawnPointActor->GetClass(), TEXT("SpawnType"));
+	}
+
+	if (Property == nullptr)
+	{
+		UE_LOG(LogSpawnSelection, Warning,
+			TEXT("Auto discovery: %s has no Spawn_Type/spawnType property; using Both."),
+			*GetNameSafe(SpawnPointActor));
+		return ESpawnPointType::Both;
+	}
+
+	const void* ValueAddress = Property ? Property->ContainerPtrToValuePtr<void>(SpawnPointActor) : nullptr;
+	int64 RawValue = static_cast<int64>(ESpawnPointType::Both);
+
+	if (const FEnumProperty* EnumProperty = CastField<FEnumProperty>(Property))
+	{
+		RawValue = EnumProperty->GetUnderlyingProperty()->GetSignedIntPropertyValue(ValueAddress);
+	}
+	else if (const FByteProperty* ByteProperty = CastField<FByteProperty>(Property))
+	{
+		RawValue = ByteProperty->GetPropertyValue(ValueAddress);
+	}
+
+	return RawValue >= static_cast<int64>(ESpawnPointType::Both)
+		&& RawValue <= static_cast<int64>(ESpawnPointType::BotOnly)
+		? static_cast<ESpawnPointType>(RawValue)
+		: ESpawnPointType::Both;
+}
+
+bool USpawnSelectionComponent::IsSameRegisteredSpawnPoints(
+	const TArray<USceneComponent*>& InSpawnPoints) const
+{
+	TArray<USceneComponent*> ValidIncomingSpawnPoints;
+	ValidIncomingSpawnPoints.Reserve(InSpawnPoints.Num());
 
 	for (USceneComponent* SpawnPoint : InSpawnPoints)
 	{
 		if (IsValid(SpawnPoint))
 		{
+			ValidIncomingSpawnPoints.Add(SpawnPoint);
+		}
+	}
+
+	if (ValidIncomingSpawnPoints.Num() != SpawnPoints.Num())
+	{
+		return false;
+	}
+
+	for (int32 Index = 0; Index < SpawnPoints.Num(); ++Index)
+	{
+		if (SpawnPoints[Index] != ValidIncomingSpawnPoints[Index])
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
+void USpawnSelectionComponent::InitializeSpawnPointsWithTypes(
+	const TArray<USceneComponent*>& InSpawnPoints,
+	const TArray<ESpawnPointType>& InSpawnPointTypes)
+{
+	SpawnPoints.Reset();
+	SpawnPointTypes.Reset();
+	bSpawnPointTypesConfigured = true;
+
+	for (int32 Index = 0; Index < InSpawnPoints.Num(); ++Index)
+	{
+		USceneComponent* SpawnPoint = InSpawnPoints[Index];
+		if (IsValid(SpawnPoint))
+		{
 			SpawnPoints.Add(SpawnPoint);
+			SpawnPointTypes.Add(InSpawnPointTypes.IsValidIndex(Index)
+				? InSpawnPointTypes[Index]
+				: ESpawnPointType::Both);
 		}
 	}
 
@@ -38,6 +208,28 @@ void USpawnSelectionComponent::InitializeSpawnPoints(
 	UE_LOG(LogSpawnSelection, Log,
 		TEXT("InitializeSpawnPoints: %d valid spawn points registered."),
 		SpawnPoints.Num());
+}
+
+bool USpawnSelectionComponent::SetSpawnPointType(
+	USceneComponent* SpawnPoint,
+	const ESpawnPointType SpawnPointType)
+{
+	const int32 SpawnPointIndex = SpawnPoints.IndexOfByKey(SpawnPoint);
+	if (!SpawnPointTypes.IsValidIndex(SpawnPointIndex))
+	{
+		return false;
+	}
+
+	SpawnPointTypes[SpawnPointIndex] = SpawnPointType;
+	return true;
+}
+
+ESpawnPointType USpawnSelectionComponent::GetSpawnPointType(USceneComponent* SpawnPoint) const
+{
+	const int32 SpawnPointIndex = SpawnPoints.IndexOfByKey(SpawnPoint);
+	return SpawnPointTypes.IsValidIndex(SpawnPointIndex)
+		? SpawnPointTypes[SpawnPointIndex]
+		: ESpawnPointType::Both;
 }
 
 int32 USpawnSelectionComponent::GetSpawnPointCount() const
@@ -156,7 +348,42 @@ bool USpawnSelectionComponent::RecalculateInitialMaxPerPoint()
 	return InitialMaxPerPoint > 0;
 }
 
+bool USpawnSelectionComponent::CanControllerUseSpawnPoint(
+	const int32 SpawnPointIndex,
+	const AController* Controller) const
+{
+	if (!SpawnPointTypes.IsValidIndex(SpawnPointIndex))
+	{
+		return false;
+	}
+
+	// 기존 위치 선택 노드는 Controller를 넘기지 않으므로 하위 호환을 위해 필터링하지 않습니다.
+	if (!IsValid(Controller))
+	{
+		return true;
+	}
+
+	const ESpawnPointType SpawnPointType = SpawnPointTypes[SpawnPointIndex];
+	if (SpawnPointType == ESpawnPointType::Both)
+	{
+		return true;
+	}
+
+	const bool bIsPlayer = Controller->IsPlayerController();
+	return bIsPlayer
+		? SpawnPointType == ESpawnPointType::PlayerOnly
+		: SpawnPointType == ESpawnPointType::BotOnly;
+}
+
 bool USpawnSelectionComponent::SelectInitialSpawnTransform(
+	FTransform& OutSpawnTransform,
+	int32& OutSpawnPointIndex)
+{
+	return SelectInitialSpawnTransformForController(nullptr, OutSpawnTransform, OutSpawnPointIndex);
+}
+
+bool USpawnSelectionComponent::SelectInitialSpawnTransformForController(
+	AController* Controller,
 	FTransform& OutSpawnTransform,
 	int32& OutSpawnPointIndex)
 {
@@ -175,19 +402,35 @@ bool USpawnSelectionComponent::SelectInitialSpawnTransform(
 
 	// PPT 규칙대로 현재 배치 수가 최대 배치 수보다 작은 포인트만 후보로 사용합니다.
 	TArray<int32> CandidateIndices;
+	TArray<int32> AllowedCandidateIndices;
 	CandidateIndices.Reserve(SpawnPoints.Num());
+	AllowedCandidateIndices.Reserve(SpawnPoints.Num());
 
 	for (int32 Index = 0; Index < SpawnPoints.Num(); ++Index)
 	{
-		if (!IsValid(SpawnPoints[Index]))
+		if (!IsValid(SpawnPoints[Index]) || !CanControllerUseSpawnPoint(Index, Controller))
 		{
 			continue;
 		}
+
+		AllowedCandidateIndices.Add(Index);
 
 		if (InitialSpawnCounts[Index] < InitialMaxPerPoint)
 		{
 			CandidateIndices.Add(Index);
 		}
+	}
+
+	/*
+	 * 예: PlayerOnly 1개 + BotOnly 1개에서 Player 여러 명이 입장하면,
+	 * 전체 포인트 수로 계산한 MaxPerPoint만 적용할 경우 PlayerOnly 후보가 먼저 소진됩니다.
+	 * 타입 규칙이 우선이므로 이 경우에는 허용된 포인트 안에서만 계속 선택합니다.
+	 */
+	if (CandidateIndices.IsEmpty() && IsValid(Controller) && !AllowedCandidateIndices.IsEmpty())
+	{
+		CandidateIndices = MoveTemp(AllowedCandidateIndices);
+		UE_LOG(LogSpawnSelection, Verbose,
+			TEXT("SelectInitialSpawnTransform: type-filtered candidates exceeded initial cap; using an allowed point."));
 	}
 
 	if (CandidateIndices.IsEmpty())
@@ -253,6 +496,15 @@ bool USpawnSelectionComponent::SelectRespawnTransform(
 	FTransform& OutSpawnTransform,
 	int32& OutSpawnPointIndex)
 {
+	return SelectRespawnTransformForController(nullptr, DeathLocation, OutSpawnTransform, OutSpawnPointIndex);
+}
+
+bool USpawnSelectionComponent::SelectRespawnTransformForController(
+	AController* Controller,
+	const FVector& DeathLocation,
+	FTransform& OutSpawnTransform,
+	int32& OutSpawnPointIndex)
+{
 	OutSpawnTransform = FTransform::Identity;
 	OutSpawnPointIndex = INDEX_NONE;
 
@@ -268,7 +520,7 @@ bool USpawnSelectionComponent::SelectRespawnTransform(
 
 	for (int32 Index = 0; Index < SpawnPoints.Num(); ++Index)
 	{
-		if (!IsValid(SpawnPoints[Index]))
+		if (!IsValid(SpawnPoints[Index]) || !CanControllerUseSpawnPoint(Index, Controller))
 		{
 			continue;
 		}
@@ -331,7 +583,7 @@ bool USpawnSelectionComponent::SpawnInitialPawn(
 	OutSpawnTransform = FTransform::Identity;
 	OutSpawnPointIndex = INDEX_NONE;
 
-	if (!SelectInitialSpawnTransform(OutSpawnTransform, OutSpawnPointIndex))
+	if (!SelectInitialSpawnTransformForController(Controller, OutSpawnTransform, OutSpawnPointIndex))
 	{
 		UE_LOG(LogSpawnSelection, Warning,
 			TEXT("SpawnInitialPawn failed: could not select an initial spawn point."));
@@ -366,7 +618,8 @@ bool USpawnSelectionComponent::RespawnPawn(
 	OutSpawnTransform = FTransform::Identity;
 	OutSpawnPointIndex = INDEX_NONE;
 
-	if (!SelectRespawnTransform(
+	if (!SelectRespawnTransformForController(
+		Controller,
 		DeathLocation,
 		OutSpawnTransform,
 		OutSpawnPointIndex))
