@@ -400,11 +400,20 @@ bool USpawnSelectionComponent::SelectInitialSpawnTransformForController(
 		return false;
 	}
 
-	// PPT 규칙대로 현재 배치 수가 최대 배치 수보다 작은 포인트만 후보로 사용합니다.
-	TArray<int32> CandidateIndices;
-	TArray<int32> AllowedCandidateIndices;
-	CandidateIndices.Reserve(SpawnPoints.Num());
-	AllowedCandidateIndices.Reserve(SpawnPoints.Num());
+	// 전용 포인트가 있으면 Both보다 먼저 사용합니다. 반대 전용 타입은 CanControllerUseSpawnPoint에서 제외됩니다.
+	const bool bHasControllerType = IsValid(Controller);
+	const ESpawnPointType PreferredSpawnPointType = bHasControllerType && Controller->IsPlayerController()
+		? ESpawnPointType::PlayerOnly
+		: ESpawnPointType::BotOnly;
+
+	TArray<int32> PreferredCandidates;
+	TArray<int32> BothCandidates;
+	TArray<int32> PreferredAllowedCandidates;
+	TArray<int32> BothAllowedCandidates;
+	PreferredCandidates.Reserve(SpawnPoints.Num());
+	BothCandidates.Reserve(SpawnPoints.Num());
+	PreferredAllowedCandidates.Reserve(SpawnPoints.Num());
+	BothAllowedCandidates.Reserve(SpawnPoints.Num());
 
 	for (int32 Index = 0; Index < SpawnPoints.Num(); ++Index)
 	{
@@ -413,27 +422,48 @@ bool USpawnSelectionComponent::SelectInitialSpawnTransformForController(
 			continue;
 		}
 
-		AllowedCandidateIndices.Add(Index);
-
+		const bool bIsPreferred = bHasControllerType && SpawnPointTypes[Index] == PreferredSpawnPointType;
 		if (InitialSpawnCounts[Index] < InitialMaxPerPoint)
 		{
-			CandidateIndices.Add(Index);
+			(bIsPreferred ? PreferredCandidates : BothCandidates).Add(Index);
+		}
+		else
+		{
+			(bIsPreferred ? PreferredAllowedCandidates : BothAllowedCandidates).Add(Index);
 		}
 	}
 
-	/*
-	 * 예: PlayerOnly 1개 + BotOnly 1개에서 Player 여러 명이 입장하면,
-	 * 전체 포인트 수로 계산한 MaxPerPoint만 적용할 경우 PlayerOnly 후보가 먼저 소진됩니다.
-	 * 타입 규칙이 우선이므로 이 경우에는 허용된 포인트 안에서만 계속 선택합니다.
-	 */
-	if (CandidateIndices.IsEmpty() && IsValid(Controller) && !AllowedCandidateIndices.IsEmpty())
+	TArray<int32>* SelectedCandidateList = nullptr;
+	if (bHasControllerType)
 	{
-		CandidateIndices = MoveTemp(AllowedCandidateIndices);
-		UE_LOG(LogSpawnSelection, Verbose,
-			TEXT("SelectInitialSpawnTransform: type-filtered candidates exceeded initial cap; using an allowed point."));
+		// 생성 제한을 만족하는 전용 → Both 순서. 전용만 존재하는 경우에는 제한을 넘겨도 전용을 유지합니다.
+		if (!PreferredCandidates.IsEmpty())
+		{
+			SelectedCandidateList = &PreferredCandidates;
+		}
+		else if (!BothCandidates.IsEmpty())
+		{
+			SelectedCandidateList = &BothCandidates;
+		}
+		else if (!PreferredAllowedCandidates.IsEmpty())
+		{
+			SelectedCandidateList = &PreferredAllowedCandidates;
+		}
+		else if (!BothAllowedCandidates.IsEmpty())
+		{
+			SelectedCandidateList = &BothAllowedCandidates;
+		}
+	}
+	else
+	{
+		// Controller를 받지 않는 기존 Blueprint 호출은 종전과 같은 전체 후보 동작을 유지합니다.
+		if (!BothCandidates.IsEmpty())
+		{
+			SelectedCandidateList = &BothCandidates;
+		}
 	}
 
-	if (CandidateIndices.IsEmpty())
+	if (SelectedCandidateList == nullptr || SelectedCandidateList->IsEmpty())
 	{
 		UE_LOG(LogSpawnSelection, Warning,
 			TEXT("SelectInitialSpawnTransform failed: no candidate remains. Remaining=%d"),
@@ -442,8 +472,8 @@ bool USpawnSelectionComponent::SelectInitialSpawnTransformForController(
 	}
 
 	// 등록 순서가 결과를 결정하지 않도록 후보 전체에서 Random 선택합니다.
-	const int32 RandomCandidateIndex = FMath::RandRange(0, CandidateIndices.Num() - 1);
-	const int32 SelectedSpawnIndex = CandidateIndices[RandomCandidateIndex];
+	const int32 RandomCandidateIndex = FMath::RandRange(0, SelectedCandidateList->Num() - 1);
+	const int32 SelectedSpawnIndex = (*SelectedCandidateList)[RandomCandidateIndex];
 
 	USceneComponent* SelectedSpawnPoint = SpawnPoints[SelectedSpawnIndex];
 	if (!IsValid(SelectedSpawnPoint))
@@ -515,8 +545,17 @@ bool USpawnSelectionComponent::SelectRespawnTransformForController(
 		double RandomTieBreaker = 0.0;
 	};
 
-	TArray<FRespawnDistanceEntry> SortedEntries;
-	SortedEntries.Reserve(SpawnPoints.Num());
+	const bool bHasControllerType = IsValid(Controller);
+	const ESpawnPointType PreferredSpawnPointType = bHasControllerType && Controller->IsPlayerController()
+		? ESpawnPointType::PlayerOnly
+		: ESpawnPointType::BotOnly;
+
+	TArray<FRespawnDistanceEntry> PreferredEntries;
+	TArray<FRespawnDistanceEntry> BothEntries;
+	TArray<FRespawnDistanceEntry> LegacyEntries;
+	PreferredEntries.Reserve(SpawnPoints.Num());
+	BothEntries.Reserve(SpawnPoints.Num());
+	LegacyEntries.Reserve(SpawnPoints.Num());
 
 	for (int32 Index = 0; Index < SpawnPoints.Num(); ++Index)
 	{
@@ -525,7 +564,10 @@ bool USpawnSelectionComponent::SelectRespawnTransformForController(
 			continue;
 		}
 
-		FRespawnDistanceEntry& Entry = SortedEntries.AddDefaulted_GetRef();
+		TArray<FRespawnDistanceEntry>& TargetEntries = bHasControllerType
+			? (SpawnPointTypes[Index] == PreferredSpawnPointType ? PreferredEntries : BothEntries)
+			: LegacyEntries;
+		FRespawnDistanceEntry& Entry = TargetEntries.AddDefaulted_GetRef();
 		Entry.SpawnPointIndex = Index;
 		Entry.DistanceSquared = FVector::DistSquared(
 			DeathLocation,
@@ -535,12 +577,23 @@ bool USpawnSelectionComponent::SelectRespawnTransformForController(
 		Entry.RandomTieBreaker = FMath::FRand();
 	}
 
-	if (SortedEntries.IsEmpty())
+	TArray<FRespawnDistanceEntry>* CandidateEntries = nullptr;
+	if (bHasControllerType)
+	{
+		// 전용 타입 전체를 먼저 확인하고, 전용 포인트가 하나라도 있으면 Both는 후보에서 제외합니다.
+		CandidateEntries = !PreferredEntries.IsEmpty() ? &PreferredEntries : &BothEntries;
+	}
+	else
+	{
+		CandidateEntries = &LegacyEntries;
+	}
+
+	if (CandidateEntries->IsEmpty())
 	{
 		return false;
 	}
 
-	SortedEntries.Sort(
+	CandidateEntries->Sort(
 		[](const FRespawnDistanceEntry& A, const FRespawnDistanceEntry& B)
 		{
 			if (A.DistanceSquared == B.DistanceSquared)
@@ -553,12 +606,11 @@ bool USpawnSelectionComponent::SelectRespawnTransformForController(
 
 	/*
 	 * 260824 PPT 공식:
-	 * 리스폰 후보 수 = Max(1, Floor(전체 SpawnPoint 수 / 2))
+	 * 리스폰 후보 수 = Max(1, Floor(선택된 타입 SpawnPoint 수 / 2))
 	 * int32 / 2가 내림 처리를 수행합니다.
 	 */
-	const int32 CandidateCount = FMath::Max(1, SortedEntries.Num() / 2);
-	const int32 RandomCandidateIndex = FMath::RandRange(0, CandidateCount - 1);
-	const int32 SelectedSpawnIndex = SortedEntries[RandomCandidateIndex].SpawnPointIndex;
+	const int32 CandidateCount = FMath::Max(1, CandidateEntries->Num() / 2);
+	const int32 SelectedSpawnIndex = (*CandidateEntries)[FMath::RandRange(0, CandidateCount - 1)].SpawnPointIndex;
 
 	if (!SpawnPoints.IsValidIndex(SelectedSpawnIndex)
 		|| !IsValid(SpawnPoints[SelectedSpawnIndex]))
