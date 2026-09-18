@@ -8,16 +8,26 @@
 
 class AController;
 
-USTRUCT()
+USTRUCT(BlueprintType)
 struct FArenaInfoSample
 {
     GENERATED_BODY()
 
-    UPROPERTY()
+    UPROPERTY(BlueprintReadOnly)
     double TimeSeconds = 0.0;
 
-    UPROPERTY()
+    UPROPERTY(BlueprintReadOnly)
     FVector Location = FVector::ZeroVector;
+};
+
+
+USTRUCT(BlueprintType)
+struct FArenaAnalyzeSession
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadOnly)
+    TArray<FArenaInfoSample> Samples;
 };
 
 
@@ -43,4 +53,5 @@ public:
 
 private:
 	void AnalyzeControllers();
+    void SaveSamplesToJson();
 };

@@ -5,6 +5,12 @@
 #include "GameFramework/Pawn.h"
 #include "TimerManager.h"
 
+#include "JsonObjectConverter.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
+#include "Misc/DateTime.h"
+
+
 bool UArenaAnalyzeSubsystem::ShouldCreateSubsystem(UObject* Outer) const
 {
     const UWorld* World = Cast<UWorld>(Outer);
@@ -51,35 +57,8 @@ void UArenaAnalyzeSubsystem::Deinitialize()
         World->GetTimerManager().ClearTimer(LoopTimerHandle);
     }
 
-    UE_LOG(
-        LogTemp,
-        Warning,
-        TEXT("===== Arena Analyze Result =====")
-    );
-
-    UE_LOG(
-        LogTemp,
-        Warning,
-        TEXT("Total Samples: %d"),
-        InfoSamples.Num()
-    );
-
-    for (const FArenaInfoSample& Sample : InfoSamples)
-    {
-        UE_LOG(
-            LogTemp,
-            Log,
-            TEXT("Time: %.2f | Location: %s"),
-            Sample.TimeSeconds,
-            *Sample.Location.ToString()
-        );
-    }
-
-    UE_LOG(
-        LogTemp,
-        Warning,
-        TEXT("==============================")
-    );
+    // 저장
+    SaveSamplesToJson();
 
     Super::Deinitialize();
 }
@@ -110,4 +89,42 @@ void UArenaAnalyzeSubsystem::AnalyzeControllers()
         sample.TimeSeconds = nowTime;
         sample.Location = pawn->GetActorLocation();
 	}
+}
+
+
+void UArenaAnalyzeSubsystem::SaveSamplesToJson()
+{
+    FArenaAnalyzeSession Session;
+    Session.Samples = InfoSamples;
+
+    FString JsonString;
+
+    if (!FJsonObjectConverter::UStructToJsonObjectString(Session, JsonString))
+    {
+        UE_LOG(LogTemp, Error, TEXT("Failed to convert ArenaAnalyze data to JSON"));
+        return;
+    }
+
+    const FString Directory =
+        FPaths::ProjectSavedDir() / TEXT("Analyze");
+
+    IFileManager::Get().MakeDirectory(*Directory, true);
+
+    const FString FileName =
+        TEXT("ArenaAnalyze_")
+        + FDateTime::Now().ToString()
+        + TEXT(".json");
+
+    const FString FilePath =
+        Directory / FileName;
+
+    if (FFileHelper::SaveStringToFile(JsonString, *FilePath))
+    {
+        UE_LOG(
+            LogTemp,
+            Warning,
+            TEXT("ArenaAnalyze saved: %s"),
+            *FilePath
+        );
+    }
 }
