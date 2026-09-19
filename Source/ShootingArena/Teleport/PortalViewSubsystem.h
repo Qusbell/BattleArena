@@ -32,7 +32,7 @@ public:
 
 private:
 	FPortalViewInstance& FindOrCreateView(AOneWayTeleportActor* portal);
-	void EnsureRenderTarget(FPortalViewInstance& view, int32 size);
+	void EnsureRenderTarget(FPortalViewInstance& view, int32 size, bool bUseHighQualityCapture);
 	void ClearPortalView(AOneWayTeleportActor* portal, FPortalViewInstance& view);
 	void ClearAllPortalViews();
 

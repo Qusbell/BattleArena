@@ -120,7 +120,10 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 
 		visiblePortals.Add(portal);
 		FPortalViewInstance& view = FindOrCreateView(portal);
-		EnsureRenderTarget(view, settings->portalViewRenderTargetSize);
+		EnsureRenderTarget(
+			view,
+			settings->portalViewRenderTargetSize,
+			settings->bUseHighQualityPortalCapture);
 		if (!IsValid(view.renderTarget) || !IsValid(view.sceneCapture))
 		{
 			continue;
@@ -189,6 +192,32 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 		}
 
 		view->captureAccumulator = 0.0f;
+		const UTeleportDataAsset* settings = portal->GetTeleportDataAsset();
+		if (!IsValid(settings))
+		{
+			continue;
+		}
+
+		const bool bHighQuality = settings->bUseHighQualityPortalCapture;
+		view->sceneCapture->CaptureSource = bHighQuality
+			? ESceneCaptureSource::SCS_SceneColorHDR
+			: ESceneCaptureSource::SCS_FinalColorLDR;
+
+		// 포탈 전용 캡처에만 적용됩니다. 메인 카메라의 ShowFlags는 변경하지 않습니다.
+		// 저품질 모드에서도 기본 조명과 Translucency는 유지해 출구 판독성을 보존합니다.
+		view->sceneCapture->ShowFlags.SetDynamicShadows(bHighQuality);
+		view->sceneCapture->ShowFlags.SetLumenGlobalIllumination(bHighQuality);
+		view->sceneCapture->ShowFlags.SetLumenReflections(bHighQuality);
+		view->sceneCapture->ShowFlags.SetScreenSpaceReflections(bHighQuality);
+		view->sceneCapture->ShowFlags.SetAmbientOcclusion(bHighQuality);
+		view->sceneCapture->ShowFlags.SetContactShadows(bHighQuality);
+		view->sceneCapture->ShowFlags.SetVolumetricFog(bHighQuality);
+		view->sceneCapture->ShowFlags.SetMotionBlur(bHighQuality);
+		view->sceneCapture->ShowFlags.SetDepthOfField(bHighQuality);
+		view->sceneCapture->ShowFlags.SetLensFlares(bHighQuality);
+		view->sceneCapture->ShowFlags.SetBloom(bHighQuality);
+		view->sceneCapture->ShowFlags.SetEyeAdaptation(bHighQuality);
+
 		const FTransform cameraTransform(cameraRotation, cameraLocation);
 		view->sceneCapture->SetWorldTransform(portal->GetPortalViewCameraTransform(cameraTransform));
 		view->sceneCapture->TextureTarget = view->renderTarget;
@@ -239,10 +268,19 @@ FPortalViewInstance& UPortalViewSubsystem::FindOrCreateView(AOneWayTeleportActor
 	return newView;
 }
 
-void UPortalViewSubsystem::EnsureRenderTarget(FPortalViewInstance& view, int32 size)
+void UPortalViewSubsystem::EnsureRenderTarget(
+	FPortalViewInstance& view,
+	int32 size,
+	bool bUseHighQualityCapture)
 {
 	const int32 clampedSize = FMath::Clamp(size, 128, 2048);
-	if (IsValid(view.renderTarget) && view.renderTarget->SizeX == clampedSize && view.renderTarget->SizeY == clampedSize)
+	const ETextureRenderTargetFormat desiredFormat = bUseHighQualityCapture
+		? ETextureRenderTargetFormat::RTF_RGBA16f
+		: ETextureRenderTargetFormat::RTF_RGBA8_SRGB;
+	if (IsValid(view.renderTarget)
+		&& view.renderTarget->SizeX == clampedSize
+		&& view.renderTarget->SizeY == clampedSize
+		&& view.renderTarget->RenderTargetFormat == desiredFormat)
 	{
 		return;
 	}
@@ -250,6 +288,7 @@ void UPortalViewSubsystem::EnsureRenderTarget(FPortalViewInstance& view, int32 s
 	// RenderTarget도 포탈 수명에 묶인 임시 런타임 리소스입니다.
 	view.renderTarget = NewObject<UTextureRenderTarget2D>(view.sceneCapture->GetOwner(), NAME_None, RF_Transient);
 	view.renderTarget->ClearColor = FLinearColor::Black;
+	view.renderTarget->RenderTargetFormat = desiredFormat;
 	view.renderTarget->InitAutoFormat(clampedSize, clampedSize);
 	view.renderTarget->UpdateResourceImmediate(true);
 }

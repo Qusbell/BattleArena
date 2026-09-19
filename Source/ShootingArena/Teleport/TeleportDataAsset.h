@@ -100,4 +100,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View",
 		meta = (ClampMin = "0", UIMin = "0", UIMax = "8"))
 	int32 maxPortalCapturesPerFrame = 2;
+
+	/**
+	 * 켜면 포탈 캡처도 HDR, 동적 그림자, Lumen, 고비용 후처리를 사용합니다.
+	 * 2048 해상도에서는 기본값(false)을 권장합니다. 메인 카메라 품질에는 영향이 없습니다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View")
+	bool bUseHighQualityPortalCapture = false;
 };
