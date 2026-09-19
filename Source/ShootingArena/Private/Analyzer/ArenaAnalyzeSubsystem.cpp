@@ -1,200 +1,269 @@
-﻿
 #include "Analyzer/ArenaAnalyzeSubsystem.h"
 
+#include "Engine/World.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/Pawn.h"
-#include "TimerManager.h"
-
+#include "HAL/FileManager.h"
 #include "JsonObjectConverter.h"
+#include "Misc/DateTime.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
-#include "Misc/DateTime.h"
-
 
 bool UArenaAnalyzeSubsystem::ShouldCreateSubsystem(UObject* Outer) const
 {
     const UWorld* World = Cast<UWorld>(Outer);
-
-    // World 아니면 거르기
-    if (!World)
+    if (!World || World->GetNetMode() == ENetMode::NM_Client)
     {
         return false;
     }
-
-    // 클라이언트 거르기
-    if (World->GetNetMode() == ENetMode::NM_Client)
-    {
-        return false;
-    }
-
-    return
-        World->WorldType == EWorldType::Game ||
-        World->WorldType == EWorldType::PIE;
+    return World->WorldType == EWorldType::Game || World->WorldType == EWorldType::PIE;
 }
 
 void UArenaAnalyzeSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
     Super::Initialize(Collection);
     UWorld* World = GetWorld();
+    if (!World)
+    {
+        return;
+    }
 
-    if (World == nullptr) { return; }
-
+    SessionStartTime = World->GetTimeSeconds();
     World->GetTimerManager().SetTimer(
-        LoopTimerHandle,
-        this,
-        &UArenaAnalyzeSubsystem::AnalyzeControllers,
-        0.5f,   // 0.5초마다
-        true    // 반복
-    );
+        LoopTimerHandle, this, &UArenaAnalyzeSubsystem::AnalyzeControllers,
+        MovementSampleInterval, true);
 }
 
 void UArenaAnalyzeSubsystem::Deinitialize()
 {
-    UWorld* World = GetWorld();
-
-    if (World != nullptr)
+    if (UWorld* World = GetWorld())
     {
         World->GetTimerManager().ClearTimer(LoopTimerHandle);
     }
 
-    // 저장
-    SaveSamplesToJson();
+    for (FControllerAnalyzeState& State : ControllerStates)
+    {
+        if (AController* Controller = State.Controller.Get())
+        {
+            Controller->OnPossessedPawnChanged.RemoveDynamic(
+                this, &UArenaAnalyzeSubsystem::OnPossessedPawnChanged);
+        }
+        if (APawn* Pawn = State.CurrentPawn.Get())
+        {
+            Pawn->OnTakeAnyDamage.RemoveDynamic(
+                this, &UArenaAnalyzeSubsystem::OnPawnTakeAnyDamage);
+        }
+    }
 
+    SaveSamplesToJson();
+    ControllerStates.Reset();
     Super::Deinitialize();
 }
 
-void UArenaAnalyzeSubsystem::RegisterController(AController* controller)
+void UArenaAnalyzeSubsystem::RegisterController(AController* Controller)
 {
-    if (!IsValid(controller)) { return; }
-
-	RegisteredControllers.AddUnique(controller);
-
-    controller->OnPossessedPawnChanged.AddUniqueDynamic(
-        this,
-        &UArenaAnalyzeSubsystem::OnPossessedPawnChanged
-    );
-
-    // 등록 시점에 이미 Pawn을 가지고 있을 수도 있음
-    if (APawn* Pawn = controller->GetPawn())
+    if (!IsValid(Controller) || FindStateForController(Controller))
     {
-        Pawn->OnTakeAnyDamage.AddUniqueDynamic(
-            this,
-            &UArenaAnalyzeSubsystem::OnPawnTakeAnyDamage
-        );
+        return;
+    }
+
+    FControllerAnalyzeState& State = ControllerStates.AddDefaulted_GetRef();
+    State.Controller = Controller;
+    State.ControllerId = NextControllerId++;
+
+    Controller->OnPossessedPawnChanged.AddUniqueDynamic(
+        this, &UArenaAnalyzeSubsystem::OnPossessedPawnChanged);
+
+    if (APawn* Pawn = Controller->GetPawn())
+    {
+        SetTrackedPawn(State, Pawn);
     }
 }
 
-
 void UArenaAnalyzeSubsystem::AnalyzeControllers()
 {
-    double nowTime = GetWorld()->GetTimeSeconds();
-    
-
-    for (const TWeakObjectPtr<AController>& WeakController : RegisteredControllers)
+    const UWorld* World = GetWorld();
+    if (!World)
     {
-        const AController* controller = WeakController.Get();
-        if (controller == nullptr) { continue; }
+        return;
+    }
 
-        const APawn* pawn = controller->GetPawn();
-		if (pawn == nullptr) { continue; }
+    const double NowTime = World->GetTimeSeconds() - SessionStartTime;
+    for (FControllerAnalyzeState& State : ControllerStates)
+    {
+        AController* Controller = State.Controller.Get();
+        if (!IsValid(Controller))
+        {
+            if (APawn* Pawn = State.CurrentPawn.Get())
+            {
+                Pawn->OnTakeAnyDamage.RemoveDynamic(
+                    this, &UArenaAnalyzeSubsystem::OnPawnTakeAnyDamage);
+            }
+            State.CurrentPawn.Reset();
+            State.CurrentTrackId = INDEX_NONE;
+            continue;
+        }
 
-        // 정보 수집
-        FArenaInfoSample& sample = AIMovementSamples.AddDefaulted_GetRef();
-        sample.TimeSeconds = nowTime;
-        sample.Location = pawn->GetActorLocation();
-	}
+        APawn* Pawn = Controller->GetPawn();
+        if (!IsValid(Pawn))
+        {
+            continue;
+        }
+
+        // Handles registration/possession ordering without adding Tick work.
+        if (State.CurrentPawn.Get() != Pawn)
+        {
+            SetTrackedPawn(State, Pawn);
+        }
+
+        FArenaMovementSample& Sample = MovementSamples.AddDefaulted_GetRef();
+        Sample.TimeSeconds = NowTime;
+        Sample.Location = Pawn->GetActorLocation();
+        Sample.ControllerId = State.ControllerId;
+        Sample.TrackId = State.CurrentTrackId;
+    }
 }
-
 
 void UArenaAnalyzeSubsystem::SaveSamplesToJson()
 {
+    const UWorld* World = GetWorld();
     FArenaAnalyzeSession Session;
-    Session.AIMovementSamples = AIMovementSamples;
+    Session.MapName = World ? World->GetMapName() : FString();
+    if (World)
+    {
+        Session.MapName.RemoveFromStart(World->StreamingLevelsPrefix);
+    }
+    Session.SampleInterval = MovementSampleInterval;
+    Session.SessionDuration = World
+        ? FMath::Max(0.0, static_cast<double>(World->GetTimeSeconds()) - SessionStartTime)
+        : 0.0;
+    Session.MovementSamples = MovementSamples;
     Session.DamageSamples = DamageSamples;
 
     FString JsonString;
-
     if (!FJsonObjectConverter::UStructToJsonObjectString(Session, JsonString))
     {
         UE_LOG(LogTemp, Error, TEXT("Failed to convert ArenaAnalyze data to JSON"));
         return;
     }
 
-    const FString Directory =
-        FPaths::ProjectSavedDir() / TEXT("Analyze");
-
+    const FString Directory = FPaths::ProjectSavedDir() / TEXT("Analyze");
     IFileManager::Get().MakeDirectory(*Directory, true);
-
-    const FString FileName =
-        TEXT("ArenaAnalyze_")
-        + FDateTime::Now().ToString()
-        + TEXT(".json");
-
-    const FString FilePath =
-        Directory / FileName;
+    const FString FilePath = Directory /
+        (TEXT("ArenaAnalyze_") + FDateTime::Now().ToString() + TEXT(".json"));
 
     if (FFileHelper::SaveStringToFile(JsonString, *FilePath))
     {
-        UE_LOG(
-            LogTemp,
-            Warning,
-            TEXT("ArenaAnalyze saved: %s"),
-            *FilePath
-        );
+        UE_LOG(LogTemp, Log, TEXT("ArenaAnalyze saved: %s"), *FilePath);
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("Failed to save ArenaAnalyze data: %s"), *FilePath);
     }
 }
 
-
-void UArenaAnalyzeSubsystem::OnPossessedPawnChanged(
-    APawn* OldPawn,
-    APawn* NewPawn)
+UArenaAnalyzeSubsystem::FControllerAnalyzeState*
+UArenaAnalyzeSubsystem::FindStateForController(const AController* Controller)
 {
+    if (!Controller)
+    {
+        return nullptr;
+    }
+    return ControllerStates.FindByPredicate(
+        [Controller](const FControllerAnalyzeState& State)
+        {
+            return State.Controller.Get() == Controller;
+        });
+}
+
+UArenaAnalyzeSubsystem::FControllerAnalyzeState*
+UArenaAnalyzeSubsystem::FindStateForPawn(const APawn* Pawn)
+{
+    if (!Pawn)
+    {
+        return nullptr;
+    }
+    return ControllerStates.FindByPredicate(
+        [Pawn](const FControllerAnalyzeState& State)
+        {
+            return State.CurrentPawn.Get() == Pawn;
+        });
+}
+
+void UArenaAnalyzeSubsystem::SetTrackedPawn(
+    FControllerAnalyzeState& State, APawn* NewPawn)
+{
+    APawn* OldPawn = State.CurrentPawn.Get();
+    if (OldPawn == NewPawn)
+    {
+        return;
+    }
+
     if (IsValid(OldPawn))
     {
         OldPawn->OnTakeAnyDamage.RemoveDynamic(
-            this,
-            &UArenaAnalyzeSubsystem::OnPawnTakeAnyDamage
-        );
+            this, &UArenaAnalyzeSubsystem::OnPawnTakeAnyDamage);
     }
 
+    State.CurrentPawn = NewPawn;
+    State.CurrentTrackId = INDEX_NONE;
     if (IsValid(NewPawn))
     {
+        State.CurrentTrackId = State.NextTrackId++;
         NewPawn->OnTakeAnyDamage.AddUniqueDynamic(
-            this,
-            &UArenaAnalyzeSubsystem::OnPawnTakeAnyDamage
-        );
+            this, &UArenaAnalyzeSubsystem::OnPawnTakeAnyDamage);
     }
 }
 
+void UArenaAnalyzeSubsystem::OnPossessedPawnChanged(APawn* OldPawn, APawn* NewPawn)
+{
+    FControllerAnalyzeState* State = nullptr;
+    if (NewPawn)
+    {
+        State = FindStateForController(NewPawn->GetController());
+    }
+    if (!State)
+    {
+        State = FindStateForPawn(OldPawn);
+    }
+    if (State)
+    {
+        SetTrackedPawn(*State, NewPawn);
+    }
+}
 
 void UArenaAnalyzeSubsystem::OnPawnTakeAnyDamage(
-    AActor* DamagedActor,
-    float Damage,
-    const UDamageType* DamageType,
-    AController* InstigatedBy,
-    AActor* DamageCauser)
+    AActor* DamagedActor, float Damage, const UDamageType* DamageType,
+    AController* InstigatedBy, AActor* DamageCauser)
 {
     if (!IsValid(DamagedActor))
     {
         return;
     }
 
-    if (!IsValid(InstigatedBy))
-    {
-        return;
-    }
-
-    APawn* InstigatorPawn = InstigatedBy->GetPawn();
-
-    if (!IsValid(InstigatorPawn))
-    {
-        return;
-    }
-
-    FArenaDamageSample& Sample =
-        DamageSamples.AddDefaulted_GetRef();
-
-    Sample.TimeSeconds = GetWorld()->GetTimeSeconds();
+    const UWorld* World = GetWorld();
+    FArenaDamageSample& Sample = DamageSamples.AddDefaulted_GetRef();
+    Sample.TimeSeconds = World ? World->GetTimeSeconds() - SessionStartTime : 0.0;
+    Sample.Damage = Damage;
     Sample.DamagedLocation = DamagedActor->GetActorLocation();
-    Sample.InstigatorLocation = InstigatorPawn->GetActorLocation();
+
+    const APawn* DamagedPawn = Cast<APawn>(DamagedActor);
+    if (const FControllerAnalyzeState* State = FindStateForPawn(DamagedPawn))
+    {
+        Sample.DamagedControllerId = State->ControllerId;
+        Sample.DamagedTrackId = State->CurrentTrackId;
+    }
+
+    if (IsValid(InstigatedBy))
+    {
+        if (const FControllerAnalyzeState* State = FindStateForController(InstigatedBy))
+        {
+            Sample.InstigatorControllerId = State->ControllerId;
+            Sample.InstigatorTrackId = State->CurrentTrackId;
+        }
+        if (const APawn* InstigatorPawn = InstigatedBy->GetPawn(); IsValid(InstigatorPawn))
+        {
+            Sample.InstigatorLocation = InstigatorPawn->GetActorLocation();
+        }
+    }
 }
