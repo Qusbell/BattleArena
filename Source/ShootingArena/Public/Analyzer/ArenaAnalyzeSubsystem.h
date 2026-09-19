@@ -7,6 +7,8 @@
 #include "ArenaAnalyzeSubsystem.generated.h"
 
 class AController;
+class APawn;
+class UDamageType;
 
 USTRUCT(BlueprintType)
 struct FArenaInfoSample
@@ -22,12 +24,31 @@ struct FArenaInfoSample
 
 
 USTRUCT(BlueprintType)
+struct FArenaDamageSample
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadOnly)
+    double TimeSeconds = 0.0;
+
+    UPROPERTY(BlueprintReadOnly)
+    FVector DamagedLocation = FVector::ZeroVector;
+
+    UPROPERTY(BlueprintReadOnly)
+    FVector InstigatorLocation = FVector::ZeroVector;
+};
+
+
+USTRUCT(BlueprintType)
 struct FArenaAnalyzeSession
 {
     GENERATED_BODY()
 
     UPROPERTY(BlueprintReadOnly)
-    TArray<FArenaInfoSample> Samples;
+    TArray<FArenaInfoSample> AIMovementSamples;
+
+    UPROPERTY(BlueprintReadOnly)
+    TArray<FArenaDamageSample> DamageSamples;
 };
 
 
@@ -39,7 +60,8 @@ class SHOOTINGARENA_API UArenaAnalyzeSubsystem : public UWorldSubsystem
 private:
 	TArray<TWeakObjectPtr<AController>> RegisteredControllers;
 
-    TArray<FArenaInfoSample> InfoSamples;
+    TArray<FArenaInfoSample> AIMovementSamples;
+    TArray<FArenaDamageSample> DamageSamples;
 
     FTimerHandle LoopTimerHandle;
 
@@ -54,4 +76,16 @@ public:
 private:
 	void AnalyzeControllers();
     void SaveSamplesToJson();
+
+    UFUNCTION()
+    void OnPossessedPawnChanged(APawn* OldPawn, APawn* NewPawn);
+
+    UFUNCTION()
+    void OnPawnTakeAnyDamage(
+        AActor* DamagedActor,
+        float Damage,
+        const UDamageType* DamageType,
+        AController* InstigatedBy,
+        AActor* DamageCauser
+    );
 };

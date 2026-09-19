@@ -68,6 +68,20 @@ void UArenaAnalyzeSubsystem::RegisterController(AController* controller)
     if (!IsValid(controller)) { return; }
 
 	RegisteredControllers.AddUnique(controller);
+
+    controller->OnPossessedPawnChanged.AddUniqueDynamic(
+        this,
+        &UArenaAnalyzeSubsystem::OnPossessedPawnChanged
+    );
+
+    // 등록 시점에 이미 Pawn을 가지고 있을 수도 있음
+    if (APawn* Pawn = controller->GetPawn())
+    {
+        Pawn->OnTakeAnyDamage.AddUniqueDynamic(
+            this,
+            &UArenaAnalyzeSubsystem::OnPawnTakeAnyDamage
+        );
+    }
 }
 
 
@@ -85,7 +99,7 @@ void UArenaAnalyzeSubsystem::AnalyzeControllers()
 		if (pawn == nullptr) { continue; }
 
         // 정보 수집
-        FArenaInfoSample& sample = InfoSamples.AddDefaulted_GetRef();
+        FArenaInfoSample& sample = AIMovementSamples.AddDefaulted_GetRef();
         sample.TimeSeconds = nowTime;
         sample.Location = pawn->GetActorLocation();
 	}
@@ -95,7 +109,8 @@ void UArenaAnalyzeSubsystem::AnalyzeControllers()
 void UArenaAnalyzeSubsystem::SaveSamplesToJson()
 {
     FArenaAnalyzeSession Session;
-    Session.Samples = InfoSamples;
+    Session.AIMovementSamples = AIMovementSamples;
+    Session.DamageSamples = DamageSamples;
 
     FString JsonString;
 
@@ -127,4 +142,59 @@ void UArenaAnalyzeSubsystem::SaveSamplesToJson()
             *FilePath
         );
     }
+}
+
+
+void UArenaAnalyzeSubsystem::OnPossessedPawnChanged(
+    APawn* OldPawn,
+    APawn* NewPawn)
+{
+    if (IsValid(OldPawn))
+    {
+        OldPawn->OnTakeAnyDamage.RemoveDynamic(
+            this,
+            &UArenaAnalyzeSubsystem::OnPawnTakeAnyDamage
+        );
+    }
+
+    if (IsValid(NewPawn))
+    {
+        NewPawn->OnTakeAnyDamage.AddUniqueDynamic(
+            this,
+            &UArenaAnalyzeSubsystem::OnPawnTakeAnyDamage
+        );
+    }
+}
+
+
+void UArenaAnalyzeSubsystem::OnPawnTakeAnyDamage(
+    AActor* DamagedActor,
+    float Damage,
+    const UDamageType* DamageType,
+    AController* InstigatedBy,
+    AActor* DamageCauser)
+{
+    if (!IsValid(DamagedActor))
+    {
+        return;
+    }
+
+    if (!IsValid(InstigatedBy))
+    {
+        return;
+    }
+
+    APawn* InstigatorPawn = InstigatedBy->GetPawn();
+
+    if (!IsValid(InstigatorPawn))
+    {
+        return;
+    }
+
+    FArenaDamageSample& Sample =
+        DamageSamples.AddDefaulted_GetRef();
+
+    Sample.TimeSeconds = GetWorld()->GetTimeSeconds();
+    Sample.DamagedLocation = DamagedActor->GetActorLocation();
+    Sample.InstigatorLocation = InstigatorPawn->GetActorLocation();
 }
