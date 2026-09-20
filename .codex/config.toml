@@ -1,5 +1,4 @@
 [mcp_servers.unreal-mcp]
 command = "uv"
-args = ["run", "src/unreal_mcp/main.py"]
-cwd = "../Tools/mcp-server"
+args = ["--directory", "Tools/mcp-server", "run", "src/unreal_mcp/main.py"]
 enabled = true
