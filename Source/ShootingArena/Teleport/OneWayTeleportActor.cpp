@@ -28,8 +28,10 @@ namespace OneWayTeleportPrivate
 	 */
 	bool IsPortalBoundsInViewport(
 		const APlayerController* playerController,
-		const UBoxComponent* collision)
+		const UBoxComponent* collision,
+		float& outScreenCoverage)
 	{
+		outScreenCoverage = 0.0f;
 		if (!IsValid(playerController) || !IsValid(collision))
 		{
 			return false;
@@ -80,6 +82,18 @@ namespace OneWayTeleportPrivate
 		{
 			return false;
 		}
+
+		// 화면 밖 영역은 제외하고 실제 뷰포트 안에서 차지하는 면적 비율만 계산합니다.
+		const float clippedMinX = FMath::Clamp(minimum.X, 0.0f, static_cast<float>(viewportWidth));
+		const float clippedMinY = FMath::Clamp(minimum.Y, 0.0f, static_cast<float>(viewportHeight));
+		const float clippedMaxX = FMath::Clamp(maximum.X, 0.0f, static_cast<float>(viewportWidth));
+		const float clippedMaxY = FMath::Clamp(maximum.Y, 0.0f, static_cast<float>(viewportHeight));
+		const float visibleWidth = FMath::Max(0.0f, clippedMaxX - clippedMinX);
+		const float visibleHeight = FMath::Max(0.0f, clippedMaxY - clippedMinY);
+		outScreenCoverage = FMath::Clamp(
+			(visibleWidth * visibleHeight) / static_cast<float>(viewportWidth * viewportHeight),
+			0.0f,
+			1.0f);
 
 		// 가장자리에 걸친 포탈이 매 프레임 생성/제거되는 것을 막기 위한 작은 여유입니다.
 		constexpr float ViewportMargin = 32.0f;
@@ -378,10 +392,12 @@ bool AOneWayTeleportActor::CanDisplayPortalView(
 	const FVector& cameraLocation,
 	const FVector& aimDirection,
 	float& outDistance,
-	float& outScore) const
+	float& outScore,
+	float& outScreenCoverage) const
 {
 	outDistance = 0.0f;
 	outScore = 0.0f;
+	outScreenCoverage = 0.0f;
 
 	if (!IsValid(playerController)
 		|| !IsValid(entryCollision)
@@ -409,7 +425,10 @@ bool AOneWayTeleportActor::CanDisplayPortalView(
 	}
 
 	// 카메라 앞 반구여도 좌우/상하 화면 밖이면 SceneCapture와 RenderTarget을 만들지 않습니다.
-	if (!OneWayTeleportPrivate::IsPortalBoundsInViewport(playerController, entryCollision))
+	if (!OneWayTeleportPrivate::IsPortalBoundsInViewport(
+		playerController,
+		entryCollision,
+		outScreenCoverage))
 	{
 		return false;
 	}

@@ -75,8 +75,37 @@ public:
 
 	/** 클라이언트별 로컬 Render Target 한 변의 픽셀 크기입니다. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View",
-		meta = (ClampMin = "128", ClampMax = "2048", UIMin = "128", UIMax = "2048"))
+		meta = (ClampMin = "128", UIMin = "128"))
 	int32 portalViewRenderTargetSize = 1024;
+
+	/** 화면 점유율에 따라 Render Target 크기를 낮춥니다. 위 크기는 최종 최대 해상도로 사용됩니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View|Dynamic Resolution")
+	bool bUseDynamicPortalResolution = true;
+
+	/** 포탈의 화면 점유율이 Low 기준보다 작을 때 사용할 해상도입니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View|Dynamic Resolution",
+		meta = (EditCondition = "bUseDynamicPortalResolution", ClampMin = "128", UIMin = "128"))
+	int32 portalViewLowResolution = 512;
+
+	/** Low와 High 기준 사이에서 사용할 해상도입니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View|Dynamic Resolution",
+		meta = (EditCondition = "bUseDynamicPortalResolution", ClampMin = "128", UIMin = "128"))
+	int32 portalViewMediumResolution = 1024;
+
+	/** 이 화면 면적 비율 아래에서는 Low 해상도를 사용합니다. 0.1은 화면의 10%입니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View|Dynamic Resolution",
+		meta = (EditCondition = "bUseDynamicPortalResolution", ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
+	float portalViewLowCoverageThreshold = 0.1f;
+
+	/** 이 화면 면적 비율 이상에서는 기존 최대 해상도를 사용합니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View|Dynamic Resolution",
+		meta = (EditCondition = "bUseDynamicPortalResolution", ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
+	float portalViewHighCoverageThreshold = 0.35f;
+
+	/** 경계 부근에서 Render Target이 반복 생성되지 않게 하는 전환 여유값입니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View|Dynamic Resolution",
+		meta = (EditCondition = "bUseDynamicPortalResolution", ClampMin = "0.0", ClampMax = "0.2", UIMin = "0.0", UIMax = "0.1"))
+	float portalViewResolutionHysteresis = 0.03f;
 
 	/**
 	 * 한 로컬 클라이언트가 동시에 갱신할 최대 포탈 수입니다. 0이면 화면에 보이는 포탈을 모두 갱신합니다.
@@ -94,7 +123,7 @@ public:
 	/**
 	 * 한 프레임에 새로 CaptureScene을 실행할 최대 포탈 수입니다.
 	 * 0이면 기존처럼 갱신 대상 전체를 같은 프레임에 캡처합니다.
-	 * 2048 Render Target 사용 시에는 2~3을 권장합니다. 예산을 넘긴 포탈은
+	 * 고해상도 Render Target 사용 시에는 2~3을 권장합니다. 예산을 넘긴 포탈은
 	 * 마지막 화면을 유지하고 다음 프레임에 우선 갱신됩니다.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View",
@@ -103,7 +132,7 @@ public:
 
 	/**
 	 * 켜면 포탈 캡처도 HDR, 동적 그림자, Lumen, 고비용 후처리를 사용합니다.
-	 * 2048 해상도에서는 기본값(false)을 권장합니다. 메인 카메라 품질에는 영향이 없습니다.
+	 * 고해상도에서는 기본값(false)을 권장합니다. 메인 카메라 품질에는 영향이 없습니다.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View")
 	bool bUseHighQualityPortalCapture = false;

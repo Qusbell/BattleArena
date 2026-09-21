@@ -16,6 +16,7 @@ namespace PortalViewPrivate
 		TObjectPtr<AOneWayTeleportActor> portal;
 		float distance = 0.0f;
 		float score = 0.0f;
+		float screenCoverage = 0.0f;
 	};
 
 	struct FReadyPortalCapture
@@ -71,16 +72,18 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 		AOneWayTeleportActor* portal = *iterator;
 		float distance = 0.0f;
 		float score = 0.0f;
+		float screenCoverage = 0.0f;
 		if (IsValid(portal)
 			&& portal->CanDisplayPortalView(
 				playerController,
 				cameraLocation,
 				aimDirection,
 				distance,
-				score)
+				score,
+				screenCoverage)
 			)
 		{
-			candidates.Add({ portal, distance, score });
+			candidates.Add({ portal, distance, score, screenCoverage });
 		}
 	}
 
@@ -120,13 +123,23 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 
 		visiblePortals.Add(portal);
 		FPortalViewInstance& view = FindOrCreateView(portal);
+		const int32 desiredRenderTargetSize = ResolvePortalRenderTargetSize(
+			view,
+			*settings,
+			candidate.screenCoverage);
+		const bool bResolutionChanged = view.currentResolution != desiredRenderTargetSize;
 		EnsureRenderTarget(
 			view,
-			settings->portalViewRenderTargetSize,
+			desiredRenderTargetSize,
 			settings->bUseHighQualityPortalCapture);
 		if (!IsValid(view.renderTarget) || !IsValid(view.sceneCapture))
 		{
 			continue;
+		}
+		if (bResolutionChanged)
+		{
+			// 새 Render Target의 검은 화면이 남지 않도록 이번 프레임 캡처 대상으로 올립니다.
+			view.captureAccumulator = 1000000.0f;
 		}
 
 		// View Distance 바깥은 CanDisplayPortalView에서 이미 제외됩니다. 이 안에서도
@@ -268,12 +281,60 @@ FPortalViewInstance& UPortalViewSubsystem::FindOrCreateView(AOneWayTeleportActor
 	return newView;
 }
 
+int32 UPortalViewSubsystem::ResolvePortalRenderTargetSize(
+	const FPortalViewInstance& view,
+	const UTeleportDataAsset& settings,
+	float screenCoverage) const
+{
+	const int32 maximumResolution = FMath::Max(settings.portalViewRenderTargetSize, 128);
+	if (!settings.bUseDynamicPortalResolution)
+	{
+		return maximumResolution;
+	}
+
+	const int32 lowResolution = FMath::Min(
+		FMath::Max(settings.portalViewLowResolution, 128),
+		maximumResolution);
+	const int32 mediumResolution = FMath::Clamp(
+		settings.portalViewMediumResolution,
+		lowResolution,
+		maximumResolution);
+	const float lowThreshold = FMath::Clamp(settings.portalViewLowCoverageThreshold, 0.0f, 1.0f);
+	const float highThreshold = FMath::Clamp(
+		settings.portalViewHighCoverageThreshold,
+		lowThreshold,
+		1.0f);
+	const float hysteresis = FMath::Max(0.0f, settings.portalViewResolutionHysteresis);
+
+	// 현재 단계에 따라 서로 다른 진입/이탈 경계를 사용해 경계 근처의 리소스 재생성을 막습니다.
+	if (view.currentResolution <= 0)
+	{
+		return screenCoverage < lowThreshold
+			? lowResolution
+			: (screenCoverage < highThreshold ? mediumResolution : maximumResolution);
+	}
+	if (view.currentResolution <= lowResolution)
+	{
+		return screenCoverage >= lowThreshold + hysteresis ? mediumResolution : lowResolution;
+	}
+	if (view.currentResolution < maximumResolution)
+	{
+		if (screenCoverage < lowThreshold - hysteresis)
+		{
+			return lowResolution;
+		}
+		return screenCoverage >= highThreshold + hysteresis ? maximumResolution : mediumResolution;
+	}
+
+	return screenCoverage < highThreshold - hysteresis ? mediumResolution : maximumResolution;
+}
+
 void UPortalViewSubsystem::EnsureRenderTarget(
 	FPortalViewInstance& view,
 	int32 size,
 	bool bUseHighQualityCapture)
 {
-	const int32 clampedSize = FMath::Clamp(size, 128, 2048);
+	const int32 clampedSize = FMath::Max(size, 128);
 	const ETextureRenderTargetFormat desiredFormat = bUseHighQualityCapture
 		? ETextureRenderTargetFormat::RTF_RGBA16f
 		: ETextureRenderTargetFormat::RTF_RGBA8_SRGB;
@@ -291,6 +352,7 @@ void UPortalViewSubsystem::EnsureRenderTarget(
 	view.renderTarget->RenderTargetFormat = desiredFormat;
 	view.renderTarget->InitAutoFormat(clampedSize, clampedSize);
 	view.renderTarget->UpdateResourceImmediate(true);
+	view.currentResolution = clampedSize;
 }
 
 void UPortalViewSubsystem::ClearPortalView(AOneWayTeleportActor* portal, FPortalViewInstance& view)

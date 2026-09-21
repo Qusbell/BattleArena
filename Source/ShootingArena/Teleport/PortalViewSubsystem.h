@@ -13,6 +13,7 @@ struct FPortalViewInstance
 	TObjectPtr<USceneCaptureComponent2D> sceneCapture;
 	TObjectPtr<UTextureRenderTarget2D> renderTarget;
 	float captureAccumulator = 0.0f;
+	int32 currentResolution = 0;
 };
 
 /**
@@ -32,6 +33,10 @@ public:
 
 private:
 	FPortalViewInstance& FindOrCreateView(AOneWayTeleportActor* portal);
+	int32 ResolvePortalRenderTargetSize(
+		const FPortalViewInstance& view,
+		const class UTeleportDataAsset& settings,
+		float screenCoverage) const;
 	void EnsureRenderTarget(FPortalViewInstance& view, int32 size, bool bUseHighQualityCapture);
 	void ClearPortalView(AOneWayTeleportActor* portal, FPortalViewInstance& view);
 	void ClearAllPortalViews();
