@@ -28,8 +28,10 @@ namespace OneWayTeleportPrivate
 	 */
 	bool IsPortalBoundsInViewport(
 		const APlayerController* playerController,
-		const UBoxComponent* collision)
+		const UBoxComponent* collision,
+		float& outScreenCoverage)
 	{
+		outScreenCoverage = 0.0f;
 		if (!IsValid(playerController) || !IsValid(collision))
 		{
 			return false;
@@ -68,6 +70,10 @@ namespace OneWayTeleportPrivate
 			{
 				continue;
 			}
+			if (!FMath::IsFinite(screenPoint.X) || !FMath::IsFinite(screenPoint.Y))
+			{
+				continue;
+			}
 
 			bHasProjectedPoint = true;
 			minimum.X = FMath::Min(minimum.X, screenPoint.X);
@@ -80,6 +86,19 @@ namespace OneWayTeleportPrivate
 		{
 			return false;
 		}
+
+		// 화면 밖 영역은 제외하고 실제 뷰포트 안에서 차지하는 면적 비율만 계산합니다.
+		const float clippedMinX = FMath::Clamp(minimum.X, 0.0f, static_cast<float>(viewportWidth));
+		const float clippedMinY = FMath::Clamp(minimum.Y, 0.0f, static_cast<float>(viewportHeight));
+		const float clippedMaxX = FMath::Clamp(maximum.X, 0.0f, static_cast<float>(viewportWidth));
+		const float clippedMaxY = FMath::Clamp(maximum.Y, 0.0f, static_cast<float>(viewportHeight));
+		const float visibleWidth = FMath::Max(0.0f, clippedMaxX - clippedMinX);
+		const float visibleHeight = FMath::Max(0.0f, clippedMaxY - clippedMinY);
+		outScreenCoverage = FMath::Clamp(
+			(visibleWidth * visibleHeight)
+				/ (static_cast<float>(viewportWidth) * static_cast<float>(viewportHeight)),
+			0.0f,
+			1.0f);
 
 		// 가장자리에 걸친 포탈이 매 프레임 생성/제거되는 것을 막기 위한 작은 여유입니다.
 		constexpr float ViewportMargin = 32.0f;
@@ -231,21 +250,44 @@ void AOneWayTeleportActor::OnConstruction(const FTransform& Transform)
 	Super::OnConstruction(Transform);
 
 	UpdatePortalVisual();
+	UpdateTeleportActivation();
 }
 
 void AOneWayTeleportActor::BeginPlay()
 {
 	Super::BeginPlay();
 	UpdatePortalVisual();
+	UpdateTeleportActivation();
 
-	entryCollision->OnComponentBeginOverlap.AddUniqueDynamic(
-		this,
-		&AOneWayTeleportActor::OnEntryBeginOverlap);
+	if (IsValid(entryCollision))
+	{
+		entryCollision->OnComponentBeginOverlap.AddUniqueDynamic(
+			this,
+			&AOneWayTeleportActor::OnEntryBeginOverlap);
+	}
 
 	if (IsValid(portalVisual))
 	{
 		portalVisual->SetHiddenInGame(!bShowPortalInGame);
 	}
+}
+
+void AOneWayTeleportActor::UpdateTeleportActivation()
+{
+	if (!IsValid(entryCollision))
+	{
+		return;
+	}
+
+	// ExitTarget이 없는 인스턴스는 목적지 전용 포탈로 취급합니다.
+	// bTeleportEnabled 값 자체는 보존하므로 에디터에서 출구를 지정하면 자동으로 다시 활성화됩니다.
+	const bool bCanTeleport = bTeleportEnabled
+		&& IsValid(exitTarget)
+		&& exitTarget.Get() != this
+		&& IsValid(teleportDA);
+	entryCollision->SetGenerateOverlapEvents(bCanTeleport);
+	entryCollision->SetCollisionEnabled(
+		bCanTeleport ? ECollisionEnabled::QueryOnly : ECollisionEnabled::NoCollision);
 }
 
 void AOneWayTeleportActor::UpdatePortalVisual()
@@ -378,14 +420,17 @@ bool AOneWayTeleportActor::CanDisplayPortalView(
 	const FVector& cameraLocation,
 	const FVector& aimDirection,
 	float& outDistance,
-	float& outScore) const
+	float& outScore,
+	float& outScreenCoverage) const
 {
 	outDistance = 0.0f;
 	outScore = 0.0f;
+	outScreenCoverage = 0.0f;
 
 	if (!IsValid(playerController)
 		|| !IsValid(entryCollision)
 		|| !IsValid(exitTarget)
+		|| exitTarget.Get() == this
 		|| !IsValid(teleportDA)
 		|| !bEnablePortalView)
 	{
@@ -409,7 +454,16 @@ bool AOneWayTeleportActor::CanDisplayPortalView(
 	}
 
 	// 카메라 앞 반구여도 좌우/상하 화면 밖이면 SceneCapture와 RenderTarget을 만들지 않습니다.
-	if (!OneWayTeleportPrivate::IsPortalBoundsInViewport(playerController, entryCollision))
+	if (!OneWayTeleportPrivate::IsPortalBoundsInViewport(
+		playerController,
+		entryCollision,
+		outScreenCoverage))
+	{
+		return false;
+	}
+
+	UWorld* world = GetWorld();
+	if (!IsValid(world) || world->bIsTearingDown)
 	{
 		return false;
 	}
@@ -418,7 +472,7 @@ bool AOneWayTeleportActor::CanDisplayPortalView(
 	traceParams.AddIgnoredActor(this);
 	traceParams.AddIgnoredActor(playerController->GetPawn());
 	FHitResult hit;
-	if (GetWorld()->LineTraceSingleByChannel(
+	if (world->LineTraceSingleByChannel(
 		hit,
 		cameraLocation,
 		portalLocation,
@@ -688,6 +742,12 @@ void AOneWayTeleportActor::OnEntryBeginOverlap(
 		return;
 	}
 
+	UWorld* world = GetWorld();
+	if (!IsValid(world) || world->bIsTearingDown)
+	{
+		return;
+	}
+
 	ACharacter* character = Cast<ACharacter>(otherActor);
 	if (!IsValid(character))
 	{
@@ -699,14 +759,14 @@ void AOneWayTeleportActor::OnEntryBeginOverlap(
 		return;
 	}
 
-	const double currentTime = GetWorld()->GetTimeSeconds();
+	const double currentTime = world->GetTimeSeconds();
 	OneWayTeleportPrivate::RemoveExpiredLocks(currentTime);
 	if (OneWayTeleportPrivate::IsReentryLocked(character, currentTime))
 	{
 		return;
 	}
 
-	if (!IsValid(exitTarget))
+	if (!IsValid(exitTarget) || exitTarget.Get() == this)
 	{
 		UE_LOG(
 			LogTemp,
@@ -735,14 +795,21 @@ void AOneWayTeleportActor::TeleportCharacter(ACharacter* character)
 {
 	if (!IsValid(character)
 		|| !IsValid(exitTarget)
+		|| exitTarget.Get() == this
 		|| !IsValid(teleportDA))
+	{
+		return;
+	}
+
+	UWorld* world = GetWorld();
+	if (!IsValid(world) || world->bIsTearingDown)
 	{
 		return;
 	}
 
 	const FVector exitLocation = exitTarget->GetActorLocation();
 	const FRotator exitRotation = GetExitFacingRotation();
-	const double currentTime = GetWorld()->GetTimeSeconds();
+	const double currentTime = world->GetTimeSeconds();
 	OneWayTeleportPrivate::LockReentry(
 		character,
 		currentTime + FMath::Max(0.0f, reentryLockDuration));

@@ -44,7 +44,8 @@ public:
 		const FVector& cameraLocation,
 		const FVector& aimDirection,
 		float& outDistance,
-		float& outScore) const;
+		float& outScore,
+		float& outScreenCoverage) const;
 
 	/** 입구 카메라 시점을 출구 Launch 방향 기준의 카메라 시점으로 변환합니다. */
 	FTransform GetPortalViewCameraTransform(const FTransform& cameraTransform) const;
@@ -288,4 +289,5 @@ private:
 
 	void UpdatePortalVisual();
 	void UpdatePortalVFX();
+	void UpdateTeleportActivation();
 };
