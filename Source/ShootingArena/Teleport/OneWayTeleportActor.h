@@ -289,4 +289,5 @@ private:
 
 	void UpdatePortalVisual();
 	void UpdatePortalVFX();
+	void UpdateTeleportActivation();
 };

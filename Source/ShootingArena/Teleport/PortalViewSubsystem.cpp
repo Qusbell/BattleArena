@@ -24,6 +24,7 @@ namespace PortalViewPrivate
 		TObjectPtr<AOneWayTeleportActor> portal;
 		float score = 0.0f;
 		float accumulatedWaitTime = 0.0f;
+		FTransform captureTransform = FTransform::Identity;
 	};
 }
 
@@ -141,6 +142,8 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 			// 새 Render Target의 검은 화면이 남지 않도록 이번 프레임 캡처 대상으로 올립니다.
 			view.captureAccumulator = 1000000.0f;
 		}
+		const FTransform playerCameraTransform(cameraRotation, cameraLocation);
+		const FTransform captureTransform = portal->GetPortalViewCameraTransform(playerCameraTransform);
 
 		// View Distance 바깥은 CanDisplayPortalView에서 이미 제외됩니다. 이 안에서도
 		// Clarity Start Distance보다 멀면 Far Blur를 유지하고, 그 거리부터 입구까지
@@ -157,15 +160,25 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 		portal->ApplyPortalView(view.renderTarget, blurStrength, portal->GetPortalViewOpacity(candidate.distance));
 
 		view.captureAccumulator += deltaTime;
-		const float captureInterval = settings->portalViewUpdateRate > 0.0f
-			? 1.0f / settings->portalViewUpdateRate
+		const float updateRate = ResolvePortalUpdateRate(
+			view,
+			*settings,
+			captureTransform,
+			candidate.screenCoverage);
+		// 음수는 정지 상태에서 완전 중단을 의미합니다. 첫 캡처와 해상도 변경은 항상 우선합니다.
+		if (updateRate < 0.0f && !bResolutionChanged)
+		{
+			continue;
+		}
+		const float captureInterval = updateRate > 0.0f
+			? 1.0f / updateRate
 			: 0.0f;
 		if (captureInterval > 0.0f && view.captureAccumulator < captureInterval)
 		{
 			continue;
 		}
 
-		readyCaptures.Add({ portal, candidate.score, view.captureAccumulator });
+		readyCaptures.Add({ portal, candidate.score, view.captureAccumulator, captureTransform });
 	}
 
 	// 예산에서 밀린 포탈은 누적 대기 시간이 계속 증가합니다. 다음 프레임에는 가장 오래
@@ -231,8 +244,18 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 		view->sceneCapture->ShowFlags.SetBloom(bHighQuality);
 		view->sceneCapture->ShowFlags.SetEyeAdaptation(bHighQuality);
 
-		const FTransform cameraTransform(cameraRotation, cameraLocation);
-		view->sceneCapture->SetWorldTransform(portal->GetPortalViewCameraTransform(cameraTransform));
+		// SceneCapture는 메인 카메라와 별도의 View이므로 출구 시점에서 Occlusion을 다시 계산합니다.
+		// Disable 플래그를 명시적으로 반대로 설정해 에디터 ShowFlag 상태에 영향받지 않게 합니다.
+		view->sceneCapture->ShowFlags.SetDisableOcclusionQueries(
+			!settings->bEnablePortalCaptureOcclusionCulling);
+		view->sceneCapture->MaxViewDistanceOverride = settings->portalCaptureMaxViewDistance > 0.0f
+			? settings->portalCaptureMaxViewDistance
+			: -1.0f;
+		view->sceneCapture->LODDistanceFactor = FMath::Max(
+			settings->portalCaptureLODDistanceFactor,
+			0.01f);
+
+		view->sceneCapture->SetWorldTransform(readyCaptures[captureIndex].captureTransform);
 		view->sceneCapture->TextureTarget = view->renderTarget;
 		view->sceneCapture->ClipPlaneBase = portal->GetExitTarget()->GetActorLocation();
 		view->sceneCapture->ClipPlaneNormal = portal->GetExitLaunchForward();
@@ -243,6 +266,8 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 			view->sceneCapture->HiddenActors.Add(exitPortal);
 		}
 		view->sceneCapture->CaptureScene();
+		view->lastCaptureTransform = readyCaptures[captureIndex].captureTransform;
+		view->bHasCaptured = true;
 	}
 
 	for (auto iterator = portalViews.CreateIterator(); iterator; ++iterator)
@@ -327,6 +352,54 @@ int32 UPortalViewSubsystem::ResolvePortalRenderTargetSize(
 	}
 
 	return screenCoverage < highThreshold - hysteresis ? mediumResolution : maximumResolution;
+}
+
+float UPortalViewSubsystem::ResolvePortalUpdateRate(
+	const FPortalViewInstance& view,
+	const UTeleportDataAsset& settings,
+	const FTransform& captureTransform,
+	float screenCoverage) const
+{
+	float updateRate = settings.portalViewUpdateRate;
+	if (settings.bUseDynamicPortalResolution)
+	{
+		const float lowThreshold = FMath::Clamp(settings.portalViewLowCoverageThreshold, 0.0f, 1.0f);
+		const float highThreshold = FMath::Clamp(
+			settings.portalViewHighCoverageThreshold,
+			lowThreshold,
+			1.0f);
+		if (screenCoverage < lowThreshold)
+		{
+			updateRate = settings.portalViewLowUpdateRate;
+		}
+		else if (screenCoverage < highThreshold)
+		{
+			updateRate = settings.portalViewMediumUpdateRate;
+		}
+	}
+
+	if (!settings.bReducePortalUpdateRateWhenStill || !view.bHasCaptured)
+	{
+		return FMath::Max(updateRate, 0.0f);
+	}
+
+	const float locationTolerance = FMath::Max(settings.portalViewStillLocationTolerance, 0.0f);
+	const float rotationToleranceRadians = FMath::DegreesToRadians(
+		FMath::Max(settings.portalViewStillRotationTolerance, 0.0f));
+	const bool bLocationStill = FVector::DistSquared(
+		view.lastCaptureTransform.GetLocation(),
+		captureTransform.GetLocation()) <= FMath::Square(locationTolerance);
+	const bool bRotationStill = view.lastCaptureTransform.GetRotation().AngularDistance(
+		captureTransform.GetRotation()) <= rotationToleranceRadians;
+	if (!bLocationStill || !bRotationStill)
+	{
+		return FMath::Max(updateRate, 0.0f);
+	}
+
+	// 0은 의도적인 완전 중단입니다. 일반 Update Rate의 0(매 프레임)과 구분하기 위해 -1을 반환합니다.
+	return settings.portalViewStillUpdateRate > 0.0f
+		? settings.portalViewStillUpdateRate
+		: -1.0f;
 }
 
 void UPortalViewSubsystem::EnsureRenderTarget(

@@ -245,12 +245,14 @@ void AOneWayTeleportActor::OnConstruction(const FTransform& Transform)
 	Super::OnConstruction(Transform);
 
 	UpdatePortalVisual();
+	UpdateTeleportActivation();
 }
 
 void AOneWayTeleportActor::BeginPlay()
 {
 	Super::BeginPlay();
 	UpdatePortalVisual();
+	UpdateTeleportActivation();
 
 	entryCollision->OnComponentBeginOverlap.AddUniqueDynamic(
 		this,
@@ -260,6 +262,21 @@ void AOneWayTeleportActor::BeginPlay()
 	{
 		portalVisual->SetHiddenInGame(!bShowPortalInGame);
 	}
+}
+
+void AOneWayTeleportActor::UpdateTeleportActivation()
+{
+	if (!IsValid(entryCollision))
+	{
+		return;
+	}
+
+	// ExitTarget이 없는 인스턴스는 목적지 전용 포탈로 취급합니다.
+	// bTeleportEnabled 값 자체는 보존하므로 에디터에서 출구를 지정하면 자동으로 다시 활성화됩니다.
+	const bool bCanTeleport = bTeleportEnabled && IsValid(exitTarget);
+	entryCollision->SetGenerateOverlapEvents(bCanTeleport);
+	entryCollision->SetCollisionEnabled(
+		bCanTeleport ? ECollisionEnabled::QueryOnly : ECollisionEnabled::NoCollision);
 }
 
 void AOneWayTeleportActor::UpdatePortalVisual()

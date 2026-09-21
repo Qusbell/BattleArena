@@ -14,6 +14,8 @@ struct FPortalViewInstance
 	TObjectPtr<UTextureRenderTarget2D> renderTarget;
 	float captureAccumulator = 0.0f;
 	int32 currentResolution = 0;
+	FTransform lastCaptureTransform = FTransform::Identity;
+	bool bHasCaptured = false;
 };
 
 /**
@@ -36,6 +38,11 @@ private:
 	int32 ResolvePortalRenderTargetSize(
 		const FPortalViewInstance& view,
 		const class UTeleportDataAsset& settings,
+		float screenCoverage) const;
+	float ResolvePortalUpdateRate(
+		const FPortalViewInstance& view,
+		const class UTeleportDataAsset& settings,
+		const FTransform& captureTransform,
 		float screenCoverage) const;
 	void EnsureRenderTarget(FPortalViewInstance& view, int32 size, bool bUseHighQualityCapture);
 	void ClearPortalView(AOneWayTeleportActor* portal, FPortalViewInstance& view);

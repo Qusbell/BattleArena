@@ -120,6 +120,35 @@ public:
 		meta = (ClampMin = "0.0", UIMin = "0.0"))
 	float portalViewUpdateRate = 30.0f;
 
+	/** 동적 해상도가 Low 단계일 때의 갱신 빈도입니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View|Update",
+		meta = (ClampMin = "0.0", UIMin = "0.0", EditCondition = "bUseDynamicPortalResolution"))
+	float portalViewLowUpdateRate = 15.0f;
+
+	/** 동적 해상도가 Medium 단계일 때의 갱신 빈도입니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View|Update",
+		meta = (ClampMin = "0.0", UIMin = "0.0", EditCondition = "bUseDynamicPortalResolution"))
+	float portalViewMediumUpdateRate = 20.0f;
+
+	/** 출구 캡처 카메라가 거의 움직이지 않을 때 갱신 빈도를 낮춥니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View|Update")
+	bool bReducePortalUpdateRateWhenStill = true;
+
+	/** 정지 상태의 갱신 빈도입니다. 0이면 움직임이 생길 때까지 캡처를 완전히 멈춥니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View|Update",
+		meta = (ClampMin = "0.0", UIMin = "0.0", EditCondition = "bReducePortalUpdateRateWhenStill"))
+	float portalViewStillUpdateRate = 5.0f;
+
+	/** 이 거리 이하의 캡처 카메라 이동은 정지 상태로 판단합니다. 단위는 uu입니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View|Update",
+		meta = (ClampMin = "0.0", UIMin = "0.0", EditCondition = "bReducePortalUpdateRateWhenStill"))
+	float portalViewStillLocationTolerance = 2.0f;
+
+	/** 이 각도 이하의 캡처 카메라 회전은 정지 상태로 판단합니다. 단위는 도입니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View|Update",
+		meta = (ClampMin = "0.0", UIMin = "0.0", EditCondition = "bReducePortalUpdateRateWhenStill"))
+	float portalViewStillRotationTolerance = 0.1f;
+
 	/**
 	 * 한 프레임에 새로 CaptureScene을 실행할 최대 포탈 수입니다.
 	 * 0이면 기존처럼 갱신 대상 전체를 같은 프레임에 캡처합니다.
@@ -136,4 +165,18 @@ public:
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View")
 	bool bUseHighQualityPortalCapture = false;
+
+	/** 출구 카메라 기준 Hardware Occlusion Query를 사용해 불투명 물체 뒤의 오브젝트를 컬링합니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View|Culling")
+	bool bEnablePortalCaptureOcclusionCulling = true;
+
+	/** 포탈 출구 카메라의 최대 렌더 거리입니다. 0이면 엔진 기본값(거리 제한 없음)을 유지합니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View|Culling",
+		meta = (ClampMin = "0.0", UIMin = "0.0"))
+	float portalCaptureMaxViewDistance = 0.0f;
+
+	/** 1보다 크면 포탈 안에서 낮은 LOD를 더 일찍 사용합니다. 1은 기존 렌더링과 동일합니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View|Culling",
+		meta = (ClampMin = "0.01", UIMin = "1.0", UIMax = "4.0"))
+	float portalCaptureLODDistanceFactor = 1.0f;
 };
