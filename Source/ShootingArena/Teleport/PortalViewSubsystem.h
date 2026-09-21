@@ -8,13 +8,27 @@ class AOneWayTeleportActor;
 class USceneCaptureComponent2D;
 class UTextureRenderTarget2D;
 
+USTRUCT()
 struct FPortalViewInstance
 {
+	GENERATED_BODY()
+
+	UPROPERTY(Transient)
 	TObjectPtr<USceneCaptureComponent2D> sceneCapture;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UTextureRenderTarget2D> renderTarget;
+
+	UPROPERTY(Transient)
 	float captureAccumulator = 0.0f;
+
+	UPROPERTY(Transient)
 	int32 currentResolution = 0;
+
+	UPROPERTY(Transient)
 	FTransform lastCaptureTransform = FTransform::Identity;
+
+	UPROPERTY(Transient)
 	bool bHasCaptured = false;
 };
 
@@ -44,9 +58,10 @@ private:
 		const class UTeleportDataAsset& settings,
 		const FTransform& captureTransform,
 		float screenCoverage) const;
-	void EnsureRenderTarget(FPortalViewInstance& view, int32 size, bool bUseHighQualityCapture);
+	bool EnsureRenderTarget(FPortalViewInstance& view, int32 size, bool bUseHighQualityCapture);
 	void ClearPortalView(AOneWayTeleportActor* portal, FPortalViewInstance& view);
 	void ClearAllPortalViews();
 
+	UPROPERTY(Transient)
 	TMap<TWeakObjectPtr<AOneWayTeleportActor>, FPortalViewInstance> portalViews;
 };

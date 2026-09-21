@@ -8,6 +8,7 @@
 #include "EngineUtils.h"
 #include "Camera/PlayerCameraManager.h"
 #include "GameFramework/PlayerController.h"
+#include "RHIGlobals.h"
 
 namespace PortalViewPrivate
 {
@@ -33,8 +34,9 @@ void UPortalViewSubsystem::Initialize(FSubsystemCollectionBase& collection)
 	Super::Initialize(collection);
 
 	UWorld* world = GetWorld();
-	if (!IsValid(world) || world->GetNetMode() == NM_DedicatedServer)
+	if (!IsValid(world) || world->bIsTearingDown || world->GetNetMode() == NM_DedicatedServer)
 	{
+		ClearAllPortalViews();
 		return;
 	}
 
@@ -128,8 +130,7 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 			view,
 			*settings,
 			candidate.screenCoverage);
-		const bool bResolutionChanged = view.currentResolution != desiredRenderTargetSize;
-		EnsureRenderTarget(
+		const bool bRenderTargetRecreated = EnsureRenderTarget(
 			view,
 			desiredRenderTargetSize,
 			settings->bUseHighQualityPortalCapture);
@@ -137,10 +138,10 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 		{
 			continue;
 		}
-		if (bResolutionChanged)
+		if (bRenderTargetRecreated)
 		{
 			// 새 Render Target의 검은 화면이 남지 않도록 이번 프레임 캡처 대상으로 올립니다.
-			view.captureAccumulator = 1000000.0f;
+			view.captureAccumulator = 60.0f;
 		}
 		const FTransform playerCameraTransform(cameraRotation, cameraLocation);
 		const FTransform captureTransform = portal->GetPortalViewCameraTransform(playerCameraTransform);
@@ -159,14 +160,16 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 			blurAlpha);
 		portal->ApplyPortalView(view.renderTarget, blurStrength, portal->GetPortalViewOpacity(candidate.distance));
 
-		view.captureAccumulator += deltaTime;
+		view.captureAccumulator = FMath::Min(
+			view.captureAccumulator + FMath::Max(deltaTime, 0.0f),
+			60.0f);
 		const float updateRate = ResolvePortalUpdateRate(
 			view,
 			*settings,
 			captureTransform,
 			candidate.screenCoverage);
 		// 음수는 정지 상태에서 완전 중단을 의미합니다. 첫 캡처와 해상도 변경은 항상 우선합니다.
-		if (updateRate < 0.0f && !bResolutionChanged)
+		if (updateRate < 0.0f && !bRenderTargetRecreated)
 		{
 			continue;
 		}
@@ -290,7 +293,13 @@ FPortalViewInstance& UPortalViewSubsystem::FindOrCreateView(AOneWayTeleportActor
 	const TWeakObjectPtr<AOneWayTeleportActor> portalKey(portal);
 	if (FPortalViewInstance* existing = portalViews.Find(portalKey))
 	{
-		return *existing;
+		if (IsValid(existing->sceneCapture))
+		{
+			return *existing;
+		}
+
+		ClearPortalView(portal, *existing);
+		portalViews.Remove(portalKey);
 	}
 
 	FPortalViewInstance& newView = portalViews.Add(portalKey);
@@ -298,11 +307,21 @@ FPortalViewInstance& UPortalViewSubsystem::FindOrCreateView(AOneWayTeleportActor
 	// unreachable인데 렌더 업데이트가 남을 수 있다. 포탈 Actor의 런타임 컴포넌트로
 	// 소유시켜 Actor의 종료 순서에 맞춰 안전하게 unregister 되도록 한다.
 	newView.sceneCapture = NewObject<USceneCaptureComponent2D>(portal, NAME_None, RF_Transient);
+	if (!IsValid(newView.sceneCapture) || !IsValid(portal->GetWorld()) || portal->GetWorld()->bIsTearingDown)
+	{
+		newView.sceneCapture = nullptr;
+		return newView;
+	}
 	portal->AddInstanceComponent(newView.sceneCapture);
 	newView.sceneCapture->bCaptureEveryFrame = false;
 	newView.sceneCapture->bCaptureOnMovement = false;
 	newView.sceneCapture->bEnableClipPlane = true;
 	newView.sceneCapture->RegisterComponent();
+	if (!newView.sceneCapture->IsRegistered())
+	{
+		newView.sceneCapture->DestroyComponent();
+		newView.sceneCapture = nullptr;
+	}
 	return newView;
 }
 
@@ -402,12 +421,29 @@ float UPortalViewSubsystem::ResolvePortalUpdateRate(
 		: -1.0f;
 }
 
-void UPortalViewSubsystem::EnsureRenderTarget(
+bool UPortalViewSubsystem::EnsureRenderTarget(
 	FPortalViewInstance& view,
 	int32 size,
 	bool bUseHighQualityCapture)
 {
-	const int32 clampedSize = FMath::Max(size, 128);
+	if (!IsValid(view.sceneCapture) || !IsValid(view.sceneCapture->GetOwner()))
+	{
+		return false;
+	}
+
+	const int32 maximumTextureDimension = FMath::Max(
+		static_cast<int32>(GetMax2DTextureDimension()),
+		128);
+	const int32 clampedSize = FMath::Clamp(size, 128, maximumTextureDimension);
+	if (clampedSize != size)
+	{
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("[PortalView] Render Target 크기 %d를 장치 지원 범위인 %d로 제한했습니다."),
+			size,
+			clampedSize);
+	}
 	const ETextureRenderTargetFormat desiredFormat = bUseHighQualityCapture
 		? ETextureRenderTargetFormat::RTF_RGBA16f
 		: ETextureRenderTargetFormat::RTF_RGBA8_SRGB;
@@ -416,16 +452,26 @@ void UPortalViewSubsystem::EnsureRenderTarget(
 		&& view.renderTarget->SizeY == clampedSize
 		&& view.renderTarget->RenderTargetFormat == desiredFormat)
 	{
-		return;
+		return false;
 	}
 
 	// RenderTarget도 포탈 수명에 묶인 임시 런타임 리소스입니다.
-	view.renderTarget = NewObject<UTextureRenderTarget2D>(view.sceneCapture->GetOwner(), NAME_None, RF_Transient);
-	view.renderTarget->ClearColor = FLinearColor::Black;
-	view.renderTarget->RenderTargetFormat = desiredFormat;
-	view.renderTarget->InitAutoFormat(clampedSize, clampedSize);
-	view.renderTarget->UpdateResourceImmediate(true);
+	UTextureRenderTarget2D* newRenderTarget = NewObject<UTextureRenderTarget2D>(
+		view.sceneCapture->GetOwner(),
+		NAME_None,
+		RF_Transient);
+	if (!IsValid(newRenderTarget))
+	{
+		return false;
+	}
+
+	newRenderTarget->ClearColor = FLinearColor::Black;
+	newRenderTarget->RenderTargetFormat = desiredFormat;
+	newRenderTarget->InitAutoFormat(clampedSize, clampedSize);
+	newRenderTarget->UpdateResourceImmediate(true);
+	view.renderTarget = newRenderTarget;
 	view.currentResolution = clampedSize;
+	return true;
 }
 
 void UPortalViewSubsystem::ClearPortalView(AOneWayTeleportActor* portal, FPortalViewInstance& view)
@@ -436,10 +482,15 @@ void UPortalViewSubsystem::ClearPortalView(AOneWayTeleportActor* portal, FPortal
 	}
 	if (IsValid(view.sceneCapture))
 	{
+		view.sceneCapture->TextureTarget = nullptr;
+		view.sceneCapture->HiddenActors.Empty();
 		view.sceneCapture->DestroyComponent();
 	}
 	view.sceneCapture = nullptr;
 	view.renderTarget = nullptr;
+	view.currentResolution = 0;
+	view.captureAccumulator = 0.0f;
+	view.bHasCaptured = false;
 }
 
 void UPortalViewSubsystem::ClearAllPortalViews()
