@@ -49,6 +49,7 @@ public:
 
 private:
 	void RefreshServerState();
+	void HandlePhaseChanged();
 	int32 CountConnectedHumanPlayers() const;
 	void ApplyServerReadyFallback();
 

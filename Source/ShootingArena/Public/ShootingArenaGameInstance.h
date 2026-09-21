@@ -5,6 +5,8 @@
 #include "LobbyTypes.h"
 #include "ShootingArenaGameInstance.generated.h"
 
+class UBGMSettingsDataAsset;
+
 /**
  * 프로젝트 전역 GameInstance. 레벨 이동(비-심리스 트래블) 중에도 서버 프로세스에서 계속 살아있으므로,
  * "같은 접속을 유지한 플레이어"에게 레벨이 바뀐 뒤에도 계속 적용되어야 하는 값(예: 닉네임)을 여기 저장합니다.
@@ -16,6 +18,10 @@ class SHOOTINGARENA_API UShootingArenaGameInstance : public UGameInstance
 	GENERATED_BODY()
 
 public:
+	/** BGM 시스템에서 사용할 기획 설정 에셋. BP_QuakeGameInstance 기본값에 지정합니다. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Audio|BGM")
+	TSoftObjectPtr<UBGMSettingsDataAsset> BGMSettings;
+
 	// NetworkAddress(PlayerState::SavedNetworkAddress)를 키로 닉네임을 저장합니다. 서버 전용입니다.
 	UFUNCTION(BlueprintCallable, Category = "Player")
 	void SetSavedNickname(const FString& NetworkAddress, const FString& Nickname);
