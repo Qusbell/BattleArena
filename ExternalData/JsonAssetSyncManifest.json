@@ -231,7 +231,7 @@
 					"displayName": "Bool",
 					"cppType": "bool",
 					"order": 0,
-					"category": "Default",
+					"category": "디폴트",
 					"advancedDisplay": false,
 					"type": "bool"
 				},
@@ -240,7 +240,7 @@
 					"displayName": "String",
 					"cppType": "FString",
 					"order": 1,
-					"category": "Default",
+					"category": "디폴트",
 					"advancedDisplay": false,
 					"type": "string"
 				},
@@ -249,7 +249,7 @@
 					"displayName": "Int",
 					"cppType": "int32",
 					"order": 2,
-					"category": "Default",
+					"category": "디폴트",
 					"advancedDisplay": false,
 					"type": "int32"
 				},
@@ -258,7 +258,7 @@
 					"displayName": "Float",
 					"cppType": "double",
 					"order": 3,
-					"category": "Default",
+					"category": "디폴트",
 					"advancedDisplay": false,
 					"type": "double"
 				}
