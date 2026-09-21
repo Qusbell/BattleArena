@@ -46,6 +46,10 @@ public:
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Lobby")
 	void Server_RequestReturnToLobbyVotesRefresh();
 
+	/** 결과 위젯이 표시된 사실을 모든 클라이언트에 알려 Result BGM으로 전환합니다. */
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PlayResultBGM();
+
 	// 결과창 UI의 "3 / 4" 같은 표시용. Multicast로 전달받은 캐시값을 그대로 반환합니다.
 	UFUNCTION(BlueprintPure, Category = "Lobby")
 	void GetReturnToLobbyVoteCounts(int32& OutVotedCount, int32& OutEligibleCount) const;
