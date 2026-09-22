@@ -490,3 +490,63 @@ FGameplayTag UCustomWrapperLibrary::GetDirectParentGameplayTag(const FGameplayTa
 {
 	return Tag.RequestDirectParent();
 }
+
+
+FText UCustomWrapperLibrary::WrapTextByCharCount(const FString& InString, int32 MaxCharsPerLine, bool bBreakAtWordBoundary)
+{
+	if (InString.IsEmpty() || MaxCharsPerLine <= 0)
+	{
+		return FText::FromString(InString);
+	}
+
+	FString Result;
+	Result.Reserve(InString.Len() + 8);
+
+	int32 LineStart = 0;                   // 현재 줄이 시작하는 원본 인덱스
+	int32 LastBreakCandidate = INDEX_NONE;  // 현재 줄에서 찾은 마지막 공백 위치 (줄바꿈 후보)
+
+	for (int32 i = 0; i < InString.Len(); ++i)
+	{
+		const TCHAR Ch = InString[i];
+
+		// 원본에 이미 있는 개행은 그대로 유지하고, 그 지점부터 다시 카운트
+		if (Ch == TEXT('\n'))
+		{
+			Result.AppendChars(&InString[LineStart], i - LineStart + 1);
+			LineStart = i + 1;
+			LastBreakCandidate = INDEX_NONE;
+			continue;
+		}
+
+		if (bBreakAtWordBoundary && Ch == TEXT(' '))
+		{
+			LastBreakCandidate = i;
+		}
+
+		if (i - LineStart + 1 > MaxCharsPerLine)
+		{
+			if (bBreakAtWordBoundary && LastBreakCandidate != INDEX_NONE)
+			{
+				// 마지막 공백까지만 담고, 그 공백을 개행으로 치환
+				Result.AppendChars(&InString[LineStart], LastBreakCandidate - LineStart);
+				Result.AppendChar(TEXT('\n'));
+				LineStart = LastBreakCandidate + 1;
+			}
+			else
+			{
+				// 공백 없이 이어진 긴 문자열 → 글자 수 기준으로 강제 개행
+				Result.AppendChars(&InString[LineStart], i - LineStart);
+				Result.AppendChar(TEXT('\n'));
+				LineStart = i;
+			}
+			LastBreakCandidate = INDEX_NONE;
+		}
+	}
+
+	if (LineStart < InString.Len())
+	{
+		Result.AppendChars(&InString[LineStart], InString.Len() - LineStart);
+	}
+
+	return FText::FromString(Result);
+}
