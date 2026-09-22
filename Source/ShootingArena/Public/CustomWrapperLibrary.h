@@ -177,4 +177,23 @@ public:
 	static FGameplayTag GetDirectParentGameplayTag(
 		const FGameplayTag& Tag
 	);
+
+
+	/**
+	 * 지정한 글자 수를 넘어갈 때마다 개행(\n)을 삽입합니다.
+	 * 가능하면 공백에서 줄을 바꾸고, 공백 없이 이어진 긴 문자열은 글자 수 기준으로 강제 개행합니다.
+	 * 이미 문자열에 포함된 \n은 그대로 유지되며, 그 지점부터 글자 수를 다시 셉니다.
+	 *
+	 * @param InString 줄바꿈을 적용할 원본 문자열
+	 * @param MaxCharsPerLine 한 줄에 허용할 최대 글자 수 (0 이하면 원본을 그대로 반환)
+	 * @param bBreakAtWordBoundary true면 가능한 경우 공백에서 줄바꿈, false면 무조건 글자 수 기준으로만 자름
+	 * @return 개행이 삽입된 텍스트
+	 */
+	UFUNCTION(BlueprintPure, Category = "UI|Text",
+		meta = (Keywords = "wrap text line break word wrap char count newline"))
+	static FText WrapTextByCharCount(
+		const FString& InString,
+		int32 MaxCharsPerLine = 18,
+		bool bBreakAtWordBoundary = true
+	);
 };
