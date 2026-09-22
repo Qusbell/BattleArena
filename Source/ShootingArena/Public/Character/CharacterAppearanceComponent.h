@@ -115,6 +115,20 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Character Appearance")
 	bool SetModelingId(const FString& newModelingId);
 
+	/**
+	 * DT_Character의 Character_Modeling 값으로 DT_CharacterModeling Row를 직접 적용합니다.
+	 * 캐릭터 선택 및 스폰 로직에서 Server가 호출해야 합니다.
+	 */
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Character Appearance")
+	bool SetModelingRowName(FName newModelingRowName);
+
+	/**
+	 * DT_Character의 Character_Modeling Data Table Row Handle을 직접 적용합니다.
+	 * 직접 입력한 문자열 대신 Editor의 Row 선택 목록을 사용하기 위한 권장 진입점입니다.
+	 */
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Character Appearance")
+	bool SetModelingRowHandle(const FDataTableRowHandle& newModelingRowHandle);
+
 	/** 현재 모델링의 사망 메시를 Death Mesh Component에 다시 적용합니다. 사망 직전에 호출해도 됩니다. */
 	UFUNCTION(BlueprintCallable, Category = "Character Appearance")
 	bool ApplyDeathAppearance();

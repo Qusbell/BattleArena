@@ -16,6 +16,7 @@
 					"displayName": "Character_Name",
 					"cppType": "FName",
 					"order": 0,
+					"tooltip": "캐릭터의 이름",
 					"advancedDisplay": false,
 					"type": "name"
 				},
@@ -24,15 +25,49 @@
 					"displayName": "Character_Sprite",
 					"cppType": "UTexture2D*",
 					"order": 1,
+					"tooltip": "캐릭터의 초상화",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Engine.Texture2D"
 				},
 				{
+					"name": "character_Modeling",
+					"displayName": "Character_Modeling",
+					"cppType": "FDataTableRowHandle",
+					"order": 2,
+					"tooltip": "캐릭터의 외형 모델링",
+					"advancedDisplay": false,
+					"type": "struct",
+					"structType": "DataTableRowHandle",
+					"structPath": "/Script/Engine.DataTableRowHandle",
+					"properties": [
+						{
+							"name": "dataTable",
+							"displayName": "Data Table",
+							"cppType": "TObjectPtr<UDataTable>",
+							"order": 0,
+							"tooltip": "Pointer to table we want a row from",
+							"advancedDisplay": false,
+							"type": "object",
+							"objectClass": "/Script/Engine.DataTable"
+						},
+						{
+							"name": "rowName",
+							"displayName": "Row Name",
+							"cppType": "FName",
+							"order": 1,
+							"tooltip": "Name of row in the table that we want",
+							"advancedDisplay": false,
+							"type": "name"
+						}
+					]
+				},
+				{
 					"name": "characteristic_Id",
 					"displayName": "Characteristic_ID",
 					"cppType": "TArray",
-					"order": 2,
+					"order": 3,
+					"tooltip": "난이도 별 캐릭터에게 적용될 성격값",
 					"advancedDisplay": false,
 					"type": "array",
 					"element":
@@ -231,7 +266,7 @@
 					"displayName": "Bool",
 					"cppType": "bool",
 					"order": 0,
-					"category": "디폴트",
+					"category": "Default",
 					"advancedDisplay": false,
 					"type": "bool"
 				},
@@ -240,7 +275,7 @@
 					"displayName": "String",
 					"cppType": "FString",
 					"order": 1,
-					"category": "디폴트",
+					"category": "Default",
 					"advancedDisplay": false,
 					"type": "string"
 				},
@@ -249,7 +284,7 @@
 					"displayName": "Int",
 					"cppType": "int32",
 					"order": 2,
-					"category": "디폴트",
+					"category": "Default",
 					"advancedDisplay": false,
 					"type": "int32"
 				},
@@ -258,7 +293,7 @@
 					"displayName": "Float",
 					"cppType": "double",
 					"order": 3,
-					"category": "디폴트",
+					"category": "Default",
 					"advancedDisplay": false,
 					"type": "double"
 				}
