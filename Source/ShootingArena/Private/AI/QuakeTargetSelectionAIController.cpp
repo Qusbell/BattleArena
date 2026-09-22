@@ -85,6 +85,18 @@ void AQuakeTargetSelectionAIController::HandleTargetPerceptionUpdated(
 	if (Stimulus.WasSuccessfullySensed())
 	{
 		CharacterTargets.AddUnique(TargetCharacter);
+
+		// A newly sensed character remains only a candidate. A previously lost
+		// current target, however, must regain its sight state and cancel forgetting.
+		if (UBlackboardComponent* BlackboardComponent = GetBlackboardComponent())
+		{
+			if (BlackboardComponent->GetValueAsObject(TEXT("Enemy")) == TargetCharacter &&
+				!BlackboardComponent->GetValueAsBool(TEXT("Is Enemy Visible")) &&
+				!IsCharacterDead(TargetCharacter))
+			{
+				ApplySelectedTarget(TargetCharacter);
+			}
+		}
 	}
 	else
 	{
