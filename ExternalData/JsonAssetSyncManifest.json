@@ -33,34 +33,11 @@
 				{
 					"name": "character_Modeling",
 					"displayName": "Character_Modeling",
-					"cppType": "FDataTableRowHandle",
+					"cppType": "FName",
 					"order": 2,
 					"tooltip": "캐릭터의 외형 모델링",
 					"advancedDisplay": false,
-					"type": "struct",
-					"structType": "DataTableRowHandle",
-					"structPath": "/Script/Engine.DataTableRowHandle",
-					"properties": [
-						{
-							"name": "dataTable",
-							"displayName": "Data Table",
-							"cppType": "TObjectPtr<UDataTable>",
-							"order": 0,
-							"tooltip": "Pointer to table we want a row from",
-							"advancedDisplay": false,
-							"type": "object",
-							"objectClass": "/Script/Engine.DataTable"
-						},
-						{
-							"name": "rowName",
-							"displayName": "Row Name",
-							"cppType": "FName",
-							"order": 1,
-							"tooltip": "Name of row in the table that we want",
-							"advancedDisplay": false,
-							"type": "name"
-						}
-					]
+					"type": "name"
 				},
 				{
 					"name": "characteristic_Id",
