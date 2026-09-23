@@ -96,6 +96,15 @@ public:
     )
     float ChaseMaxTime = 5.0f;
 
+    // 추적 상태에서 최대 추적 시간
+    UPROPERTY(
+        EditDefaultsOnly,
+        BlueprintReadOnly,
+        Category = "Aggression|Retreat",
+        meta = (ClampMin = "0.0")
+    )
+    float ReatreatMaxAngle = 90.0f;
+
 
 #if WITH_EDITOR
 
