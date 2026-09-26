@@ -3,7 +3,7 @@
 		"Name": "Dummy",
 		"Character_Name": "Dummy",
 		"Character_Sprite": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Map_Image/히드라리스크.히드라리스크'",
-		"Character_Modeling": "Orange",
+		"Character_Modeling": "Cobalt",
 		"Characteristic_ID": [
 			"Dummy"
 		]
@@ -12,7 +12,7 @@
 		"Name": "Dummy2",
 		"Character_Name": "Dummy2",
 		"Character_Sprite": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Map_Image/히드라리스크.히드라리스크'",
-		"Character_Modeling": "Orange",
+		"Character_Modeling": "Aegis",
 		"Characteristic_ID": [
 			"Dummy2"
 		]
