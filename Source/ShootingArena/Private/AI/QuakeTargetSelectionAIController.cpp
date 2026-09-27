@@ -1,4 +1,4 @@
-#include "AI/QuakeTargetSelectionAIController.h"
+﻿#include "AI/QuakeTargetSelectionAIController.h"
 
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Components/ActorComponent.h"
@@ -371,10 +371,16 @@ void AQuakeTargetSelectionAIController::SelectBestTarget()
 	const bool bHasAggression = TryGetAggression(AggressionScore, AggressionThreshold);
 	for (const QuakeTargetSelection::FCandidate& Candidate : Candidates)
 	{
+		// <-- 수정 중
+		FVector viewPoint;
+		FRotator viewRotator;
+		Candidate.Character->GetActorEyesViewPoint(viewPoint, viewRotator);
+
 		const FVector CandidateToSelf =
-			(SelfLocation - Candidate.Character->GetActorLocation()).GetSafeNormal();
-		const bool bLookingAtSelf = FVector::DotProduct(
-			Candidate.Character->GetActorForwardVector(), CandidateToSelf) >= LookDotThreshold;
+			(SelfLocation - viewPoint).GetSafeNormal();
+		const FVector CandidateForward = viewRotator.Vector();
+
+		const bool bLookingAtSelf = FVector::DotProduct(CandidateForward, CandidateToSelf) >= LookDotThreshold;
 		if (bLookingAtSelf || (bHasAggression && AggressionScore >= AggressionThreshold))
 		{
 			ApplySelectedTarget(Candidate.Character);
