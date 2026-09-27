@@ -1,4 +1,4 @@
-﻿#include "AI/QuakeTargetSelectionAIController.h"
+#include "AI/QuakeTargetSelectionAIController.h"
 
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Components/ActorComponent.h"
@@ -71,7 +71,6 @@ void AQuakeTargetSelectionAIController::GetCharacterTargets_Implementation(
 void AQuakeTargetSelectionAIController::HandleTargetPerceptionUpdated(
 	AActor* Actor, const FAIStimulus Stimulus)
 {
-	// 타깃 후보 갱신 시작: 시야 감지 결과만 후보 목록에 반영합니다.
 	if (Stimulus.Type != UAISense::GetSenseID<UAISense_Sight>())
 	{
 		return;
@@ -85,14 +84,12 @@ void AQuakeTargetSelectionAIController::HandleTargetPerceptionUpdated(
 
 	if (Stimulus.WasSuccessfullySensed())
 	{
-		// 새로 보인 캐릭터는 후보로 등록합니다. 새 후보를 이 이벤트에서 바로 선택하지는 않습니다.
 		CharacterTargets.AddUnique(TargetCharacter);
 
 		// A newly sensed character remains only a candidate. A previously lost
 		// current target, however, must regain its sight state and cancel forgetting.
 		if (UBlackboardComponent* BlackboardComponent = GetBlackboardComponent())
 		{
-			// 기존 Enemy가 다시 보이면 일반 선정 조건과 무관하게 시야 상태를 복구합니다.
 			if (BlackboardComponent->GetValueAsObject(TEXT("Enemy")) == TargetCharacter &&
 				!BlackboardComponent->GetValueAsBool(TEXT("Is Enemy Visible")) &&
 				!IsCharacterDead(TargetCharacter))
@@ -216,7 +213,6 @@ bool AQuakeTargetSelectionAIController::IsCharacterDead(const ACharacter* Charac
 bool AQuakeTargetSelectionAIController::TryGetAggression(
 	float& OutScore, float& OutThreshold)
 {
-	// BP의 Aggression 점수와 Characteristic의 임계값을 가져옵니다. 실패하면 Aggression 경로는 사용할 수 없습니다.
 	OutScore = 0.0f;
 	OutThreshold = 1.0f;
 
@@ -231,7 +227,6 @@ bool AQuakeTargetSelectionAIController::TryGetAggression(
 	}
 
 	{
-		// BP 점수 함수의 유효성 출력과 실제 점수 출력을 읽습니다.
 		TArray<uint8> Params;
 		Params.SetNumZeroed(ScoreFunction->ParmsSize);
 		ProcessEvent(ScoreFunction, Params.GetData());
@@ -275,7 +270,6 @@ bool AQuakeTargetSelectionAIController::TryGetAggression(
 	TArray<uint8> Params;
 	Params.SetNumZeroed(CharacteristicFunction->ParmsSize);
 	ProcessEvent(CharacteristicFunction, Params.GetData());
-	// 반환된 Characteristic 구조체에서 Aggression_Threshold를 찾아 비교 기준으로 사용합니다.
 	for (TFieldIterator<FStructProperty> It(CharacteristicFunction); It; ++It)
 	{
 		FStructProperty* StructProperty = *It;
@@ -310,7 +304,6 @@ bool AQuakeTargetSelectionAIController::TryGetAggression(
 
 void AQuakeTargetSelectionAIController::SelectBestTarget()
 {
-	// 새 Enemy 선정 시작: AI Pawn과 BP Set Current Target에서 허용 대상 클래스를 얻어야 진행합니다.
 	APawn* SelfPawn = GetPawn();
 	UClass* AcceptedTargetClass = GetAcceptedTargetClass();
 	if (!IsValid(SelfPawn) || !AcceptedTargetClass)
@@ -324,7 +317,6 @@ void AQuakeTargetSelectionAIController::SelectBestTarget()
 			return !IsValid(TargetCharacter) || IsCharacterDead(TargetCharacter);
 		});
 
-	// 현재 Blackboard 타깃과 시야 상태를 읽어, 후보가 교체 가능한지 판단할 기준을 준비합니다.
 	UBlackboardComponent* BlackboardComponent = GetBlackboardComponent();
 	AActor* CurrentTarget = BlackboardComponent
 		? Cast<AActor>(BlackboardComponent->GetValueAsObject(TEXT("Enemy")))
@@ -338,7 +330,6 @@ void AQuakeTargetSelectionAIController::SelectBestTarget()
 	const bool bRecentDamage = GetWorld()->GetTimeSeconds() <= RecentDamageExpireTime &&
 		!RecentDamageDirection.IsNearlyZero();
 
-	// 시야 후보를 선정 후보로 거릅니다. 현재 타깃, 부적합 클래스, 자기 자신은 제외합니다.
 	TArray<QuakeTargetSelection::FCandidate> Candidates;
 	for (ACharacter* TargetCharacter : CharacterTargets)
 	{
@@ -363,7 +354,6 @@ void AQuakeTargetSelectionAIController::SelectBestTarget()
 			: -1.0f;
 	}
 
-	// 최근 피해가 있으면 피해 방향과 가까운 후보를 우선하고, 아니면 가까운 후보를 우선합니다.
 	Candidates.StableSort(
 		[bRecentDamage](const QuakeTargetSelection::FCandidate& Left,
 			const QuakeTargetSelection::FCandidate& Right)
@@ -379,20 +369,12 @@ void AQuakeTargetSelectionAIController::SelectBestTarget()
 	float AggressionScore = 0.0f;
 	float AggressionThreshold = 1.0f;
 	const bool bHasAggression = TryGetAggression(AggressionScore, AggressionThreshold);
-	// 최종 수락 판정: 후보가 AI를 바라보거나 Aggression 점수가 임계값 이상이면 타깃으로 설정합니다.
 	for (const QuakeTargetSelection::FCandidate& Candidate : Candidates)
 	{
-		FVector viewPoint;
-		FRotator viewRotator;
-		Candidate.Character->GetActorEyesViewPoint(viewPoint, viewRotator);
-
-		const FVector CandidateToSelf = (SelfLocation - viewPoint).GetSafeNormal();
-		const FVector CandidateForward = viewRotator.Vector();
-
-		const float LookingDot = FVector::DotProduct(CandidateForward, CandidateToSelf);
-		const bool bLookingAtSelf = LookingDot >= LookDotThreshold;
-
-
+		const FVector CandidateToSelf =
+			(SelfLocation - Candidate.Character->GetActorLocation()).GetSafeNormal();
+		const bool bLookingAtSelf = FVector::DotProduct(
+			Candidate.Character->GetActorForwardVector(), CandidateToSelf) >= LookDotThreshold;
 		if (bLookingAtSelf || (bHasAggression && AggressionScore >= AggressionThreshold))
 		{
 			ApplySelectedTarget(Candidate.Character);
@@ -403,7 +385,6 @@ void AQuakeTargetSelectionAIController::SelectBestTarget()
 
 UClass* AQuakeTargetSelectionAIController::GetAcceptedTargetClass() const
 {
-	// BP Set Current Target 입력 구조체의 Target 필드 타입을 허용 대상 클래스로 사용합니다.
 	UFunction* SetTargetFunction = FindFunction(TEXT("Set Current Target"));
 	if (!SetTargetFunction)
 	{
@@ -439,7 +420,6 @@ UClass* AQuakeTargetSelectionAIController::GetAcceptedTargetClass() const
 
 void AQuakeTargetSelectionAIController::ApplySelectedTarget(ACharacter* Target)
 {
-	// 선택된 대상을 검증한 뒤 BP Set Current Target으로 Blackboard와 BP 상태에 반영합니다.
 	UClass* AcceptedTargetClass = GetAcceptedTargetClass();
 	if (!IsValid(Target) || !AcceptedTargetClass || !Target->IsA(AcceptedTargetClass))
 	{
