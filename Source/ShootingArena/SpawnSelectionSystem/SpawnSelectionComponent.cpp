@@ -741,12 +741,15 @@ bool USpawnSelectionComponent::SpawnPawnAtTransform(
 
 	Controller->Possess(SpawnedPawn);
 
-	if (Controller->GetPawn() != SpawnedPawn)
+	if (!IsValid(Controller) || !IsValid(SpawnedPawn) || Controller->GetPawn() != SpawnedPawn)
 	{
 		UE_LOG(LogSpawnSelection, Warning,
-			TEXT("SpawnPawnAtTransform failed: Controller could not possess the spawned Pawn."));
+			TEXT("SpawnPawnAtTransform failed: Controller could not retain a valid spawned Pawn."));
 
-		SpawnedPawn->Destroy();
+		if (IsValid(SpawnedPawn))
+		{
+			SpawnedPawn->Destroy();
+		}
 		return false;
 	}
 

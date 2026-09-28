@@ -7,6 +7,8 @@
 #include "Sound/SoundBase.h"
 #include "TimerManager.h"
 
+DEFINE_LOG_CATEGORY_STATIC(LogCharacterSpawnSound, Log, All);
+
 UCharacterSpawnSoundComponent::UCharacterSpawnSoundComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
@@ -16,7 +18,9 @@ UCharacterSpawnSoundComponent::UCharacterSpawnSoundComponent()
 void UCharacterSpawnSoundComponent::PlaySpawnSounds(ECharacterSpawnSoundPhase Phase)
 {
 	const APawn* Pawn = Cast<APawn>(GetOwner());
-	if (!IsValid(Pawn) || !Pawn->HasAuthority() || !IsValid(Pawn->GetController()))
+	const UWorld* World = GetWorld();
+	if (!IsValid(Pawn) || !Pawn->HasAuthority() || !IsValid(Pawn->GetController())
+		|| !IsValid(World) || World->bIsTearingDown)
 	{
 		return;
 	}
@@ -29,6 +33,13 @@ void UCharacterSpawnSoundComponent::PlaySpawnSounds(ECharacterSpawnSoundPhase Ph
 	{
 		if (IsValid(Entry.Sound))
 		{
+			if (!Entry.Sound->IsOneShot())
+			{
+				UE_LOG(LogCharacterSpawnSound, Warning,
+					TEXT("Looping spawn sound skipped: %s on %s."),
+					*GetNameSafe(Entry.Sound), *GetNameSafe(Pawn));
+				continue;
+			}
 			bHasSharedSound |= Entry.bAudibleToOthers;
 			bHasOwnerSound |= !Entry.bAudibleToOthers;
 		}
@@ -58,7 +69,7 @@ void UCharacterSpawnSoundComponent::ClientPlaySpawnSounds_Implementation(ECharac
 void UCharacterSpawnSoundComponent::PlayLocalSpawnSounds(ECharacterSpawnSoundPhase Phase, const FVector& SpawnLocation, bool bAudibleToOthers)
 {
 	UWorld* World = GetWorld();
-	if (!IsValid(World) || World->GetNetMode() == NM_DedicatedServer)
+	if (!IsValid(World) || World->bIsTearingDown || World->GetNetMode() == NM_DedicatedServer)
 	{
 		return;
 	}
@@ -67,8 +78,15 @@ void UCharacterSpawnSoundComponent::PlayLocalSpawnSounds(ECharacterSpawnSoundPha
 		? InitialSpawnSounds : RespawnSounds;
 	for (const FCharacterSpawnSoundEntry& Entry : Entries)
 	{
-		if (!IsValid(Entry.Sound) || Entry.bAudibleToOthers != bAudibleToOthers)
+		if (!IsValid(Entry.Sound) || !Entry.Sound->IsOneShot()
+			|| Entry.bAudibleToOthers != bAudibleToOthers)
 		{
+			continue;
+		}
+		if (!FMath::IsFinite(Entry.VolumeMultiplier) || !FMath::IsFinite(Entry.DelaySeconds))
+		{
+			UE_LOG(LogCharacterSpawnSound, Warning,
+				TEXT("Spawn sound skipped: invalid volume or delay on %s."), *GetNameSafe(GetOwner()));
 			continue;
 		}
 
@@ -83,7 +101,8 @@ void UCharacterSpawnSoundComponent::PlayLocalSpawnSounds(ECharacterSpawnSoundPha
 		World->GetTimerManager().SetTimer(TimerHandle,
 			[WeakThis, Entry, SpawnLocation]()
 			{
-				if (UCharacterSpawnSoundComponent* Component = WeakThis.Get())
+				if (UCharacterSpawnSoundComponent* Component = WeakThis.Get();
+					Component && Component->IsRegistered() && IsValid(Component->GetOwner()))
 				{
 					Component->PlayLocalEntry(Entry, SpawnLocation);
 				}
@@ -94,7 +113,8 @@ void UCharacterSpawnSoundComponent::PlayLocalSpawnSounds(ECharacterSpawnSoundPha
 void UCharacterSpawnSoundComponent::PlayLocalEntry(const FCharacterSpawnSoundEntry& Entry, const FVector& SpawnLocation)
 {
 	UWorld* World = GetWorld();
-	if (!IsValid(World) || !IsValid(Entry.Sound) || World->GetNetMode() == NM_DedicatedServer)
+	if (!IsValid(World) || World->bIsTearingDown || !IsValid(Entry.Sound)
+		|| World->GetNetMode() == NM_DedicatedServer)
 	{
 		return;
 	}
