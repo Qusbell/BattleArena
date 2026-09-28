@@ -235,6 +235,16 @@ protected:
 		meta = (DisplayName = "Energy Alpha", ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
 	float portalVFXEnergyAlpha = 1.0f;
 
+	/** 포탈별 Niagara 색상을 덮어씁니다. 끄면 선택한 Niagara System의 원래 색상을 사용합니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal VFX",
+		meta = (DisplayName = "Override VFX Color"))
+	bool bOverridePortalVFXColor = false;
+
+	/** Vortex 팩의 Background, Vortex, Tint, Curly Sparks 색상에 적용합니다. 투명도는 위 Alpha 설정으로 제어합니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal VFX",
+		meta = (DisplayName = "VFX Color", EditCondition = "bOverridePortalVFXColor", HideAlphaChannel))
+	FLinearColor portalVFXColor = FLinearColor::White;
+
 	/** 포탈 화면 가장자리 띠의 발광 색입니다. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View|Appearance")
 	FLinearColor portalFrameColor = FLinearColor(0.0f, 0.65f, 1.0f, 1.0f);
@@ -286,6 +296,9 @@ private:
 	/** 각 클라이언트가 독립적으로 생성하는 포탈 화면용 MID입니다. */
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInstanceDynamic> portalScreenMID;
+
+	/** 색상 덮어쓰기를 끌 때 Niagara 컴포넌트의 원래 User 색상을 복구합니다. */
+	TMap<FName, FLinearColor> portalVFXOriginalColors;
 
 	void UpdatePortalVisual();
 	void UpdatePortalVFX();

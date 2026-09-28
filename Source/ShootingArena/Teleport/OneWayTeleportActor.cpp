@@ -13,6 +13,7 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "NiagaraComponent.h"
 #include "NiagaraEmitterHandle.h"
+#include "NiagaraParameterStore.h"
 #include "NiagaraSystem.h"
 #include "Sound/SoundBase.h"
 #include "Engine/TextureRenderTarget2D.h"
@@ -584,6 +585,10 @@ void AOneWayTeleportActor::UpdatePortalVFX()
 		return;
 	}
 
+	if (portalVFX->GetAsset() != portalVFXSystem)
+	{
+		portalVFXOriginalColors.Empty();
+	}
 	portalVFX->SetAsset(portalVFXSystem);
 	// Vortex의 중앙 배경/소용돌이 알파는 아래 User 파라미터로 투명하게 만들어
 	// 출구 Render Target을 가리지 않습니다.
@@ -666,13 +671,70 @@ void AOneWayTeleportActor::UpdatePortalVFX()
 	portalVFX->SetVariableFloat(TEXT("User.Ring Alpha"), portalVFXRingAlpha);
 	portalVFX->SetVariableFloat(TEXT("User.Energy Alpha"), portalVFXEnergyAlpha);
 
+	if (bOverridePortalVFXColor)
+	{
+		// Niagara System마다 노출된 User 색상 파라미터가 다릅니다.
+		// 기존 A값을 보존해 색상 변경이 Alpha 설정에 영향을 주지 않게 합니다.
+		const auto SetExposedColor = [this](const TCHAR* parameterName)
+		{
+			const FName name(parameterName);
+			const FNiagaraVariableBase colorVariable(FNiagaraTypeDefinition::GetColorDef(), name);
+			if (colorVariable.GetSizeInBytes() != sizeof(FLinearColor)
+				|| portalVFXSystem->GetExposedParameters().IndexOf(colorVariable) == INDEX_NONE)
+			{
+				return;
+			}
+
+			if (!portalVFXOriginalColors.Contains(name))
+			{
+				const FLinearColor assetColor = portalVFXSystem->GetExposedParameters()
+					.GetParameterValue<FLinearColor>(colorVariable);
+				portalVFXOriginalColors.Add(
+					name,
+					portalVFX->GetOverrideParameters().GetParameterValueOrDefault(
+						colorVariable,
+						assetColor));
+			}
+			if (const FLinearColor* originalColor = portalVFXOriginalColors.Find(name))
+			{
+				portalVFX->SetVariableLinearColor(
+					name,
+					FLinearColor(portalVFXColor.R, portalVFXColor.G, portalVFXColor.B, originalColor->A));
+			}
+		};
+
+		SetExposedColor(TEXT("User.Color Background"));
+		SetExposedColor(TEXT("User.Color Vortex"));
+		SetExposedColor(TEXT("User.Tint"));
+		SetExposedColor(TEXT("User.Color Curly Sparks"));
+	}
+	else if (!portalVFXOriginalColors.IsEmpty())
+	{
+		for (const TPair<FName, FLinearColor>& originalColor : portalVFXOriginalColors)
+		{
+			const FNiagaraVariableBase colorVariable(
+				FNiagaraTypeDefinition::GetColorDef(),
+				originalColor.Key);
+			if (colorVariable.GetSizeInBytes() == sizeof(FLinearColor)
+				&& portalVFXSystem->GetExposedParameters().IndexOf(colorVariable) != INDEX_NONE)
+			{
+				portalVFX->SetVariableLinearColor(originalColor.Key, originalColor.Value);
+			}
+		}
+		portalVFXOriginalColors.Empty();
+	}
+
 	// NS_Portal_Vortex_1은 Energy.AlphaScale을 외부로 노출하지 않은 구형 시스템입니다.
 	// 해당 Energy 이미터가 실제로 읽는 User.Color Vortex의 Alpha로 Energy Alpha를 전달합니다.
 	if (portalVFXSystem->GetFName() == TEXT("NS_Portal_Vortex_1"))
 	{
 		portalVFX->SetVariableLinearColor(
 			TEXT("User.Color Vortex"),
-			FLinearColor(1.0f, 1.0f, 1.0f, portalVFXEnergyAlpha));
+			FLinearColor(
+				bOverridePortalVFXColor ? portalVFXColor.R : 1.0f,
+				bOverridePortalVFXColor ? portalVFXColor.G : 1.0f,
+				bOverridePortalVFXColor ? portalVFXColor.B : 1.0f,
+				portalVFXEnergyAlpha));
 	}
 
 	// 이 팩의 AlphaScale은 Niagara 내부 상수라 Component에서 연속값으로 덮어쓸 수 없습니다.
