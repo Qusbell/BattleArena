@@ -1,4 +1,5 @@
 #include "SpawnSelectionComponent.h"
+#include "Audio/CharacterSpawnSoundComponent.h"
 
 #include "Components/SceneComponent.h"
 #include "EngineUtils.h"
@@ -646,7 +647,8 @@ bool USpawnSelectionComponent::SpawnInitialPawn(
 		Controller,
 		PawnClass,
 		OutSpawnTransform,
-		OutSpawnedPawn))
+		OutSpawnedPawn,
+		ECharacterSpawnSoundPhase::Initial))
 	{
 		// SelectInitialSpawnTransform에서 선점한 배정 횟수를 자동 복구합니다.
 		ReleaseInitialSpawnSelection(OutSpawnPointIndex);
@@ -685,14 +687,16 @@ bool USpawnSelectionComponent::RespawnPawn(
 		Controller,
 		PawnClass,
 		OutSpawnTransform,
-		OutSpawnedPawn);
+		OutSpawnedPawn,
+		ECharacterSpawnSoundPhase::Respawn);
 }
 
 bool USpawnSelectionComponent::SpawnPawnAtTransform(
 	AController* Controller,
 	TSubclassOf<APawn> PawnClass,
 	const FTransform& SpawnTransform,
-	APawn*& OutSpawnedPawn)
+	APawn*& OutSpawnedPawn,
+	ECharacterSpawnSoundPhase SoundPhase)
 {
 	OutSpawnedPawn = nullptr;
 
@@ -757,6 +761,10 @@ bool USpawnSelectionComponent::SpawnPawnAtTransform(
 	ApplySpawnRotation(Controller, SpawnTransform.Rotator());
 
 	OutSpawnedPawn = SpawnedPawn;
+	if (UCharacterSpawnSoundComponent* SpawnSounds = SpawnedPawn->FindComponentByClass<UCharacterSpawnSoundComponent>())
+	{
+		SpawnSounds->PlaySpawnSounds(SoundPhase);
+	}
 	return true;
 }
 

@@ -7,6 +7,7 @@
 class AController;
 class APawn;
 class USceneComponent;
+enum class ECharacterSpawnSoundPhase : uint8;
 
 /** 스폰 포인트를 사용할 수 있는 캐릭터 유형입니다. */
 UENUM(BlueprintType)
@@ -228,7 +229,8 @@ private:
 		AController* Controller,
 		TSubclassOf<APawn> PawnClass,
 		const FTransform& SpawnTransform,
-		APawn*& OutSpawnedPawn);
+		APawn*& OutSpawnedPawn,
+		ECharacterSpawnSoundPhase SoundPhase);
 
 	/** 현재 TotalCharacterCount와 SpawnPoint 수로 최초 최대 배치 수를 다시 계산합니다. */
 	bool RecalculateInitialMaxPerPoint();
