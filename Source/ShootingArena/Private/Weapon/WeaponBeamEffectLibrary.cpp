@@ -39,6 +39,44 @@ namespace
 			Component->SetVariableFloat(Name, Value);
 		}
 	}
+
+	bool SpawnNiagaraBeam(
+		UWorld* World, UNiagaraSystem* System, const FVector& BeamStart, const FVector& BeamEnd,
+		const FRotator& BeamRotation, float BeamDistance, float Duration, float Speed,
+		float MaxDistance, bool bMachineGun, bool bTrail)
+	{
+		if (!System)
+		{
+			return false;
+		}
+
+		UNiagaraComponent* Niagara = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			World, System, BeamStart, BeamRotation, FVector::OneVector,
+			true, false, ENCPoolMethod::None, false);
+		if (!Niagara)
+		{
+			return false;
+		}
+
+		// The rail-gun beam and trail are authored along local +X. The component is
+		// already positioned at the muzzle and rotated toward the trace endpoint.
+		// Passing a world-space endpoint here would apply that transform a second time.
+		const FVector ParameterStart = bMachineGun ? BeamStart : FVector::ZeroVector;
+		const FVector ParameterEnd = bMachineGun ? BeamEnd : FVector(BeamDistance, 0.0f, 0.0f);
+		SetNiagaraPositionIfPresent(Niagara, System, TEXT("User.BeamStart"), ParameterStart);
+		SetNiagaraPositionIfPresent(Niagara, System, TEXT("User.BeamEnd"), ParameterEnd);
+
+		if (!bTrail)
+		{
+			SetNiagaraFloatIfPresent(Niagara, System, TEXT("User.BeamDistance"), BeamDistance);
+			SetNiagaraFloatIfPresent(Niagara, System, TEXT("User.BeamLifeTime"), Duration);
+			SetNiagaraFloatIfPresent(Niagara, System, TEXT("User.Speed"), bMachineGun ? Speed : 0.0f);
+			SetNiagaraFloatIfPresent(Niagara, System, TEXT("User.LifeTime"), Duration);
+			SetNiagaraFloatIfPresent(Niagara, System, TEXT("User.MaxDistance"), MaxDistance);
+		}
+		Niagara->Activate(true);
+		return true;
+	}
 }
 
 bool UWeaponBeamEffectLibrary::PlayHitScanBeam(
@@ -50,7 +88,8 @@ bool UWeaponBeamEffectLibrary::PlayHitScanBeam(
 	UParticleSystem* CascadeEffect,
 	float MachineGunSpeed,
 	float RailGunLifeTime,
-	float MachineGunFrontOffset)
+	float MachineGunFrontOffset,
+	UNiagaraSystem* RailGunTrailEffect)
 {
 	if (!WorldContextObject || BeamStart.ContainsNaN() || BeamEnd.ContainsNaN())
 	{
@@ -85,25 +124,16 @@ bool UWeaponBeamEffectLibrary::PlayHitScanBeam(
 	const float Duration = bMachineGun ? MachineGunTravelDistance / Speed : RailDuration;
 	bool bSpawnedAny = false;
 
-	if (NiagaraEffect)
+	bSpawnedAny = SpawnNiagaraBeam(
+		World, NiagaraEffect, BeamStart, BeamEnd, BeamRotation,
+		BeamDistance, Duration, Speed, bMachineGun ? MachineGunTravelDistance : BeamDistance,
+		bMachineGun, false);
+	if (!bMachineGun)
 	{
-		UNiagaraComponent* Niagara = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-			World, NiagaraEffect, BeamStart, BeamRotation, FVector::OneVector,
-			true, false, ENCPoolMethod::None, false);
-		if (Niagara)
-		{
-			// Position and Vector user parameters are both supported for beam endpoints.
-			SetNiagaraPositionIfPresent(Niagara, NiagaraEffect, TEXT("User.BeamStart"), BeamStart);
-			SetNiagaraPositionIfPresent(Niagara, NiagaraEffect, TEXT("User.BeamEnd"), BeamEnd);
-			SetNiagaraFloatIfPresent(Niagara, NiagaraEffect, TEXT("User.BeamDistance"), BeamDistance);
-			SetNiagaraFloatIfPresent(Niagara, NiagaraEffect, TEXT("User.BeamLifeTime"), Duration);
-			// The current machine-gun system consumes these three user parameters.
-			SetNiagaraFloatIfPresent(Niagara, NiagaraEffect, TEXT("User.Speed"), bMachineGun ? Speed : 0.0f);
-			SetNiagaraFloatIfPresent(Niagara, NiagaraEffect, TEXT("User.LifeTime"), Duration);
-			SetNiagaraFloatIfPresent(Niagara, NiagaraEffect, TEXT("User.MaxDistance"), bMachineGun ? MachineGunTravelDistance : BeamDistance);
-			Niagara->Activate(true);
-			bSpawnedAny = true;
-		}
+		// Keep the trail system's authored lifetime so it can linger after the beam.
+		bSpawnedAny |= SpawnNiagaraBeam(
+			World, RailGunTrailEffect, BeamStart, BeamEnd, BeamRotation,
+			BeamDistance, Duration, Speed, BeamDistance, false, true);
 	}
 
 	if (CascadeEffect)

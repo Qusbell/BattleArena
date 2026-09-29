@@ -27,10 +27,11 @@ public:
 	 * the firing weapon's world-space muzzle and the authoritative trace's world-space endpoint.
 	 * This function does not replicate, trace, or read the receiving client's camera.
 	 * Niagara and Cascade can be supplied together; either can also be left empty.
+	 * The optional rail-gun trail is a separate Niagara system with its own lifetime.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Weapon|Effects",
 		meta = (WorldContext = "WorldContextObject", DisplayName = "Play Hit Scan Beam",
-			AdvancedDisplay = "MachineGunSpeed,RailGunLifeTime,MachineGunFrontOffset"))
+			AdvancedDisplay = "MachineGunSpeed,RailGunLifeTime,MachineGunFrontOffset,RailGunTrailEffect"))
 	static bool PlayHitScanBeam(
 		const UObject* WorldContextObject,
 		FVector BeamStart,
@@ -41,5 +42,6 @@ public:
 		float MachineGunSpeed = 12000.0f,
 		float RailGunLifeTime = 0.2f,
 		/** Distance from the Niagara particle position to the tracer's visible leading edge, in cm. */
-		float MachineGunFrontOffset = 1000.0f);
+		float MachineGunFrontOffset = 1000.0f,
+		UNiagaraSystem* RailGunTrailEffect = nullptr);
 };
