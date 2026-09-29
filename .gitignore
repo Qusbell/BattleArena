@@ -93,3 +93,9 @@ DerivedDataCache/*
 *.log
 *.codex
 AGENTS.md
+
+# Graphify local cache and state
+graphify-out/cache/
+graphify-out/manifest.json
+graphify-out/cost.json
+graphify-out/
