@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
-#include "KillStreakVoiceSettingsDataAsset.generated.h"
+#include "KillStreakSettingsDataAsset.generated.h"
 
 class USoundBase;
 
@@ -19,9 +19,9 @@ struct SHOOTINGARENA_API FKillStreakVoiceTier
 	TArray<TObjectPtr<USoundBase>> Sounds;
 };
 
-/** Tunable batching, overlap, and sound selection settings for kill-streak voices. */
+/** Shared tuning for kill-streak voice playback and recent-attacker attribution. */
 UCLASS(BlueprintType)
-class SHOOTINGARENA_API UKillStreakVoiceSettingsDataAsset : public UDataAsset
+class SHOOTINGARENA_API UKillStreakSettingsDataAsset : public UDataAsset
 {
 	GENERATED_BODY()
 
@@ -37,4 +37,8 @@ public:
 	/** Thresholds may be added or removed without changing the component implementation. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Kill Streak Voice|Tiers")
 	TArray<FKillStreakVoiceTier> KillStreakTiers;
+
+	/** Time window in which the latest attacker can receive credit for a suicide or environmental death. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Kill Streak|Attribution", meta = (ClampMin = "0.0", UIMin = "0.0"))
+	float AttackerMemoryTime = 5.0f;
 };

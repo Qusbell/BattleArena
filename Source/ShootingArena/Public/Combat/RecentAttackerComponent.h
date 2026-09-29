@@ -6,7 +6,7 @@
 
 class AController;
 class APlayerState;
-class UAttackerMemorySettingsDataAsset;
+class UKillStreakSettingsDataAsset;
 class UDamageType;
 
 UENUM(BlueprintType)
@@ -58,7 +58,7 @@ public:
 	URecentAttackerComponent();
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Kill Credit")
-	TObjectPtr<UAttackerMemorySettingsDataAsset> Settings = nullptr;
+	TObjectPtr<UKillStreakSettingsDataAsset> Settings = nullptr;
 
 	/** Fired once on authority when this owner's death credit is resolved. */
 	UPROPERTY(BlueprintAssignable, Category = "Kill Credit")

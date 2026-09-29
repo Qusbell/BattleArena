@@ -1,6 +1,6 @@
 #include "Audio/KillStreakVoiceComponent.h"
 
-#include "Audio/KillStreakVoiceSettingsDataAsset.h"
+#include "Audio/KillStreakSettingsDataAsset.h"
 #include "Components/AudioComponent.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"

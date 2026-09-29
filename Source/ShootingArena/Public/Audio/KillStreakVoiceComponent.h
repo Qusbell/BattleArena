@@ -5,7 +5,7 @@
 #include "KillStreakVoiceComponent.generated.h"
 
 class UAudioComponent;
-class UKillStreakVoiceSettingsDataAsset;
+class UKillStreakSettingsDataAsset;
 class USoundBase;
 
 /** Batches credited kill events, tracks the current streak, and plays its voice for the owning player. */
@@ -18,7 +18,7 @@ public:
 	UKillStreakVoiceComponent();
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Kill Streak Voice")
-	TObjectPtr<UKillStreakVoiceSettingsDataAsset> Settings = nullptr;
+	TObjectPtr<UKillStreakSettingsDataAsset> Settings = nullptr;
 
 	/** Call on the server once for each kill credited to this PlayerState. */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Kill Streak Voice")

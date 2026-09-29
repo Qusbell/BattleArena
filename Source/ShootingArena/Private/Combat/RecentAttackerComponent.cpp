@@ -1,6 +1,6 @@
 #include "Combat/RecentAttackerComponent.h"
 
-#include "Combat/AttackerMemorySettingsDataAsset.h"
+#include "Audio/KillStreakSettingsDataAsset.h"
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"
 #include "GameFramework/Controller.h"
