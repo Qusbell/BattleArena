@@ -2,22 +2,11 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "Engine/DataAsset.h"
 #include "InitialWeaponLoadoutComponent.generated.h"
 
-USTRUCT(BlueprintType)
-struct FInitialWeaponEntry
-{
-	GENERATED_BODY()
+class UInitialWeaponLoadoutDataAsset;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Weapon")
-	TSoftClassPtr<AActor> WeaponClass;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Weapon")
-	TSoftObjectPtr<UPrimaryDataAsset> WeaponData;
-};
-
-/** Configured on BP_ShooterBase. Each array can contain any number of weapons. */
+/** Grants the weapons configured by a JsonAssetSync-backed data asset. */
 UCLASS(ClassGroup=(Combat), meta=(BlueprintSpawnableComponent))
 class SHOOTINGARENA_API UInitialWeaponLoadoutComponent : public UActorComponent
 {
@@ -26,13 +15,9 @@ class SHOOTINGARENA_API UInitialWeaponLoadoutComponent : public UActorComponent
 public:
 	UInitialWeaponLoadoutComponent();
 
-	/** Granted on every character spawn. Ammo starts at the data asset's maximum and is never consumed. */
+	/** Initial weapon list applied to BP_ShooterBase. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Initial Weapons")
-	TArray<FInitialWeaponEntry> DefaultWeapons;
-
-	/** Granted on every character spawn. Ammo follows the normal weapon rules. */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Initial Weapons")
-	TArray<FInitialWeaponEntry> GrantedWeapons;
+	TObjectPtr<UInitialWeaponLoadoutDataAsset> LoadoutData = nullptr;
 
 	/** Call from BP_ShooterBase's authority BeginPlay after its inventory is ready. */
 	UFUNCTION(BlueprintCallable, Category="Initial Weapons")

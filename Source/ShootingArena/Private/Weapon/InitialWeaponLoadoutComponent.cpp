@@ -1,5 +1,7 @@
 #include "Weapon/InitialWeaponLoadoutComponent.h"
+#include "Weapon/InitialWeaponLoadoutDataAsset.h"
 
+#include "Engine/World.h"
 #include "GameFramework/Pawn.h"
 #include "UObject/StructOnScope.h"
 #include "UObject/UnrealType.h"
@@ -19,7 +21,10 @@ namespace
 		{
 			if (It->GetName().StartsWith(TEXT("ItemData")))
 			{
-				return CastField<FObjectPropertyBase>(*It);
+				if (FObjectPropertyBase* ItemData = CastField<FObjectPropertyBase>(*It))
+				{
+					return ItemData;
+				}
 			}
 		}
 		return nullptr;
@@ -47,6 +52,10 @@ namespace
 
 	bool PickupWeapon(UActorComponent* Inventory, AActor* Weapon)
 	{
+		if (!IsValid(Inventory) || !IsValid(Weapon))
+		{
+			return false;
+		}
 		UFunction* Function = Inventory->FindFunction(TEXT("Pickup"));
 		if (!Function)
 		{
@@ -76,11 +85,24 @@ namespace
 
 	bool GrantOne(AActor* Owner, UActorComponent* Inventory, const FInitialWeaponEntry& Entry, bool bDefault)
 	{
+		if (!IsValid(Owner) || !IsValid(Inventory))
+		{
+			return false;
+		}
+		UWorld* World = Owner->GetWorld();
+		if (!IsValid(World))
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Initial weapon on %s cannot spawn without a valid world."), *Owner->GetName());
+			return false;
+		}
+
 		UClass* WeaponClass = Entry.WeaponClass.LoadSynchronous();
 		UPrimaryDataAsset* Data = Entry.WeaponData.LoadSynchronous();
-		if (!WeaponClass || !Data || !WeaponClass->IsChildOf(AActor::StaticClass()))
+		if (!IsValid(WeaponClass) || !IsValid(Data) || !WeaponClass->IsChildOf(AActor::StaticClass())
+			|| WeaponClass->HasAnyClassFlags(CLASS_Abstract | CLASS_Deprecated | CLASS_NewerVersionExists))
 		{
-			UE_LOG(LogTemp, Warning, TEXT("Initial weapon entry on %s has no valid class or data asset."), *Owner->GetName());
+			UE_LOG(LogTemp, Warning, TEXT("Initial weapon entry on %s has an invalid class (%s) or data asset (%s)."),
+				*Owner->GetName(), *Entry.WeaponClass.ToString(), *Entry.WeaponData.ToString());
 			return false;
 		}
 
@@ -88,6 +110,7 @@ namespace
 		FStructProperty* ItemInfoProperty = FindFProperty<FStructProperty>(WeaponClass, TEXT("itemInfo"));
 		FObjectPropertyBase* ItemDataProperty = FindItemDataProperty(ItemInfoProperty);
 		if (!WeaponDataProperty || !ItemDataProperty
+			|| !WeaponDataProperty->PropertyClass || !ItemDataProperty->PropertyClass
 			|| !Data->IsA(WeaponDataProperty->PropertyClass)
 			|| !Data->IsA(ItemDataProperty->PropertyClass))
 		{
@@ -95,12 +118,40 @@ namespace
 			return false;
 		}
 
+		UFunction* RecoverFunction = nullptr;
+		FIntProperty* RecoverCountParameter = nullptr;
+		int32 RecoverAmount = 0;
+		if (bDefault)
+		{
+			const FIntProperty* MaxCountProperty = FindFProperty<FIntProperty>(Data->GetClass(), TEXT("maxUsageCount"));
+			const FIntProperty* StartCountProperty = FindFProperty<FIntProperty>(Data->GetClass(), TEXT("startUsageCount"));
+			RecoverFunction = WeaponClass->FindFunctionByName(TEXT("Recover"));
+			RecoverCountParameter = RecoverFunction
+				? FindFProperty<FIntProperty>(RecoverFunction, TEXT("recoverCount"))
+				: nullptr;
+			if (!MaxCountProperty || !StartCountProperty || !RecoverCountParameter
+				|| !RecoverCountParameter->HasAnyPropertyFlags(CPF_Parm))
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Default weapon %s is missing ammo count data or Recover(recoverCount)."), *WeaponClass->GetName());
+				return false;
+			}
+			const int32 MaxCount = MaxCountProperty->GetPropertyValue_InContainer(Data);
+			const int32 StartCount = StartCountProperty->GetPropertyValue_InContainer(Data);
+			if (MaxCount < 0 || StartCount < 0)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Default weapon %s has a negative start or max ammo count."), *WeaponClass->GetName());
+				return false;
+			}
+			RecoverAmount = FMath::Max(0, MaxCount - StartCount);
+		}
+
 		const FTransform SpawnTransform = Owner->GetActorTransform();
-		AActor* Weapon = Owner->GetWorld()->SpawnActorDeferred<AActor>(
+		AActor* Weapon = World->SpawnActorDeferred<AActor>(
 			WeaponClass, SpawnTransform, Owner, Cast<APawn>(Owner),
 			ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
-		if (!Weapon)
+		if (!IsValid(Weapon))
 		{
+			UE_LOG(LogTemp, Warning, TEXT("Initial weapon %s could not be spawned for %s."), *WeaponClass->GetName(), *Owner->GetName());
 			return false;
 		}
 
@@ -108,32 +159,34 @@ namespace
 		void* ItemInfo = ItemInfoProperty->ContainerPtrToValuePtr<void>(Weapon);
 		ItemDataProperty->SetObjectPropertyValue_InContainer(ItemInfo, Data);
 		Weapon->FinishSpawning(SpawnTransform);
+		if (!IsValid(Weapon))
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Initial weapon %s was destroyed during spawning."), *WeaponClass->GetName());
+			return false;
+		}
 
 		if (bDefault)
 		{
-			// Recover adds this amount to the starting count and clamps it to maxUsageCount.
-			const FIntProperty* MaxCountProperty = FindFProperty<FIntProperty>(Data->GetClass(), TEXT("maxUsageCount"));
-			UFunction* RecoverFunction = Weapon->FindFunction(TEXT("Recover"));
-			FIntProperty* RecoverCountParameter = RecoverFunction
-				? FindFProperty<FIntProperty>(RecoverFunction, TEXT("recoverCount"))
-				: nullptr;
-			if (!MaxCountProperty || !RecoverCountParameter)
-			{
-				UE_LOG(LogTemp, Warning, TEXT("Default weapon %s has no maxUsageCount or Recover(recoverCount)."), *Weapon->GetName());
-				Weapon->Destroy();
-				return false;
-			}
-
+			// BP_HeldItem initializes ammo from startUsageCount before Recover runs.
 			FStructOnScope Parameters(RecoverFunction);
 			RecoverCountParameter->SetPropertyValue_InContainer(
-				Parameters.GetStructMemory(), MaxCountProperty->GetPropertyValue_InContainer(Data));
+				Parameters.GetStructMemory(), RecoverAmount);
 			Weapon->ProcessEvent(RecoverFunction, Parameters.GetStructMemory());
+			if (!IsValid(Weapon))
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Default weapon %s was destroyed while setting ammo."), *WeaponClass->GetName());
+				return false;
+			}
 		}
 
 		if (!PickupWeapon(Inventory, Weapon))
 		{
-			UE_LOG(LogTemp, Warning, TEXT("Initial weapon %s could not be picked up by %s."), *Weapon->GetName(), *Inventory->GetName());
-			Weapon->Destroy();
+			UE_LOG(LogTemp, Warning, TEXT("Initial weapon %s could not be picked up by %s."),
+				*GetNameSafe(Weapon), *GetNameSafe(Inventory));
+			if (IsValid(Weapon))
+			{
+				Weapon->Destroy();
+			}
 			return false;
 		}
 		return true;
@@ -143,18 +196,6 @@ namespace
 UInitialWeaponLoadoutComponent::UInitialWeaponLoadoutComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
-
-	FInitialWeaponEntry& Pistol = DefaultWeapons.AddDefaulted_GetRef();
-	Pistol.WeaponClass = TSoftClassPtr<AActor>(FSoftObjectPath(TEXT(
-		"/Game/QuakeLike_1_0/HeldItem/Gun/BP_Weapon_Pistol.BP_Weapon_Pistol_C")));
-	Pistol.WeaponData = TSoftObjectPtr<UPrimaryDataAsset>(FSoftObjectPath(TEXT(
-		"/Game/QuakeLike_1_0/Data/Item/DA_Pistol.DA_Pistol")));
-
-	FInitialWeaponEntry& MachineGun = GrantedWeapons.AddDefaulted_GetRef();
-	MachineGun.WeaponClass = TSoftClassPtr<AActor>(FSoftObjectPath(TEXT(
-		"/Game/QuakeLike_1_0/HeldItem/Gun/BP_Weapon_MachineGun.BP_Weapon_MachineGun_C")));
-	MachineGun.WeaponData = TSoftObjectPtr<UPrimaryDataAsset>(FSoftObjectPath(TEXT(
-		"/Game/QuakeLike_1_0/Data/Item/DA_MachineGun.DA_MachineGun")));
 }
 
 void UInitialWeaponLoadoutComponent::GrantLoadout()
@@ -162,6 +203,17 @@ void UInitialWeaponLoadoutComponent::GrantLoadout()
 	AActor* Owner = GetOwner();
 	if (!IsValid(Owner) || !Owner->HasAuthority() || bGrantedThisSpawn)
 	{
+		return;
+	}
+	if (!IsValid(Owner->GetWorld()))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Initial weapon loadout on %s has no valid world."), *Owner->GetName());
+		return;
+	}
+	UInitialWeaponLoadoutDataAsset* Data = LoadoutData.Get();
+	if (!IsValid(Data))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Initial weapon loadout on %s has no data asset."), *Owner->GetName());
 		return;
 	}
 
@@ -174,7 +226,7 @@ void UInitialWeaponLoadoutComponent::GrantLoadout()
 
 	bGrantedThisSpawn = true;
 	TSet<FSoftObjectPath> GrantedClasses;
-	for (const FInitialWeaponEntry& Entry : DefaultWeapons)
+	for (const FInitialWeaponEntry& Entry : Data->DefaultWeapons)
 	{
 		if (GrantedClasses.Contains(Entry.WeaponClass.ToSoftObjectPath()))
 		{
@@ -185,7 +237,7 @@ void UInitialWeaponLoadoutComponent::GrantLoadout()
 			GrantedClasses.Add(Entry.WeaponClass.ToSoftObjectPath());
 		}
 	}
-	for (const FInitialWeaponEntry& Entry : GrantedWeapons)
+	for (const FInitialWeaponEntry& Entry : Data->GrantedWeapons)
 	{
 		if (GrantedClasses.Contains(Entry.WeaponClass.ToSoftObjectPath()))
 		{
@@ -204,12 +256,17 @@ bool UInitialWeaponLoadoutComponent::IsDefaultWeapon(const AActor* Weapon) const
 	{
 		return false;
 	}
+	const UInitialWeaponLoadoutDataAsset* Loadout = LoadoutData.Get();
+	if (!IsValid(Loadout))
+	{
+		return false;
+	}
 
 	const FObjectPropertyBase* WeaponDataProperty = FindFProperty<FObjectPropertyBase>(Weapon->GetClass(), TEXT("weaponData"));
 	const UObject* Data = WeaponDataProperty
 		? WeaponDataProperty->GetObjectPropertyValue_InContainer(Weapon)
 		: nullptr;
-	for (const FInitialWeaponEntry& Entry : DefaultWeapons)
+	for (const FInitialWeaponEntry& Entry : Loadout->DefaultWeapons)
 	{
 		if ((Data && Entry.WeaponData.Get() == Data)
 			|| Entry.WeaponClass.Get() == Weapon->GetClass())
