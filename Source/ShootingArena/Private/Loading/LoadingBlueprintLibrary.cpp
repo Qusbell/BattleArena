@@ -72,7 +72,12 @@ void ULoadingBlueprintLibrary::BeginLoadingAndReturnToMainMenu(const UObject* Wo
 		if (CurrentWorld)
 		{
 			UGameplayStatics::SetGamePaused(CurrentWorld, false);
-			UGameplayStatics::OpenLevel(CurrentWorld, FName(TEXT("MainMenu_Level")));
+			// disconnect 가 이미 MainMenu_Level(GameDefaultMap)로 이동시켰다면 다시 열지 않습니다.
+			// 두 번 로드되면 첫 로드에서 bOpenMapSelectDirectly 가 소비돼 "레벨 선택"이 메인화면으로 보입니다.
+			if (!CurrentWorld->GetMapName().EndsWith(TEXT("MainMenu_Level")))
+			{
+				UGameplayStatics::OpenLevel(CurrentWorld, FName(TEXT("MainMenu_Level")));
+			}
 		}
 		return false;
 	}), 0.40f);
@@ -103,7 +108,12 @@ void ULoadingBlueprintLibrary::BeginLoadingAndLeaveMatchToMainMenu(const UObject
 		if (CurrentWorld)
 		{
 			UGameplayStatics::SetGamePaused(CurrentWorld, false);
-			UGameplayStatics::OpenLevel(CurrentWorld, FName(TEXT("MainMenu_Level")));
+			// disconnect 가 이미 MainMenu_Level(GameDefaultMap)로 이동시켰다면 다시 열지 않습니다.
+			// 두 번 로드되면 첫 로드에서 bOpenMapSelectDirectly 가 소비돼 "레벨 선택"이 메인화면으로 보입니다.
+			if (!CurrentWorld->GetMapName().EndsWith(TEXT("MainMenu_Level")))
+			{
+				UGameplayStatics::OpenLevel(CurrentWorld, FName(TEXT("MainMenu_Level")));
+			}
 		}
 		return false;
 	}), 0.40f);
