@@ -65,6 +65,13 @@ namespace
 		const FVector ParameterEnd = bMachineGun ? BeamEnd : FVector(BeamDistance, 0.0f, 0.0f);
 		SetNiagaraPositionIfPresent(Niagara, System, TEXT("User.BeamStart"), ParameterStart);
 		SetNiagaraPositionIfPresent(Niagara, System, TEXT("User.BeamEnd"), ParameterEnd);
+		if (!bMachineGun && !bTrail)
+		{
+			// SonicBomb lerps these world endpoints in Niagara so its authored Alpha
+			// controls the position without changing the rail beam's local endpoints.
+			SetNiagaraPositionIfPresent(Niagara, System, TEXT("User.SonicBombWorldStart"), BeamStart);
+			SetNiagaraPositionIfPresent(Niagara, System, TEXT("User.SonicBombWorldEnd"), BeamEnd);
+		}
 
 		if (!bTrail)
 		{
