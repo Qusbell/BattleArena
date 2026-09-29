@@ -43,7 +43,7 @@ namespace
 	bool SpawnNiagaraBeam(
 		UWorld* World, UNiagaraSystem* System, const FVector& BeamStart, const FVector& BeamEnd,
 		const FRotator& BeamRotation, float BeamDistance, float Duration, float Speed,
-		float MaxDistance, bool bMachineGun, bool bTrail)
+		float MaxDistance, bool bMachineGun, bool bTrail, bool bSeparateSonicBomb)
 	{
 		if (!System)
 		{
@@ -57,6 +57,12 @@ namespace
 		{
 			return false;
 		}
+		if (bSeparateSonicBomb)
+		{
+			// Older rail-gun beam/trail systems also contain this emitter. Suppress it
+			// only when a dedicated sonic-boom system is supplied, avoiding duplicates.
+			Niagara->SetEmitterEnable(TEXT("SonicBomb"), false);
+		}
 
 		// The rail-gun beam and trail are authored along local +X. The component is
 		// already positioned at the muzzle and rotated toward the trace endpoint.
@@ -65,13 +71,6 @@ namespace
 		const FVector ParameterEnd = bMachineGun ? BeamEnd : FVector(BeamDistance, 0.0f, 0.0f);
 		SetNiagaraPositionIfPresent(Niagara, System, TEXT("User.BeamStart"), ParameterStart);
 		SetNiagaraPositionIfPresent(Niagara, System, TEXT("User.BeamEnd"), ParameterEnd);
-		if (!bMachineGun && !bTrail)
-		{
-			// SonicBomb lerps these world endpoints in Niagara so its authored Alpha
-			// controls the position without changing the rail beam's local endpoints.
-			SetNiagaraPositionIfPresent(Niagara, System, TEXT("User.SonicBombWorldStart"), BeamStart);
-			SetNiagaraPositionIfPresent(Niagara, System, TEXT("User.SonicBombWorldEnd"), BeamEnd);
-		}
 
 		if (!bTrail)
 		{
@@ -81,6 +80,34 @@ namespace
 			SetNiagaraFloatIfPresent(Niagara, System, TEXT("User.LifeTime"), Duration);
 			SetNiagaraFloatIfPresent(Niagara, System, TEXT("User.MaxDistance"), MaxDistance);
 		}
+		Niagara->Activate(true);
+		return true;
+	}
+
+	bool SpawnNiagaraSonicBomb(UWorld* World, UNiagaraSystem* System,
+		const FVector& BeamStart, const FVector& BeamEnd, const FRotator& BeamRotation)
+	{
+		if (!System)
+		{
+			return false;
+		}
+
+		// The sonic boom is a separate world-space emitter. Keeping the system near
+		// the beam midpoint also keeps its initial component bounds near the effect.
+		UNiagaraComponent* Niagara = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			World, System, FMath::Lerp(BeamStart, BeamEnd, 0.5), BeamRotation,
+			FVector::OneVector, true, false, ENCPoolMethod::None, false);
+		if (!Niagara)
+		{
+			return false;
+		}
+
+		// Both naming schemes are supported so a SonicBomb-only system can reuse
+		// either the original Lerp bindings or the newer world-endpoint bindings.
+		SetNiagaraPositionIfPresent(Niagara, System, TEXT("User.BeamStart"), BeamStart);
+		SetNiagaraPositionIfPresent(Niagara, System, TEXT("User.BeamEnd"), BeamEnd);
+		SetNiagaraPositionIfPresent(Niagara, System, TEXT("User.SonicBombWorldStart"), BeamStart);
+		SetNiagaraPositionIfPresent(Niagara, System, TEXT("User.SonicBombWorldEnd"), BeamEnd);
 		Niagara->Activate(true);
 		return true;
 	}
@@ -96,7 +123,8 @@ bool UWeaponBeamEffectLibrary::PlayHitScanBeam(
 	float MachineGunSpeed,
 	float RailGunLifeTime,
 	float MachineGunFrontOffset,
-	UNiagaraSystem* RailGunTrailEffect)
+	UNiagaraSystem* RailGunTrailEffect,
+	UNiagaraSystem* RailGunSonicBombEffect)
 {
 	if (!WorldContextObject || BeamStart.ContainsNaN() || BeamEnd.ContainsNaN())
 	{
@@ -129,18 +157,21 @@ bool UWeaponBeamEffectLibrary::PlayHitScanBeam(
 	// Stop when its visible leading edge reaches the hit point, not when the origin does.
 	const float MachineGunTravelDistance = FMath::Max(BeamDistance - FrontOffset, 0.0f);
 	const float Duration = bMachineGun ? MachineGunTravelDistance / Speed : RailDuration;
+	const bool bSeparateSonicBomb = !bMachineGun && RailGunSonicBombEffect != nullptr;
 	bool bSpawnedAny = false;
 
 	bSpawnedAny = SpawnNiagaraBeam(
 		World, NiagaraEffect, BeamStart, BeamEnd, BeamRotation,
 		BeamDistance, Duration, Speed, bMachineGun ? MachineGunTravelDistance : BeamDistance,
-		bMachineGun, false);
+		bMachineGun, false, bSeparateSonicBomb);
 	if (!bMachineGun)
 	{
 		// Keep the trail system's authored lifetime so it can linger after the beam.
 		bSpawnedAny |= SpawnNiagaraBeam(
 			World, RailGunTrailEffect, BeamStart, BeamEnd, BeamRotation,
-			BeamDistance, Duration, Speed, BeamDistance, false, true);
+			BeamDistance, Duration, Speed, BeamDistance, false, true, bSeparateSonicBomb);
+		bSpawnedAny |= SpawnNiagaraSonicBomb(
+			World, RailGunSonicBombEffect, BeamStart, BeamEnd, BeamRotation);
 	}
 
 	if (CascadeEffect)
