@@ -1,5 +1,7 @@
 #include "MyPlayerState.h"
+#include "Audio/BGMSubsystem.h"
 #include "MyReconnectionGameMode.h"
+#include "Engine/GameInstance.h"
 #include "Net/UnrealNetwork.h"
 #include "Net/Core/PushModel/PushModel.h"
 #include "GameFramework/GameStateBase.h"
@@ -58,11 +60,33 @@ void AMyPlayerState::Multicast_UpdateReturnToLobbyVoteCounts_Implementation(int3
 
 void AMyPlayerState::Server_RequestReturnToLobbyVotesRefresh_Implementation()
 {
+	// WBP_Result가 Construct될 때 이미 이 RPC를 호출합니다. 이 기존 신호를 이용해
+	// 별도의 Blueprint 노드 추가 없이 모든 로컬 클라이언트의 Result BGM을 시작합니다.
+	Multicast_PlayResultBGM();
+
 	if (UWorld* World = GetWorld())
 	{
 		if (AMyReconnectionGameMode* GameMode = World->GetAuthGameMode<AMyReconnectionGameMode>())
 		{
 			GameMode->CheckReturnToLobbyVotes();
+		}
+	}
+}
+
+void AMyPlayerState::Multicast_PlayResultBGM_Implementation()
+{
+	if (IsRunningDedicatedServer())
+	{
+		return;
+	}
+
+	UGameInstance* GameInstance = GetWorld() ? GetWorld()->GetGameInstance() : nullptr;
+	if (GameInstance)
+	{
+		if (UBGMSubsystem* BGM = GameInstance->GetSubsystem<UBGMSubsystem>())
+		{
+			BGM->PlayResultBGM();
+			UE_LOG(LogTemp, Log, TEXT("[BGM] Result widget shown; Result BGM requested."));
 		}
 	}
 }

@@ -16,6 +16,7 @@
 					"displayName": "Character_Name",
 					"cppType": "FName",
 					"order": 0,
+					"tooltip": "캐릭터의 이름",
 					"advancedDisplay": false,
 					"type": "name"
 				},
@@ -24,15 +25,26 @@
 					"displayName": "Character_Sprite",
 					"cppType": "UTexture2D*",
 					"order": 1,
+					"tooltip": "캐릭터의 초상화",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Engine.Texture2D"
 				},
 				{
+					"name": "character_Modeling",
+					"displayName": "Character_Modeling",
+					"cppType": "FName",
+					"order": 2,
+					"tooltip": "캐릭터의 외형 모델링",
+					"advancedDisplay": false,
+					"type": "name"
+				},
+				{
 					"name": "characteristic_Id",
 					"displayName": "Characteristic_ID",
 					"cppType": "TArray",
-					"order": 2,
+					"order": 3,
+					"tooltip": "난이도 별 캐릭터에게 적용될 성격값",
 					"advancedDisplay": false,
 					"type": "array",
 					"element":

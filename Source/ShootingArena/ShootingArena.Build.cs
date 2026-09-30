@@ -21,10 +21,13 @@ public class ShootingArena : ModuleRules
             "SlateCore",
             "Sockets",
             "Networking",
-             "GameplayTags"
+            "GameplayTags",
+            "Niagara",
+            "Json",
+            "JsonUtilities"
         } );
 
-        PrivateDependencyModuleNames.AddRange(new string[] { "NetCore" });
+        PrivateDependencyModuleNames.AddRange(new string[] { "NetCore", "RHI" });
 
         // Editor 전용 기능입니다.
         // 패키징/Shipping 빌드에는 UnrealEd와 GameplayValidatorEditor가 포함되지 않습니다.

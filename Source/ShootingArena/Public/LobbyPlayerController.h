@@ -30,6 +30,12 @@ public:
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Lobby")
 	void Server_SetReady(bool bReady);
 
+	// 본인이 차지한 슬롯의 준비 상태를 "토글"합니다. 클라이언트는 현재 상태를 몰라도 되고,
+	// 서버가 authoritative Slots 에서 직접 뒤집습니다. (Server_SetReady 와 달리 클라 측 슬롯 조회가
+	// 필요 없어서, 접속 직후 슬롯 리플리케이션이 늦어 인덱스를 못 구하는 상황에서도 안전합니다.)
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Lobby")
+	void Server_ToggleReady();
+
 	// 본인의 표시 이름(닉네임)을 설정합니다. PlayerState와, 본인이 차지한 슬롯의 DisplayName을 함께 갱신합니다.
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Lobby")
 	void Server_SetPlayerName(const FString& NewName);

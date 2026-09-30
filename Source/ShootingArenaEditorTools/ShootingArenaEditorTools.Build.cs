@@ -14,7 +14,12 @@ public class ShootingArenaEditorTools : ModuleRules
                 "CoreUObject",
                 "Engine",
                 "UnrealEd",
-                "AssetRegistry"
+                "AssetRegistry",
+                "Slate",
+                "SlateCore",
+                "LevelEditor",
+                "ContentBrowser",
+                "ToolMenus"
             }
         );
     }

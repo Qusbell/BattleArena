@@ -17,6 +17,7 @@
 
 #include "Editor.h"
 #include "UObject/StrongObjectPtr.h"
+#include "DressSwapTool.h"
 
 
 DEFINE_LOG_CATEGORY_STATIC(LogBPRefreshTool, Log, All);
@@ -28,6 +29,9 @@ public:
 
     virtual void StartupModule() override
     {
+        DressSwapTool = MakeUnique<FDressSwapTool>();
+        DressSwapTool->Register();
+
         RefreshBlueprintsCommand =
             MakeUnique<FAutoConsoleCommand>(
                 TEXT("ShootingArena.RefreshBlueprints"),
@@ -52,6 +56,11 @@ public:
 
     virtual void ShutdownModule() override
     {
+        if (DressSwapTool)
+        {
+            DressSwapTool->Unregister();
+            DressSwapTool.Reset();
+        }
         RefreshBlueprintsCommand.Reset();
     }
 
@@ -59,6 +68,7 @@ public:
 private:
 
     TUniquePtr<FAutoConsoleCommand> RefreshBlueprintsCommand;
+    TUniquePtr<FDressSwapTool> DressSwapTool;
 
 
     void RefreshBlueprints(const TArray<FString>& Args)

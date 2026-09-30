@@ -39,6 +39,12 @@ void UCharacterAppearanceComponent::GetLifetimeReplicatedProps(TArray<FLifetimeP
 
 bool UCharacterAppearanceComponent::ApplyConfiguredAppearance()
 {
+	// DT_Character에서 런타임으로 Row Name을 전달하는 경로에서는 기존 설정 Row가 없어도 정상입니다.
+	if (characterDataRow.DataTable == nullptr || characterDataRow.RowName.IsNone())
+	{
+		return false;
+	}
+
 	const FCharacterAppearanceRow* characterRow = characterDataRow.GetRow<FCharacterAppearanceRow>(TEXT("Character appearance initialization"));
 	if (characterRow == nullptr || characterRow->modelingId.IsEmpty())
 	{
@@ -72,6 +78,65 @@ bool UCharacterAppearanceComponent::SetModelingId(const FString& newModelingId)
 	return ApplyModelingIdInternal(activeModelingId);
 }
 
+bool UCharacterAppearanceComponent::SetModelingRowName(const FName newModelingRowName)
+{
+	if (newModelingRowName.IsNone())
+	{
+		UE_LOG(LogCharacterAppearance, Warning, TEXT("빈 Modeling Row Name은 적용할 수 없습니다. Owner=%s"), *GetNameSafe(GetOwner()));
+		return false;
+	}
+
+	if (GetOwner() == nullptr || !GetOwner()->HasAuthority())
+	{
+		UE_LOG(LogCharacterAppearance, Warning, TEXT("SetModelingRowName은 Server에서 호출해야 합니다. Owner=%s"), *GetNameSafe(GetOwner()));
+		return false;
+	}
+
+	activeModelingId = newModelingRowName.ToString();
+	return ApplyModelingIdInternal(activeModelingId);
+}
+
+bool UCharacterAppearanceComponent::SetModelingRowHandle(const FDataTableRowHandle& newModelingRowHandle)
+{
+	if (newModelingRowHandle.DataTable == nullptr || newModelingRowHandle.RowName.IsNone())
+	{
+		UE_LOG(LogCharacterAppearance, Warning,
+			TEXT("유효한 Modeling Data Table과 Row가 지정되지 않았습니다. Owner=%s"),
+			*GetNameSafe(GetOwner()));
+		return false;
+	}
+
+	if (modelingDataTable == nullptr)
+	{
+		UE_LOG(LogCharacterAppearance, Warning,
+			TEXT("CharacterAppearance의 ModelingDataTable이 설정되지 않았습니다. Handle Table=%s, Owner=%s"),
+			*GetNameSafe(newModelingRowHandle.DataTable),
+			*GetNameSafe(GetOwner()));
+		return false;
+	}
+
+	if (newModelingRowHandle.DataTable != modelingDataTable)
+	{
+		UE_LOG(LogCharacterAppearance, Warning,
+			TEXT("Character_Modeling Handle의 DataTable(%s)이 CharacterAppearance의 ModelingDataTable(%s)과 다릅니다. Owner=%s"),
+			*GetNameSafe(newModelingRowHandle.DataTable),
+			*GetNameSafe(modelingDataTable),
+			*GetNameSafe(GetOwner()));
+		return false;
+	}
+
+	if (newModelingRowHandle.GetRow<FCharacterModelingRow>(TEXT("Character modeling row handle validation")) == nullptr)
+	{
+		UE_LOG(LogCharacterAppearance, Warning,
+			TEXT("Character_Modeling Handle의 Row '%s'가 유효하지 않습니다. Owner=%s"),
+			*newModelingRowHandle.RowName.ToString(),
+			*GetNameSafe(GetOwner()));
+		return false;
+	}
+
+	return SetModelingRowName(newModelingRowHandle.RowName);
+}
+
 bool UCharacterAppearanceComponent::ApplyDeathAppearance()
 {
 	FCharacterModelingRow modelingRow;
@@ -89,8 +154,11 @@ bool UCharacterAppearanceComponent::GetActiveModelingRow(FCharacterModelingRow& 
 	FString modelingIdToResolve = activeModelingId;
 	if (modelingIdToResolve.IsEmpty())
 	{
-		const FCharacterAppearanceRow* characterRow = characterDataRow.GetRow<FCharacterAppearanceRow>(TEXT("Character appearance lookup"));
-		modelingIdToResolve = characterRow != nullptr ? characterRow->modelingId : FString();
+		if (characterDataRow.DataTable != nullptr && !characterDataRow.RowName.IsNone())
+		{
+			const FCharacterAppearanceRow* characterRow = characterDataRow.GetRow<FCharacterAppearanceRow>(TEXT("Character appearance lookup"));
+			modelingIdToResolve = characterRow != nullptr ? characterRow->modelingId : FString();
+		}
 	}
 
 	return FindModelingRow(modelingIdToResolve, outModelingRow);
@@ -122,6 +190,19 @@ bool UCharacterAppearanceComponent::FindModelingRow(const FString& modelingId, F
 		return false;
 	}
 
+	// DEV-26-0002: DT_Character.Character_Modeling은 DT_CharacterModeling의 Row Name을 참조합니다.
+	// Row Name으로 직접 찾으면 별도의 ID 중복 입력과 전체 Row 순회가 필요하지 않습니다.
+	const FName modelingRowName(*modelingId);
+	if (const FCharacterModelingRow* row = modelingDataTable->FindRow<FCharacterModelingRow>(
+		modelingRowName,
+		TEXT("Character modeling row lookup"),
+		false))
+	{
+		outModelingRow = *row;
+		return true;
+	}
+
+	// 기존 DT_CharacterAppearance 및 modelingId 기반 Blueprint와의 하위 호환 경로입니다.
 	const TArray<FName> rowNames = modelingDataTable->GetRowNames();
 	for (const FName& rowName : rowNames)
 	{
@@ -133,7 +214,10 @@ bool UCharacterAppearanceComponent::FindModelingRow(const FString& modelingId, F
 		}
 	}
 
-	UE_LOG(LogCharacterAppearance, Warning, TEXT("ModelingDataTable에서 modelingId '%s'를 찾지 못했습니다. Owner=%s"), *modelingId, *GetNameSafe(GetOwner()));
+	UE_LOG(LogCharacterAppearance, Warning,
+		TEXT("ModelingDataTable에서 Row Name 또는 modelingId '%s'를 찾지 못했습니다. Owner=%s"),
+		*modelingId,
+		*GetNameSafe(GetOwner()));
 	return false;
 }
 
