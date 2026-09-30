@@ -1,4 +1,5 @@
 #include "Audio/BGMSubsystem.h"
+#include "Audio/BGMPlayback.h"
 
 #include "Components/AudioComponent.h"
 #include "Engine/AssetManager.h"
@@ -107,6 +108,7 @@ void UBGMSubsystem::StopBGM(float FadeOutTime)
 	CurrentSound = nullptr;
 	CurrentState = EBGMState::None;
 	bCurrentTrackLoops = false;
+	bUseCompletionLoop = false;
 	UE_LOG(LogTemp, Log, TEXT("[BGM] Stop (FadeOut=%.2f)."), Fade);
 }
 
@@ -191,7 +193,7 @@ void UBGMSubsystem::PlayConfiguredTrack(const FBGMTrack& Track, EBGMState NewSta
 void UBGMSubsystem::PlayLoadedTrack(USoundBase* Sound, const FBGMTrack& Track, EBGMState NewState, FString DebugName, uint32 RequestId)
 {
 	if (RequestId != PlayRequestId || !IsValid(Sound) || !CanPlayAudio()) return;
-	if (CurrentSound == Sound && IsValid(ActiveComponent) && ActiveComponent->IsPlaying())
+	if (CurrentSound == Sound && bCurrentTrackLoops == Track.bLoop && IsValid(ActiveComponent) && ActiveComponent->IsPlaying())
 	{
 		CurrentState = NewState;
 		UE_LOG(LogTemp, Log, TEXT("[BGM] %s already playing; keeping playback position."), *DebugName);
@@ -213,13 +215,22 @@ void UBGMSubsystem::PlayLoadedTrack(USoundBase* Sound, const FBGMTrack& Track, E
 	}
 
 	UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
-	ActiveComponent = UGameplayStatics::SpawnSound2D(World, Sound, Track.VolumeMultiplier, 1.0f, 0.0f, nullptr, true, false);
+	USoundBase* PlaybackSound = Track.bLoop ? BGMPlayback::CreateLoopingSound(this, Sound) : Sound;
+	// Create without auto-playing: start once below with the intended fade.
+	ActiveComponent = UGameplayStatics::CreateSound2D(World, PlaybackSound, Track.VolumeMultiplier, 1.0f, 0.0f, nullptr, true, false);
 	if (!IsValid(ActiveComponent))
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[BGM] Failed to spawn %s (%s)."), *DebugName, *GetNameSafe(Sound));
 		return;
 	}
-	ActiveComponent->OnAudioFinishedNative.AddUObject(this, &UBGMSubsystem::HandleAudioFinished);
+	// SoundWave/SoundCue repeat on the audio thread, without a game-thread callback.
+	// Keep the legacy fallback only for unsupported sources such as MetaSounds.
+	bUseCompletionLoop = Track.bLoop && PlaybackSound == Sound;
+	if (bUseCompletionLoop)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[BGM] %s needs looping authored in its own sound graph for Pause-safe playback (%s)."), *DebugName, *GetNameSafe(Sound));
+		ActiveComponent->OnAudioFinishedNative.AddUObject(this, &UBGMSubsystem::HandleAudioFinished);
+	}
 	if (FadeIn > 0.0f) ActiveComponent->FadeIn(FadeIn, Track.VolumeMultiplier);
 	else ActiveComponent->Play();
 
@@ -232,8 +243,9 @@ void UBGMSubsystem::PlayLoadedTrack(USoundBase* Sound, const FBGMTrack& Track, E
 
 void UBGMSubsystem::HandleAudioFinished(UAudioComponent* FinishedComponent)
 {
-	// Fade Out된 이전 채널의 종료 알림은 무시합니다. 현재 활성 채널의 자연 종료만 반복합니다.
-	if (bCurrentTrackLoops && IsValid(FinishedComponent) && FinishedComponent == ActiveComponent && CurrentState != EBGMState::None)
+	// Unsupported sound types only. Game-thread completion is deferred during Pause,
+	// so standard BGM must use CreateLoopingSound instead of relying on this callback.
+	if (bUseCompletionLoop && bCurrentTrackLoops && IsValid(FinishedComponent) && FinishedComponent == ActiveComponent && CurrentState != EBGMState::None)
 	{
 		FinishedComponent->Play(0.0f);
 		UE_LOG(LogTemp, Verbose, TEXT("[BGM] Loop restart: %s"), *GetNameSafe(CurrentSound));
