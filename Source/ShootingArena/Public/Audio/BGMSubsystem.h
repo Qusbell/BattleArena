@@ -108,6 +108,7 @@ private:
 	float CurrentTrackFadeOut = 1.0f;
 	float BGMVolume = 1.0f;
 	bool bCurrentTrackLoops = false;
+	bool bUseCompletionLoop = false;
 	uint32 PlayRequestId = 0;
 	FDelegateHandle PreLoadMapHandle;
 	FDelegateHandle PostLoadMapHandle;
