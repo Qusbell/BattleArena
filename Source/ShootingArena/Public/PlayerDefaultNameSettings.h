@@ -15,7 +15,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Nickname")
 	FString DefaultNamePrefix = TEXT("Player");
 
-	/** true면 접두어 뒤에 (현재 접속자와 겹치지 않는 가장 작은) 번호를 붙입니다. false면 접두어만 사용합니다. */
+	/** 멀티플레이: true면 접두어 뒤에 (현재 접속자와 겹치지 않는 가장 작은) 번호를 붙입니다. false면 접두어만 사용합니다. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Nickname")
-	bool bAppendNumber = true;
+	bool bAppendNumberInMultiplayer = true;
+
+	/** 캠페인(싱글): true면 번호를 붙입니다. 기본값 false = 접두어만 사용. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Nickname")
+	bool bAppendNumberInCampaign = false;
 };

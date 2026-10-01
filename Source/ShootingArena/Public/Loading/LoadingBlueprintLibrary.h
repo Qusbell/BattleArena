@@ -14,6 +14,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Loading", meta = (WorldContext = "WorldContextObject"))
 	static void BeginLoadingScreen(const UObject* WorldContextObject, const FString& StatusText);
 
+	/** BeginLoadingScreen 으로 띄운 로딩 화면을 닫습니다. 서버 대기 실패/타임아웃 시 사용합니다. */
+	UFUNCTION(BlueprintCallable, Category = "Loading", meta = (WorldContext = "WorldContextObject"))
+	static void EndLoadingScreen(const UObject* WorldContextObject);
+
 	/** 로딩 화면을 먼저 한 프레임 이상 표시한 뒤 로컬 맵을 엽니다. Pause 중에도 안전합니다. */
 	UFUNCTION(BlueprintCallable, Category = "Loading", meta = (WorldContext = "WorldContextObject"))
 	static void BeginLoadingAndOpenLevel(const UObject* WorldContextObject, const FString& LevelName, const FString& StatusText);

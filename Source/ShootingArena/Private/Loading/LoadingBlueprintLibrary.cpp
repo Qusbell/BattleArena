@@ -23,6 +23,19 @@ void ULoadingBlueprintLibrary::BeginLoadingScreen(const UObject* WorldContextObj
 	}
 }
 
+void ULoadingBlueprintLibrary::EndLoadingScreen(const UObject* WorldContextObject)
+{
+	UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull) : nullptr;
+	if (!World) return;
+	if (UGameInstance* GameInstance = World->GetGameInstance())
+	{
+		if (ULoadingScreenSubsystem* Subsystem = GameInstance->GetSubsystem<ULoadingScreenSubsystem>())
+		{
+			Subsystem->EndExternalLoading();
+		}
+	}
+}
+
 void ULoadingBlueprintLibrary::BeginLoadingAndOpenLevel(const UObject* WorldContextObject, const FString& LevelName, const FString& StatusText)
 {
 	UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull) : nullptr;

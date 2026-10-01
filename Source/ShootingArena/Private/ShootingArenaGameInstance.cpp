@@ -47,14 +47,14 @@ void UShootingArenaGameInstance::HandlePreLoadMap(const FString& MapName)
 	}
 }
 
-FString UShootingArenaGameInstance::MakeDefaultPlayerName() const
+FString UShootingArenaGameInstance::MakeDefaultPlayerName(bool bCampaign) const
 {
 	FString Prefix = TEXT("Player");
-	bool bAppendNumber = true;
+	bool bAppendNumber = !bCampaign;
 	if (PlayerDefaultNameSettings)
 	{
 		Prefix = PlayerDefaultNameSettings->DefaultNamePrefix;
-		bAppendNumber = PlayerDefaultNameSettings->bAppendNumber;
+		bAppendNumber = bCampaign ? PlayerDefaultNameSettings->bAppendNumberInCampaign : PlayerDefaultNameSettings->bAppendNumberInMultiplayer;
 	}
 
 	if (!bAppendNumber)
