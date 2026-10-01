@@ -283,7 +283,7 @@ bool ULocalDedicatedServerLibrary::StartLocalDedicatedServer(
 
     // Ready 파일의 "절대경로"를 서버 프로세스에 전달합니다.
     const FString Params = FString::Printf(
-        TEXT("\"%s\" %s -game -server -log -port=%d -LocalServerReadyFile=\"%s\""),
+        TEXT("\"%s\" %s -game -server -log -NoLiveCoding -port=%d -LocalServerReadyFile=\"%s\""),
         *ProjectFilePath,
         *MapName,
         Port,
@@ -623,7 +623,7 @@ bool ULocalDedicatedServerLibrary::StartMatchServer(const FString& MapName, int3
         );
 
     const FString Params = FString::Printf(
-        TEXT("\"%s\" %s -server -log -port=%d -LocalServerReadyFile=\"%s\""),
+        TEXT("\"%s\" %s -server -log -NoLiveCoding -port=%d -LocalServerReadyFile=\"%s\""),
         *ProjectFilePath,
         *MapName,
         Port,
@@ -773,4 +773,37 @@ bool ULocalDedicatedServerLibrary::IsLocalIPAddress(const FString& IPAddress)
         *Trimmed);
 
     return false;
+}
+
+bool ULocalDedicatedServerLibrary::IsValidIPAddress(const FString& IPAddress)
+{
+    const FString Trimmed = IPAddress.TrimStartAndEnd();
+
+    if (Trimmed.Equals(TEXT("localhost"), ESearchCase::IgnoreCase))
+    {
+        return true;
+    }
+
+    TArray<FString> Octets;
+    Trimmed.ParseIntoArray(Octets, TEXT("."), false);
+
+    if (Octets.Num() != 4)
+    {
+        return false;
+    }
+
+    for (const FString& Octet : Octets)
+    {
+        if (Octet.IsEmpty() || Octet.Len() > 3 || !Octet.IsNumeric() || Octet.Contains(TEXT("-")))
+        {
+            return false;
+        }
+
+        if (FCString::Atoi(*Octet) > 255)
+        {
+            return false;
+        }
+    }
+
+    return true;
 }

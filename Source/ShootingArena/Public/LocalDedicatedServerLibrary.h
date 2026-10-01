@@ -114,4 +114,13 @@ public:
 	*/
 	UFUNCTION(BlueprintPure, Category = "Server|LocalDedicatedServer", meta = (Keywords = "Local IP Address Host Self"))
 	static bool IsLocalIPAddress(const FString& IPAddress);
+
+	/**
+	* 입력한 문자열이 접속 가능한 IP 형식인지 검사합니다.
+	* (IPv4 "a.b.c.d" — 각 0~255, 앞뒤 공백 무시 — 또는 "localhost". 빈 문자열은 false)
+	*
+	* IP 입력 화면에서 접속 버튼을 눌렀을 때, 잘못된 입력이면 경고를 띄우는 데 씁니다.
+	*/
+	UFUNCTION(BlueprintPure, Category = "Server|LocalDedicatedServer", meta = (Keywords = "Valid IP Address Check Format"))
+	static bool IsValidIPAddress(const FString& IPAddress);
 };
