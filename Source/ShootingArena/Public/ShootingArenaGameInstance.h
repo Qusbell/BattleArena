@@ -31,7 +31,7 @@ public:
 	TObjectPtr<UPlayerDefaultNameSettings> PlayerDefaultNameSettings;
 
 	/** 기본 닉네임을 만듭니다. 현재 월드의 접속자 이름과 겹치지 않는 번호를 붙입니다. 서버 전용입니다. */
-	FString MakeDefaultPlayerName() const;
+	FString MakeDefaultPlayerName(bool bCampaign) const;
 
 	// NetworkAddress(PlayerState::SavedNetworkAddress)를 키로 닉네임을 저장합니다. 서버 전용입니다.
 	UFUNCTION(BlueprintCallable, Category = "Player")

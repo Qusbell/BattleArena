@@ -19,6 +19,8 @@ public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
 	void BeginExternalLoading(const FString& StatusText);
+	/** BeginExternalLoading 으로 띄운 로딩 화면을 호출자가 직접 닫습니다 (대기 실패/타임아웃용). */
+	void EndExternalLoading() { HideLoadingScreen(); }
 
 private:
 	void HandlePreLoadMap(const FString& MapName);
