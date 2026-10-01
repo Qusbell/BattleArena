@@ -68,10 +68,26 @@
 			"rowStruct": "/Game/QuakeLike_1_0/AI/LSH_AI_Table/02_AI_Struct/ST_Characteristic.ST_Characteristic",
 			"properties": [
 				{
+					"name": "attack_Skill",
+					"displayName": "Attack_Skill",
+					"cppType": "double",
+					"order": 0,
+					"tooltip": "봇의 이동 숙련도",
+					"advancedDisplay": false,
+					"constraints":
+					{
+						"clampMin": "0",
+						"clampMax": "1",
+						"uiMin": "0",
+						"uiMax": "1"
+					},
+					"type": "double"
+				},
+				{
 					"name": "aim_Skill",
 					"displayName": "Aim_Skill",
 					"cppType": "double",
-					"order": 0,
+					"order": 1,
 					"tooltip": "봇이 적의 움직임을 얼마나 잘 예측하고 조준하는지 결정",
 					"advancedDisplay": false,
 					"constraints":
@@ -87,7 +103,7 @@
 					"name": "aim_Accuracy",
 					"displayName": "Aim_Accuracy",
 					"cppType": "double",
-					"order": 1,
+					"order": 2,
 					"tooltip": "봇의 사격 실력을 결정하는 정확도",
 					"advancedDisplay": false,
 					"constraints":
@@ -103,7 +119,7 @@
 					"name": "view_Max_Change",
 					"displayName": "View_Max_Change",
 					"cppType": "int32",
-					"order": 2,
+					"order": 3,
 					"tooltip": "1초당 봇이 각도를 얼마나 회전할 수 있는지 결정하는 각속도 한계치",
 					"advancedDisplay": false,
 					"constraints":
@@ -119,7 +135,7 @@
 					"name": "reactionTime",
 					"displayName": "ReactionTime",
 					"cppType": "double",
-					"order": 3,
+					"order": 4,
 					"tooltip": "봇의 반응 속도",
 					"advancedDisplay": false,
 					"constraints":
@@ -135,7 +151,7 @@
 					"name": "aggression",
 					"displayName": "Aggression",
 					"cppType": "double",
-					"order": 4,
+					"order": 5,
 					"tooltip": "봇이 전투와 관련된 목표에 보정을 주는 값",
 					"advancedDisplay": false,
 					"constraints":
@@ -151,7 +167,7 @@
 					"name": "self_Preservation",
 					"displayName": "Self_Preservation",
 					"cppType": "double",
-					"order": 5,
+					"order": 6,
 					"tooltip": "봇이 생존과 관련된 목표에 보정을 주는 값",
 					"advancedDisplay": false,
 					"constraints":
@@ -167,7 +183,7 @@
 					"name": "fire_Throttle",
 					"displayName": "Fire_Throttle",
 					"cppType": "double",
-					"order": 6,
+					"order": 7,
 					"tooltip": "봇의 사격 딜레이 수치",
 					"advancedDisplay": false,
 					"constraints":
@@ -182,21 +198,6 @@
 				{
 					"name": "aggression_Threshold",
 					"displayName": "Aggression_Threshold",
-					"cppType": "double",
-					"order": 7,
-					"advancedDisplay": false,
-					"constraints":
-					{
-						"clampMin": "0",
-						"clampMax": "1",
-						"uiMin": "0",
-						"uiMax": "1"
-					},
-					"type": "double"
-				},
-				{
-					"name": "attack_Skill",
-					"displayName": "Attack_Skill",
 					"cppType": "double",
 					"order": 8,
 					"advancedDisplay": false,
