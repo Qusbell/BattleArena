@@ -24,7 +24,9 @@ public class ShootingArena : ModuleRules
             "GameplayTags",
             "Niagara",
             "Json",
-            "JsonUtilities"
+            "JsonUtilities",
+            "AnimGraphRuntime",
+            "AnimationCore"
         } );
 
         PrivateDependencyModuleNames.AddRange(new string[] { "NetCore", "RHI" });

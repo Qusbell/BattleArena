@@ -55,6 +55,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Lobby")
 	void CheckReturnToLobbyVotes();
 
+	/** 캠페인(싱글) 모드 GameMode면 true. 기본 닉네임 번호 부여 여부를 캠페인/멀티 별도로 고르기 위한 구분값입니다. 캠페인용 GameMode BP(BP_QuakeAIGameMode 등) 클래스 기본값에서 켭니다. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Nickname")
+	bool bIsCampaignMode = false;
+
 	// 이 레벨이 열릴 때 붙은 URL 옵션 전체를 반환합니다 (예: "?AIEasy=2?AINormal=1?AIHard=0").
 	// AGameModeBase::OptionsString은 protected라서 블루프린트에서 못 읽는데,
 	// 매치 서버(BP_MultiplayerAIGameMode)가 스폰될 때 맵 이름 뒤에 붙여 넘긴

@@ -42,8 +42,8 @@ namespace
 
 	bool SpawnNiagaraBeam(
 		UWorld* World, UNiagaraSystem* System, const FVector& BeamStart, const FVector& BeamEnd,
-		const FRotator& BeamRotation, float BeamDistance, float Duration, float Speed,
-		float MaxDistance, bool bMachineGun, bool bTrail, bool bSeparateSonicBomb)
+		const FRotator& BeamRotation, float BeamDistance, float Duration,
+		bool bTrail, bool bSuppressSonicBomb)
 	{
 		if (!System)
 		{
@@ -57,28 +57,26 @@ namespace
 		{
 			return false;
 		}
-		if (bSeparateSonicBomb)
+		if (bSuppressSonicBomb)
 		{
 			// Older rail-gun beam/trail systems also contain this emitter. Suppress it
-			// only when a dedicated sonic-boom system is supplied, avoiding duplicates.
+			// for the machine gun or when a dedicated sonic-boom system is supplied.
 			Niagara->SetEmitterEnable(TEXT("SonicBomb"), false);
 		}
 
-		// The rail-gun beam and trail are authored along local +X. The component is
+		// Instant beam effects are authored along local +X. The component is
 		// already positioned at the muzzle and rotated toward the trace endpoint.
 		// Passing a world-space endpoint here would apply that transform a second time.
-		const FVector ParameterStart = bMachineGun ? BeamStart : FVector::ZeroVector;
-		const FVector ParameterEnd = bMachineGun ? BeamEnd : FVector(BeamDistance, 0.0f, 0.0f);
-		SetNiagaraPositionIfPresent(Niagara, System, TEXT("User.BeamStart"), ParameterStart);
-		SetNiagaraPositionIfPresent(Niagara, System, TEXT("User.BeamEnd"), ParameterEnd);
+		SetNiagaraPositionIfPresent(Niagara, System, TEXT("User.BeamStart"), FVector::ZeroVector);
+		SetNiagaraPositionIfPresent(Niagara, System, TEXT("User.BeamEnd"), FVector(BeamDistance, 0.0f, 0.0f));
 
 		if (!bTrail)
 		{
 			SetNiagaraFloatIfPresent(Niagara, System, TEXT("User.BeamDistance"), BeamDistance);
 			SetNiagaraFloatIfPresent(Niagara, System, TEXT("User.BeamLifeTime"), Duration);
-			SetNiagaraFloatIfPresent(Niagara, System, TEXT("User.Speed"), bMachineGun ? Speed : 0.0f);
+			SetNiagaraFloatIfPresent(Niagara, System, TEXT("User.Speed"), 0.0f);
 			SetNiagaraFloatIfPresent(Niagara, System, TEXT("User.LifeTime"), Duration);
-			SetNiagaraFloatIfPresent(Niagara, System, TEXT("User.MaxDistance"), MaxDistance);
+			SetNiagaraFloatIfPresent(Niagara, System, TEXT("User.MaxDistance"), BeamDistance);
 		}
 		Niagara->Activate(true);
 		return true;
@@ -124,7 +122,8 @@ bool UWeaponBeamEffectLibrary::PlayHitScanBeam(
 	float RailGunLifeTime,
 	float MachineGunFrontOffset,
 	UNiagaraSystem* RailGunTrailEffect,
-	UNiagaraSystem* RailGunSonicBombEffect)
+	UNiagaraSystem* RailGunSonicBombEffect,
+	float MachineGunBeamLifeTime)
 {
 	if (!WorldContextObject || BeamStart.ContainsNaN() || BeamEnd.ContainsNaN())
 	{
@@ -146,30 +145,25 @@ bool UWeaponBeamEffectLibrary::PlayHitScanBeam(
 
 	const FRotator BeamRotation = BeamDelta.Rotation();
 	const float BeamDistance = static_cast<float>(Distance);
-	const float Speed = FMath::IsFinite(MachineGunSpeed) && MachineGunSpeed > 0.0f
-		? MachineGunSpeed : 12000.0f;
-	const float RailDuration = FMath::IsFinite(RailGunLifeTime) && RailGunLifeTime > 0.0f
-		? RailGunLifeTime : 0.2f;
-	const bool bMachineGun = Playback == EWeaponBeamPlayback::MachineGun;
-	const float FrontOffset = FMath::IsFinite(MachineGunFrontOffset)
-		? FMath::Max(MachineGunFrontOffset, 0.0f) : 0.0f;
-	// Niagara moves the particle's origin, but renders the tracer ahead of that origin.
-	// Stop when its visible leading edge reaches the hit point, not when the origin does.
-	const float MachineGunTravelDistance = FMath::Max(BeamDistance - FrontOffset, 0.0f);
-	const float Duration = bMachineGun ? MachineGunTravelDistance / Speed : RailDuration;
-	const bool bSeparateSonicBomb = !bMachineGun && RailGunSonicBombEffect != nullptr;
+	const bool bMachineGunWeapon = Playback == EWeaponBeamPlayback::MachineGun;
+	const float ConfiguredLifeTime = bMachineGunWeapon ? MachineGunBeamLifeTime : RailGunLifeTime;
+	const float BeamDuration = FMath::IsFinite(ConfiguredLifeTime) && ConfiguredLifeTime > 0.0f
+		? ConfiguredLifeTime : 0.2f;
+	// Deprecated travelling-tracer pins remain for existing Blueprint node connections.
+	(void)MachineGunSpeed;
+	(void)MachineGunFrontOffset;
+	const bool bSeparateSonicBomb = !bMachineGunWeapon && RailGunSonicBombEffect != nullptr;
 	bool bSpawnedAny = false;
 
 	bSpawnedAny = SpawnNiagaraBeam(
 		World, NiagaraEffect, BeamStart, BeamEnd, BeamRotation,
-		BeamDistance, Duration, Speed, bMachineGun ? MachineGunTravelDistance : BeamDistance,
-		bMachineGun, false, bSeparateSonicBomb);
-	if (!bMachineGun)
+		BeamDistance, BeamDuration, false, bMachineGunWeapon || bSeparateSonicBomb);
+	if (!bMachineGunWeapon)
 	{
 		// Keep the trail system's authored lifetime so it can linger after the beam.
 		bSpawnedAny |= SpawnNiagaraBeam(
 			World, RailGunTrailEffect, BeamStart, BeamEnd, BeamRotation,
-			BeamDistance, Duration, Speed, BeamDistance, false, true, bSeparateSonicBomb);
+			BeamDistance, BeamDuration, true, bSeparateSonicBomb);
 		bSpawnedAny |= SpawnNiagaraSonicBomb(
 			World, RailGunSonicBombEffect, BeamStart, BeamEnd, BeamRotation);
 	}
@@ -185,24 +179,20 @@ bool UWeaponBeamEffectLibrary::PlayHitScanBeam(
 			Cascade->SetVectorParameter(TEXT("BeamStart"), BeamStart);
 			Cascade->SetVectorParameter(TEXT("BeamEnd"), BeamEnd);
 			Cascade->SetFloatParameter(TEXT("BeamDistance"), BeamDistance);
-			Cascade->SetFloatParameter(TEXT("BeamLifeTime"), Duration);
-			Cascade->SetFloatParameter(TEXT("Speed"), bMachineGun ? Speed : 0.0f);
-			Cascade->SetFloatParameter(TEXT("MaxDistance"), bMachineGun ? MachineGunTravelDistance : BeamDistance);
+			Cascade->SetFloatParameter(TEXT("BeamLifeTime"), BeamDuration);
+			Cascade->SetFloatParameter(TEXT("Speed"), 0.0f);
+			Cascade->SetFloatParameter(TEXT("MaxDistance"), BeamDistance);
 			Cascade->ActivateSystem(true);
 
-			if (!bMachineGun)
+			// Beam emitters configured for User Set source/target receive the exact trace segment.
+			for (int32 EmitterIndex = 0; EmitterIndex < CascadeEffect->Emitters.Num(); ++EmitterIndex)
 			{
-				// Activation creates the emitter instances that SetBeamSource/TargetPoint addresses.
-				// Beam emitters configured for User Set source/target receive the exact trace segment.
-				for (int32 EmitterIndex = 0; EmitterIndex < CascadeEffect->Emitters.Num(); ++EmitterIndex)
+				const UParticleEmitter* Emitter = CascadeEffect->Emitters[EmitterIndex];
+				const UParticleLODLevel* LOD = Emitter && !Emitter->LODLevels.IsEmpty() ? Emitter->LODLevels[0] : nullptr;
+				if (LOD && Cast<UParticleModuleTypeDataBeam2>(LOD->TypeDataModule))
 				{
-					const UParticleEmitter* Emitter = CascadeEffect->Emitters[EmitterIndex];
-					const UParticleLODLevel* LOD = Emitter && !Emitter->LODLevels.IsEmpty() ? Emitter->LODLevels[0] : nullptr;
-					if (LOD && Cast<UParticleModuleTypeDataBeam2>(LOD->TypeDataModule))
-					{
-						Cascade->SetBeamSourcePoint(EmitterIndex, BeamStart, 0);
-						Cascade->SetBeamTargetPoint(EmitterIndex, BeamEnd, 0);
-					}
+					Cascade->SetBeamSourcePoint(EmitterIndex, BeamStart, 0);
+					Cascade->SetBeamTargetPoint(EmitterIndex, BeamEnd, 0);
 				}
 			}
 
