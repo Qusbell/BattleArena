@@ -36,6 +36,29 @@ public:
 	static void StopLocalDedicatedServer();
 
 	/**
+	* 이미 실행 중인 로컬 전용 서버에게 "맵을 이 맵으로 바꿔 두라"고 요청합니다.
+	* 클라이언트가 서버에 접속해 있을 필요가 없습니다 (파일 기반 명령 전달).
+	*
+	* - 호출 즉시 Ready 가 해제(IsLocalDedicatedServerReady == false)되고,
+	*   서버가 맵 전환을 마치면 다시 Ready 가 됩니다. 따라서 "플레이" 시점에는
+	*   IsLocalDedicatedServerReady 가 true 가 될 때까지만 기다렸다가 접속하면 됩니다.
+	* - 서버가 아직 부팅 중이어도 안전합니다 (부팅이 끝난 뒤 명령이 처리됩니다).
+	* - 이미 그 맵이면 전환 없이 Ready 만 유지됩니다.
+	* - "Map_01?Difficulty=1" 처럼 URL 옵션이 붙은 요청은 같은 맵이어도 재로드합니다 (게임모드가 옵션을 다시 읽도록).
+	*
+	* @param MapName 이동할 맵 (예: "Campaign_Map_02" 또는 "/Game/.../Campaign_Map_02")
+	* @return 서버가 실행 중이고 명령 기록에 성공하면 true
+	*/
+	UFUNCTION(BlueprintCallable, Category = "Server|LocalDedicatedServer", meta = (Keywords = "Campaign Server Map Change Travel Dedicated Process"))
+	static bool SetLocalDedicatedServerMap(const FString& MapName);
+
+	/**
+	* 서버 프로세스(-LocalServerCommandFile 인자가 있는 프로세스)에서만 맵 변경 명령 감시를 시작합니다.
+	* 그 외 프로세스에서는 아무 일도 하지 않습니다. GameInstance::Init 에서 호출합니다. (BP 노출 없음)
+	*/
+	static void InitServerCommandWatcher();
+
+	/**
 	* StartLocalDedicatedServer로 띄운 로컬 전용 서버 프로세스가 현재 실행 중인지 확인합니다.
 	*/
 	UFUNCTION(BlueprintPure, Category = "Server|LocalDedicatedServer", meta = (Keywords = "Campaign Server Running Dedicated Process"))
@@ -114,4 +137,13 @@ public:
 	*/
 	UFUNCTION(BlueprintPure, Category = "Server|LocalDedicatedServer", meta = (Keywords = "Local IP Address Host Self"))
 	static bool IsLocalIPAddress(const FString& IPAddress);
+
+	/**
+	* 입력한 문자열이 접속 가능한 IP 형식인지 검사합니다.
+	* (IPv4 "a.b.c.d" — 각 0~255, 앞뒤 공백 무시 — 또는 "localhost". 빈 문자열은 false)
+	*
+	* IP 입력 화면에서 접속 버튼을 눌렀을 때, 잘못된 입력이면 경고를 띄우는 데 씁니다.
+	*/
+	UFUNCTION(BlueprintPure, Category = "Server|LocalDedicatedServer", meta = (Keywords = "Valid IP Address Check Format"))
+	static bool IsValidIPAddress(const FString& IPAddress);
 };

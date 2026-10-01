@@ -39,6 +39,11 @@ FString AMyReconnectionGameMode::InitNewPlayer(APlayerController* NewPlayerContr
 			{
 				NewPlayerState->SetPlayerName(NicknameOption);
 			}
+			else if (const UShootingArenaGameInstance* SAGameInstance = GetGameInstance<UShootingArenaGameInstance>())
+			{
+				// 닉네임을 정하지 않았으면 엔진 기본값(컴퓨터 이름) 대신 DataAsset 기본 닉네임을 씁니다.
+				NewPlayerState->SetPlayerName(SAGameInstance->MakeDefaultPlayerName());
+			}
 			// 2번(GameInstance 조회)은 PostLogin 에서 처리합니다 — 이 시점엔 SavedNetworkAddress 를 못 구합니다.
 		}
 	}

@@ -6,6 +6,7 @@
 #include "ShootingArenaGameInstance.generated.h"
 
 class UBGMSettingsDataAsset;
+class UPlayerDefaultNameSettings;
 
 /**
  * 프로젝트 전역 GameInstance. 레벨 이동(비-심리스 트래블) 중에도 서버 프로세스에서 계속 살아있으므로,
@@ -18,9 +19,19 @@ class SHOOTINGARENA_API UShootingArenaGameInstance : public UGameInstance
 	GENERATED_BODY()
 
 public:
+	virtual void Init() override;
+	virtual void Shutdown() override;
+
 	/** BGM 시스템에서 사용할 기획 설정 에셋. BP_QuakeGameInstance 기본값에 지정합니다. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Audio|BGM")
 	TSoftObjectPtr<UBGMSettingsDataAsset> BGMSettings;
+
+	/** 닉네임을 정하지 않은 플레이어의 기본 닉네임 설정. BP_QuakeGameInstance 기본값에 지정합니다. 비어있으면 "Player"+번호를 씁니다. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Player")
+	TObjectPtr<UPlayerDefaultNameSettings> PlayerDefaultNameSettings;
+
+	/** 기본 닉네임을 만듭니다. 현재 월드의 접속자 이름과 겹치지 않는 번호를 붙입니다. 서버 전용입니다. */
+	FString MakeDefaultPlayerName() const;
 
 	// NetworkAddress(PlayerState::SavedNetworkAddress)를 키로 닉네임을 저장합니다. 서버 전용입니다.
 	UFUNCTION(BlueprintCallable, Category = "Player")
@@ -51,6 +62,11 @@ public:
 	FString SavedHostNetworkAddress;
 
 private:
+	// 메인 메뉴 레벨 진입 시 로컬 싱글 서버를 종료하기 위한 맵 로드 콜백.
+	void HandlePreLoadMap(const FString& MapName);
+
+	FDelegateHandle PostLoadMapHandle;
+
 	UPROPERTY()
 	TMap<FString, FString> NicknameByNetworkAddress;
 };
