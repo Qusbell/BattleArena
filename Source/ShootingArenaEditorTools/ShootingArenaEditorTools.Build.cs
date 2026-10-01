@@ -19,7 +19,8 @@ public class ShootingArenaEditorTools : ModuleRules
                 "SlateCore",
                 "LevelEditor",
                 "ContentBrowser",
-                "ToolMenus"
+                "ToolMenus",
+                "BlueprintGraph"
             }
         );
     }
