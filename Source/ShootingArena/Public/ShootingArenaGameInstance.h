@@ -18,6 +18,9 @@ class SHOOTINGARENA_API UShootingArenaGameInstance : public UGameInstance
 	GENERATED_BODY()
 
 public:
+	virtual void Init() override;
+	virtual void Shutdown() override;
+
 	/** BGM 시스템에서 사용할 기획 설정 에셋. BP_QuakeGameInstance 기본값에 지정합니다. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Audio|BGM")
 	TSoftObjectPtr<UBGMSettingsDataAsset> BGMSettings;
@@ -51,6 +54,11 @@ public:
 	FString SavedHostNetworkAddress;
 
 private:
+	// 메인 메뉴 레벨 진입 시 로컬 싱글 서버를 종료하기 위한 맵 로드 콜백.
+	void HandlePreLoadMap(const FString& MapName);
+
+	FDelegateHandle PostLoadMapHandle;
+
 	UPROPERTY()
 	TMap<FString, FString> NicknameByNetworkAddress;
 };

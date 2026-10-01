@@ -1,32 +1,33 @@
 [
 	{
 		"Name": "Dummy",
-		"Aim_Skill": 0.80000000000000004,
-		"Aim_Accuracy": 0.80000000000000004,
+		"Attack_Skill": 0,
+		"Aim_Skill": 1,
+		"Aim_Accuracy": 0.59999999999999998,
 		"View_Max_Change": 260,
 		"ReactionTime": 0.29999999999999999,
 		"Aggression": 0.55000000000000004,
 		"Self_Preservation": 0.45000000000000001,
 		"Fire_Throttle": 0.69999999999999996,
 		"Aggression_Threshold": 0.5,
-		"Attack_Skill": 0.59999999999999998,
 		"Jumper": 1
 	},
 	{
 		"Name": "Dummy2",
-		"Aim_Skill": 0.050000000000000003,
-		"Aim_Accuracy": 0.94999999999999996,
+		"Attack_Skill": 0,
+		"Aim_Skill": 0,
+		"Aim_Accuracy": 0.59999999999999998,
 		"View_Max_Change": 260,
 		"ReactionTime": 0.20000000000000001,
 		"Aggression": 0.59999999999999998,
 		"Self_Preservation": 0.40000000000000002,
 		"Fire_Throttle": 0.5,
 		"Aggression_Threshold": 0.5,
-		"Attack_Skill": 0.59999999999999998,
 		"Jumper": 0
 	},
 	{
 		"Name": "BGH_Easy",
+		"Attack_Skill": 0.29999999999999999,
 		"Aim_Skill": 0.14999999999999999,
 		"Aim_Accuracy": 0.20000000000000001,
 		"View_Max_Change": 220,
@@ -35,11 +36,11 @@
 		"Self_Preservation": 0.29999999999999999,
 		"Fire_Throttle": 0.29999999999999999,
 		"Aggression_Threshold": 0.29999999999999999,
-		"Attack_Skill": 0.29999999999999999,
 		"Jumper": 0.29999999999999999
 	},
 	{
 		"Name": "BGH_Normal",
+		"Attack_Skill": 0.29999999999999999,
 		"Aim_Skill": 0.29999999999999999,
 		"Aim_Accuracy": 0.40000000000000002,
 		"View_Max_Change": 255,
@@ -48,11 +49,11 @@
 		"Self_Preservation": 0.29999999999999999,
 		"Fire_Throttle": 0.5,
 		"Aggression_Threshold": 0.29999999999999999,
-		"Attack_Skill": 0.29999999999999999,
 		"Jumper": 0.29999999999999999
 	},
 	{
 		"Name": "BGH_Hard",
+		"Attack_Skill": 0.29999999999999999,
 		"Aim_Skill": 0.5,
 		"Aim_Accuracy": 0.59999999999999998,
 		"View_Max_Change": 270,
@@ -61,11 +62,11 @@
 		"Self_Preservation": 0.29999999999999999,
 		"Fire_Throttle": 0.59999999999999998,
 		"Aggression_Threshold": 0.29999999999999999,
-		"Attack_Skill": 0.29999999999999999,
 		"Jumper": 0.29999999999999999
 	},
 	{
 		"Name": "HBC_Easy",
+		"Attack_Skill": 0.29999999999999999,
 		"Aim_Skill": 0.19,
 		"Aim_Accuracy": 0.10000000000000001,
 		"View_Max_Change": 280,
@@ -74,11 +75,11 @@
 		"Self_Preservation": 0.69999999999999996,
 		"Fire_Throttle": 0.75,
 		"Aggression_Threshold": 0.69999999999999996,
-		"Attack_Skill": 0.29999999999999999,
 		"Jumper": 0.40000000000000002
 	},
 	{
 		"Name": "HBC_Normal",
+		"Attack_Skill": 0.29999999999999999,
 		"Aim_Skill": 0.29999999999999999,
 		"Aim_Accuracy": 0.20000000000000001,
 		"View_Max_Change": 300,
@@ -87,11 +88,11 @@
 		"Self_Preservation": 0.69999999999999996,
 		"Fire_Throttle": 0.65000000000000002,
 		"Aggression_Threshold": 0.59999999999999998,
-		"Attack_Skill": 0.29999999999999999,
 		"Jumper": 0.40000000000000002
 	},
 	{
 		"Name": "HBC_Hard",
+		"Attack_Skill": 0.29999999999999999,
 		"Aim_Skill": 0.5,
 		"Aim_Accuracy": 0.29999999999999999,
 		"View_Max_Change": 315,
@@ -100,11 +101,11 @@
 		"Self_Preservation": 0.69999999999999996,
 		"Fire_Throttle": 0.55000000000000004,
 		"Aggression_Threshold": 0.59999999999999998,
-		"Attack_Skill": 0.29999999999999999,
 		"Jumper": 0.40000000000000002
 	},
 	{
 		"Name": "LJH_Easy",
+		"Attack_Skill": 0.20000000000000001,
 		"Aim_Skill": 0.10000000000000001,
 		"Aim_Accuracy": 0.29999999999999999,
 		"View_Max_Change": 200,
@@ -113,11 +114,11 @@
 		"Self_Preservation": 0.59999999999999998,
 		"Fire_Throttle": 0.10000000000000001,
 		"Aggression_Threshold": 0.59999999999999998,
-		"Attack_Skill": 0.20000000000000001,
 		"Jumper": 0.10000000000000001
 	},
 	{
 		"Name": "LJH_Normal",
+		"Attack_Skill": 0.40000000000000002,
 		"Aim_Skill": 0.25,
 		"Aim_Accuracy": 0.59999999999999998,
 		"View_Max_Change": 220,
@@ -126,11 +127,11 @@
 		"Self_Preservation": 0.59999999999999998,
 		"Fire_Throttle": 0.20000000000000001,
 		"Aggression_Threshold": 0.59999999999999998,
-		"Attack_Skill": 0.40000000000000002,
 		"Jumper": 0.10000000000000001
 	},
 	{
 		"Name": "LJH_Hard",
+		"Attack_Skill": 0.59999999999999998,
 		"Aim_Skill": 0.55000000000000004,
 		"Aim_Accuracy": 0.90000000000000002,
 		"View_Max_Change": 240,
@@ -139,11 +140,11 @@
 		"Self_Preservation": 0.59999999999999998,
 		"Fire_Throttle": 0.45000000000000001,
 		"Aggression_Threshold": 0.59999999999999998,
-		"Attack_Skill": 0.59999999999999998,
 		"Jumper": 0.10000000000000001
 	},
 	{
 		"Name": "PJH_Easy",
+		"Attack_Skill": 0.01,
 		"Aim_Skill": 0.050000000000000003,
 		"Aim_Accuracy": 0.5,
 		"View_Max_Change": 340,
@@ -152,11 +153,11 @@
 		"Self_Preservation": 0.10000000000000001,
 		"Fire_Throttle": 0.29999999999999999,
 		"Aggression_Threshold": 0.10000000000000001,
-		"Attack_Skill": 0.01,
 		"Jumper": 0.050000000000000003
 	},
 	{
 		"Name": "PJH_Normal",
+		"Attack_Skill": 0.10000000000000001,
 		"Aim_Skill": 0.050000000000000003,
 		"Aim_Accuracy": 0.69999999999999996,
 		"View_Max_Change": 340,
@@ -165,11 +166,11 @@
 		"Self_Preservation": 0.10000000000000001,
 		"Fire_Throttle": 0.65000000000000002,
 		"Aggression_Threshold": 0.20000000000000001,
-		"Attack_Skill": 0.10000000000000001,
 		"Jumper": 0.050000000000000003
 	},
 	{
 		"Name": "PJH_Hard",
+		"Attack_Skill": 0.10000000000000001,
 		"Aim_Skill": 0.050000000000000003,
 		"Aim_Accuracy": 0.94999999999999996,
 		"View_Max_Change": 340,
@@ -178,11 +179,11 @@
 		"Self_Preservation": 0.10000000000000001,
 		"Fire_Throttle": 0.90000000000000002,
 		"Aggression_Threshold": 0.29999999999999999,
-		"Attack_Skill": 0.10000000000000001,
 		"Jumper": 0.050000000000000003
 	},
 	{
 		"Name": "YJS_Easy",
+		"Attack_Skill": 0.20000000000000001,
 		"Aim_Skill": 0.20000000000000001,
 		"Aim_Accuracy": 0.40000000000000002,
 		"View_Max_Change": 260,
@@ -191,11 +192,11 @@
 		"Self_Preservation": 0.45000000000000001,
 		"Fire_Throttle": 0.59999999999999998,
 		"Aggression_Threshold": 0.5,
-		"Attack_Skill": 0.20000000000000001,
 		"Jumper": 0.40000000000000002
 	},
 	{
 		"Name": "YJS_Normal",
+		"Attack_Skill": 0.40000000000000002,
 		"Aim_Skill": 0.45000000000000001,
 		"Aim_Accuracy": 0.59999999999999998,
 		"View_Max_Change": 285,
@@ -204,11 +205,11 @@
 		"Self_Preservation": 0.45000000000000001,
 		"Fire_Throttle": 0.55000000000000004,
 		"Aggression_Threshold": 0.5,
-		"Attack_Skill": 0.40000000000000002,
 		"Jumper": 0.40000000000000002
 	},
 	{
 		"Name": "YJS_Hard",
+		"Attack_Skill": 0.59999999999999998,
 		"Aim_Skill": 0.80000000000000004,
 		"Aim_Accuracy": 0.80000000000000004,
 		"View_Max_Change": 302,
@@ -217,11 +218,11 @@
 		"Self_Preservation": 0.45000000000000001,
 		"Fire_Throttle": 0.29999999999999999,
 		"Aggression_Threshold": 0.5,
-		"Attack_Skill": 0.59999999999999998,
 		"Jumper": 0.40000000000000002
 	},
 	{
 		"Name": "YJH_Easy",
+		"Attack_Skill": 0.40000000000000002,
 		"Aim_Skill": 0.01,
 		"Aim_Accuracy": 0.01,
 		"View_Max_Change": 270,
@@ -230,11 +231,11 @@
 		"Self_Preservation": 0.80000000000000004,
 		"Fire_Throttle": 0,
 		"Aggression_Threshold": 0.90000000000000002,
-		"Attack_Skill": 0.40000000000000002,
 		"Jumper": 0.94999999999999996
 	},
 	{
 		"Name": "YJH_Normal",
+		"Attack_Skill": 0.5,
 		"Aim_Skill": 0.10000000000000001,
 		"Aim_Accuracy": 0.10000000000000001,
 		"View_Max_Change": 280,
@@ -243,11 +244,11 @@
 		"Self_Preservation": 0.80000000000000004,
 		"Fire_Throttle": 0.050000000000000003,
 		"Aggression_Threshold": 0.90000000000000002,
-		"Attack_Skill": 0.5,
 		"Jumper": 0.94999999999999996
 	},
 	{
 		"Name": "YJH_Hard",
+		"Attack_Skill": 0.59999999999999998,
 		"Aim_Skill": 0.25,
 		"Aim_Accuracy": 0.25,
 		"View_Max_Change": 290,
@@ -256,7 +257,6 @@
 		"Self_Preservation": 0.69999999999999996,
 		"Fire_Throttle": 0.10000000000000001,
 		"Aggression_Threshold": 0.80000000000000004,
-		"Attack_Skill": 0.59999999999999998,
 		"Jumper": 0.94999999999999996
 	}
 ]

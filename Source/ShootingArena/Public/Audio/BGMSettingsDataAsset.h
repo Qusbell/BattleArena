@@ -8,7 +8,7 @@
 class USoundClass;
 class USoundMix;
 
-/** BGM 한 곡과 곡별 재생 보정값입니다. 반복 여부는 SoundCue/MetaSound에서 설정합니다. */
+/** BGM 한 곡과 곡별 재생 보정값입니다. */
 USTRUCT(BlueprintType)
 struct SHOOTINGARENA_API FBGMTrack
 {
@@ -20,7 +20,7 @@ struct SHOOTINGARENA_API FBGMTrack
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "BGM", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float VolumeMultiplier = 1.0f;
 
-	/** SoundWave/SoundCue 자체의 Loop 설정과 무관하게, 종료 시 이 트랙을 다시 재생합니다. */
+	/** SoundWave/SoundCue는 원본 변경 없이 오디오 스레드에서 반복합니다. MetaSound는 그래프 내부 Loop 설정이 필요합니다. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "BGM")
 	bool bLoop = true;
 

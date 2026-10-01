@@ -1,5 +1,7 @@
 #include "LocalDedicatedServerLibrary.h"
 
+#include "Containers/Ticker.h"
+#include "Engine/Engine.h"
 #include "Engine/NetDriver.h"
 #include "Engine/World.h"
 #include "HAL/FileManager.h"
@@ -7,10 +9,13 @@
 #include "IPAddress.h"
 #include "Misc/App.h"
 #include "Misc/CommandLine.h"
+#include "Misc/CoreDelegates.h"
 #include "Misc/FileHelper.h"
+#include "Misc/PackageName.h"
 #include "Misc/Parse.h"
 #include "Misc/Paths.h"
 #include "SocketSubsystem.h"
+#include "UObject/UObjectGlobals.h"
 
 namespace
 {
@@ -21,8 +26,192 @@ namespace
 	// 클라이언트 프로세스에서만 의미 있는 값입니다.
 	FString GLocalDedicatedServerReadyFilePath;
 
+	// 현재 로컬 서버 실행에 대응하는 "맵 변경 명령" 파일의 절대경로.
+	// 클라이언트가 내용(이동할 맵 이름)을 쓰고, 서버 프로세스가 주기적으로 읽어 처리한 뒤 삭제합니다.
+	FString GLocalDedicatedServerCommandFilePath;
+
+	// 이 프로세스에서 OnPreExit(게임 종료 시 서버 프로세스 정리) 핸들러를 한 번만 등록하기 위한 플래그.
+	bool GLocalServerExitCleanupRegistered = false;
+
 	constexpr TCHAR LocalServerReadyArgument[] =
 		TEXT("LocalServerReadyFile=");
+
+	constexpr TCHAR LocalServerCommandArgument[] =
+		TEXT("LocalServerCommandFile=");
+
+	// ------------------------------------------------------------------------
+	// 서버 프로세스 측 로직: 맵 변경 명령 감시 + Ready 파일 갱신
+	// ------------------------------------------------------------------------
+
+	FTSTicker::FDelegateHandle GServerCommandTickerHandle;
+
+	// 맵 전환(또는 "이미 그 맵" 처리) 이후 Ready 파일을 다시 써야 함을 표시합니다.
+	// NetDriver 가 아직 준비되지 않았을 수 있으므로 감시 틱에서 준비될 때까지 재시도합니다.
+	bool GServerNeedsReadyWrite = false;
+
+	// 맵 이름 비교용 정규화: URL 옵션(?...)과 경로/오브젝트 접미사(.Name)를 제거하고 짧은 이름만 남깁니다.
+	FString NormalizeMapName(const FString& InMapName)
+	{
+		FString Name = InMapName.TrimStartAndEnd();
+
+		int32 OptionIdx = INDEX_NONE;
+		if (Name.FindChar(TEXT('?'), OptionIdx))
+		{
+			Name.LeftInline(OptionIdx);
+		}
+
+		return FPaths::GetBaseFilename(Name);
+	}
+
+	UWorld* FindDedicatedServerWorld()
+	{
+		if (GEngine == nullptr)
+		{
+			return nullptr;
+		}
+
+		for (const FWorldContext& Context : GEngine->GetWorldContexts())
+		{
+			UWorld* World = Context.World();
+			if (Context.WorldType == EWorldType::Game
+				&& IsValid(World)
+				&& World->GetNetMode() == NM_DedicatedServer)
+			{
+				return World;
+			}
+		}
+
+		return nullptr;
+	}
+
+	// NetDriver 가 클라이언트를 받을 수 있는 상태이면 Ready 파일을 씁니다.
+	bool TryWriteReadyFile(UWorld* World)
+	{
+		if (!IsValid(World) || World->GetNetMode() != NM_DedicatedServer)
+		{
+			return false;
+		}
+
+		// 맵 로드/BeginPlay 가 끝나기 전에는 접속을 받으면 안 됩니다.
+		if (!World->HasBegunPlay())
+		{
+			return false;
+		}
+
+		UNetDriver* NetDriver = World->GetNetDriver();
+		if (!IsValid(NetDriver) || !NetDriver->IsNetResourceValid())
+		{
+			return false;
+		}
+
+		FString ReadyFilePath;
+		if (!FParse::Value(FCommandLine::Get(), LocalServerReadyArgument, ReadyFilePath)
+			|| ReadyFilePath.IsEmpty())
+		{
+			return false;
+		}
+
+		return FFileHelper::SaveStringToFile(TEXT("READY"), *ReadyFilePath);
+	}
+
+	// 서버 프로세스 전용 틱: 명령 파일이 있으면 맵을 전환하고, 전환 후 Ready 를 다시 기록합니다.
+	bool TickServerCommandWatcher(float /*DeltaTime*/)
+	{
+		FString CommandFilePath;
+		FString ReadyFilePath;
+		FParse::Value(FCommandLine::Get(), LocalServerCommandArgument, CommandFilePath);
+		FParse::Value(FCommandLine::Get(), LocalServerReadyArgument, ReadyFilePath);
+
+		UWorld* World = FindDedicatedServerWorld();
+		if (World == nullptr)
+		{
+			return true;
+		}
+
+		// 이미 맵 전환이 예약/진행 중이면 이번 틱은 건너뜁니다 (명령 파일은 남겨 둡니다).
+		if (!World->NextURL.IsEmpty() || World->IsInSeamlessTravel())
+		{
+			GServerNeedsReadyWrite = true;
+			return true;
+		}
+
+		FString TargetMap;
+		if (!CommandFilePath.IsEmpty()
+			&& FPaths::FileExists(CommandFilePath)
+			&& FFileHelper::LoadFileToString(TargetMap, *CommandFilePath))
+		{
+			TargetMap = TargetMap.TrimStartAndEnd();
+			IFileManager::Get().Delete(*CommandFilePath, false, true);
+
+			if (!TargetMap.IsEmpty())
+			{
+				// 전환 동안은 접속을 받으면 안 되므로 Ready 를 해제합니다.
+				if (!ReadyFilePath.IsEmpty())
+				{
+					IFileManager::Get().Delete(*ReadyFilePath, false, true);
+				}
+
+				GServerNeedsReadyWrite = true;
+
+				// URL 옵션(?Difficulty= 등)이 붙은 요청은 게임모드가 옵션을 다시 읽어야 하므로
+				// 같은 맵이어도 반드시 재로드(ServerTravel)합니다. 옵션 없는 요청만 "이미 그 맵"으로 건너뜁니다.
+				const bool bHasOptions = TargetMap.Contains(TEXT("?"));
+
+				if (!bHasOptions
+					&& NormalizeMapName(TargetMap) == FPaths::GetBaseFilename(World->GetMapName()))
+				{
+					UE_LOG(LogTemp, Log, TEXT("[LocalDedicatedServer] 이미 '%s' 맵입니다. 전환 없이 Ready 만 복구합니다."), *TargetMap);
+				}
+				else
+				{
+					UE_LOG(LogTemp, Warning, TEXT("[LocalDedicatedServer] 맵 변경 명령 수신 -> ServerTravel('%s')"), *TargetMap);
+
+					// bAbsolute=false: 서버 시작 시 붙은 URL 옵션(?Game= 등)을 그대로 유지합니다.
+					World->ServerTravel(TargetMap, false);
+				}
+
+				return true;
+			}
+		}
+
+		// 대기 중인 명령이 없을 때만 Ready 를 (재)기록합니다.
+		if (GServerNeedsReadyWrite
+			&& (CommandFilePath.IsEmpty() || !FPaths::FileExists(CommandFilePath))
+			&& TryWriteReadyFile(World))
+		{
+			GServerNeedsReadyWrite = false;
+		}
+
+		return true;
+	}
+
+	// 서버 프로세스에서만 명령 감시 틱을 시작합니다 (여러 번 호출해도 한 번만 등록).
+	void EnsureServerCommandWatcher()
+	{
+		if (GServerCommandTickerHandle.IsValid())
+		{
+			return;
+		}
+
+		FString CommandFilePath;
+		if (!FParse::Value(FCommandLine::Get(), LocalServerCommandArgument, CommandFilePath)
+			|| CommandFilePath.IsEmpty())
+		{
+			return;
+		}
+
+		// 최초 부팅 후 Ready 도 이 틱이 기록합니다 (게임모드 BP 가 Mark 를 호출하지 않아도 동작).
+		GServerNeedsReadyWrite = true;
+
+		GServerCommandTickerHandle = FTSTicker::GetCoreTicker().AddTicker(
+			FTickerDelegate::CreateStatic(&TickServerCommandWatcher), 0.2f);
+
+		// 맵이 새로 로드될 때마다(= 서버 전환 완료) Ready 를 다시 기록해야 합니다.
+		FCoreUObjectDelegates::PostLoadMapWithWorld.AddLambda([](UWorld*)
+		{
+			GServerNeedsReadyWrite = true;
+		});
+	}
 
 	// 매치 서버(로비 서버가 스폰하는 별도 프로세스)용 핸들/Ready 파일 경로.
 	// 위 캠페인용 상태와는 완전히 독립적으로 추적합니다.
@@ -241,6 +430,26 @@ bool ULocalDedicatedServerLibrary::StartLocalDedicatedServer(
         true
     );
 
+    // 맵 변경 명령 파일 경로 (실행마다 GUID 로 구분, 서버가 읽고 삭제합니다).
+    GLocalDedicatedServerCommandFilePath = FPaths::Combine(
+        ReadyDirectory,
+        FString::Printf(TEXT("Cmd_%s.txt"), *FGuid::NewGuid().ToString(EGuidFormats::Digits))
+    );
+
+    IFileManager::Get().Delete(
+        *GLocalDedicatedServerCommandFilePath,
+        false,
+        true
+    );
+
+    // 게임이 종료될 때 서버 프로세스가 고아로 남지 않도록 정리 핸들러를 한 번만 등록합니다.
+    // (서버는 bLaunchDetached 로 실행되므로 클라이언트 종료와 함께 죽지 않습니다.)
+    if (!GLocalServerExitCleanupRegistered)
+    {
+        GLocalServerExitCleanupRegistered = true;
+        FCoreDelegates::OnPreExit.AddStatic(&ULocalDedicatedServerLibrary::StopLocalDedicatedServer);
+    }
+
     // --------------------------------------------------------------------
     // 서버 실행 파일 결정
     //
@@ -270,6 +479,7 @@ bool ULocalDedicatedServerLibrary::StartLocalDedicatedServer(
         );
 
         GLocalDedicatedServerReadyFilePath.Reset();
+        GLocalDedicatedServerCommandFilePath.Reset();
         return false;
     }
 
@@ -283,21 +493,23 @@ bool ULocalDedicatedServerLibrary::StartLocalDedicatedServer(
 
     // Ready 파일의 "절대경로"를 서버 프로세스에 전달합니다.
     const FString Params = FString::Printf(
-        TEXT("\"%s\" %s -game -server -log -port=%d -LocalServerReadyFile=\"%s\""),
+        TEXT("\"%s\" %s -game -server -log -NoLiveCoding -port=%d -LocalServerReadyFile=\"%s\" -LocalServerCommandFile=\"%s\""),
         *ProjectFilePath,
         *MapName,
         Port,
-        *GLocalDedicatedServerReadyFilePath
+        *GLocalDedicatedServerReadyFilePath,
+        *GLocalDedicatedServerCommandFilePath
     );
 #else
     // <Project>Server.exe 는 Server 타겟(UE_SERVER=1)이라 이미 데디케이티드 서버이고,
     // 이 프로젝트 전용으로 빌드된 실행 파일이라 .uproject 경로도 -game 도 필요 없습니다.
     // (-server 는 중복이지만 무해하므로 의도를 드러내기 위해 유지합니다.)
     const FString Params = FString::Printf(
-        TEXT("%s -server -log -port=%d -LocalServerReadyFile=\"%s\""),
+        TEXT("%s -server -log -port=%d -LocalServerReadyFile=\"%s\" -LocalServerCommandFile=\"%s\""),
         *MapName,
         Port,
-        *GLocalDedicatedServerReadyFilePath
+        *GLocalDedicatedServerReadyFilePath,
+        *GLocalDedicatedServerCommandFilePath
     );
 #endif
 
@@ -333,6 +545,7 @@ bool ULocalDedicatedServerLibrary::StartLocalDedicatedServer(
         );
 
         GLocalDedicatedServerReadyFilePath.Reset();
+        GLocalDedicatedServerCommandFilePath.Reset();
 
         return false;
     }
@@ -379,6 +592,77 @@ void ULocalDedicatedServerLibrary::StopLocalDedicatedServer()
 
         GLocalDedicatedServerReadyFilePath.Reset();
     }
+
+    if (!GLocalDedicatedServerCommandFilePath.IsEmpty())
+    {
+        IFileManager::Get().Delete(
+            *GLocalDedicatedServerCommandFilePath,
+            false,
+            true
+        );
+
+        GLocalDedicatedServerCommandFilePath.Reset();
+    }
+}
+
+void ULocalDedicatedServerLibrary::InitServerCommandWatcher()
+{
+    EnsureServerCommandWatcher();
+}
+
+bool ULocalDedicatedServerLibrary::SetLocalDedicatedServerMap(const FString& MapName)
+{
+    const FString Trimmed = MapName.TrimStartAndEnd();
+
+    if (Trimmed.IsEmpty()
+        || GLocalDedicatedServerCommandFilePath.IsEmpty()
+        || !IsLocalDedicatedServerRunning())
+    {
+        UE_LOG(
+            LogTemp,
+            Warning,
+            TEXT("[LocalDedicatedServer] 맵 변경 요청 실패: 서버가 실행 중이 아니거나 맵 이름이 비어 있습니다 (%s)"),
+            *Trimmed
+        );
+
+        return false;
+    }
+
+    // 서버가 쓰는 도중의 파일을 읽지 않도록 임시 파일에 쓴 뒤 이동(원자적 교체)합니다.
+    const FString TempPath = GLocalDedicatedServerCommandFilePath + TEXT(".tmp");
+
+    if (!FFileHelper::SaveStringToFile(Trimmed, *TempPath)
+        || !IFileManager::Get().Move(*GLocalDedicatedServerCommandFilePath, *TempPath, true, true))
+    {
+        UE_LOG(
+            LogTemp,
+            Error,
+            TEXT("[LocalDedicatedServer] 맵 변경 명령 파일 기록 실패: %s"),
+            *GLocalDedicatedServerCommandFilePath
+        );
+
+        IFileManager::Get().Delete(*TempPath, false, true);
+        return false;
+    }
+
+    // 명령을 먼저 쓴 "뒤에" Ready 를 해제합니다. 서버가 전환을 마치면 Ready 를 다시 만듭니다.
+    if (!GLocalDedicatedServerReadyFilePath.IsEmpty())
+    {
+        IFileManager::Get().Delete(
+            *GLocalDedicatedServerReadyFilePath,
+            false,
+            true
+        );
+    }
+
+    UE_LOG(
+        LogTemp,
+        Log,
+        TEXT("[LocalDedicatedServer] 서버 맵 변경 요청: %s"),
+        *Trimmed
+    );
+
+    return true;
 }
 
 bool ULocalDedicatedServerLibrary::IsLocalDedicatedServerRunning()
@@ -470,6 +754,23 @@ bool ULocalDedicatedServerLibrary::MarkLocalDedicatedServerReady(
         return false;
     }
 
+    // 로컬 싱글 서버(-LocalServerCommandFile 인자가 있는 프로세스)라면 맵 변경 명령 감시를 시작합니다.
+    // 이후 맵이 바뀌어도 감시 틱이 Ready 파일을 다시 기록하므로 이 함수가 다시 호출될 필요는 없습니다.
+    EnsureServerCommandWatcher();
+
+    // 서버가 부팅하는 사이 클라이언트가 이미 다른 맵을 요청했다면, 그 맵으로 전환이 끝난 뒤
+    // 감시 틱이 Ready 를 기록합니다. 지금 Ready 를 쓰면 전환 중에 접속이 들어올 수 있으므로 건너뜁니다.
+    {
+        FString PendingCommandFile;
+        if (FParse::Value(FCommandLine::Get(), LocalServerCommandArgument, PendingCommandFile)
+            && !PendingCommandFile.IsEmpty()
+            && FPaths::FileExists(PendingCommandFile))
+        {
+            GServerNeedsReadyWrite = true;
+            return false;
+        }
+    }
+
     // 클라이언트 프로세스가 CreateProc() 실행 시 넘겨준 경로를 읽습니다.
     FString ReadyFilePath;
 
@@ -480,7 +781,7 @@ bool ULocalDedicatedServerLibrary::MarkLocalDedicatedServerReady(
     {
         UE_LOG(
             LogTemp,
-            Warning,
+            Verbose,
             TEXT("[LocalDedicatedServer] LocalServerReadyFile 실행 인자를 찾을 수 없습니다.")
         );
 
@@ -623,7 +924,7 @@ bool ULocalDedicatedServerLibrary::StartMatchServer(const FString& MapName, int3
         );
 
     const FString Params = FString::Printf(
-        TEXT("\"%s\" %s -server -log -port=%d -LocalServerReadyFile=\"%s\""),
+        TEXT("\"%s\" %s -server -log -NoLiveCoding -port=%d -LocalServerReadyFile=\"%s\""),
         *ProjectFilePath,
         *MapName,
         Port,
@@ -773,4 +1074,37 @@ bool ULocalDedicatedServerLibrary::IsLocalIPAddress(const FString& IPAddress)
         *Trimmed);
 
     return false;
+}
+
+bool ULocalDedicatedServerLibrary::IsValidIPAddress(const FString& IPAddress)
+{
+    const FString Trimmed = IPAddress.TrimStartAndEnd();
+
+    if (Trimmed.Equals(TEXT("localhost"), ESearchCase::IgnoreCase))
+    {
+        return true;
+    }
+
+    TArray<FString> Octets;
+    Trimmed.ParseIntoArray(Octets, TEXT("."), false);
+
+    if (Octets.Num() != 4)
+    {
+        return false;
+    }
+
+    for (const FString& Octet : Octets)
+    {
+        if (Octet.IsEmpty() || Octet.Len() > 3 || !Octet.IsNumeric() || Octet.Contains(TEXT("-")))
+        {
+            return false;
+        }
+
+        if (FCString::Atoi(*Octet) > 255)
+        {
+            return false;
+        }
+    }
+
+    return true;
 }

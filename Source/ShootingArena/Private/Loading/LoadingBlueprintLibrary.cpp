@@ -66,7 +66,8 @@ void ULoadingBlueprintLibrary::BeginLoadingAndReturnToMainMenu(const UObject* Wo
 	{
 		// StopLocalDedicatedServer는 프로세스 종료를 기다릴 수 있습니다. 화면이 먼저
 		// 그려진 다음 호출해야 기존 게임 화면이 멈춘 채 노출되지 않습니다.
-		ULocalDedicatedServerLibrary::StopLocalDedicatedServer();
+		// 로컬 서버 정지는 GameInstance::HandlePreLoadMap(메인 메뉴 로드 직전)에서 합니다.
+		// 여기서 하면 그 사이 맵 선택 화면이 새로 띄운 서버까지 죽입니다.
 		UGameInstance* GameInstance = WeakGameInstance.Get();
 		UWorld* CurrentWorld = GameInstance ? GameInstance->GetWorld() : nullptr;
 		if (CurrentWorld)
