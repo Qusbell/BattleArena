@@ -6,6 +6,8 @@ public class ShootingArenaEditorTools : ModuleRules
         : base( Target )
     {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+        // Graph node authoring classes live in uncooked packages; their runtime structs are in ShootingArena.
+        OverridePackageType = PackageOverrideType.GameUncookedOnly;
 
         PrivateDependencyModuleNames.AddRange(
             new string[]
@@ -20,7 +22,10 @@ public class ShootingArenaEditorTools : ModuleRules
                 "LevelEditor",
                 "ContentBrowser",
                 "ToolMenus",
-                "BlueprintGraph"
+                "BlueprintGraph",
+                "ShootingArena",
+                "AnimGraph",
+                "Json"
             }
         );
     }
