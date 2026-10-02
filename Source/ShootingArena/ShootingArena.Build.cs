@@ -19,6 +19,7 @@ public class ShootingArena : ModuleRules
             "DeveloperSettings",
             "Slate",
             "SlateCore",
+            "UMG",
             "Sockets",
             "Networking",
             "GameplayTags",
