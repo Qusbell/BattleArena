@@ -22,7 +22,7 @@ public:
 
 	/** Call on the server once for each kill credited to this PlayerState. */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Kill Streak Voice")
-	void QueueKillEvent();
+	void QueueKillEvent(bool bIsRevenge = false);
 
 	/** Call on the server when this PlayerState's pawn dies. */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Kill Streak Voice")
@@ -50,6 +50,7 @@ private:
 
 	FTimerHandle KillBatchTimerHandle;
 	int32 PendingKillEventCount = 0;
+	bool bPendingRevengeKill = false;
 	int32 CurrentStreakCount = 0;
 	float KillBatchStartTime = 0.0f;
 	float NextVoiceAllowedTime = 0.0f;
