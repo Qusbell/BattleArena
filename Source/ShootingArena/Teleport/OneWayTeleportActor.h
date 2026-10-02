@@ -85,7 +85,7 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Teleport|Components")
 	TObjectPtr<UStaticMeshComponent> portalScreen;
 
-	/** 포탈 전면에 붙는 Niagara 테두리/에너지 효과입니다. */
+	/** Niagara 테두리/에너지 효과입니다. 컴포넌트 위치/회전은 자유롭게 편집하며, 크기만 포탈에 자동으로 맞춥니다. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Teleport|Components")
 	TObjectPtr<UNiagaraComponent> portalVFX;
 

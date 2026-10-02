@@ -206,6 +206,10 @@ AOneWayTeleportActor::AOneWayTeleportActor()
 
 	portalVFX = CreateDefaultSubobject<UNiagaraComponent>(TEXT("PortalVFX"));
 	portalVFX->SetupAttachment(root);
+	// Niagara의 XY 평면을 포탈 정면으로 향하게 하는 초기값입니다.
+	// 이후에는 기획자가 컴포넌트에 지정한 위치와 회전을 그대로 사용합니다.
+	portalVFX->SetRelativeRotation(
+		FRotationMatrix::MakeFromXY(FVector::RightVector, FVector::UpVector).ToQuat());
 	portalVFX->SetAutoActivate(true);
 	portalVFX->SetCastShadow(false);
 	portalVFX->SetHiddenInGame(true);
@@ -600,9 +604,6 @@ void AOneWayTeleportActor::UpdatePortalVFX()
 		return;
 	}
 
-	const FVector portalNormal = entryCollision->GetForwardVector();
-	const FVector portalUp = entryCollision->GetUpVector();
-	const FVector portalRight = entryCollision->GetRightVector();
 	const FVector extent = entryCollision->GetScaledBoxExtent();
 	const FVector fullSize = extent * 2.0f;
 	FVector portalSurfaceSize(fullSize.Y, fullSize.Z, fullSize.X);
@@ -644,14 +645,9 @@ void AOneWayTeleportActor::UpdatePortalVFX()
 	vfxScale.X *= PortalVFXVisualSizeCorrection;
 	vfxScale.Y *= PortalVFXVisualSizeCorrection;
 
-	// Niagara 기본 평면(XY)을 포탈 전면에 맞추고, 원형 이펙트는 Collision의 가로/세로에
-	// 맞춰 자동으로 타원형이 됩니다. Niagara System에 User.Size가 있으면 같은 크기도 전달합니다.
-	const FTransform vfxTransform(
-		FRotationMatrix::MakeFromXY(portalRight, portalUp).ToQuat(),
-		entryCollision->GetComponentLocation()
-			+ portalNormal * (extent.X + 2.0f),
-		vfxScale * portalVFXScale);
-	portalVFX->SetWorldTransform(vfxTransform);
+	// 크기만 포탈에 자동으로 맞춥니다. 컴포넌트의 위치/회전은 편집한 값 그대로
+	// 유지해야 Construction 재실행이나 BeginPlay에서 콜라이더 바깥으로 돌아가지 않습니다.
+	portalVFX->SetWorldScale3D(vfxScale * portalVFXScale);
 	portalVFX->SetVariableVec3(TEXT("User.Size"), portalSurfaceSize);
 	// AdvancedPortalsSystemVFX의 Vortex에는 중앙을 채우는 이미터가 Background/Vortex/Circle로
 	// 나뉘어 있습니다. 모두 포탈 화면 위에 렌더링되므로, 테두리 전용 사용에서는 각각 0으로
