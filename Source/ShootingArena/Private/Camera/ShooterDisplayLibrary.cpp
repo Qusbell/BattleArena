@@ -11,30 +11,40 @@ bool UShooterDisplayLibrary::IsShooterAlive(APawn* Shooter)
 	TInlineComponentArray<UActorComponent*> Components(Shooter);
 	for (UActorComponent* Component : Components)
 	{
+		if (!IsValid(Component) || Component->IsBeingDestroyed()) continue;
 		bool bLifeComponent = false;
 		for (UClass* Class = Component->GetClass(); Class; Class = Class->GetSuperClass())
 			bLifeComponent |= Class->GetName() == TEXT("BPC_Life_C");
 		if (!bLifeComponent) continue;
 		const FStructProperty* LifeInfo = FindFProperty<FStructProperty>(Component->GetClass(), TEXT("LifeInfo"));
-		if (!LifeInfo) continue;
+		if (!LifeInfo || !LifeInfo->Struct) continue;
 		const void* Value = LifeInfo->ContainerPtrToValuePtr<void>(Component);
 		for (TFieldIterator<FProperty> It(LifeInfo->Struct); It; ++It)
 			if (It->GetName().StartsWith(TEXT("NowHealth_")))
 				if (const FNumericProperty* Health = CastField<FNumericProperty>(*It))
-					return Health->GetFloatingPointPropertyValue(Health->ContainerPtrToValuePtr<void>(Value)) > 0.0;
+				{
+					const void* HealthValue = Health->ContainerPtrToValuePtr<void>(Value);
+					if (Health->IsFloatingPoint())
+					{
+						const double Number = Health->GetFloatingPointPropertyValue(HealthValue);
+						return FMath::IsFinite(Number) && Number > 0.0;
+					}
+					if (Health->IsInteger()) return Health->GetSignedIntPropertyValue(HealthValue) > 0;
+				}
 	}
 	return true;
 }
 
 FText UShooterDisplayLibrary::GetShooterDisplayName(APawn* Shooter)
 {
-	APlayerState* State = IsValid(Shooter) ? Shooter->GetPlayerState() : nullptr;
-	if (!IsValid(State)) return FText::GetEmpty();
+	APlayerState* State = IsValid(Shooter) && !Shooter->IsActorBeingDestroyed() ? Shooter->GetPlayerState() : nullptr;
+	if (!IsValid(State) || State->IsActorBeingDestroyed()) return FText::GetEmpty();
 	// BP_QuakePlayerState resolves campaign/AI names through DT_Character in GetDisplayName.
 	if (UFunction* Function = State->FindFunction(TEXT("GetDisplayName")))
 	{
 		FStructOnScope Parameters(Function);
 		State->ProcessEvent(Function, Parameters.GetStructMemory());
+		if (!IsValid(State) || State->IsActorBeingDestroyed()) return FText::GetEmpty();
 		for (TFieldIterator<FProperty> It(Function); It; ++It)
 		{
 			if (!It->HasAllPropertyFlags(CPF_Parm | CPF_OutParm)) continue;

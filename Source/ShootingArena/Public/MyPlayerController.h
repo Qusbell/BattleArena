@@ -22,6 +22,9 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Shooter Nickname")
 	TObjectPtr<class UShooterNicknameComponent> ShooterNickname;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Shooter Revenge")
+	TObjectPtr<class UShooterRevengeComponent> ShooterRevenge;
+
 	virtual void PawnLeavingGame() override;
 	
 

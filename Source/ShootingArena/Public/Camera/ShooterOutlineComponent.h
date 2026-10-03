@@ -65,9 +65,12 @@ private:
 	TArray<FShooterOutlineProxy> Proxies;
 	TSharedPtr<FSceneViewExtensionBase, ESPMode::ThreadSafe> ViewExtension;
 	bool bPresentationActive = false;
+	bool bEndingPlay = false;
 	float RefreshInterval = 0.2f;
 	float RefreshElapsed = 0.0f;
 	int32 StencilValue = 2;
+	int32 RevengeStencilValue = 3;
+	int32 GetShooterStencil(const APawn* Shooter) const;
 	void RefreshShooters();
 	void UpdateProxies();
 	void ClearProxies();

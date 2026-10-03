@@ -41,6 +41,8 @@ public:
 	FText GetDisplayedNickname() const { return DisplayedName; }
 	UFUNCTION(BlueprintPure, Category = "Shooter Nickname")
 	bool IsNicknameEnabled() const { return Style.bEnabled; }
+	UFUNCTION(BlueprintPure, Category = "Shooter Nickname")
+	FLinearColor GetDisplayedNicknameColor() const;
 	FVector2D GetCrosshairViewportPosition() const { return CrosshairViewportPosition; }
 protected:
 	virtual void BeginPlay() override;
@@ -71,6 +73,7 @@ private:
 	bool bUseEquippedWeaponTraceChannel = true;
 	float MaxDistance = 20000.0f;
 	double LostAimTime = -1.0;
+	bool bEndingPlay = false;
 	bool ResolveAimRay(FVector& Origin, FVector& Direction);
 	APawn* FindAimTarget(const FVector& Origin, const FVector& Direction);
 	ECollisionChannel ResolveDamageTraceChannel(float& Distance) const;

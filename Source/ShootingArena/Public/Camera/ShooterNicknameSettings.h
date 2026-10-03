@@ -17,6 +17,8 @@ struct SHOOTINGARENA_API FShooterNicknameStyle
 	bool bEnabled = true;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Nickname")
 	FLinearColor Color = FLinearColor::White;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Nickname")
+	FLinearColor RevengeColor = FLinearColor::Red;
 	/** Font, size, and outline size/colour are independently editable in this font structure. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Nickname")
 	FSlateFontInfo Font;

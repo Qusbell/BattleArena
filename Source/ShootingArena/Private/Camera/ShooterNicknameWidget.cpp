@@ -18,16 +18,22 @@ int32 UShooterNicknameWidget::NativePaint(const FPaintArgs& Args, const FGeometr
 {
 	const int32 BaseLayer = Super::NativePaint(Args, Geometry, CullingRect, Elements, LayerId, WidgetStyle, bParentEnabled);
 	const UShooterNicknameComponent* Component = DisplayComponent.Get();
-	if (!Component || Component->GetDisplayedNickname().IsEmpty() || !FSlateApplication::IsInitialized()) return BaseLayer;
+	const APlayerController* PC = GetOwningPlayer();
+	if (!IsValid(Component) || Component->IsBeingDestroyed() || !IsValid(PC)
+		|| PC->IsActorBeingDestroyed() || !PC->GetLocalPlayer()
+		|| Component->GetDisplayedNickname().IsEmpty() || !FSlateApplication::IsInitialized()) return BaseLayer;
+	FSlateRenderer* Renderer = FSlateApplication::Get().GetRenderer();
+	if (!Renderer) return BaseLayer;
 	const FShooterNicknameStyle Style = Component->GetNicknameStyle();
 	if (!Style.bEnabled) return BaseLayer;
 	FVector2D Position;
 	USlateBlueprintLibrary::ScreenToWidgetLocal(GetOwningPlayer(), Geometry, Component->GetCrosshairViewportPosition(), Position, true);
 	const FString Name = Component->GetDisplayedNickname().ToString();
-	const FVector2D Size = FSlateApplication::Get().GetRenderer()->GetFontMeasureService()->Measure(Name, Style.Font);
+	const FVector2D Size = Renderer->GetFontMeasureService()->Measure(Name, Style.Font);
+	if (Position.ContainsNaN() || Size.ContainsNaN()) return BaseLayer;
 	Position += Style.Offset - FVector2D(Size.X * 0.5, 0.0);
 	FSlateDrawElement::MakeText(Elements, BaseLayer + 1,
 		Geometry.ToPaintGeometry(Size, FSlateLayoutTransform(Position)), Name,
-		Style.Font, ESlateDrawEffect::None, Style.Color * WidgetStyle.GetColorAndOpacityTint());
+		Style.Font, ESlateDrawEffect::None, Component->GetDisplayedNicknameColor() * WidgetStyle.GetColorAndOpacityTint());
 	return BaseLayer + 1;
 }
