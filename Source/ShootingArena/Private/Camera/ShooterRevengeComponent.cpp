@@ -1,15 +1,28 @@
 #include "Camera/ShooterRevengeComponent.h"
-#include "Combat/RecentAttackerComponent.h"
 #include "Engine/World.h"
-
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerState.h"
 #include "Net/UnrealNetwork.h"
+#include "UObject/UnrealType.h"
+
+namespace
+{
+FObjectPropertyBase* FindRevengeProperty(const APlayerState* State)
+{
+	if (!IsValid(State) || State->IsActorBeingDestroyed()) return nullptr;
+	FObjectPropertyBase* Property = FindFProperty<FObjectPropertyBase>(State->GetClass(), TEXT("RevengeTarget"));
+	return Property && Property->ArrayDim == 1 && Property->PropertyClass
+		&& Property->PropertyClass->IsChildOf(APlayerState::StaticClass())
+		? Property : nullptr;
+}
+}
 
 UShooterRevengeComponent::UShooterRevengeComponent()
 {
-	PrimaryComponentTick.bCanEverTick = false;
+	PrimaryComponentTick.bCanEverTick = true;
+	PrimaryComponentTick.TickInterval = 0.05f;
+	PrimaryComponentTick.TickGroup = TG_PostUpdateWork;
 	SetIsReplicatedByDefault(true);
 }
 
@@ -18,78 +31,51 @@ void UShooterRevengeComponent::BeginPlay()
 	Super::BeginPlay();
 	bEndingPlay = false;
 	APlayerController* PC = Cast<APlayerController>(GetOwner());
-	if (!IsValid(PC) || PC->IsActorBeingDestroyed() || !PC->HasAuthority()) return;
-	PC->GetOnNewPawnNotifier().Remove(PawnChangedHandle);
-	PawnChangedHandle = PC->GetOnNewPawnNotifier().AddUObject(this, &ThisClass::BindPawnDeathCredit);
-	BindPawnDeathCredit(PC->GetPawn());
+	SetComponentTickEnabled(IsValid(PC) && !PC->IsActorBeingDestroyed() && PC->HasAuthority());
+	RefreshRevengeTargetFromPlayerState();
+}
+
+void UShooterRevengeComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	RefreshRevengeTargetFromPlayerState();
 }
 
 void UShooterRevengeComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	bEndingPlay = true;
-	if (APlayerController* PC = Cast<APlayerController>(GetOwner()))
-	{
-		PC->GetOnNewPawnNotifier().Remove(PawnChangedHandle);
-	}
-	if (URecentAttackerComponent* Credit = BoundDeathCredit.Get())
-	{
-		Credit->OnKillCreditResolved.RemoveDynamic(this, &ThisClass::HandleKillCreditResolved);
-	}
-	BoundDeathCredit.Reset();
-	PawnChangedHandle.Reset();
+	SetComponentTickEnabled(false);
 	TargetPlayerState = nullptr;
 	Super::EndPlay(EndPlayReason);
 }
 
-void UShooterRevengeComponent::BindPawnDeathCredit(APawn* NewPawn)
+APlayerState* UShooterRevengeComponent::ReadPlayerStateRevengeTarget() const
 {
-	// A death can unpossess the pawn before all death callbacks finish. Keep its binding
-	// until the replacement pawn arrives; respawning never clears the stored target.
-	APlayerController* PC = Cast<APlayerController>(GetOwner());
-	if (bEndingPlay || IsBeingDestroyed() || !IsValid(PC) || !PC->HasAuthority()
-		|| !IsValid(NewPawn) || NewPawn->IsActorBeingDestroyed() || NewPawn->GetController() != PC) return;
-	URecentAttackerComponent* NewCredit = NewPawn->FindComponentByClass<URecentAttackerComponent>();
-	if (BoundDeathCredit.Get() == NewCredit) return;
-	if (URecentAttackerComponent* OldCredit = BoundDeathCredit.Get())
-	{
-		OldCredit->OnKillCreditResolved.RemoveDynamic(this, &ThisClass::HandleKillCreditResolved);
-	}
-	BoundDeathCredit = NewCredit;
-	if (IsValid(NewCredit) && !NewCredit->IsBeingDestroyed())
-	{
-		NewCredit->OnKillCreditResolved.AddUniqueDynamic(this, &ThisClass::HandleKillCreditResolved);
-	}
+	const APlayerController* PC = Cast<APlayerController>(GetOwner());
+	const UWorld* World = GetWorld();
+	if (bEndingPlay || IsBeingDestroyed() || !IsValid(PC) || PC->IsActorBeingDestroyed()
+		|| !World || World->bIsTearingDown) return nullptr;
+	APlayerState* State = PC->GetPlayerState<APlayerState>();
+	if (!IsValid(State) || State->GetWorld() != World) return nullptr;
+	FObjectPropertyBase* Property = FindRevengeProperty(State);
+	APlayerState* Target = Property ? Cast<APlayerState>(Property->GetObjectPropertyValue_InContainer(State)) : nullptr;
+	return IsValid(Target) && !Target->IsActorBeingDestroyed() && Target->GetWorld() == World && Target != State
+		? Target : nullptr;
 }
 
-void UShooterRevengeComponent::HandleKillCreditResolved(const FKillCreditResolution& Resolution)
+void UShooterRevengeComponent::RefreshRevengeTargetFromPlayerState()
 {
 	APlayerController* PC = Cast<APlayerController>(GetOwner());
-	UWorld* World = GetWorld();
+	const UWorld* World = GetWorld();
 	if (bEndingPlay || IsBeingDestroyed() || !IsValid(PC) || PC->IsActorBeingDestroyed()
 		|| !PC->HasAuthority() || !World || World->bIsTearingDown) return;
-	APlayerState* VictimState = PC->GetPlayerState<APlayerState>();
-	if (!IsValid(VictimState)) return;
-	// A pawn loses its PlayerState on UnPossess. This event is still from our bound
-	// death-credit component, so use the persistent controller identity in that case.
-	if (Resolution.VictimPlayerState && Resolution.VictimPlayerState != VictimState) return;
-	// Recent-attacker credit for suicide/environment deaths is not a direct kill.
-	if (Resolution.DeathCause != EKillDeathCause::Player
-		|| Resolution.CreditSource != EKillCreditSource::DirectPlayerKill
-		|| !IsValid(Resolution.CreditedPlayerState)
-		|| Resolution.CreditedPlayerState->IsActorBeingDestroyed()
-		|| Resolution.CreditedPlayerState->GetWorld() != World
-		|| Resolution.CreditedPlayerState == VictimState) return;
-	// The victim's confirmed death also completes the killer's revenge, if this
-	// victim was their target. Keep other players' targets independent.
-	APlayerController* KillerPC = Resolution.CreditedPlayerState->GetPlayerController();
-	UShooterRevengeComponent* KillerRevenge = IsValid(KillerPC)
-		? KillerPC->FindComponentByClass<UShooterRevengeComponent>() : nullptr;
-	if (IsValid(KillerRevenge) && !KillerRevenge->IsBeingDestroyed()
-		&& KillerRevenge->GetRevengeTargetPlayerState() == VictimState)
-	{
-		KillerRevenge->ClearRevengeTarget();
-	}
-	SetRevengeTargetPlayerState(Resolution.CreditedPlayerState);
+	// PlayerState owns the kill/death rules. This component only mirrors the result,
+	// including changes made by its existing Blueprint events, to the owning client.
+	APlayerState* Target = ReadPlayerStateRevengeTarget();
+	if (TargetPlayerState == Target) return;
+	TargetPlayerState = Target;
+	PC->ForceNetUpdate();
+	OnRep_TargetPlayerState();
 }
 
 void UShooterRevengeComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -101,20 +87,24 @@ void UShooterRevengeComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProper
 void UShooterRevengeComponent::SetRevengeTargetPlayerState(APlayerState* Target)
 {
 	APlayerController* PC = Cast<APlayerController>(GetOwner());
-	UWorld* World = GetWorld();
+	const UWorld* World = GetWorld();
 	if (bEndingPlay || IsBeingDestroyed() || !IsValid(PC) || PC->IsActorBeingDestroyed()
 		|| !PC->HasAuthority() || !World || World->bIsTearingDown) return;
 	if (IsValid(Target) && Target->GetWorld() != World) return;
-	if (!IsValid(Target) || Target->IsActorBeingDestroyed() || Target == PC->GetPlayerState<APlayerState>()) Target = nullptr;
-	if (TargetPlayerState == Target) return;
-	TargetPlayerState = Target;
-	PC->ForceNetUpdate();
-	OnRep_TargetPlayerState();
+	APlayerState* State = PC->GetPlayerState<APlayerState>();
+	if (!IsValid(State) || State->GetWorld() != World) return;
+	FObjectPropertyBase* Property = FindRevengeProperty(State);
+	if (!Property) return;
+	if (!IsValid(Target) || Target->IsActorBeingDestroyed() || Target == State) Target = nullptr;
+	if (Target && !Target->IsA(Property->PropertyClass)) return;
+	Property->SetObjectPropertyValue_InContainer(State, Target);
+	State->ForceNetUpdate();
+	RefreshRevengeTargetFromPlayerState();
 }
 
 void UShooterRevengeComponent::SetRevengeTarget(APawn* Target)
 {
-	SetRevengeTargetPlayerState(IsValid(Target) ? Target->GetPlayerState() : nullptr);
+	SetRevengeTargetPlayerState(IsValid(Target) && !Target->IsActorBeingDestroyed() ? Target->GetPlayerState() : nullptr);
 }
 
 void UShooterRevengeComponent::ClearRevengeTarget()
@@ -124,14 +114,21 @@ void UShooterRevengeComponent::ClearRevengeTarget()
 
 APlayerState* UShooterRevengeComponent::GetRevengeTargetPlayerState() const
 {
-	return !bEndingPlay && !IsBeingDestroyed() && IsValid(TargetPlayerState)
-		&& !TargetPlayerState->IsActorBeingDestroyed() ? TargetPlayerState.Get() : nullptr;
+	const APlayerController* PC = Cast<APlayerController>(GetOwner());
+	const UWorld* World = GetWorld();
+	if (bEndingPlay || IsBeingDestroyed() || !IsValid(PC) || PC->IsActorBeingDestroyed()
+		|| !World || World->bIsTearingDown) return nullptr;
+	if (PC->HasAuthority()) return ReadPlayerStateRevengeTarget();
+	return IsValid(TargetPlayerState) && !TargetPlayerState->IsActorBeingDestroyed()
+		&& TargetPlayerState->GetWorld() == World && TargetPlayerState != PC->GetPlayerState<APlayerState>()
+		? TargetPlayerState.Get() : nullptr;
 }
 
 bool UShooterRevengeComponent::IsRevengeTarget(const APawn* Shooter) const
 {
 	APlayerState* Target = GetRevengeTargetPlayerState();
-	return Target && IsValid(Shooter) && Shooter->GetPlayerState() == Target;
+	return Target && IsValid(Shooter) && !Shooter->IsActorBeingDestroyed()
+		&& Shooter->GetWorld() == GetWorld() && Shooter->GetPlayerState() == Target;
 }
 
 void UShooterRevengeComponent::OnRep_TargetPlayerState()

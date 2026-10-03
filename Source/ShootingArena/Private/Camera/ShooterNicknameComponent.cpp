@@ -148,7 +148,7 @@ ECollisionChannel UShooterNicknameComponent::ResolveDamageTraceChannel(float& Di
 		if (!IsValid(Component) || Component->IsBeingDestroyed() || !IsValid(Pawn) || Pawn->IsActorBeingDestroyed()) return TraceChannel;
 		for (TFieldIterator<FProperty> It(GetSelected); It; ++It)
 		{
-			if (!It->HasAnyPropertyFlags(CPF_OutParm)) continue;
+			if (!It->HasAllPropertyFlags(CPF_Parm | CPF_OutParm)) continue;
 			const FObjectPropertyBase* ItemProperty = CastField<FObjectPropertyBase>(*It);
 			UObject* Weapon = ItemProperty ? ItemProperty->GetObjectPropertyValue_InContainer(Parameters.GetStructMemory()) : nullptr;
 			const FObjectPropertyBase* DataProperty = IsValid(Weapon) ? FindFProperty<FObjectPropertyBase>(Weapon->GetClass(), TEXT("weaponData")) : nullptr;
@@ -231,7 +231,9 @@ void UShooterNicknameComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 	APawn* Target = FindAimTarget(Origin, Direction);
 	UpdateTarget(Target);
 	// Blueprint target-change listeners can disable or destroy this component/pawn.
-	if (bEndingPlay || IsBeingDestroyed() || !Style.bEnabled || World->bIsTearingDown)
+	if (bEndingPlay || IsBeingDestroyed() || !Style.bEnabled || !ShooterClass
+		|| !IsValid(PC) || PC->IsActorBeingDestroyed() || World->bIsTearingDown
+		|| AimTarget.Get() != Target)
 	{
 		ClearDisplay();
 		return;
@@ -240,7 +242,9 @@ void UShooterNicknameComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 	{
 		DisplayedTarget = Target;
 		DisplayedName = ResolveNickname(Target);
-		if (bEndingPlay || IsBeingDestroyed() || !Style.bEnabled || !IsValid(Target) || Target->IsActorBeingDestroyed())
+		if (bEndingPlay || IsBeingDestroyed() || !Style.bEnabled || !ShooterClass
+			|| !IsValid(PC) || PC->IsActorBeingDestroyed() || World->bIsTearingDown
+			|| !IsValid(Target) || Target->IsActorBeingDestroyed() || AimTarget.Get() != Target)
 		{
 			ClearDisplay();
 			return;
@@ -249,9 +253,9 @@ void UShooterNicknameComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 	}
 	else if (!DisplayedName.IsEmpty())
 	{
-		if (LostAimTime < 0.0) LostAimTime = GetWorld()->GetTimeSeconds();
+		if (LostAimTime < 0.0) LostAimTime = World->GetTimeSeconds();
 		if (!DisplayedTarget.IsValid() || !UShooterDisplayLibrary::IsShooterAlive(DisplayedTarget.Get())
-			|| GetWorld()->GetTimeSeconds() - LostAimTime >= Style.LingerTime)
+			|| World->GetTimeSeconds() - LostAimTime >= Style.LingerTime)
 			ClearDisplay();
 	}
 	if (IsValid(Widget)) Widget->RefreshDisplay();

@@ -7,6 +7,11 @@
 #include "Rendering/SlateRenderer.h"
 #include "GameFramework/PlayerController.h"
 
+void UShooterNicknameWidget::SetDisplayComponent(UShooterNicknameComponent* Component)
+{
+	DisplayComponent = Component;
+}
+
 void UShooterNicknameWidget::RefreshDisplay()
 {
 	if (const TSharedPtr<SWidget> Cached = GetCachedWidget()) Cached->Invalidate(EInvalidateWidgetReason::Paint);
@@ -32,6 +37,9 @@ int32 UShooterNicknameWidget::NativePaint(const FPaintArgs& Args, const FGeometr
 	const FVector2D Size = Renderer->GetFontMeasureService()->Measure(Name, Style.Font);
 	if (Position.ContainsNaN() || Size.ContainsNaN()) return BaseLayer;
 	Position += Style.Offset - FVector2D(Size.X * 0.5, 0.0);
+	// Slate stores transforms as floats; a finite double offset can still overflow there.
+	if (Position.ContainsNaN() || !FMath::IsFinite(static_cast<float>(Position.X))
+		|| !FMath::IsFinite(static_cast<float>(Position.Y))) return BaseLayer;
 	FSlateDrawElement::MakeText(Elements, BaseLayer + 1,
 		Geometry.ToPaintGeometry(Size, FSlateLayoutTransform(Position)), Name,
 		Style.Font, ESlateDrawEffect::None, Component->GetDisplayedNicknameColor() * WidgetStyle.GetColorAndOpacityTint());

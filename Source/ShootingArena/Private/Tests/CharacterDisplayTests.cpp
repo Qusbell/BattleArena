@@ -331,6 +331,28 @@ bool FCharacterDisplayRegressionTest::RunTest(const FString& Parameters)
 	}
 	Nickname->SetNicknameEnabled(false);
 	TestFalse(TEXT("Nickname OFF remains independent from outline settings"), Nickname->IsNicknameEnabled());
+	Outline->SetOutlineEnabled(true);
+	Outline->RefreshShooters();
+	Head->DestroyComponent();
+	Outline->UpdateProxies();
+	Outline->RefreshShooters();
+	for (const FShooterOutlineProxy& Proxy : Outline->Proxies)
+		TestNotEqual(TEXT("Removed mesh cannot retain an outline proxy"), Proxy.Source.Get(), static_cast<UMeshComponent*>(Head));
+	Shooter->Destroy();
+	SteelShooter->Destroy();
+	Outline->UpdateProxies();
+	Outline->RefreshShooters();
+	TestEqual(TEXT("Actor destruction safely removes every stale outline proxy"), Outline->Proxies.Num(), 0);
+	TestNull(TEXT("Destroyed shooter cannot remain an aim target"),
+		Nickname->FindAimTarget(FVector(0, 0, 80), FVector::ForwardVector));
+	Nickname->UpdateTarget(Shooter);
+	TestNull(TEXT("Destroyed shooter is rejected by target-change API"), Nickname->GetAimTarget());
+	Outline->DestroyComponent();
+	Outline->SetOutlineEnabled(true);
+	Nickname->DestroyComponent();
+	Nickname->SetNicknameEnabled(true);
+	TestNull(TEXT("Destroyed nickname component safely rejects aim queries"),
+		Nickname->FindAimTarget(FVector(0, 0, 80), FVector::ForwardVector));
 	World->DestroyWorld(false);
 	GEngine->DestroyWorldContext(World);
 	return true;

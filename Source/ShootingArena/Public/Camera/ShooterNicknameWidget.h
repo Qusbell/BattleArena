@@ -12,7 +12,7 @@ class SHOOTINGARENA_API UShooterNicknameWidget : public UUserWidget
 {
 	GENERATED_BODY()
 public:
-	void SetDisplayComponent(UShooterNicknameComponent* Component) { DisplayComponent = Component; }
+	void SetDisplayComponent(UShooterNicknameComponent* Component);
 	void RefreshDisplay();
 protected:
 	virtual int32 NativePaint(const FPaintArgs& Args, const FGeometry& Geometry, const FSlateRect& CullingRect,
