@@ -36,6 +36,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "킬 스트릭 보이스|재생", meta = (ClampMin = "0.0", UIMin = "0.0", DisplayName = "보이스 재생 제한 시간"))
 	float KillVoiceOverlapTime = 0.0f;
 
+	/** 복수 킬 배치에서 우선 재생할 단발 사운드입니다. 비어 있거나 반복 사운드면 기존 킬 스트릭 보이스를 사용합니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "킬 스트릭 보이스|재생", meta = (DisplayName = "복수 킬 보이스"))
+	TObjectPtr<USoundBase> RevengeSound = nullptr;
+
 	/** 연속 처치 기준별 사운드를 설정합니다. 정확한 기준이 없으면 무음이며, 최고 기준을 넘으면 최고 단계를 사용합니다. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "킬 스트릭 보이스|단계", meta = (DisplayName = "단계별 보이스 설정"))
 	TArray<FKillStreakVoiceTier> KillStreakTiers;

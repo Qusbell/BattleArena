@@ -47,7 +47,7 @@ void UKillStreakVoiceComponent::EndPlay(const EEndPlayReason::Type EndPlayReason
 	Super::EndPlay(EndPlayReason);
 }
 
-void UKillStreakVoiceComponent::QueueKillEvent()
+void UKillStreakVoiceComponent::QueueKillEvent(bool bIsRevenge)
 {
 	AActor* Owner = GetOwner();
 	UWorld* World = GetWorld();
@@ -60,6 +60,7 @@ void UKillStreakVoiceComponent::QueueKillEvent()
 	{
 		++PendingKillEventCount;
 	}
+	bPendingRevengeKill |= bIsRevenge;
 
 	// The first event starts the fixed window. Further events are collected without extending it.
 	if (PendingKillEventCount > 1)
@@ -100,6 +101,7 @@ void UKillStreakVoiceComponent::NotifyOwnerDeath()
 	}
 
 	PendingKillEventCount = 0;
+	bPendingRevengeKill = false;
 	CurrentStreakCount = 0;
 	KillBatchStartTime = 0.0f;
 
@@ -118,8 +120,10 @@ void UKillStreakVoiceComponent::NotifyOwnerDeath()
 void UKillStreakVoiceComponent::ProcessKillBatch()
 {
 	const int32 KillEventsInBatch = PendingKillEventCount;
+	const bool bBatchContainsRevengeKill = bPendingRevengeKill;
 	const float BatchStartTime = KillBatchStartTime;
 	PendingKillEventCount = 0;
+	bPendingRevengeKill = false;
 	KillBatchStartTime = 0.0f;
 	if (KillEventsInBatch <= 0)
 	{
@@ -130,7 +134,24 @@ void UKillStreakVoiceComponent::ProcessKillBatch()
 		static_cast<int64>(CurrentStreakCount) + KillEventsInBatch,
 		MAX_int32));
 
-	USoundBase* SelectedSound = SelectVoiceForCurrentStreak();
+	USoundBase* SelectedSound = nullptr;
+	if (bBatchContainsRevengeKill && IsValid(Settings) && IsValid(Settings->RevengeSound))
+	{
+		if (Settings->RevengeSound->IsOneShot())
+		{
+			SelectedSound = Settings->RevengeSound;
+		}
+		else
+		{
+			UE_LOG(LogKillStreakVoice, Warning,
+				TEXT("Looping revenge voice skipped: %s on %s."),
+				*GetNameSafe(Settings->RevengeSound), *GetNameSafe(GetOwner()));
+		}
+	}
+	if (!IsValid(SelectedSound))
+	{
+		SelectedSound = SelectVoiceForCurrentStreak();
+	}
 	if (!IsValid(SelectedSound))
 	{
 		return;
