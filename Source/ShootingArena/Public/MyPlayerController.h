@@ -14,6 +14,17 @@ class SHOOTINGARENA_API AMyPlayerController : public APlayerController
 	GENERATED_BODY()
 	
 public:
+	AMyPlayerController();
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Shooter Outline")
+	TObjectPtr<class UShooterOutlineComponent> ShooterOutline;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Shooter Nickname")
+	TObjectPtr<class UShooterNicknameComponent> ShooterNickname;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Shooter Revenge")
+	TObjectPtr<class UShooterRevengeComponent> ShooterRevenge;
+
 	virtual void PawnLeavingGame() override;
 	
 

@@ -1,8 +1,18 @@
 #include "MyPlayerController.h"
+#include "Camera/ShooterOutlineComponent.h"
+#include "Camera/ShooterNicknameComponent.h"
+#include "Camera/ShooterRevengeComponent.h"
 #include "HAL/PlatformMisc.h"
 #include "Engine/World.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
+
+AMyPlayerController::AMyPlayerController()
+{
+	ShooterOutline = CreateDefaultSubobject<UShooterOutlineComponent>(TEXT("ShooterOutline"));
+	ShooterNickname = CreateDefaultSubobject<UShooterNicknameComponent>(TEXT("ShooterNickname"));
+	ShooterRevenge = CreateDefaultSubobject<UShooterRevengeComponent>(TEXT("ShooterRevenge"));
+}
 
 void AMyPlayerController::PawnLeavingGame()
 {
