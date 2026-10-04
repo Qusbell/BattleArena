@@ -29,6 +29,13 @@ public:
 
     virtual void StartupModule() override
     {
+        // Uncooked Standalone also needs the reflected animation graph classes,
+        // but authoring menus and Blueprint refresh commands belong to the editor.
+        if (!GIsEditor)
+        {
+            return;
+        }
+
         DressSwapTool = MakeUnique<FDressSwapTool>();
         DressSwapTool->Register();
 

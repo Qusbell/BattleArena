@@ -15,7 +15,7 @@
 		},
 		{
 			"Name": "ShootingArenaEditorTools",
-			"Type": "Editor",
+			"Type": "UncookedOnly",
 			"LoadingPhase": "Default"
 		}
 	],
