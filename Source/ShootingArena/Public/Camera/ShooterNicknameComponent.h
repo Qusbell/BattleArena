@@ -6,6 +6,7 @@
 #include "ShooterNicknameComponent.generated.h"
 
 class UShooterNicknameWidget;
+struct FCollisionResponseParams;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FShooterAimTargetChanged, APawn*, Target);
 
@@ -54,6 +55,7 @@ protected:
 private:
 #if WITH_DEV_AUTOMATION_TESTS
 	friend class FCharacterDisplayRegressionTest;
+	friend class FCharacterNicknameWeaponTraceTest;
 #endif
 	UPROPERTY(Transient)
 	FShooterNicknameStyle Style;
@@ -76,7 +78,8 @@ private:
 	bool bEndingPlay = false;
 	bool ResolveAimRay(FVector& Origin, FVector& Direction);
 	APawn* FindAimTarget(const FVector& Origin, const FVector& Direction);
-	ECollisionChannel ResolveDamageTraceChannel(float& Distance) const;
+	ECollisionChannel ResolveDamageTraceChannel(float& Distance, FCollisionResponseParams& Responses) const;
+	ECollisionChannel ResolveWeaponDamageTraceChannel(UObject* Data, float& Distance, FCollisionResponseParams& Responses) const;
 	void UpdateTarget(APawn* Target);
 	void ClearDisplay();
 };
