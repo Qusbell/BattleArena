@@ -12,6 +12,7 @@
 #include "FileHelpers.h"
 
 #include "HAL/IConsoleManager.h"
+#include "Misc/App.h"
 #include "Misc/MessageDialog.h"
 #include "Misc/ScopedSlowTask.h"
 
@@ -73,6 +74,8 @@ private:
 
     void RefreshBlueprints(const TArray<FString>& Args)
     {
+        const bool bUnattended = FApp::IsUnattended();
+
         // PIE 중에는 실행 금지
         if (GEditor && GEditor->PlayWorld != nullptr)
         {
@@ -200,10 +203,10 @@ private:
         );
 
 
-        if (FMessageDialog::Open(
-            EAppMsgType::YesNo,
-            FText::FromString(ConfirmationMessage)
-        ) != EAppReturnType::Yes)
+        if (!bUnattended && FMessageDialog::Open(
+                EAppMsgType::YesNo,
+                FText::FromString(ConfirmationMessage)
+            ) != EAppReturnType::Yes)
         {
             UE_LOG(
                 LogBPRefreshTool,
@@ -263,7 +266,7 @@ private:
             FText::FromString(TEXT("Refreshing Blueprints..."))
         );
 
-        SlowTask.MakeDialog(true);
+        SlowTask.MakeDialog(!bUnattended);
 
 
         // ------------------------------------------------------------
@@ -424,19 +427,22 @@ private:
                 CompileErrorCount
             );
 
-            FMessageDialog::Open(
-                EAppMsgType::Ok,
-                FText::FromString(
-                    FString::Printf(
-                        TEXT(
-                            "%d Blueprint(s) failed to compile.\n\n"
-                            "Nothing was automatically saved.\n"
-                            "Check Output Log for details."
-                        ),
-                        CompileErrorCount
+            if (!bUnattended)
+            {
+                FMessageDialog::Open(
+                    EAppMsgType::Ok,
+                    FText::FromString(
+                        FString::Printf(
+                            TEXT(
+                                "%d Blueprint(s) failed to compile.\n\n"
+                                "Nothing was automatically saved.\n"
+                                "Check Output Log for details."
+                            ),
+                            CompileErrorCount
+                        )
                     )
-                )
-            );
+                );
+            }
 
             return;
         }
@@ -558,15 +564,18 @@ private:
                 TEXT("One or more packages failed to save.")
             );
 
-            FMessageDialog::Open(
-                EAppMsgType::Ok,
-                FText::FromString(
-                    TEXT(
-                        "One or more Blueprint packages failed to save.\n"
-                        "Check Output Log."
+            if (!bUnattended)
+            {
+                FMessageDialog::Open(
+                    EAppMsgType::Ok,
+                    FText::FromString(
+                        TEXT(
+                            "One or more Blueprint packages failed to save.\n"
+                            "Check Output Log."
+                        )
                     )
-                )
-            );
+                );
+            }
 
             return;
         }
@@ -585,21 +594,24 @@ private:
         );
 
 
-        FMessageDialog::Open(
-            EAppMsgType::Ok,
-            FText::FromString(
-                FString::Printf(
-                    TEXT(
-                        "Blueprint refresh completed.\n\n"
-                        "Processed: %d\n"
-                        "Root: %s\n\n"
-                        "Check Git status before committing."
-                    ),
-                    Blueprints.Num(),
-                    *RootPath
+        if (!bUnattended)
+        {
+            FMessageDialog::Open(
+                EAppMsgType::Ok,
+                FText::FromString(
+                    FString::Printf(
+                        TEXT(
+                            "Blueprint refresh completed.\n\n"
+                            "Processed: %d\n"
+                            "Root: %s\n\n"
+                            "Check Git status before committing."
+                        ),
+                        Blueprints.Num(),
+                        *RootPath
+                    )
                 )
-            )
-        );
+            );
+        }
     }
 };
 
