@@ -2,6 +2,8 @@
 
 #include "Weapon/WeaponAimAlignmentComponent.h"
 #include "Weapon/WeaponAimAlignmentMath.h"
+#include "Weapon/WeaponProjectileAimLibrary.h"
+#include "Weapon/ProjectileConvergenceComponent.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimInstanceProxy.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -97,7 +99,11 @@ void FAnimNode_WeaponAimAlignment::PreUpdate(const UAnimInstance* AnimInstance)
 		|| !WeaponMesh->DoesSocketExist(Settings->MuzzleSocket)) return;
 	const FTransform HandWorld = Body->GetSocketTransform(RightHand.BoneName);
 	// The relative weapon/socket geometry cancels the last frame's hand rotation. Worker evaluation uses this frame's input pose.
-	MuzzleInHand = WeaponMesh->GetSocketTransform(Settings->MuzzleSocket).GetRelativeTransform(HandWorld);
+	const UProjectileConvergenceSettings* FlightSettings = Alignment->GetOwner()->FindComponentByClass<UProjectileConvergenceSettings>();
+	FTransform BoreWorld;
+	if (!UWeaponProjectileAimLibrary::TryGetProjectileBoreTransform(WeaponMesh, Settings->MuzzleSocket,
+		FlightSettings ? FlightSettings->AimDirectionSocket : NAME_None, BoreWorld)) return;
+	MuzzleInHand = BoreWorld.GetRelativeTransform(HandWorld);
 	MuzzleAxis = Settings->MuzzleDirectionOffset.Vector();
 	bHasLeftGrip = !Settings->LeftGripSocket.IsNone() && WeaponMesh->DoesSocketExist(Settings->LeftGripSocket);
 	if (bHasLeftGrip)

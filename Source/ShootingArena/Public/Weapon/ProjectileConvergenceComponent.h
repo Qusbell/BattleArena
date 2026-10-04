@@ -19,6 +19,12 @@ class SHOOTINGARENA_API UProjectileConvergenceSettings : public UActorComponent
 {
 	GENERATED_BODY()
 public:
+	/** Existing muzzle collision shape plus the camera-to-muzzle line. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Projectile Spawn Safety")
+	bool bUseCameraWhenMuzzleBlocked = false;
+	/** Opt in only on projectile weapons; the pawn rendering component restores other weapons. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "First Person Rendering")
+	bool bUseFirstPersonRendering = false;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Projectile Convergence")
 	bool bEnabled = true;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Projectile Convergence")
@@ -29,6 +35,12 @@ public:
 	float MaxIntersectionDistance = 2000.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Projectile Convergence", meta = (ClampMin = "0", Units = "cm"))
 	float IntersectionTolerance = 2.f;
+	/** A separate socket for barrel direction; None retains the legacy Muzzle rotation. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Projectile Convergence")
+	FName AimDirectionSocket = NAME_None;
+	/** Reject ray intersections almost beside/below the muzzle; use Distance instead. Real close hits are preserved. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Projectile Convergence", meta = (ClampMin = "0", Units = "cm"))
+	float MinimumIntersectionForwardDistance = 0.f;
 	/** Socket local +X is the default barrel direction. Adjust for each weapon's socket axes. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Projectile Convergence")
 	FRotator MuzzleDirectionOffset = FRotator::ZeroRotator;
