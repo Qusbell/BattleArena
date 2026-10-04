@@ -30,6 +30,9 @@ public:
 	static bool WireSpawnVolume(UBlueprint* Blueprint);
 
 	UFUNCTION(BlueprintCallable, Category="Editor|Item Sound Migration")
+	static bool MoveSpawnSoundToSpawn(UBlueprint* Blueprint);
+
+	UFUNCTION(BlueprintCallable, Category="Editor|Item Sound Migration")
 	static bool SeparateWeaponPickupSound(UBlueprint* HeldItem, UBlueprint* HoldableItem);
 
 	UFUNCTION(BlueprintCallable, Category="Editor|Item Sound Migration")

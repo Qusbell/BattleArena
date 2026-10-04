@@ -5,6 +5,7 @@
 #include "Engine/Blueprint.h"
 #include "Engine/DataTable.h"
 #include "K2Node_CustomEvent.h"
+#include "K2Node_CallFunction.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/ScopeExit.h"
 #include "Sound/SoundBase.h"
@@ -13,6 +14,59 @@
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FItemSoundTest, "ShootingArena.Items.SpawnAndPickupSound",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FItemSoundTimingTest, "ShootingArena.Items.SpawnSoundTiming",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FItemSoundTimingTest::RunTest(const FString& Parameters)
+{
+	UBlueprint* BP = LoadObject<UBlueprint>(nullptr, TEXT("/Game/QuakeLike_1_0/Spawner/SpawnPoint/BP_ItemSpawnPoint.BP_ItemSpawnPoint"));
+	if (!TestNotNull(TEXT("Saved spawn point"), BP)) return false;
+	TArray<UEdGraph*> Graphs; BP->GetAllGraphs(Graphs);
+	UEdGraph* Graph = nullptr;
+	for (UEdGraph* G : Graphs) if (G->GetFName() == TEXT("EventGraph")) Graph = G;
+	if (!TestNotNull(TEXT("Spawn point graph"), Graph)) return false;
+	auto Pin = [Graph](const TCHAR* Node, const TCHAR* Name) -> UEdGraphPin*
+	{
+		for (UEdGraphNode* N : Graph->Nodes) if (N->GetFName() == Node) return N->FindPin(Name);
+		return nullptr;
+	};
+	auto Link = [&](const TCHAR* From, const TCHAR* Out, const TCHAR* To, const TCHAR* In)
+	{
+		UEdGraphPin* A = Pin(From, Out); UEdGraphPin* B = Pin(To, In);
+		TestTrue(FString(From) + TEXT(" -> ") + To, A && B && A->LinkedTo.Contains(B));
+	};
+	UEdGraphPin* PendingSound = Pin(TEXT("K2Node_CallFunction_8"), TEXT("Sound To Play"));
+	UEdGraphPin* ActualFX = Pin(TEXT("ItemSound_PlaySpawnSound"), TEXT("Spawn VFX"));
+	TestTrue(TEXT("Pre-spawn feedback never receives sound"), PendingSound && PendingSound->LinkedTo.IsEmpty() && !PendingSound->DefaultObject);
+	TestTrue(TEXT("Spawn sound never repeats the pre-spawn FX"), ActualFX && ActualFX->LinkedTo.IsEmpty() && !ActualFX->DefaultObject);
+	Link(TEXT("K2Node_Message_0"), TEXT("Spawn FX"), TEXT("K2Node_CallFunction_8"), TEXT("Spawn VFX"));
+	Link(TEXT("K2Node_CustomEvent_0"), TEXT("then"), TEXT("ItemSound_ValidSpawn"), TEXT("execute"));
+	Link(TEXT("K2Node_CustomEvent_0"), TEXT("New Item"), TEXT("ItemSound_IsValidSpawn"), TEXT("Object"));
+	Link(TEXT("ItemSound_IsValidSpawn"), TEXT("ReturnValue"), TEXT("ItemSound_ValidSpawn"), TEXT("Condition"));
+	Link(TEXT("ItemSound_ValidSpawn"), TEXT("then"), TEXT("K2Node_VariableSet_0"), TEXT("execute"));
+	UEdGraphPin* Invalid = Pin(TEXT("ItemSound_ValidSpawn"), TEXT("else"));
+	TestTrue(TEXT("Failed spawn cannot register or play sound"), Invalid && Invalid->LinkedTo.IsEmpty());
+	Link(TEXT("K2Node_AddDelegate_1"), TEXT("then"), TEXT("ItemSound_AfterAssign"), TEXT("execute"));
+	UEdGraphPin* Authority = Pin(TEXT("ItemSound_AfterAssign"), TEXT("Condition"));
+	const UK2Node_CallFunction* Check = Authority && Authority->LinkedTo.Num() == 1
+		? Cast<UK2Node_CallFunction>(Authority->LinkedTo[0]->GetOwningNode()) : nullptr;
+	TestTrue(TEXT("Only the server sends the success sound"), Check && Check->FunctionReference.GetMemberName() == TEXT("HasAuthority"));
+	Link(TEXT("ItemSound_AfterAssign"), TEXT("then"), TEXT("ItemSound_GetSpawnFeedback"), TEXT("execute"));
+	Link(TEXT("ItemSound_GetSpawnFeedback"), TEXT("then"), TEXT("ItemSound_PlaySpawnSound"), TEXT("execute"));
+	Link(TEXT("ItemSound_GetSpawnFeedback"), TEXT("Spawn Sound"), TEXT("ItemSound_PlaySpawnSound"), TEXT("Sound To Play"));
+	Link(TEXT("ItemSound_GetSpawnFeedback"), TEXT("Spawn Volume"), TEXT("ItemSound_PlaySpawnSound"), TEXT("SpawnVolume"));
+	for (const TCHAR* Input : {TEXT("self"), TEXT("Row Name")})
+	{
+		UEdGraphPin* Before = Pin(TEXT("K2Node_Message_0"), Input);
+		UEdGraphPin* After = Pin(TEXT("ItemSound_GetSpawnFeedback"), Input);
+		TestTrue(TEXT("Feedback uses the same server-selected item"), Before && After
+			&& Before->LinkedTo.Num() == 1 && After->LinkedTo.Num() == 1 && Before->LinkedTo[0] == After->LinkedTo[0]);
+	}
+	// Both timer expiry and zero-delay spawn still use CheckAndSpawnRoutine -> Spawn -> AssignItem.
+	Link(TEXT("K2Node_Message_2"), TEXT("then"), TEXT("K2Node_CallFunction_16"), TEXT("execute"));
+	return !HasAnyErrors();
+}
 
 bool FItemSoundTest::RunTest(const FString& Parameters)
 {
