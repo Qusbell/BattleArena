@@ -40,6 +40,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "킬 스트릭 보이스|재생", meta = (DisplayName = "복수 킬 보이스"))
 	TObjectPtr<USoundBase> RevengeSound = nullptr;
 
+	/** 매치 첫 킬 보이스 후보입니다. 유효한 단발 사운드 중 하나를 무작위로 재생합니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "킬 스트릭 보이스|재생", meta = (DisplayName = "퍼스트 블러드 보이스"))
+	TArray<TObjectPtr<USoundBase>> FirstBloodSounds;
+
 	/** 연속 처치 기준별 사운드를 설정합니다. 정확한 기준이 없으면 무음이며, 최고 기준을 넘으면 최고 단계를 사용합니다. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "킬 스트릭 보이스|단계", meta = (DisplayName = "단계별 보이스 설정"))
 	TArray<FKillStreakVoiceTier> KillStreakTiers;

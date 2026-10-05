@@ -24,6 +24,10 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Kill Streak Voice")
 	void QueueKillEvent(bool bIsRevenge = false);
 
+	/** Call on the server for the killer after GameMode confirms the match's first kill. */
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Kill Streak Voice")
+	void PlayFirstBloodVoice();
+
 	/** Call on the server when this PlayerState's pawn dies. */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Kill Streak Voice")
 	void NotifyOwnerDeath();
