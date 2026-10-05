@@ -87,6 +87,7 @@ for bp, table in zip(spawners, tables):
 for bp, table in zip(drops, tables):
     checked(helper.wire_pickup_sound(bp, table), "pickup sound " + bp.get_name())
 checked(helper.wire_spawn_volume(spawnpoint), "multicast spawn volume")
+checked(helper.move_spawn_sound_to_spawn(spawnpoint), "spawn sound after successful creation")
 checked(helper.separate_weapon_pickup_sound(held, drops[0]), "separate weapon equip/pickup")
 
 for bp in blueprints.values():

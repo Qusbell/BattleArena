@@ -4,6 +4,7 @@
 #include "EdGraphSchema_K2.h"
 #include "Engine/Blueprint.h"
 #include "Engine/DataTable.h"
+#include "GameFramework/Actor.h"
 #include "K2Node_BreakStruct.h"
 #include "K2Node_CallFunction.h"
 #include "K2Node_CallParentFunction.h"
@@ -12,12 +13,14 @@
 #include "K2Node_FunctionResult.h"
 #include "K2Node_GetDataTableRow.h"
 #include "K2Node_IfThenElse.h"
+#include "K2Node_Message.h"
 #include "K2Node_VariableGet.h"
 #include "K2Node_VariableSet.h"
 #include "Kismet2/BlueprintEditorUtils.h"
 #include "Kismet2/CompilerResultsLog.h"
 #include "Kismet2/KismetEditorUtilities.h"
 #include "Kismet2/StructureEditorUtils.h"
+#include "Kismet/KismetSystemLibrary.h"
 #include "Sound/SoundBase.h"
 #include "UserDefinedStructure/UserDefinedStructEditorData.h"
 
@@ -137,7 +140,7 @@ bool UItemSoundMigrationLibrary::ConfigureSoundFields(UUserDefinedStruct* S, con
 	else if (Kind != TEXT("LifeItem")) return false;
 	// Friendly-name matching is case insensitive; existing Life/Ammo pickup fields remain compatible.
 	return AddField(S, TEXT("SpawnSound"), SoundType, TEXT("None"),
-		TEXT("생성 사전 피드백에 사용하는 위치 사운드. 최초 생성과 재생성에 적용하며, None이면 재생하지 않습니다."))
+		TEXT("아이템 생성 성공 시 재생할 위치 사운드. 최초 생성과 재생성에 적용하며, None이면 재생하지 않습니다."))
 		&& AddField(S, TEXT("SpawnVolume"), FloatType(), TEXT("1.0"), TEXT("생성음 볼륨 배율. 1은 원래 볼륨, 0은 음소거입니다."))
 		&& AddField(S, TEXT("PickupSound"), SoundType, TEXT("None"), TEXT("획득 성공 시 먹은 플레이어에게만 한 번 재생합니다. 생성음과 별개입니다."))
 		&& AddField(S, TEXT("PickupVolume"), FloatType(), TEXT("1.0"), TEXT("획득음 볼륨 배율. 1은 원래 볼륨, 0은 음소거입니다."));
@@ -277,7 +280,64 @@ bool UItemSoundMigrationLibrary::WireSpawnVolume(UBlueprint* BP)
 	FBlueprintEditorUtils::RefreshAllNodes(BP);
 	const bool OK = Connect(Pin(G, TEXT("K2Node_Message_0"), TEXT("Spawn Volume")), Pin(G, TEXT("K2Node_CallFunction_8"), TEXT("SpawnVolume")))
 		&& Connect(Event->FindPin(TEXT("SpawnVolume")), Pin(G, TEXT("K2Node_CallFunction_4"), TEXT("VolumeMultiplier")));
-	Event->NodeComment = TEXT("서버가 선택한 생성음과 볼륨을 전달합니다. 기존 위치/감쇠, FX, 사전 피드백 타이밍은 유지합니다.");
+	Event->NodeComment = TEXT("서버가 선택한 연출을 기존 위치/감쇠로 전달합니다. 사전 FX와 생성 성공 시 사운드는 별도로 호출합니다.");
+	return OK;
+}
+
+bool UItemSoundMigrationLibrary::MoveSpawnSoundToSpawn(UBlueprint* BP)
+{
+	if (!BP || BP->GetName() != TEXT("BP_ItemSpawnPoint")) return false;
+	UEdGraph* G = Graph(BP, TEXT("EventGraph"));
+	if (!G || Pin(G, TEXT("ItemSound_PlaySpawnSound"), TEXT("execute"))) return false; // Explicit one-time graph edit.
+	UEdGraphPin* AssignThen = Pin(G, TEXT("K2Node_CustomEvent_0"), TEXT("then"));
+	UEdGraphPin* NewItem = Pin(G, TEXT("K2Node_CustomEvent_0"), TEXT("New Item"));
+	UEdGraphPin* Registered = Pin(G, TEXT("K2Node_AddDelegate_1"), TEXT("then"));
+	UEdGraphPin* PendingSound = Pin(G, TEXT("K2Node_CallFunction_8"), TEXT("Sound To Play"));
+	UEdGraphPin* PendingVolume = Pin(G, TEXT("K2Node_CallFunction_8"), TEXT("SpawnVolume"));
+	UEdGraphPin* Target = Pin(G, TEXT("K2Node_Message_0"), TEXT("self"));
+	UEdGraphPin* RowName = Pin(G, TEXT("K2Node_Message_0"), TEXT("Row Name"));
+	if (!AssignThen || AssignThen->LinkedTo.Num() != 1 || !NewItem || !Registered || !Registered->LinkedTo.IsEmpty()
+		|| !PendingSound || !PendingVolume || !Target || Target->LinkedTo.Num() != 1 || !RowName || RowName->LinkedTo.Num() != 1) return false;
+	UEdGraphPin* OriginalAssign = AssignThen->LinkedTo[0];
+	UEdGraphPin* FeedbackTarget = Target->LinkedTo[0];
+	UEdGraphPin* SelectedRowName = RowName->LinkedTo[0];
+	const auto* OriginalFeedback = CastChecked<UK2Node_Message>(Target->GetOwningNode());
+
+	auto* Valid = NewNode<UK2Node_CallFunction>(G, -3072, -704);
+	Valid->SetFromFunction(UKismetSystemLibrary::StaticClass()->FindFunctionByName(TEXT("IsValid"))); Allocate(Valid);
+	Valid->Rename(TEXT("ItemSound_IsValidSpawn"));
+	auto* ValidBranch = NewNode<UK2Node_IfThenElse>(G, -2896, -928); Allocate(ValidBranch);
+	ValidBranch->Rename(TEXT("ItemSound_ValidSpawn"));
+	auto* Authority = NewNode<UK2Node_CallFunction>(G, -2048, -704);
+	Authority->SetFromFunction(AActor::StaticClass()->FindFunctionByName(TEXT("HasAuthority"))); Allocate(Authority);
+	auto* ServerBranch = NewNode<UK2Node_IfThenElse>(G, -1984, -928); Allocate(ServerBranch);
+	ServerBranch->Rename(TEXT("ItemSound_AfterAssign"));
+	auto* Feedback = NewNode<UK2Node_Message>(G, -1760, -928);
+	Feedback->FunctionReference = OriginalFeedback->FunctionReference; Allocate(Feedback);
+	Feedback->Rename(TEXT("ItemSound_GetSpawnFeedback"));
+	auto* Sound = NewNode<UK2Node_CallFunction>(G, -1440, -928);
+	Sound->FunctionReference.SetSelfMember(TEXT("Multicast_PlaySpawnFeedback")); Allocate(Sound);
+	Sound->Rename(TEXT("ItemSound_PlaySpawnSound"));
+	G->GetSchema()->TrySetDefaultObject(*Sound->FindPin(TEXT("Spawn VFX")), nullptr);
+
+	AssignThen->BreakAllPinLinks();
+	PendingSound->BreakAllPinLinks(); PendingVolume->BreakAllPinLinks();
+	G->GetSchema()->TrySetDefaultObject(*PendingSound, nullptr);
+	G->GetSchema()->TrySetDefaultValue(*PendingVolume, TEXT("0.0"));
+	const bool OK = Connect(NewItem, Valid->FindPin(TEXT("Object")))
+		&& Connect(Valid->GetReturnValuePin(), ValidBranch->GetConditionPin())
+		&& Connect(AssignThen, ValidBranch->GetExecPin()) && Connect(ValidBranch->GetThenPin(), OriginalAssign)
+		&& Connect(Registered, ServerBranch->GetExecPin()) && Connect(Authority->GetReturnValuePin(), ServerBranch->GetConditionPin())
+		&& Connect(ServerBranch->GetThenPin(), Feedback->GetExecPin())
+		&& Connect(FeedbackTarget, Feedback->FindPin(TEXT("self"))) && Connect(SelectedRowName, Feedback->FindPin(TEXT("Row Name")))
+		&& Connect(Feedback->GetThenPin(), Sound->GetExecPin())
+		&& Connect(Feedback->FindPin(TEXT("Spawn Sound")), Sound->FindPin(TEXT("Sound To Play")))
+		&& Connect(Feedback->FindPin(TEXT("Spawn Volume")), Sound->FindPin(TEXT("SpawnVolume")));
+	ValidBranch->NodeComment = TEXT("Spawn 성공 여부 확인. 생성 실패 시 등록/바인딩/생성음을 실행하지 않습니다.");
+	ServerBranch->NodeComment = TEXT("아이템 등록과 바인딩 후 서버에서만 생성음 1회. 최초 생성/재생성 공통 경로.");
+	Sound->NodeComment = TEXT("선택된 행의 SpawnSound/SpawnVolume만 재생. 사전 FX는 기존 타이머에서 별도 재생합니다.");
+	PendingSound->GetOwningNode()->NodeComment = TEXT("사전 FX 전용. 사운드는 AssignItem 성공 후 재생하며 총 스폰 대기시간은 변경하지 않습니다.");
+	FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(BP);
 	return OK;
 }
 
