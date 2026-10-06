@@ -87,6 +87,28 @@ void UKillStreakVoiceComponent::QueueKillEvent(bool bIsRevenge)
 		false);
 }
 
+void UKillStreakVoiceComponent::PlayFirstBloodVoice()
+{
+	const AActor* Owner = GetOwner();
+	if (!IsValid(Owner) || !Owner->HasAuthority() || !IsValid(Settings))
+	{
+		return;
+	}
+
+	TArray<USoundBase*> ValidSounds;
+	for (USoundBase* Sound : Settings->FirstBloodSounds)
+	{
+		if (IsValid(Sound) && Sound->IsOneShot())
+		{
+			ValidSounds.Add(Sound);
+		}
+	}
+	if (!ValidSounds.IsEmpty())
+	{
+		DispatchVoiceToOwner(ValidSounds[FMath::RandHelper(ValidSounds.Num())]);
+	}
+}
+
 void UKillStreakVoiceComponent::NotifyOwnerDeath()
 {
 	AActor* Owner = GetOwner();
