@@ -21,7 +21,7 @@
 		"Name": "C01",
 		"Character_Name": "Ghost",
 		"Character_Sprite": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Map_Image/메딕.메딕'",
-		"Character_Modeling": "Cobalt",
+		"Character_Modeling": "Orange",
 		"Characteristic_ID": [
 			"BGH_Easy",
 			"BGH_Normal",
@@ -32,7 +32,7 @@
 		"Name": "C02",
 		"Character_Name": "Madness",
 		"Character_Sprite": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Map_Image/배틀크루저.배틀크루저'",
-		"Character_Modeling": "Orange",
+		"Character_Modeling": "Aegis",
 		"Characteristic_ID": [
 			"HBC_Easy",
 			"HBC_Normal",
@@ -43,7 +43,7 @@
 		"Name": "C03",
 		"Character_Name": "Anger",
 		"Character_Sprite": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Map_Image/벌처.벌처'",
-		"Character_Modeling": "Orange",
+		"Character_Modeling": "BlackCarbon",
 		"Characteristic_ID": [
 			"LJH_Easy",
 			"LJH_Normal",
@@ -54,7 +54,7 @@
 		"Name": "C04",
 		"Character_Name": "Greater",
 		"Character_Sprite": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Map_Image/제라툴.제라툴'",
-		"Character_Modeling": "Orange",
+		"Character_Modeling": "Cobalt",
 		"Characteristic_ID": [
 			"PJH_Easy",
 			"PJH_Normal",
@@ -76,7 +76,7 @@
 		"Name": "C06",
 		"Character_Name": "Eschatologist",
 		"Character_Sprite": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Map_Image/하이템플러.하이템플러'",
-		"Character_Modeling": "Orange",
+		"Character_Modeling": "Diesel",
 		"Characteristic_ID": [
 			"YJH_Easy",
 			"YJH_Normal",
