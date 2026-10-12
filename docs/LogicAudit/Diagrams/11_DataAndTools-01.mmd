@@ -1,0 +1,11 @@
+flowchart TD
+  Map["DT_MapData / MapID·MapAsset·Character_List"] --> Character["DT_Character / Modeling·Characteristic_ID"]
+  Character --> AI["DT_Characteristic / 난이도·AI 능력"]
+  Character --> Mesh["DT_CharacterModeling / live·death mesh·AnimBP"]
+  AI --> Score["DT_Item_Weight·WeaponChange_Weight / curve"]
+  Items["아이템 4종 DT / RowHandle"] --> Pickup["Spawner·DropItem·DeathDrop"]
+  Weapon["무기 DA / 사용 횟수·발사·FX·줌"] --> Combat["Loadout·HeldItem·WeaponBase"]
+  Settings["DT_Setting / 기본·범위·step"] --> Save["GameInstance LoadSettings / SG_Settings"]
+  Save --> UI["WBP_SettingsMenu / slider·toggle"]
+  UI --> Apply["민감도·FOV·밝기·SoundMix·BGM"]
+  UI --> Persist["GameInstance SaveSettings / SaveGame slot"]

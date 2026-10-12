@@ -1,0 +1,18 @@
+flowchart TD
+  Login["InitNewPlayer / Token·Nickname"] --> Post["PostLogin / SavedNetworkAddress·닉네임"]
+  Post --> Start["HandleStartingNewPlayer / Token 조회"]
+  Start --> Existing{"Waiting Pawns에 유효 Pawn?"}
+  Existing -->|예| Possess["보존 Pawn Possess"]
+  Existing -->|아니오| Started{"경기 스폰 준비?"}
+  Started -->|대기| Queue["Waiting Players에 등록"]
+  Started -->|가능| Extend["ExtendInitialSpawn / SpawnInitialPawn"]
+  Begin["GameMode BeginPlay"] --> Init["SpawnerManager InitRespawners"]
+  Init --> Discover["SpawnSelection 포인트 등록"]
+  Discover --> Prepare["PrepareInitialSpawn / 총 캐릭터 수"]
+  Prepare --> Players["대기 플레이어 최초 스폰"]
+  Prepare --> Bots["파생 GameMode AI Spawn"]
+  Queue --> Players
+  Players --> Pawn["SpawnActor / Possess / 초기 회전·생성음"]
+  Bots --> Pawn
+  Logout["Logout"] --> Keep["Token별 Waiting Pawn 보관"]
+  Keep --> Existing

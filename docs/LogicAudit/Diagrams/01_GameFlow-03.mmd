@@ -1,0 +1,7 @@
+flowchart LR
+  Init["Initializing"] --> World["MarkServerWorldReady / 2초 fallback"]
+  World --> Wait["WaitingForPlayers"]
+  Wait --> Count{"접속 인간 수 >= ExpectedHumanPlayers?"}
+  Count -->|예| Ready["ReadyToPlay"]
+  Ready --> Overlay["클라이언트 overlay·입력 잠금 해제"]
+  Ready --> BGM["Gameplay BGM"]

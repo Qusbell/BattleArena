@@ -1,0 +1,10 @@
+flowchart TD
+  Register["Controller RegisterController"] --> Track["ArenaAnalyzeSubsystem / 서버·Game·PIE"]
+  Track --> Possess["OnPossessedPawnChanged / 새 TrackId·damage bind"]
+  Possess --> Move["timer / 위치 sample"]
+  Possess --> Damage["OnTakeAnyDamage / 피해 sample"]
+  Move --> End["World subsystem Deinitialize"]
+  Damage --> End
+  End --> Json["Saved/Analyze/ArenaAnalyze_*.json"]
+  Json --> Library["ArenaAnalyzeLibrary / 로드·필터·이동 선분"]
+  Library --> Visual["EUW_ArenaAnalyzer / AnalyzeVisualizer"]

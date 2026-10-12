@@ -1,0 +1,17 @@
+flowchart TD
+  Input["Player / AI UsingItem"] --> Try["선택 Weapon TryUse"]
+  Try --> Gate["CanUse·재발사 간격·장착 상태 검사"]
+  Gate --> RPC["S TryFire / Server RPC"]
+  RPC --> Ammo["SetCurrentCount"]
+  RPC --> FX["M FireEffect / 사운드·muzzle FX"]
+  RPC --> Start["파생 StartFire / 발사 구성"]
+  Start --> Hit["Hitscan / hitInfo"]
+  Start --> Proj["BPC_ProjectileFire / projectile ID·생성"]
+  Hit --> Damage["Weapon TakeDamage / ApplyDamage"]
+  Proj --> Collision["Projectile 충돌 / 중복 폭발 가드"]
+  Collision --> Damage
+  Collision --> Radial["Rocket·Plasma Explode / 범위 hitInfo"]
+  Radial --> Damage
+  Damage --> Life["ShooterBase AnyDamage / Life"]
+  Damage --> Gauge["텔레포트 스킬 cooldown reduction"]
+  Damage --> Feedback["소유 클라이언트 hit sound·hit marker"]

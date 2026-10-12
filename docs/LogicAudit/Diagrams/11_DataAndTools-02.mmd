@@ -1,0 +1,10 @@
+flowchart TD
+  Engine["Engine loop 초기화 완료"] --> Sub["JsonAssetSyncSubsystem"]
+  Sub --> Config["Project Settings / Editor·Runtime 적용 설정"]
+  Config --> Registry["DA_JsonApplyRegistry"]
+  Registry --> Files["Content DataTables·DataAssets JSON"]
+  Files --> Validate["JsonApplyService / binding·schema 검증"]
+  Validate --> Apply["DataTable·DataAsset·Curve processor 적용"]
+  Apply --> Memory["현재 메모리의 에셋 값"]
+  Memory --> Consumers["GameInstance / AI cache / 게임 로직"]
+  Apply --> Summary["processingCompletedEvent / 로그·Editor UI"]

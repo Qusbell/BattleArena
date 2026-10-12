@@ -1,0 +1,13 @@
+flowchart TD
+  Tick["GameMode Tick / bMatchStarted"] --> Time["ElapsedMatchTime 갱신"]
+  Time --> Check{"MatchDuration 도달?"}
+  Check -->|예| End["bMatchStarted=false / EndMatch"]
+  End --> Sort["PlayerState 수집 / KillCount·DeathCount 정렬"]
+  Sort --> Ranking["동점 등수 / FinalRankingList"]
+  Ranking --> Notify["bIsMatchEnded RepNotify / ShowResultWidget"]
+  Notify --> Result["WBP_Result / 투표 갱신·Result BGM"]
+  End --> Pause["0.6초 후 PauseAllPlayers"]
+  Result --> Vote["PlayerState Server_SetWantsReturnToLobby"]
+  Vote --> Count{"인간 1명 이상 / 전원 투표?"}
+  Count -->|예| Travel["absolute ServerTravel / Lobby_Level"]
+  Result --> Menu["개별 disconnect / 메인 메뉴 이동"]

@@ -1,0 +1,10 @@
+{
+  "markdown_files": 407,
+  "embedded_mermaid_diagrams": 1378,
+  "standalone_mmd_files": 30,
+  "broken_local_links": [],
+  "undefined_mermaid_nodes": [],
+  "snapshot_node_count_or_link_errors": [],
+  "mermaid_check": "structural: declarations and edge endpoints; no visual rendering confirmed",
+  "runtime_tests": "not run; documentation-only audit"
+}

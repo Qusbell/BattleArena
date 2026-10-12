@@ -1,0 +1,15 @@
+flowchart TD
+  Root["Root Selector"] --> Alive{"IsAlive + KillSwitch 조건"}
+  Alive --> Enemy{"Enemy 기억 중?"}
+  Enemy --> Retreat["1. 낮은 공격성 후퇴 / AttackSkill·STG·LTG 조건"]
+  Retreat --> RetreatMove["STG 또는 LTG로 VirtualInput Move / 병렬 사격"]
+  Enemy --> Combat["2. 적이 보임 / 전투"]
+  Combat --> STG["STG 이동 + 사격 병렬"]
+  Combat --> EQS["거리·난이도별 EQS 위치 / 측면 이동"]
+  EQS --> Fire["ClearLine·FireAngle·Range 조건 / TryUseWeapon"]
+  Enemy --> Chase["3. 적이 안 보임 + 마지막 위치 / 추격"]
+  Chase --> Last["STG 우선 / EnemyLastLocation / 망각"]
+  Enemy --> Forget["4. 전투 실패 / 적·마지막 위치·이동 위치 clear"]
+  Alive --> Farm["적 경로 실패 시 파밍 / AttackSkill 조건"]
+  Farm --> Goals["STG → LTG → TourPoint → Wait"]
+  Root --> Final["사망·조건 실패 / Final Wait"]

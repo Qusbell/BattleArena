@@ -1,0 +1,14 @@
+flowchart TD
+  Menu["WBP_MainMenu / Campaign"] --> Maps["WBP_MapSelect / DT_MapData"]
+  Maps --> GI["GameInstance: 선택 맵·캐릭터 목록"]
+  Maps --> Start["StartSingleServer / StartLocalDedicatedServer"]
+  Start --> Proc["서버 실행 / Ready·Command 파일 설정"]
+  GI --> Difficulty["WBP_DifficultySelect / Difficulty"]
+  Difficulty --> Change["SetLocalDedicatedServerMap / 명령 파일"]
+  Proc --> Watch["서버 command watcher / 0.2초"]
+  Change --> Watch
+  Watch --> Travel["ServerTravel / URL 옵션 포함 시 재로드"]
+  Travel --> Ready["BeginPlay + 유효 NetDriver / READY 기록"]
+  Ready --> Poll["IsLocalDedicatedServerReady"]
+  Poll --> Login["GetLoginCommand / open 주소 + Token·Nickname"]
+  Login --> Loading["새 월드의 Coordinator / 로딩 해제"]

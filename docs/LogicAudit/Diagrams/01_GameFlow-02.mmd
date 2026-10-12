@@ -1,0 +1,12 @@
+flowchart TD
+  Join["LobbyGameMode PostLogin"] --> Restore["닉네임 복원 / AI 슬롯·방장 처리"]
+  Restore --> Slots["LobbyGameState Slots / HostPlayerState"]
+  Slots --> Client["RepNotify / WBP_Lobby 갱신"]
+  Client --> RPC["LobbyPlayerController Server RPC"]
+  RPC --> Host{"방장 권한 / 인덱스 / 준비 조건?"}
+  Host -->|충족| Approval["OnLobbyStartGameApproved"]
+  Approval --> Count["AI Easy·Normal·Hard 집계 / 인간 수"]
+  Count --> URL["맵 URL / Game·AI 수·ExpectedHumanPlayers"]
+  URL --> SameServer["TravelToMatch / absolute ServerTravel"]
+  Approval --> Mark["MarkMatchLaunched"]
+  Slots -.-> Compat["MatchServerAddress RepNotify / 별도 서버 접속 호환 경로"]

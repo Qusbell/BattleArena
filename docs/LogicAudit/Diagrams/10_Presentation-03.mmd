@@ -1,0 +1,13 @@
+flowchart TD
+  GI["GameInstance / BGMSettings"] --> BGM["BGMSubsystem / 로컬"]
+  Load["PostLoadMap / 메뉴·로비 맵"] --> BGM
+  Ready["Coordinator ReadyToPlay"] --> Gameplay["Gameplay BGM / map 이름 lookup"]
+  Gameplay --> BGM
+  Result["Result widget / Server_RequestVotesRefresh"] --> Multi["Multicast_PlayResultBGM"]
+  Multi --> BGM
+  BGM --> Track["async track request ID / fade·loop·volume override"]
+  Kill["PlayerState PlayOnKill"] --> Batch["KillStreakVoice QueueKillEvent / batch"]
+  Batch --> Choose["복수 우선 / 연속 킬 tier / overlap 억제"]
+  Choose --> Voice["소유 Controller Client RPC / 2D voice"]
+  Spawn["SpawnSelection / CharacterSpawnSound"] --> SpawnSound["설정별 owner-only 또는 multicast 생성음"]
+  Item["ItemSpawner·Pickup"] --> ItemSound["생성음 multicast / 획득음 owner-only"]

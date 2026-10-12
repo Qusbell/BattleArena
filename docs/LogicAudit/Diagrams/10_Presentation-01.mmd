@@ -1,0 +1,15 @@
+flowchart TD
+  Possess["PlayerController OnPossess·OnPossessedPawnChanged"] --> Bind["RespawnHelper·Life·HUD의 Pawn 구독 전환"]
+  Bind --> Life["OnLifeChanged / HP·Armor UI"]
+  Bind --> Inventory["Pickup·Swap·AmmoConsumed·Recovered"]
+  Inventory --> Weapon["슬롯·탄약·Crosshair·Zoom"]
+  Life --> HUD["WBP_PlayerHUD_sdm / CompShooterHUD manager"]
+  Weapon --> HUD
+  Net["Client KillLog·HitMarker·KillMessage RPC"] --> HUD
+  Death["Pawn OnDeath"] --> Screen["ClientShowDeathScreen / PlayerHUD 숨김"]
+  Death --> Cam["DeathCamComponent StartDeathCam"]
+  Cam --> Target["로컬 DeathCamActor 생성 / 즉시 ViewTarget"]
+  Respawn["새 Pawn Possess / ClientReturnToGame"] --> Retry["새 Pawn 유효성 / 0.05초 stop retry"]
+  Retry --> Blend["새 Pawn으로 blend / Cam actor 정리"]
+  Respawn --> Bind
+  Respawn --> Restore["Death UI 제거 / PlayerHUD 복원"]

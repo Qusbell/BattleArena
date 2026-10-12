@@ -1,0 +1,11 @@
+flowchart TD
+  Overlap["JumpPadTrigger overlap"] --> Pawn["Character·Controller 검사"]
+  Pawn --> Arc["목표점·중력 / SuggestProjectileVelocityCustomArc"]
+  Arc --> Launch["LaunchCharacter"]
+  Launch --> Lock["BPI_BodyInfo / SetInputStopTimer"]
+  Launch --> AI["BPI_VirtualInputAIMovement / TouchJumpPad"]
+  Launch --> Sound["JumpPadCommonSettings / PlayJumpPadSound"]
+  AI --> Land["Landed / 경로 재빌드·link 완료"]
+  Flight["JumpPadFlightComponent BeginFlight 호출"] --> Rise["상승 중 RiseGravityScale"]
+  Rise --> Fall["하강 중 FallGravityScale"]
+  Fall --> Restore["Landed / 원래 GravityScale 복구"]

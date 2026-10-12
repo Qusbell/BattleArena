@@ -1,0 +1,11 @@
+flowchart TD
+  Death["RespawnHelper / Pawn OnDeath"] --> Timer["WaitingRespawn / 서버 타이머"]
+  Timer --> Request["BPI_QuakeGameMode RequestRespawn"]
+  Request --> Filter["Controller 타입으로 포인트 필터"]
+  Filter --> Preferred["PlayerOnly 또는 BotOnly 우선 / 없으면 Both"]
+  Preferred --> Sort["DeathLocation에서 먼 순 정렬 / 동률 랜덤"]
+  Sort --> Random["상위 max 1, floor N/2 중 랜덤"]
+  Random --> Spawn["RespawnPawn / SpawnActor + Possess"]
+  Spawn --> Rotation["ControlRotation / 플레이어 ClientSetRotation"]
+  Spawn --> New["새 Pawn의 Life·Loadout·Buff 초기화"]
+  Spawn --> View["DeathCam 종료 / HUD 복원"]

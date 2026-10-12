@@ -1,0 +1,17 @@
+flowchart TD
+  Link["레벨 PathLink / BeginPlay·Streaming 등록"] --> Registry["PathLinkSubsystem RefreshLinks"]
+  Registry --> Check["구조 validation·중복 검사 / common cache"]
+  Check --> Duplicate{"blocking duplicate?"}
+  Duplicate -->|예| Block["경로 계산 차단 / Editor PIE 중단 안내"]
+  Duplicate -->|아니오| Cache["기본 또는 Context별 정적 graph"]
+  Goal["BT VirtualInputAIMoveTo / Actor·Location 목표"] --> Build["VirtualInputMovement Build Path"]
+  Cache --> Route["FindShortestRoute / NavMesh·특수 Link"]
+  Build --> Route
+  Route --> Segments["경로 segment·PathPoints·Entry/Exit"]
+  Segments --> Move["Tick / 현재 점·이동 방향 / AddMovementInput"]
+  Move --> Step{"현재 경로 완수?"}
+  Step -->|예| Pop["PopLinkRoute / 다음 segment"]
+  Pop --> Move
+  Move --> Stuck["Stuck 검사 / 탈출 방향·재빌드"]
+  Move --> Landed["Landed / 경로 재빌드"]
+  Step -->|최종 도착| Finish["OnArrived / BT task 완료"]

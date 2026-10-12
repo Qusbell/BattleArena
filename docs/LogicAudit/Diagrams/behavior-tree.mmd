@@ -1,0 +1,148 @@
+flowchart TD
+  bt0["Selector<br/>BTComposite_Selector"]
+  bt1["Selector<br/>BTComposite_Selector<br/>조건: BTD_IsAlive, KillSwitch<br/>Service: Select Target R"]
+  bt0 -->|"1"| bt1
+  bt2["Selector<br/>BTComposite_Selector<br/>조건: 적을 기억하고 있는가?"]
+  bt1 -->|"1"| bt2
+  bt3["후퇴 Sequence<br/>BTComposite_Sequence<br/>조건: 낮은 공격성 상태인가?, AttackSkill &gt; 0, 단기 목표 존재?, 장기 목표 존재?"]
+  bt2 -->|"1"| bt3
+  bt4["상태: 후퇴<br/>BTT_DebugState_R_C"]
+  bt3 -->|"1"| bt4
+  bt5["전투 이동 위치 망각<br/>BTT_ClearKey_R_C"]
+  bt3 -->|"2"| bt5
+  bt6["탐색 Selector<br/>BTComposite_Selector"]
+  bt3 -->|"3"| bt6
+  bt7["Simple Parallel<br/>BTComposite_SimpleParallel<br/>조건: 단기 목표가 존재하는가?"]
+  bt6 -->|"1"| bt7
+  bt8["후퇴 중: 단기 목표로 이동<br/>BTT_VirtualInputAIMoveTo_C"]
+  bt7 -->|"1"| bt8
+  bt9["Selector<br/>BTComposite_Selector"]
+  bt7 -->|"2"| bt9
+  bt10["후퇴 중 발사: 단기 목표 보유<br/>BTTask_Wait<br/>조건: BTD_HasClearLine_R, BTD_CheckRange_R, BTD_IsWithinFireAngle_R, 각도 내에 있을 때에만, 전투 도중 Root으로 튀어 올라가는 현상 방지<br/>Service: BTS_TryUseWeapon_R, 전투 AIM"]
+  bt9 -->|"1"| bt10
+  bt11["후퇴 중 일반이동: 단기 목표 보유<br/>BTTask_Wait<br/>Service: 이동 방향 보기"]
+  bt9 -->|"2"| bt11
+  bt12["Simple Parallel<br/>BTComposite_SimpleParallel<br/>조건: 장기 목표가 존재하는가?"]
+  bt6 -->|"2"| bt12
+  bt13["후퇴 중: 장기 목표로 이동<br/>BTT_VirtualInputAIMoveTo_C"]
+  bt12 -->|"1"| bt13
+  bt14["Selector<br/>BTComposite_Selector"]
+  bt12 -->|"2"| bt14
+  bt15["후퇴 중 발사: 장기 목표 보유<br/>BTTask_Wait<br/>조건: BTD_HasClearLine_R, BTD_CheckRange_R, BTD_IsWithinFireAngle_R, 각도 내에 있을 때에만, 전투 도중 Root으로 튀어 올라가는 현상 방지<br/>Service: BTS_TryUseWeapon_R, 전투 AIM"]
+  bt14 -->|"1"| bt15
+  bt16["후퇴 중 일반이동: 장기 목표 보유<br/>BTTask_Wait<br/>Service: 이동 방향 보기"]
+  bt14 -->|"2"| bt16
+  bt17["전투 Sequence<br/>BTComposite_Sequence<br/>조건: 그 적이 보이고 있다면, 전투 도중 Root으로 튀어 올라가는 현상 방지<br/>Service: 전투 AIM"]
+  bt2 -->|"2"| bt17
+  bt18["상태: 전투<br/>BTT_DebugState_R_C"]
+  bt17 -->|"1"| bt18
+  bt19["적 마지막 위치 망각<br/>BTT_ClearKey_R_C"]
+  bt17 -->|"2"| bt19
+  bt20["Selector<br/>BTComposite_Selector<br/>Service: BTS_RandomJump_R"]
+  bt17 -->|"3"| bt20
+  bt21["Simple Parallel<br/>BTComposite_SimpleParallel<br/>조건: 단기 목표가 존재하는가?, AttackSkill &gt; 0"]
+  bt20 -->|"1"| bt21
+  bt22["단기 목표로 이동<br/>BTT_VirtualInputAIMoveTo_C"]
+  bt21 -->|"1"| bt22
+  bt23["Selector<br/>BTComposite_Selector"]
+  bt21 -->|"2"| bt23
+  bt24["발사: 단기 목표 보유<br/>BTTask_Wait<br/>조건: BTD_HasClearLine_R, BTD_IsWithinFireAngle_R, BTD_CheckRange_R<br/>Service: BTS_TryUseWeapon_R"]
+  bt23 -->|"1"| bt24
+  bt25["쉬엇: 단기 목표 보유<br/>BTTask_Wait"]
+  bt23 -->|"2"| bt25
+  bt26["Sequence<br/>BTComposite_Sequence"]
+  bt20 -->|"2"| bt26
+  bt27["Sequence<br/>BTComposite_Sequence"]
+  bt26 -->|"1"| bt27
+  bt28["전투 이동 위치 망각<br/>BTT_ClearKey_R_C"]
+  bt27 -->|"1"| bt28
+  bt29["Selector<br/>BTComposite_Selector"]
+  bt27 -->|"2"| bt29
+  bt30["Selector<br/>BTComposite_Selector<br/>조건: 중수"]
+  bt29 -->|"1"| bt30
+  bt31["Go to Proper Distance<br/>BTTask_RunEQSQuery<br/>조건: 적정거리 밖이라면"]
+  bt30 -->|"1"| bt31
+  bt32["Go to Proper Distance<br/>BTTask_RunEQSQuery"]
+  bt30 -->|"2"| bt32
+  bt33["Fallback: 중수 EQS 실패<br/>BTTask_Wait"]
+  bt30 -->|"3"| bt33
+  bt34["Selector<br/>BTComposite_Selector<br/>조건: 고수"]
+  bt29 -->|"2"| bt34
+  bt35["측면으로 이동<br/>BTTask_RunEQSQuery"]
+  bt34 -->|"1"| bt35
+  bt36["Fallback: 고수 EQS 실패<br/>BTTask_Wait"]
+  bt34 -->|"2"| bt36
+  bt37["Selector<br/>BTComposite_Selector<br/>조건: 하수"]
+  bt29 -->|"3"| bt37
+  bt38["Go to Proper Distance<br/>BTTask_RunEQSQuery<br/>조건: 적정거리 밖이라면"]
+  bt37 -->|"1"| bt38
+  bt39["Fallback: 하수 EQS 실패<br/>BTTask_Wait"]
+  bt37 -->|"2"| bt39
+  bt40["Selector<br/>BTComposite_Selector"]
+  bt26 -->|"2"| bt40
+  bt41["Selector<br/>BTComposite_Selector<br/>조건: BTD_HasClearLine_R, BTD_IsWithinFireAngle_R, BTD_CheckRange_R<br/>Service: BTS_TryUseWeapon_R"]
+  bt40 -->|"1"| bt41
+  bt42["전투 이동<br/>BTT_VirtualInputAIMoveTo_C<br/>조건: 이동 위치가 존재하는가?"]
+  bt41 -->|"1"| bt42
+  bt43["발사<br/>BTTask_Wait"]
+  bt41 -->|"2"| bt43
+  bt44["비사격 이동<br/>BTT_VirtualInputAIMoveTo_C<br/>조건: 이동 위치가 존재하는가?"]
+  bt40 -->|"2"| bt44
+  bt45["사격/이동 전부 실패<br/>BTTask_Wait"]
+  bt40 -->|"3"| bt45
+  bt46["추격 Sequence<br/>BTComposite_Sequence<br/>조건: 적의 마지막 위치가 존재하는가?, 그 적이 안 보인다면, AttackSkill &gt; 0<br/>Service: 이동 방향 보기"]
+  bt2 -->|"3"| bt46
+  bt47["상태: 추격<br/>BTT_DebugState_R_C"]
+  bt46 -->|"1"| bt47
+  bt48["Selector<br/>BTComposite_Selector"]
+  bt46 -->|"2"| bt48
+  bt49["단기 목표로 이동<br/>BTT_VirtualInputAIMoveTo_C<br/>조건: 단기 목표가 존재하는가?"]
+  bt48 -->|"1"| bt49
+  bt50["Sequence<br/>BTComposite_Sequence<br/>조건: Loop"]
+  bt48 -->|"2"| bt50
+  bt51["적의 마지막 위치로 이동<br/>BTT_VirtualInputAIMoveTo_C"]
+  bt50 -->|"1"| bt51
+  bt52["이동 완수 시 위치 갱신<br/>BTT_UpdateLocationByActor_C"]
+  bt50 -->|"2"| bt52
+  bt53["적 망각<br/>BTT_ForgetEnemy_R_C"]
+  bt48 -->|"3"| bt53
+  bt54["Sequence<br/>BTComposite_Sequence"]
+  bt2 -->|"4"| bt54
+  bt55["적 망각<br/>BTT_ForgetEnemy_R_C"]
+  bt54 -->|"1"| bt55
+  bt56["적 마지막 위치 망각<br/>BTT_ClearKey_R_C"]
+  bt54 -->|"2"| bt56
+  bt57["전투 이동 위치 망각<br/>BTT_ClearKey_R_C"]
+  bt54 -->|"3"| bt57
+  bt58["Combat Fail Wait<br/>BTTask_Wait"]
+  bt54 -->|"4"| bt58
+  bt59["Sequence<br/>BTComposite_Sequence<br/>조건: AttackSkill &gt; 0"]
+  bt1 -->|"2"| bt59
+  bt60["상태: 파밍<br/>BTT_DebugState_R_C"]
+  bt59 -->|"1"| bt60
+  bt61["적 마지막 위치 망각<br/>BTT_ClearKey_R_C"]
+  bt59 -->|"2"| bt61
+  bt62["탐색 Selector<br/>BTComposite_Selector<br/>Service: 이동 방향 보기"]
+  bt59 -->|"3"| bt62
+  bt63["단기 목표로 이동<br/>BTT_VirtualInputAIMoveTo_C<br/>조건: 단기 목표가 존재하는가?"]
+  bt62 -->|"1"| bt63
+  bt64["장기 목표로 이동<br/>BTT_VirtualInputAIMoveTo_C<br/>조건: 장기 목표가 존재하는가?"]
+  bt62 -->|"2"| bt64
+  bt65["Sequence<br/>BTComposite_Sequence<br/>조건: 순회 목표가 존재하는가?"]
+  bt62 -->|"3"| bt65
+  bt66["상태: 순찰<br/>BTT_DebugState_R_C"]
+  bt65 -->|"1"| bt66
+  bt67["순회 목표로 이동<br/>BTT_VirtualInputAIMoveTo_C"]
+  bt65 -->|"2"| bt67
+  bt68["목표 완수<br/>BTTask_CompleteTarget_C"]
+  bt65 -->|"3"| bt68
+  bt69["최종 Wait<br/>BTTask_Wait"]
+  bt62 -->|"4"| bt69
+  bt70["살아있을 때 Fail Wait<br/>BTTask_Wait"]
+  bt1 -->|"3"| bt70
+  bt71["Sequence<br/>BTComposite_Sequence"]
+  bt0 -->|"2"| bt71
+  bt72["BTT_DebugState_R<br/>BTT_DebugState_R_C"]
+  bt71 -->|"1"| bt72
+  bt73["Final - Wait<br/>BTTask_Wait"]
+  bt71 -->|"2"| bt73

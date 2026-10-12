@@ -1,0 +1,12 @@
+flowchart TD
+  Pickup["BuffItem / DT_BuffTable 행"] --> Apply["BPC_Buff ApplyBuff"]
+  Dropped["사망 드롭 / EndServerTime"] --> ApplyDrop["ApplyDroppedBuff / 남은 시간 > 0"]
+  Apply --> State["CurrentStatValue·BuffType·ModifierType·Tag·Row"]
+  ApplyDrop --> State
+  State --> Time["기존 timer 해제 / 만료 timer·buffEndServerTime"]
+  State --> Calc["CalcAttackBuff·CalcDefenceBuff"]
+  State --> Presentation["부모 BuffPresentationComponent / SetBuffPresentation"]
+  Presentation --> Rep["복제 tag·만료시각 / VFX·남은 시간 UI"]
+  Time --> Expire["OnBuffTimerFinished / 타이머·overlay·표현 해제"]
+  State --> Death["사망 드롭 후보 / 원래 만료시각 전달"]
+  Death --> Dropped

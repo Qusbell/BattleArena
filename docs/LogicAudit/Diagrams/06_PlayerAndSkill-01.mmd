@@ -1,0 +1,12 @@
+flowchart TD
+  PC["PlayerController / Mapping Main·Mobile"] --> Input["Enhanced Input action"]
+  Input --> Move["PlayerShooter Move / 입력 차단 확인"]
+  Move --> Engine["CharacterMovement / AddMovementInput·Jump"]
+  Input --> Aim["Aim / InputOption 민감도·zoom 배율"]
+  Aim --> Camera["ControlRotation / FP_Camera"]
+  Input --> Use["ShooterBase UsingItem / Inventory 선택 무기"]
+  Use --> Weapon["TryUse·StopUsing"]
+  Input --> Swap["Inventory SwapNext·Prev·슬롯"]
+  Input --> Zoom["SubAbility / BPC_Zoom / ApplyZoom"]
+  Zoom --> FOV["카메라 FOV·민감도 / scope HUD"]
+  Input --> Skill["TeleportSkill TryUseTeleportSkill"]

@@ -1,0 +1,14 @@
+flowchart TD
+  Overlap["EntryCollision overlap / Authority"] --> Capsule["Character Capsule만 허용"]
+  Capsule --> Valid["enabled·world·exitTarget·TeleportDA 검사"]
+  Valid --> Lock{"공유 재진입 lock?"}
+  Lock -->|없음| Teleport["출구 위치·Yaw / SetActorLocationAndRotation"]
+  Teleport --> Success{"이동 성공?"}
+  Success -->|아니오| Unlock["lock 복구"]
+  Success -->|예| Rotation["Controller 회전 / ClientSetRotation"]
+  Rotation --> Sound["이용자 ClientPlaySound"]
+  Sound --> Launch["출구 launch angle·power / 이동 잠금"]
+  Launch --> Rep["ForceNetUpdate / Character 이동 복제"]
+  View["LocalPlayer PortalViewSubsystem"] --> Visible["화면 면적·거리 / 후보 우선순위"]
+  Visible --> Capture["Capture budget / RenderTarget·SceneCapture"]
+  Capture --> Material["포탈 material에 view 적용 / 미사용 view 정리"]

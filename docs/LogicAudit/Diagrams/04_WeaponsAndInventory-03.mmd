@@ -1,0 +1,12 @@
+flowchart TD
+  Aim["BPI_Aim / 카메라 ray"] --> Target["ResolveMuzzleProjectileAim / 카메라 blocking hit"]
+  Mesh["SelectMesh / FP 또는 TP / Muzzle socket"] --> Muzzle["발사 시작점"]
+  Muzzle --> Safe["총구 overlap·눈부터 총구까지 벽 검사"]
+  Safe --> Fallback{"총구 막힘 / fallback 설정?"}
+  Fallback -->|예| Eye["안전한 카메라 높이 시작점"]
+  Fallback -->|아니오| Converge["고정 거리 또는 ray 교차 수렴점"]
+  Target --> Converge
+  Converge --> Driver["ConvergenceComponent / 수렴 후 카메라 forward"]
+  Eye --> Straight["카메라 hit로 직접 발사"]
+  Driver --> Collision["blocking hit면 진행 중단"]
+  Straight --> Collision

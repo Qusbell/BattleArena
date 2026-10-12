@@ -1,0 +1,14 @@
+flowchart TD
+  Spawn["ShooterBase BeginPlay / Authority"] --> Grant["InitialWeaponLoadout GrantLoadout / Pawn당 1회"]
+  Grant --> DA["DefaultWeapons / GrantedWeapons"]
+  DA --> Create["deferred Weapon 생성 / weaponData·itemInfo 지정"]
+  Create --> Count["Default 무기는 Recover로 max ammo까지"]
+  Count --> Pickup["BPI_Inventory Pickup"]
+  WorldItem["HoldableItem 획득"] --> Pickup
+  Pickup --> Has{"같은 ItemID 보유?"}
+  Has -->|예| Recover["기존 무기 Recover / 새 actor Destroy"]
+  Has -->|아니오| Slot["슬롯에 등록 / SetIndex"]
+  Slot --> Rep["All_Items·IndexInfo RepNotify"]
+  Rep --> Swap["OnSwapItem / 이전 Unequip·선택 Equip"]
+  Swap --> Attach["AttachMesh / ChangeAnim / FOV 위치 보정"]
+  Slot --> Bind["Shooter: Owner·Instigator·Buff 설정 / OnHit 바인딩"]

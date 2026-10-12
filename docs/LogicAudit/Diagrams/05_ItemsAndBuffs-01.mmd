@@ -1,0 +1,16 @@
+flowchart TD
+  Begin["ItemSpawnPoint BeginPlay / Authority"] --> Select["SelectNextSpawnItem / 배열·순환 타입"]
+  Select --> Find["FindSpawnerByTable / BPI_ItemSpawner"]
+  Find --> Target["SetSpawnTarget / RowHandle·Transform"]
+  Target --> Spawn["Spawn / 실제 생성물 유효성 검사"]
+  Spawn --> Assign["AssignItem / Having Item·파괴·획득 이벤트 바인딩"]
+  Assign --> Sound["실제 생성 성공 후 Multicast 생성음"]
+  Assign --> Item["DropItem overlap / 서버 획득 판정"]
+  Item --> Effect["파생 ApplyItemEffect"]
+  Effect --> Success{"효과 적용 성공?"}
+  Success -->|예| Pick["먹은 Controller Client_PlayPickupSound"]
+  Success -->|예| Consumed["IsPickedUp / hide·충돌 해제·Destroy"]
+  Success -->|아니오| Remain["아이템 유지 / 실패 효과 없음"]
+  Consumed --> Empty["OnSpawnItemPickedUp·Destroyed / Having Item 해제"]
+  Empty --> Delay["재생성 대기 / 서버 시간·PreSpawn FX"]
+  Delay --> Select

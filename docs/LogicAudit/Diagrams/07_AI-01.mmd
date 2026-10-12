@@ -1,0 +1,16 @@
+flowchart TD
+  Possess["OnPossess / MyCharacter·Characteristic 설정"] --> Cache["DT 캐시·스폰 지점·순회·스코어 초기화"]
+  Sight["Sight PerceptionUpdated"] --> Candidates["CharacterTargets 후보 추가·제거"]
+  Damage["Pawn OnTakeAnyDamage"] --> Direction["최근 공격 방향 / 만료 시간"]
+  BT["BTService_SelectTarget_R / 0.2초"] --> Select["SelectBestTarget"]
+  Candidates --> Select
+  Direction --> Select
+  Select --> Filter["생존·허용 클래스·자기 제외 / 현재 보이는 적보다 가까운 후보"]
+  Filter --> Order["최근 피해 방향 우선 / 그다음 거리"]
+  Order --> Accept{"후보가 AI를 보는가 또는 공격성 >= 임계값?"}
+  Accept -->|예| Target["Set Current Target / Enemy·Visible·VisibleSince"]
+  Target --> Memory["TargetLost·Forget timer / EnemyLastLocation"]
+  Cache --> Goals["GetGoalWeight·Filtering STG·GetBestGoal"]
+  Goals --> BB["STG·LTG·TourPoint Blackboard"]
+  Target --> BB
+  BB --> Tree["BT_QuakeTree"]

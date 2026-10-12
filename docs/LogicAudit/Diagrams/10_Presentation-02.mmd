@@ -1,0 +1,13 @@
+flowchart TD
+  Character["맵 Character_List / DT_Character"] --> Model["Character_Modeling RowHandle"]
+  Model --> Set["CharacterAppearance SetModelingRowHandle·Name"]
+  Set --> Rep["ActiveModelingId 복제 / OnRep"]
+  Rep --> Mesh["살아있는 mesh·AnimInstance 적용"]
+  Death["ShooterBase OnDeath"] --> Parts["Death mesh parts·material·physics"]
+  Set --> Parts
+  Aim["로컬 Controller / 조준 ray"] --> Name["ShooterNickname / target·linger"]
+  PlayerState["PlayerState RevengeTarget"] --> Mirror["ShooterRevenge / 서버 0.05초 polling"]
+  Mirror --> Owner["OwnerOnly TargetPlayerState 복제"]
+  Owner --> Color["복수 닉네임·outline 스타일"]
+  Name --> Color
+  View["ShooterOutline / per-view proxy·material"] --> Color

@@ -1,0 +1,17 @@
+flowchart TD
+  Fire["Weapon TakeDamage / 맵 피해"] --> Apply["ApplyDamage / Instigator·DamageCauser"]
+  Apply --> Pawn["ShooterBase AnyDamage"]
+  Apply --> Recent["RecentAttacker: 다른 공격자·양수 피해 기록"]
+  Pawn --> Life["BPC_Life OwnerTakeDamage / Authority"]
+  Life --> Defence["방어 버프 반영 / 피해 분배"]
+  Defence --> NewHealth["새 Health·Plate 계산"]
+  NewHealth --> Drop["DeathDropSubsystem HandleFatalDamage"]
+  NewHealth --> Packet["LifeInfo 갱신 / OnRep_LifeInfo"]
+  Packet --> Changed["OnLifeChanged / HUD·피격 연출"]
+  Packet --> Dead{"Health <= 0?"}
+  Dead -->|예| Event["OnDeath / Shooter·Controller 구독자"]
+  Event --> Credit["ResolveDeathCredit / 1회 판정"]
+  Recent --> Credit
+  Credit --> Scores["PlayerState PlayOnKill·PlayOnDeath"]
+  Event --> Cleanup["Inventory Clear / 사망 외형·물리 / RespawnHelper"]
+  Life --> Log["KillLog 방송 / 소유 클라이언트 메시지"]

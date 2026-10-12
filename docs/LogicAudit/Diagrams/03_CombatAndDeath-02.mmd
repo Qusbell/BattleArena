@@ -1,0 +1,13 @@
+flowchart TD
+  Resolve["ResolveDeathCredit / Authority"] --> Once{"이미 판정했는가?"}
+  Once -->|예| Empty["빈 결과 / 점수 중복 방지"]
+  Once -->|아니오| Direct{"직접 다른 PlayerState 공격자?"}
+  Direct -->|예| Player["Player / DirectPlayerKill"]
+  Direct -->|아니오| Cause["Suicide 또는 Environment"]
+  Cause --> Memory{"유효한 최근 공격자 / 기억 시간 안?"}
+  Memory -->|예| Recent["RecentAttacker 크레딧"]
+  Memory -->|아니오| None["크레딧 없음"]
+  Player --> Broadcast["OnKillCreditResolved"]
+  Recent --> Broadcast
+  None --> Broadcast
+  Broadcast --> BP["ShooterBase의 점수·복수 처리"]

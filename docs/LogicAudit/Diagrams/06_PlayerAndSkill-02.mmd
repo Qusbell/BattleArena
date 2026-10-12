@@ -1,0 +1,18 @@
+flowchart TD
+  Try["TryUseTeleportSkill / 로컬 또는 Authority"] --> RPC["S TryUseTeleportSkill / Server"]
+  RPC --> Validate["owner·skillData·ProjectileFire 유효성"]
+  Validate --> Active{"activeSkillProjectile 유효?"}
+  Active -->|예| Teleport["Server_TeleportToProjectile"]
+  Active -->|아니오| Ready{"IsSkillReady?"}
+  Ready -->|예| Fire["Server_FIreTeleportProjectile"]
+  Fire --> Spawn["ProjectileFire / SpawnTeleportProjectile"]
+  Spawn --> Notify["NotifyTeleportProjectileSpawned / active pointer"]
+  Notify --> Flight["BP_TeleportSkillProjectile 비행"]
+  Flight --> Impact["충돌 / Server_OnTeleportProjectileImpact"]
+  Flight --> Expire["Destroyed / Server_OnTeleportProjectileExpired"]
+  Teleport --> Location["서버 Pawn SetActorLocation / teleport=true"]
+  Location --> Stop["이동 즉시 정지 / 누적 힘 해제"]
+  Stop --> Feedback["M OnTeleportSuccess / 출발·도착 FX·사운드"]
+  Impact --> Cleanup["active pointer·loop sound·발사체 정리"]
+  Expire --> Cleanup
+  Feedback --> Cleanup

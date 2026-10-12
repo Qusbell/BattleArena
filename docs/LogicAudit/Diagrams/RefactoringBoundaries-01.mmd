@@ -1,0 +1,10 @@
+flowchart TD
+  Schema["BP 이름·struct 필드·DT RowName"] --> Native["C++ Reflection / ProcessEvent"]
+  Native --> Loadout["초기 지급·사망 드롭"]
+  Native --> AI["타깃 선정·Life·Aggression"]
+  Native --> Presentation["버프·복수·표시·무기 표현"]
+  Pawn["ShooterBase callbacks"] --> Score["점수·크레딧·킬 로그"]
+  Pawn --> Death["드롭·인벤토리·외형·리스폰"]
+  Result["Result 위젯"] --> Vote["복귀 투표 RPC"]
+  Vote --> BGM["Result BGM 시작"]
+  Spawn["Spawn·Possess"] --> Bind["HUD·RespawnHelper·데스 카운트 재바인딩"]

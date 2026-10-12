@@ -1,0 +1,24 @@
+flowchart TD
+  Boot["설정 / GameInstance Init"] --> Menu["MainMenu_Level / WBP_MainMenu"]
+  Menu --> Campaign["맵·난이도 선택 / 로컬 Dedicated Server"]
+  Menu --> Lobby["Lobby_Level / 슬롯·방장·준비"]
+  Campaign --> Connect["접속 URL / Token·Nickname·Difficulty"]
+  Lobby --> Travel["TravelToMatch / AI 난이도별 URL 옵션"]
+  Connect --> Loading["LoadingCoordinator / LoadingScreenSubsystem"]
+  Travel --> Loading
+  Loading --> GM["BP_QuakeGameMode / 파생 경기 모드"]
+  GM --> Spawn["SpawnSelection / Spawn·Possess"]
+  Spawn --> Pawn["BP_ShooterBase / PlayerShooter·AIShooter"]
+  Pawn --> Inventory["InitialWeaponLoadout / BPC_Inventory"]
+  Pawn --> AI["AIController2 / BT_QuakeTree"]
+  AI --> Movement["VirtualInputMovement / PathLink"]
+  Inventory --> Fire["WeaponBase / 서버 발사·피해"]
+  Fire --> Life["BPC_Life / HP·Armor·사망"]
+  Life --> Credit["RecentAttacker / PlayerState 점수"]
+  Life --> Respawn["RespawnHelper / DeathCam / 사망 드롭"]
+  Respawn --> Spawn
+  Credit --> Result["경기 종료 / GameState 순위 / WBP_Result"]
+  Result --> Vote["인간 플레이어 로비 복귀 투표"]
+  Vote --> Lobby
+  Result --> Menu
+  Pawn --> UI["HUD·외형·버프 VFX·오디오"]

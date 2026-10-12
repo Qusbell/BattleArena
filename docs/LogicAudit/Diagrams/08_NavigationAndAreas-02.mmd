@@ -1,0 +1,13 @@
+flowchart TD
+  Actors["AIAreaBase·AreaLinkBase·AreaManagerActorBase"] --> Graph["AreaManagerSubsystem / baked graph·retreat points"]
+  Observe["Observer별 RecognizeUnit·MarkCombatDetected"] --> Risk["AreaRiskService / 구조 위험 + 동적 기억"]
+  Graph --> Planner["AreaRetreatPlanner / 더 낮은 위험 목적지"]
+  Risk --> Planner
+  Planner --> Safest["FindSafestAreaRoute / 위험 우선·동률 거리"]
+  Safest --> Executable["Route 실행 가능성 / traversal actor 검사"]
+  Executable --> Service["BTS_UpdateRetreatDecision / needRetreat·route cache"]
+  Service --> Task["BTT_SelectRetreatAreaStep / 첫 step Blackboard 출력"]
+  Task --> Normal["Normal·Jump·Drop / 내부 TargetPoint"]
+  Task --> Special["Teleport·JumpPad·Door / 실제 Actor"]
+  Normal -.-> Integration["BT·가상 입력 이동 연결 필요"]
+  Special -.-> Integration
