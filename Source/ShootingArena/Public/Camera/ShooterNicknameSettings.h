@@ -15,6 +15,9 @@ struct SHOOTINGARENA_API FShooterNicknameStyle
 	FShooterNicknameStyle();
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Nickname")
 	bool bEnabled = true;
+	/** False: below the crosshair. True: above the crosshair. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Nickname", meta = (DisplayName = "Show Above Crosshair"))
+	bool bShowAboveCrosshair = false;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Nickname")
 	FLinearColor Color = FLinearColor::White;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Nickname")
@@ -22,7 +25,7 @@ struct SHOOTINGARENA_API FShooterNicknameStyle
 	/** Font, size, and outline size/colour are independently editable in this font structure. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Nickname")
 	FSlateFontInfo Font;
-	/** DPI-scaled offset from the actual crosshair; positive Y is below it. */
+	/** DPI-scaled offset. X moves horizontally; absolute Y is the gap above or below the crosshair. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Nickname")
 	FVector2D Offset = FVector2D(0.0, 28.0);
 	/** Seconds to retain the last name after aim leaves it; zero hides immediately. */
@@ -47,6 +50,12 @@ public:
 	TEnumAsByte<ECollisionChannel> TraceChannel = ECC_GameTraceChannel2;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Nickname|Targeting", meta = (ClampMin = "1.0", Units = "cm"))
 	float MaxDistance = 20000.0f;
+	/** Search nearby damage colliders only when the crosshair line finds no valid shooter. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Nickname|Targeting")
+	bool bUseSphereTraceFallback = true;
+	/** Nickname-only search radius. Zero uses the original line query alone; damage collision is unchanged. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Nickname|Targeting", meta = (ClampMin = "0.0", ClampMax = "1000.0", Units = "cm"))
+	float SphereTraceRadius = 15.0f;
 	/** Coordinates within the camera's constrained view rectangle, usually its centre. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Nickname|Targeting")
 	FVector2D CrosshairUV = FVector2D(0.5, 0.5);
