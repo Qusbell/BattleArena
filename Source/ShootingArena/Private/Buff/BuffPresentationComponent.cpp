@@ -146,7 +146,12 @@ void UBuffPresentationComponent::OnRep_Presentation()
 	AActor* Owner = GetOwner();
 	const ACharacter* Character = Cast<ACharacter>(Owner);
 	USceneComponent* AttachTo = Character ? Character->GetMesh() : Owner ? Owner->GetRootComponent() : nullptr;
-	if (!AttachTo) return;
+	if (!AttachTo)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Buff VFX has no attach component: Owner=%s Tag=%s"),
+			*GetNameSafe(Owner), *Presentation.Tag.ToString());
+		return;
+	}
 	PresentedTag = Presentation.Tag;
 	if (Presentation.NiagaraVFX)
 	{
@@ -155,6 +160,8 @@ void UBuffPresentationComponent::OnRep_Presentation()
 			AttachTo, Effects->AttachSocket, Effects->RelativeOffset, Effects->RelativeRotation,
 			EAttachLocation::KeepRelativeOffset, false, true, ENCPoolMethod::None, false);
 		if (NiagaraComponent) NiagaraComponent->SetRelativeScale3D(Effects->Scale);
+		else UE_LOG(LogTemp, Warning, TEXT("Buff Niagara spawn failed: Owner=%s Tag=%s Asset=%s"),
+			*GetNameSafe(Owner), *Presentation.Tag.ToString(), *GetNameSafe(Presentation.NiagaraVFX));
 	}
 	if (Presentation.ParticleVFX)
 	{
@@ -162,6 +169,8 @@ void UBuffPresentationComponent::OnRep_Presentation()
 		CascadeComponent = UGameplayStatics::SpawnEmitterAttached(Presentation.ParticleVFX,
 			AttachTo, Effects->AttachSocket, Effects->RelativeOffset, Effects->RelativeRotation,
 			Effects->Scale, EAttachLocation::KeepRelativeOffset, false, EPSCPoolMethod::None, true);
+		if (!CascadeComponent) UE_LOG(LogTemp, Warning, TEXT("Buff Cascade spawn failed: Owner=%s Tag=%s Asset=%s"),
+			*GetNameSafe(Owner), *Presentation.Tag.ToString(), *GetNameSafe(Presentation.ParticleVFX));
 	}
 }
 

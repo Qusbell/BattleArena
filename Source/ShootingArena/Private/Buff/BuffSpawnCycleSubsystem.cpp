@@ -3,6 +3,7 @@
 #include "Engine/DataTable.h"
 #include "EngineUtils.h"
 #include "GameFramework/Actor.h"
+#include "ProfilingDebugging/CpuProfilerTrace.h"
 #include "UObject/UnrealType.h"
 
 namespace BuffSpawnCycle
@@ -49,23 +50,26 @@ void UBuffSpawnCycleSubsystem::Tick(const float DeltaTime)
 		return;
 	}
 
-	for (TActorIterator<AActor> It(World); It; ++It)
 	{
-		AActor* Actor = *It;
-		if (!IsValid(Actor))
+		TRACE_CPUPROFILER_EVENT_SCOPE(BuffSpawnCycleSubsystem_ActorScan);
+		for (TActorIterator<AActor> It(World); It; ++It)
 		{
-			continue;
-		}
+			AActor* Actor = *It;
+			if (!IsValid(Actor))
+			{
+				continue;
+			}
 
-		if (Actor->GetClass()->GetName().StartsWith(TEXT("BP_BuffItem_C")))
-		{
-			UpdateReplicatedBuffItem(Actor);
-		}
+			if (Actor->GetClass()->GetName().StartsWith(TEXT("BP_BuffItem_C")))
+			{
+				UpdateReplicatedBuffItem(Actor);
+			}
 
-		if (Actor->HasAuthority()
-			&& Actor->GetClass()->GetName().StartsWith(TEXT("BP_ItemSpawnPoint_C")))
-		{
-			UpdateSpawnPoint(Actor);
+			if (Actor->HasAuthority()
+				&& Actor->GetClass()->GetName().StartsWith(TEXT("BP_ItemSpawnPoint_C")))
+			{
+				UpdateSpawnPoint(Actor);
+			}
 		}
 	}
 
