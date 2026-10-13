@@ -14,6 +14,7 @@
 #include "NiagaraSystem.h"
 #include "Particles/ParticleSystem.h"
 #include "Particles/ParticleSystemComponent.h"
+#include "ProfilingDebugging/CpuProfilerTrace.h"
 #include "UObject/UnrealType.h"
 
 namespace
@@ -62,6 +63,7 @@ void UBuffPresentationComponent::OnOwnerDeath(AController* InstigatedBy, AActor*
 
 void UBuffPresentationComponent::SetBuffPresentation(FGameplayTag BuffTag, double EndServerTime)
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(Buff_SetBuffPresentation);
 	if (!GetOwner() || !GetOwner()->HasAuthority()) return;
 	Presentation.Tag = BuffTag;
 	Presentation.EndServerTime = FMath::IsFinite(EndServerTime) ? EndServerTime : 0.0;
@@ -70,22 +72,36 @@ void UBuffPresentationComponent::SetBuffPresentation(FGameplayTag BuffTag, doubl
 	if (BuffTag.IsValid())
 	{
 		// Both Blueprint grant functions set this row before calling us. Keep their damage/drop logic intact.
-		const FNameProperty* RowName = FindFProperty<FNameProperty>(GetClass(), TEXT("currentBuffRowName"));
-		UDataTable* Table = LoadObject<UDataTable>(nullptr, TEXT("/Game/QuakeLike_1_0/Data/Item/DropTable/DT_BuffTable.DT_BuffTable"));
-		const uint8* Row = RowName && Table ? Table->FindRowUnchecked(RowName->GetPropertyValue_InContainer(this)) : nullptr;
-		if (Row && Table->GetRowStruct())
+		UDataTable* Table = nullptr;
 		{
-			// User-defined struct fields have generated GUID names: match their exported designer-facing names.
-			for (TFieldIterator<FObjectPropertyBase> It(Table->GetRowStruct()); It; ++It)
-			{
-				const FString Name = DataTableUtils::GetPropertyExportName(*It);
-				if (Name == TEXT("NiagaraVFX"))
-					Presentation.NiagaraVFX = Cast<UNiagaraSystem>(It->GetObjectPropertyValue_InContainer(Row));
-				else if (Name == TEXT("ParticleVFX"))
-					Presentation.ParticleVFX = Cast<UParticleSystem>(It->GetObjectPropertyValue_InContainer(Row));
-			}
+			TRACE_CPUPROFILER_EVENT_SCOPE(Buff_SetBuffPresentation_LoadDataTable);
+			Table = LoadObject<UDataTable>(nullptr, TEXT("/Game/QuakeLike_1_0/Data/Item/DropTable/DT_BuffTable.DT_BuffTable"));
 		}
-		else UE_LOG(LogTemp, Warning, TEXT("Buff VFX row is missing on %s"), *GetNameSafe(this));
+		if (Table)
+		{
+			const FNameProperty* RowName = nullptr;
+			const uint8* Row = nullptr;
+			{
+				TRACE_CPUPROFILER_EVENT_SCOPE(Buff_SetBuffPresentation_FindRow);
+				RowName = FindFProperty<FNameProperty>(GetClass(), TEXT("currentBuffRowName"));
+				Row = RowName ? Table->FindRowUnchecked(RowName->GetPropertyValue_InContainer(this)) : nullptr;
+			}
+			if (Row && Table->GetRowStruct())
+			{
+				TRACE_CPUPROFILER_EVENT_SCOPE(Buff_SetBuffPresentation_ExtractVFXAssets);
+				// User-defined struct fields have generated GUID names: match their exported designer-facing names.
+				for (TFieldIterator<FObjectPropertyBase> It(Table->GetRowStruct()); It; ++It)
+				{
+					const FString Name = DataTableUtils::GetPropertyExportName(*It);
+					if (Name == TEXT("NiagaraVFX"))
+						Presentation.NiagaraVFX = Cast<UNiagaraSystem>(It->GetObjectPropertyValue_InContainer(Row));
+					else if (Name == TEXT("ParticleVFX"))
+						Presentation.ParticleVFX = Cast<UParticleSystem>(It->GetObjectPropertyValue_InContainer(Row));
+				}
+			}
+			else UE_LOG(LogTemp, Warning, TEXT("Buff VFX row is missing on %s"), *GetNameSafe(this));
+		}
+		else UE_LOG(LogTemp, Warning, TEXT("Buff DT failed to load on %s"), *GetNameSafe(this));
 	}
 	OnRep_Presentation();
 	GetOwner()->ForceNetUpdate();
@@ -114,6 +130,7 @@ const FBuffVisualEffects* UBuffPresentationComponent::GetEffects() const
 
 void UBuffPresentationComponent::OnRep_Presentation()
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(Buff_OnRepPresentation);
 	if (!GetWorld() || GetWorld()->GetNetMode() == NM_DedicatedServer) return;
 	const FBuffVisualEffects* Effects = GetEffects();
 	if (!Effects || GetPresentationRemainingTime() <= 0.0)
@@ -133,6 +150,7 @@ void UBuffPresentationComponent::OnRep_Presentation()
 	PresentedTag = Presentation.Tag;
 	if (Presentation.NiagaraVFX)
 	{
+		TRACE_CPUPROFILER_EVENT_SCOPE(Buff_SpawnNiagara);
 		NiagaraComponent = UNiagaraFunctionLibrary::SpawnSystemAttached(Presentation.NiagaraVFX,
 			AttachTo, Effects->AttachSocket, Effects->RelativeOffset, Effects->RelativeRotation,
 			EAttachLocation::KeepRelativeOffset, false, true, ENCPoolMethod::None, false);
@@ -140,6 +158,7 @@ void UBuffPresentationComponent::OnRep_Presentation()
 	}
 	if (Presentation.ParticleVFX)
 	{
+		TRACE_CPUPROFILER_EVENT_SCOPE(Buff_SpawnCascade);
 		CascadeComponent = UGameplayStatics::SpawnEmitterAttached(Presentation.ParticleVFX,
 			AttachTo, Effects->AttachSocket, Effects->RelativeOffset, Effects->RelativeRotation,
 			Effects->Scale, EAttachLocation::KeepRelativeOffset, false, EPSCPoolMethod::None, true);
@@ -148,6 +167,7 @@ void UBuffPresentationComponent::OnRep_Presentation()
 
 void UBuffPresentationComponent::StopEffects()
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(Buff_StopEffects);
 	if (IsValid(NiagaraComponent)) NiagaraComponent->DestroyComponent();
 	if (IsValid(CascadeComponent)) CascadeComponent->DestroyComponent();
 	NiagaraComponent = nullptr;
