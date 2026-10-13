@@ -148,6 +148,7 @@ void ADeathDropCarrier::OnRep_Settled()
 	PhysicsBody->SetPhysicsLinearVelocity(FVector::ZeroVector);
 	PhysicsBody->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
 	PhysicsBody->SetSimulatePhysics(false);
+	SetActorLocation(SettledLocation, false, nullptr, ETeleportType::TeleportPhysics);
 }
 
 void ADeathDropCarrier::OnBodyHit(UPrimitiveComponent* HitComponent, AActor* OtherActor,
@@ -156,6 +157,12 @@ void ADeathDropCarrier::OnBodyHit(UPrimitiveComponent* HitComponent, AActor* Oth
 	if (!HasAuthority() || !bLaunched || bSettled) return;
 	if (Hit.ImpactNormal.Z >= 0.6f)
 	{
+		// Reconstruct the sphere's resting center from the contact point instead of
+		// freezing a penetrated physics position. Keep the pickup origin above ground.
+		const float HeightOffset = FMath::IsFinite(DropSettings.SettlementHeightOffset)
+			? FMath::Max(0.0f, DropSettings.SettlementHeightOffset) : 0.0f;
+		SettledLocation = Hit.ImpactPoint + Hit.ImpactNormal * PhysicsBody->GetScaledSphereRadius()
+			+ FVector::UpVector * HeightOffset;
 		bSettled = true;
 		OnRep_Settled();
 		ForceNetUpdate();
@@ -212,4 +219,5 @@ void ADeathDropCarrier::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	DOREPLIFETIME(ADeathDropCarrier, BuffEndServerTime);
 	DOREPLIFETIME(ADeathDropCarrier, bBuffPickup);
 	DOREPLIFETIME(ADeathDropCarrier, bSettled);
+	DOREPLIFETIME(ADeathDropCarrier, SettledLocation);
 }

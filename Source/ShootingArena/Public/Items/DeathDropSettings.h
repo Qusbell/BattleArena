@@ -52,6 +52,10 @@ struct SHOOTINGARENA_API FDeathDropSettings : public FTableRowBase
 	/** 미획득 드롭의 최대 생존 시간(초). 발사 시점부터 계산하므로 공중에 있는 시간도 포함한다. 획득 후 버프 지속 시간과는 별개다. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta=(ClampMin="0.01")) float DespawnTime = 30.0f;
 
+	/** 바닥 충돌 후 드롭 전체를 월드 위쪽으로 추가로 띄우는 높이(cm). 물리 구체가 지면에 닿는 위치에 더한다. 0이면 추가 높이 없음. 메시 크기와 상하 움직임을 고려해 값을 높이면 묻힘을 줄일 수 있다. 사망 드롭에만 적용하며 새로 생성하는 드롭부터 사용한다. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ground Settlement", meta=(ClampMin="0", Units="cm"))
+	float SettlementHeightOffset = 20.0f;
+
 	/** 소형 힐팩의 데이터 테이블과 행 이름. 실제 회복량과 아이템 정보는 이 행에 지정된 기존 설정을 사용한다. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Pickup Content") FDataTableRowHandle SmallHealthItem;
 
