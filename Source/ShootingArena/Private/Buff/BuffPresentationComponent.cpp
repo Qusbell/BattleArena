@@ -72,11 +72,7 @@ void UBuffPresentationComponent::SetBuffPresentation(FGameplayTag BuffTag, doubl
 	if (BuffTag.IsValid())
 	{
 		// Both Blueprint grant functions set this row before calling us. Keep their damage/drop logic intact.
-		UDataTable* Table = nullptr;
-		{
-			TRACE_CPUPROFILER_EVENT_SCOPE(Buff_SetBuffPresentation_LoadDataTable);
-			Table = LoadObject<UDataTable>(nullptr, TEXT("/Game/QuakeLike_1_0/Data/Item/DropTable/DT_BuffTable.DT_BuffTable"));
-		}
+		UDataTable* Table = BuffDataTable;
 		if (Table)
 		{
 			const FNameProperty* RowName = nullptr;
@@ -101,7 +97,7 @@ void UBuffPresentationComponent::SetBuffPresentation(FGameplayTag BuffTag, doubl
 			}
 			else UE_LOG(LogTemp, Warning, TEXT("Buff VFX row is missing on %s"), *GetNameSafe(this));
 		}
-		else UE_LOG(LogTemp, Warning, TEXT("Buff DT failed to load on %s"), *GetNameSafe(this));
+		else UE_LOG(LogTemp, Warning, TEXT("BuffDataTable is not assigned in BPC_Buff defaults on %s"), *GetNameSafe(this));
 	}
 	OnRep_Presentation();
 	GetOwner()->ForceNetUpdate();

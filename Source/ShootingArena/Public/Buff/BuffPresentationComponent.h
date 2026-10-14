@@ -10,6 +10,7 @@ class UNiagaraComponent;
 class UParticleSystem;
 class UParticleSystemComponent;
 class UTextBlock;
+class UDataTable;
 
 /** Attachment settings only. Niagara and Cascade assets come from the acquired Buff DT row. */
 USTRUCT(BlueprintType)
@@ -63,6 +64,10 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Buff|Effects")
 	FBuffVisualEffects ProtectionEffects;
+
+	/** Hard reference assigned in BPC_Buff defaults so pickup never loads the table synchronously. */
+	UPROPERTY(EditDefaultsOnly, Category = "Buff|Presentation")
+	TObjectPtr<UDataTable> BuffDataTable;
 
 	/** Reads currentBuffRowName from the existing grant path and publishes that DT row's VFX and deadline. */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Buff|Presentation")
