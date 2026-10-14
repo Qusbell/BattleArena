@@ -1,13 +1,16 @@
 #include "Buff/BuffSpawnCycleSubsystem.h"
 
 #include "Engine/DataTable.h"
+#include "Engine/Level.h"
 #include "EngineUtils.h"
+#include "Engine/World.h"
 #include "GameFramework/Actor.h"
+#include "ProfilingDebugging/CpuProfilerTrace.h"
 #include "UObject/UnrealType.h"
 
 namespace BuffSpawnCycle
 {
-	constexpr float ScanIntervalSeconds = 0.1f;
+	constexpr float TrackedActorUpdateIntervalSeconds = 0.1f;
 	const FName SpawnItemTablePropertyName(TEXT("SpawnItemTable"));
 	// This Blueprint variable's authored name contains a space. Reflection uses
 	// the authored name here (unlike SpawnItemTable), so "HavingItem" never
@@ -33,39 +36,93 @@ namespace BuffSpawnCycle
 	}
 }
 
+void UBuffSpawnCycleSubsystem::Initialize(FSubsystemCollectionBase& Collection)
+{
+	Super::Initialize(Collection);
+
+	if (UWorld* World = GetWorld())
+	{
+		ActorSpawnedHandle = World->AddOnActorSpawnedHandler(
+			FOnActorSpawned::FDelegate::CreateUObject(this, &UBuffSpawnCycleSubsystem::RegisterActor));
+	}
+	LevelAddedHandle = FWorldDelegates::LevelAddedToWorld.AddUObject(
+		this, &UBuffSpawnCycleSubsystem::RegisterLevelActors);
+	LevelRemovedHandle = FWorldDelegates::LevelRemovedFromWorld.AddUObject(
+		this, &UBuffSpawnCycleSubsystem::UnregisterLevelActors);
+}
+
+void UBuffSpawnCycleSubsystem::Deinitialize()
+{
+	if (UWorld* World = GetWorld(); World && ActorSpawnedHandle.IsValid())
+	{
+		World->RemoveOnActorSpawnedHandler(ActorSpawnedHandle);
+	}
+	ActorSpawnedHandle.Reset();
+	FWorldDelegates::LevelAddedToWorld.Remove(LevelAddedHandle);
+	FWorldDelegates::LevelRemovedFromWorld.Remove(LevelRemovedHandle);
+	LevelAddedHandle.Reset();
+	LevelRemovedHandle.Reset();
+	Super::Deinitialize();
+}
+
 void UBuffSpawnCycleSubsystem::Tick(const float DeltaTime)
 {
-	TimeUntilNextScan -= DeltaTime;
-	if (TimeUntilNextScan > 0.0f)
-	{
-		return;
-	}
-
-	TimeUntilNextScan = BuffSpawnCycle::ScanIntervalSeconds;
-
 	UWorld* World = GetWorld();
 	if (!IsValid(World))
 	{
 		return;
 	}
 
-	for (TActorIterator<AActor> It(World); It; ++It)
+	if (bInitialActorRegistrationPending)
 	{
-		AActor* Actor = *It;
-		if (!IsValid(Actor))
+		bInitialActorRegistrationPending = false;
+		// Level-placed actors predate the spawn delegate, so seed the registry once.
+		TRACE_CPUPROFILER_EVENT_SCOPE(BuffSpawnCycleSubsystem_InitialRegistration);
+		for (TActorIterator<AActor> It(World); It; ++It)
 		{
-			continue;
+			RegisterActor(*It);
+		}
+	}
+
+	TimeUntilNextUpdate -= DeltaTime;
+	if (TimeUntilNextUpdate > 0.0f)
+	{
+		return;
+	}
+
+	TimeUntilNextUpdate = BuffSpawnCycle::TrackedActorUpdateIntervalSeconds;
+
+	{
+		TRACE_CPUPROFILER_EVENT_SCOPE(BuffSpawnCycleSubsystem_TrackedActorUpdate);
+		for (auto It = PendingBuffItems.CreateIterator(); It; ++It)
+		{
+			AActor* BuffItem = It->Get();
+			if (!IsValid(BuffItem))
+			{
+				It.RemoveCurrent();
+				continue;
+			}
+
+			if (UpdateReplicatedBuffItem(BuffItem))
+			{
+				It.RemoveCurrent();
+			}
 		}
 
-		if (Actor->GetClass()->GetName().StartsWith(TEXT("BP_BuffItem_C")))
+		for (auto It = TrackedSpawnPoints.CreateIterator(); It; ++It)
 		{
-			UpdateReplicatedBuffItem(Actor);
-		}
+			AActor* SpawnPoint = It->Get();
+			if (!IsValid(SpawnPoint))
+			{
+				SpawnPointStates.Remove(*It);
+				It.RemoveCurrent();
+				continue;
+			}
 
-		if (Actor->HasAuthority()
-			&& Actor->GetClass()->GetName().StartsWith(TEXT("BP_ItemSpawnPoint_C")))
-		{
-			UpdateSpawnPoint(Actor);
+			if (SpawnPoint->HasAuthority())
+			{
+				UpdateSpawnPoint(SpawnPoint);
+			}
 		}
 	}
 
@@ -76,13 +133,52 @@ void UBuffSpawnCycleSubsystem::Tick(const float DeltaTime)
 			It.RemoveCurrent();
 		}
 	}
+}
 
-	for (auto It = InitializedBuffItems.CreateIterator(); It; ++It)
+void UBuffSpawnCycleSubsystem::RegisterActor(AActor* Actor)
+{
+	if (!IsValid(Actor))
 	{
-		if (!It->IsValid())
-		{
-			It.RemoveCurrent();
-		}
+		return;
+	}
+
+	const FString ClassName = Actor->GetClass()->GetName();
+	if (ClassName.StartsWith(TEXT("BP_BuffItem_C")))
+	{
+		PendingBuffItems.Add(Actor);
+	}
+	else if (ClassName.StartsWith(TEXT("BP_ItemSpawnPoint_C")))
+	{
+		TrackedSpawnPoints.Add(Actor);
+	}
+}
+
+void UBuffSpawnCycleSubsystem::RegisterLevelActors(ULevel* Level, UWorld* World)
+{
+	if (!IsValid(Level) || World != GetWorld())
+	{
+		return;
+	}
+
+	for (AActor* Actor : Level->Actors)
+	{
+		RegisterActor(Actor);
+	}
+}
+
+void UBuffSpawnCycleSubsystem::UnregisterLevelActors(ULevel* Level, UWorld* World)
+{
+	if (!IsValid(Level) || World != GetWorld())
+	{
+		return;
+	}
+
+	for (AActor* Actor : Level->Actors)
+	{
+		const TWeakObjectPtr<AActor> ActorKey(Actor);
+		PendingBuffItems.Remove(ActorKey);
+		TrackedSpawnPoints.Remove(ActorKey);
+		SpawnPointStates.Remove(ActorKey);
 	}
 }
 
@@ -94,21 +190,17 @@ TStatId UBuffSpawnCycleSubsystem::GetStatId() const
 bool UBuffSpawnCycleSubsystem::IsTickable() const
 {
 	const UWorld* World = GetWorld();
-	return IsValid(World) && World->IsGameWorld();
+	return IsValid(World) && World->IsGameWorld()
+		&& (bInitialActorRegistrationPending || !TrackedSpawnPoints.IsEmpty() || !PendingBuffItems.IsEmpty());
 }
 
-void UBuffSpawnCycleSubsystem::UpdateReplicatedBuffItem(AActor* BuffItem)
+bool UBuffSpawnCycleSubsystem::UpdateReplicatedBuffItem(AActor* BuffItem)
 {
-	if (InitializedBuffItems.Contains(BuffItem))
-	{
-		return;
-	}
-
 	const FStructProperty* RowHandleProperty = FindFProperty<FStructProperty>(
 		BuffItem->GetClass(), TEXT("Data Table Handle"));
 	if (!RowHandleProperty || RowHandleProperty->Struct != FDataTableRowHandle::StaticStruct())
 	{
-		return;
+		return false;
 	}
 
 	const FDataTableRowHandle* RowHandle =
@@ -117,7 +209,7 @@ void UBuffSpawnCycleSubsystem::UpdateReplicatedBuffItem(AActor* BuffItem)
 	{
 		// On clients the actor can BeginPlay before its exposed-on-spawn data is
 		// replicated. Keep polling until the handle arrives.
-		return;
+		return false;
 	}
 
 	if (!RowHandle->DataTable->FindRowUnchecked(RowHandle->RowName))
@@ -125,17 +217,19 @@ void UBuffSpawnCycleSubsystem::UpdateReplicatedBuffItem(AActor* BuffItem)
 		UE_LOG(LogTemp, Warning, TEXT("Buff item %s received invalid row %s from %s"),
 			*GetNameSafe(BuffItem), *RowHandle->RowName.ToString(),
 			*GetNameSafe(RowHandle->DataTable));
-		return;
+		return false;
 	}
 
 	if (UFunction* SetupMeshFunction = BuffItem->FindFunction(TEXT("Setup Mesh")))
 	{
 		BuffItem->ProcessEvent(SetupMeshFunction, nullptr);
-		InitializedBuffItems.Add(BuffItem);
 		UE_LOG(LogTemp, Log, TEXT("Initialized replicated buff item %s with %s:%s"),
 			*GetNameSafe(BuffItem), *GetNameSafe(RowHandle->DataTable),
 			*RowHandle->RowName.ToString());
+		return true;
 	}
+
+	return false;
 }
 
 void UBuffSpawnCycleSubsystem::UpdateSpawnPoint(AActor* SpawnPoint)
