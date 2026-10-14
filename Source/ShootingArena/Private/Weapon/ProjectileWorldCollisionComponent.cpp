@@ -7,6 +7,10 @@
 
 namespace
 {
+// Unity builds can include other .cpp files in this translation unit. Keep
+// these helpers separate from their anonymous-namespace helpers as well.
+namespace ProjectileCollisionHelpers
+{
 bool LiveComponent(const UActorComponent* Component)
 {
 	return IsValid(Component) && !Component->IsBeingDestroyed();
@@ -32,6 +36,7 @@ bool CanDamage(const AActor* Projectile)
 {
 	const FBoolProperty* Flag = FindFProperty<FBoolProperty>(Projectile->GetClass(), TEXT("canDealDamage"));
 	return Projectile->HasAuthority() && (!Flag || Flag->GetPropertyValue_InContainer(Projectile));
+}
 }
 }
 
@@ -67,7 +72,7 @@ bool UProjectileWorldCollisionComponent::HasLiveContext() const
 	const UWorld* World = GetWorld();
 	return !IsBeingDestroyed() && IsRegistered() && IsActive()
 		&& IsValid(Projectile) && !Projectile->IsActorBeingDestroyed()
-		&& IsValid(World) && !World->bIsTearingDown && LiveComponent(Player) && Player->IsRegistered()
+		&& IsValid(World) && !World->bIsTearingDown && ProjectileCollisionHelpers::LiveComponent(Player) && Player->IsRegistered()
 		&& Projectile->GetRootComponent() == Player && Player->GetOwner() == Projectile
 		&& Player->GetWorld() == World && GetAttachParent() == Player
 		&& !GetComponentTransform().ContainsNaN() && !Player->GetComponentTransform().ContainsNaN();
@@ -80,7 +85,7 @@ bool UProjectileWorldCollisionComponent::BindPlayerCollision()
 	AActor* Projectile = GetOwner();
 	USphereComponent* Player = IsValid(Projectile) && !Projectile->IsActorBeingDestroyed()
 		? Cast<USphereComponent>(Projectile->GetRootComponent()) : nullptr;
-	if (!LiveComponent(Player) || Player == this) return false;
+	if (!ProjectileCollisionHelpers::LiveComponent(Player) || Player == this) return false;
 	PlayerCollision = Player;
 	if (!HasLiveContext()) { Unbind(); return false; }
 	// Damage uses explicit continuous queries, not actor/child overlap callbacks.
@@ -151,22 +156,22 @@ bool UProjectileWorldCollisionComponent::FindImpact(const FVector& Start, const 
 		|| World->bIsTearingDown || Start.ContainsNaN() || End.ContainsNaN()
 		|| !FMath::IsFinite(WallRadius) || WallRadius <= UE_SMALL_NUMBER
 		|| !FMath::IsFinite(PlayerRadius) || PlayerRadius <= UE_SMALL_NUMBER) return false;
-	FCollisionQueryParams Query = QueryFor(Projectile);
+	FCollisionQueryParams Query = ProjectileCollisionHelpers::QueryFor(Projectile);
 	Query.AddIgnoredActors(Player->GetMoveIgnoreActors());
 	FCollisionResponseParams Responses(GetCollisionResponseToChannels());
 	Responses.CollisionResponse.SetResponse(ECC_Pawn, ECR_Ignore);
 	Responses.CollisionResponse.SetResponse(GetCollisionObjectType(), ECR_Ignore);
 	bool bFound = World->SweepSingleByChannel(OutHit, Start, End, FQuat::Identity, GetCollisionObjectType(),
 		FCollisionShape::MakeSphere(WallRadius), Query, Responses);
-	if (bFound && !ValidHit(OutHit)) { OutHit = FHitResult(); return false; }
-	if (!CanDamage(Projectile)) return bFound;
+	if (bFound && !ProjectileCollisionHelpers::ValidHit(OutHit)) { OutHit = FHitResult(); return false; }
+	if (!ProjectileCollisionHelpers::CanDamage(Projectile)) return bFound;
 	TArray<FHitResult> Candidates;
 	World->SweepMultiByObjectType(Candidates, Start, End, FQuat::Identity, FCollisionObjectQueryParams(ECC_Pawn),
 		FCollisionShape::MakeSphere(PlayerRadius), Query);
 	for (const FHitResult& Candidate : Candidates)
 	{
 		if (!IsValid(Candidate.GetActor()) || !Candidate.GetActor()->IsA<ACharacter>()
-			|| Candidate.GetActor()->IsActorBeingDestroyed() || !LiveComponent(Candidate.GetComponent()) || !ValidHit(Candidate)
+			|| Candidate.GetActor()->IsActorBeingDestroyed() || !ProjectileCollisionHelpers::LiveComponent(Candidate.GetComponent()) || !ProjectileCollisionHelpers::ValidHit(Candidate)
 			|| Candidate.GetComponent()->GetCollisionResponseToChannel(Player->GetCollisionObjectType()) != ECR_Block
 			|| (bFound && Candidate.Time >= OutHit.Time - UE_KINDA_SMALL_NUMBER)) continue;
 		// A large player radius can reach through an adjacent thin wall even when
@@ -187,21 +192,21 @@ void UProjectileWorldCollisionComponent::ResolveImpact(const FHitResult& Hit)
 {
 	AActor* Projectile = GetOwner();
 	USphereComponent* Player = PlayerCollision.Get();
-	if (bResolved || bResolving || !HasLiveContext() || !ValidHit(Hit)) return;
+	if (bResolved || bResolving || !HasLiveContext() || !ProjectileCollisionHelpers::ValidHit(Hit)) return;
 	bResolved = true;
 	bResolving = true;
 	Travel.Reset();
 	SetComponentTickEnabled(false);
 	Player->SetWorldLocation(Hit.Location, false, nullptr, ETeleportType::TeleportPhysics);
 	if (!HasLiveContext()) { bResolving = false; return; }
-	if (auto* Movement = Projectile->FindComponentByClass<UProjectileMovementComponent>(); LiveComponent(Movement)) Movement->StopSimulating(Hit);
+	if (auto* Movement = Projectile->FindComponentByClass<UProjectileMovementComponent>(); ProjectileCollisionHelpers::LiveComponent(Movement)) Movement->StopSimulating(Hit);
 	// OnProjectileStop can remove the actor, the collider, or the root component.
 	if (HasLiveContext())
 	{
 		AActor* Other = Hit.GetActor();
 		UPrimitiveComponent* OtherComponent = Hit.GetComponent();
 		OnResolvedImpact.Broadcast(Player, IsValid(Other) && !Other->IsActorBeingDestroyed() ? Other : nullptr,
-			LiveComponent(OtherComponent) ? OtherComponent : nullptr, FVector::ZeroVector, Hit);
+			ProjectileCollisionHelpers::LiveComponent(OtherComponent) ? OtherComponent : nullptr, FVector::ZeroVector, Hit);
 	}
 	bResolving = false;
 }
@@ -235,7 +240,7 @@ void UProjectileWorldCollisionComponent::TickComponent(float DeltaTime, ELevelTi
 
 void UProjectileWorldCollisionComponent::Unbind()
 {
-	if (USphereComponent* Player = PlayerCollision.Get(); LiveComponent(Player))
+	if (USphereComponent* Player = PlayerCollision.Get(); ProjectileCollisionHelpers::LiveComponent(Player))
 	{
 		Player->TransformUpdated.RemoveAll(this);
 	}
