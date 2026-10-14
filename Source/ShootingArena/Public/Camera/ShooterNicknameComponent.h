@@ -31,6 +31,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Shooter Nickname")
 	void SetCrosshairUV(FVector2D UV);
 	UFUNCTION(BlueprintCallable, Category = "Shooter Nickname")
+	void SetNicknameSphereTraceEnabled(bool bEnabled);
+	UFUNCTION(BlueprintCallable, Category = "Shooter Nickname")
+	void SetNicknameSphereTraceRadius(float Radius);
+	UFUNCTION(BlueprintPure, Category = "Shooter Nickname")
+	bool IsNicknameSphereTraceEnabled() const { return bUseSphereTraceFallback; }
+	UFUNCTION(BlueprintPure, Category = "Shooter Nickname")
+	float GetNicknameSphereTraceRadius() const { return SphereTraceRadius; }
+	UFUNCTION(BlueprintCallable, Category = "Shooter Nickname")
 	void ResetNicknameStyle();
 	UFUNCTION(BlueprintPure, Category = "Shooter Nickname")
 	FShooterNicknameStyle GetNicknameStyle() const { return Style; }
@@ -56,6 +64,7 @@ private:
 #if WITH_DEV_AUTOMATION_TESTS
 	friend class FCharacterDisplayRegressionTest;
 	friend class FCharacterNicknameWeaponTraceTest;
+	friend class FCharacterNicknameSphereTraceTest;
 #endif
 	UPROPERTY(Transient)
 	FShooterNicknameStyle Style;
@@ -74,6 +83,8 @@ private:
 	ECollisionChannel TraceChannel = ECC_GameTraceChannel2;
 	bool bUseEquippedWeaponTraceChannel = true;
 	float MaxDistance = 20000.0f;
+	bool bUseSphereTraceFallback = true;
+	float SphereTraceRadius = 15.0f;
 	double LostAimTime = -1.0;
 	bool bEndingPlay = false;
 	bool ResolveAimRay(FVector& Origin, FVector& Direction);

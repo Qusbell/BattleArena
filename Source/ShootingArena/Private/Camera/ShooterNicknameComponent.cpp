@@ -61,6 +61,8 @@ void UShooterNicknameComponent::ApplyNicknameSettings(UShooterNicknameSettings* 
 	TraceChannel = NewSettings->TraceChannel < ECC_MAX ? NewSettings->TraceChannel.GetValue() : ECC_GameTraceChannel2;
 	bUseEquippedWeaponTraceChannel = NewSettings->bUseEquippedWeaponTraceChannel;
 	MaxDistance = ShooterDisplayValidation::FiniteClamp(NewSettings->MaxDistance, 1.0f, MAX_flt, 20000.0f);
+	SetNicknameSphereTraceEnabled(NewSettings->bUseSphereTraceFallback);
+	SetNicknameSphereTraceRadius(NewSettings->SphereTraceRadius);
 	SetCrosshairUV(NewSettings->CrosshairUV);
 	SetNicknameStyle(NewSettings->Style);
 }
@@ -107,6 +109,17 @@ void UShooterNicknameComponent::SetCrosshairUV(FVector2D UV)
 {
 	if (UV.ContainsNaN()) UV = FVector2D(0.5, 0.5);
 	CrosshairUV = FVector2D(FMath::Clamp(UV.X, 0.0, 1.0), FMath::Clamp(UV.Y, 0.0, 1.0));
+}
+
+void UShooterNicknameComponent::SetNicknameSphereTraceEnabled(bool bEnabled)
+{
+	if (!bEndingPlay && !IsBeingDestroyed()) bUseSphereTraceFallback = bEnabled;
+}
+
+void UShooterNicknameComponent::SetNicknameSphereTraceRadius(float Radius)
+{
+	if (!bEndingPlay && !IsBeingDestroyed())
+		SphereTraceRadius = ShooterDisplayValidation::FiniteClamp(Radius, 0.0f, 1000.0f, 0.0f);
 }
 
 void UShooterNicknameComponent::ResetNicknameStyle()
@@ -197,13 +210,16 @@ APawn* UShooterNicknameComponent::FindAimTarget(const FVector& Origin, const FVe
 	if (bEndingPlay || IsBeingDestroyed() || !IsValid(PC) || PC->IsActorBeingDestroyed()
 		|| !World || World->bIsTearingDown || Origin.ContainsNaN() || Direction.ContainsNaN()
 		|| Direction.IsNearlyZero()) return nullptr;
+	const FVector RayDirection = Direction.GetSafeNormal();
+	if (RayDirection.ContainsNaN() || RayDirection.IsNearlyZero()) return nullptr;
 	float Distance = MaxDistance;
 	FCollisionResponseParams Responses;
 	const ECollisionChannel Channel = ResolveDamageTraceChannel(Distance, Responses);
 	if (Channel >= ECC_MAX || !FMath::IsFinite(Distance) || Distance <= 0.0f) return nullptr;
-	const FVector End = Origin + Direction.GetSafeNormal() * Distance;
+	const FVector End = Origin + RayDirection * Distance;
 	if (End.ContainsNaN()
-		|| IsBeingDestroyed() || !IsValid(PC) || PC->IsActorBeingDestroyed() || World->bIsTearingDown) return nullptr;
+		|| bEndingPlay || IsBeingDestroyed() || !IsValid(PC) || PC->IsActorBeingDestroyed()
+		|| GetWorld() != World || World->bIsTearingDown) return nullptr;
 	FCollisionQueryParams Query(SCENE_QUERY_STAT(ShooterNicknameDamage), false);
 	Query.AddIgnoredActor(PC->GetPawn());
 	Query.AddIgnoredActor(PC->GetViewTarget());
@@ -214,17 +230,72 @@ APawn* UShooterNicknameComponent::FindAimTarget(const FVector& Origin, const FVe
 		Query.AddIgnoredActors(Attached);
 	}
 	TArray<FHitResult> Hits;
+	auto IsTarget = [this, World](APawn* Shooter)
+	{
+		return IsValid(Shooter) && !Shooter->IsActorBeingDestroyed() && Shooter->GetWorld() == World && ShooterClass
+			&& Shooter->IsA(ShooterClass) && !Shooter->IsHidden() && Shooter->CanBeDamaged()
+			&& UShooterDisplayLibrary::IsShooterAlive(Shooter);
+	};
 	// Multi traces include the overlap capsules used by RailGun damage. The bool return
 	// only reports blocking hits, so inspect the hit array even when that return is false.
 	World->LineTraceMultiByChannel(Hits, Origin, End, Channel, Query, Responses);
 	for (const FHitResult& Hit : Hits)
 	{
 		APawn* Shooter = Cast<APawn>(Hit.GetActor());
-		if (IsValid(Shooter) && ShooterClass && Shooter->IsA(ShooterClass) && !Shooter->IsHidden()
-			&& Shooter->CanBeDamaged() && UShooterDisplayLibrary::IsShooterAlive(Shooter)) return Shooter;
+		if (IsTarget(Shooter)) return Shooter;
 		// A gun actor is never promoted to its shooter owner. Its blocking collision, like
 		// a wall, prevents a body behind it from being selected; NoCollision guns are ignored.
 		if (Hit.bBlockingHit) break;
+	}
+	if (!bUseSphereTraceFallback || !FMath::IsFinite(SphereTraceRadius) || SphereTraceRadius <= 0.0f) return nullptr;
+	// Preserve the original damage responses for visibility checks. The candidate
+	// sweep collects overlaps so a wall expanded by the radius cannot stop the search
+	// before a visible nearby shooter; it never grants visibility through that wall.
+	FCollisionResponseParams CandidateResponses = Responses;
+	for (int32 Index = 0; Index < ECC_MAX; ++Index)
+	{
+		const ECollisionChannel CandidateChannel = static_cast<ECollisionChannel>(Index);
+		if (CandidateResponses.CollisionResponse.GetResponse(CandidateChannel) == ECR_Block)
+			CandidateResponses.CollisionResponse.SetResponse(CandidateChannel, ECR_Overlap);
+	}
+	Hits.Reset();
+	World->SweepMultiByChannel(Hits, Origin, End, FQuat::Identity, Channel,
+		FCollisionShape::MakeSphere(SphereTraceRadius), Query, CandidateResponses);
+	TArray<FHitResult> VisibilityHits;
+	for (const FHitResult& Hit : Hits)
+	{
+		APawn* Shooter = Cast<APawn>(Hit.GetActor());
+		if (!IsTarget(Shooter)) continue;
+		FVector Contact = Hit.ImpactPoint;
+		// Initial overlaps may not supply a surface point. Resolve it before testing
+		// visibility, otherwise a nearby wall could be bypassed by a zero-length ray.
+		if (Hit.bStartPenetrating)
+		{
+			UPrimitiveComponent* Collision = Hit.GetComponent();
+			if (!IsValid(Collision) || Collision->IsBeingDestroyed() || !Collision->IsRegistered()
+				|| !Collision->IsQueryCollisionEnabled()) continue;
+			const float SurfaceDistance = Collision->GetClosestPointOnCollision(Origin, Contact);
+			if (!FMath::IsFinite(SurfaceDistance) || SurfaceDistance < 0.0f) continue;
+		}
+		if (Contact.ContainsNaN()) continue;
+		const FVector ToContact = Contact - Origin;
+		if (ToContact.SizeSquared() > FMath::Square(static_cast<double>(Distance))
+			|| FVector::DotProduct(ToContact, RayDirection) < 0.0) continue;
+		const FVector VisibilityEnd = Contact + ToContact.GetSafeNormal() * 0.5;
+		if (VisibilityEnd.ContainsNaN()) continue;
+		VisibilityHits.Reset();
+		World->LineTraceMultiByChannel(VisibilityHits, Origin, VisibilityEnd, Channel, Query, Responses);
+		bool bVisible = true;
+		for (const FHitResult& VisibilityHit : VisibilityHits)
+		{
+			if (VisibilityHit.GetActor() == Shooter) break;
+			if (VisibilityHit.bBlockingHit || IsTarget(Cast<APawn>(VisibilityHit.GetActor())))
+			{
+				bVisible = false;
+				break;
+			}
+		}
+		if (bVisible) return Shooter;
 	}
 	return nullptr;
 }

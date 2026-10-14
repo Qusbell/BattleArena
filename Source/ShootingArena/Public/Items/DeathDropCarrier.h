@@ -34,6 +34,7 @@ private:
 	UPROPERTY(ReplicatedUsing=OnRep_Pickup) double BuffEndServerTime = 0.0;
 	UPROPERTY(ReplicatedUsing=OnRep_Pickup) bool bBuffPickup = false;
 	UPROPERTY(ReplicatedUsing=OnRep_Settled) bool bSettled = false;
+	UPROPERTY(ReplicatedUsing=OnRep_Settled) FVector SettledLocation = FVector::ZeroVector;
 	UPROPERTY() TSubclassOf<AActor> PickupActorClass;
 
 	FDeathDropSettings DropSettings;
