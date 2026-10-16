@@ -10,7 +10,34 @@
 #include "GameFramework/Pawn.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Weapon/ProjectileConvergenceComponent.h"
+#include "Weapon/ProjectileWorldCollisionComponent.h"
 #include "UObject/UnrealType.h"
+#include "UObject/UObjectIterator.h"
+
+int32 UWeaponProjectileAimLibrary::DestroyProjectileVisualsById(AActor* Weapon, int32 ProjectileId)
+{
+	if (!IsValid(Weapon) || Weapon->IsActorBeingDestroyed()) return 0;
+	UWorld* World = Weapon->GetWorld();
+	if (!IsValid(World) || World->bIsTearingDown) return 0;
+	TArray<TWeakObjectPtr<AActor>> Copies;
+	// The current weapon path and legacy fire component keep separate BP arrays.
+	// Inspect the live split-collision projectiles rather than either stale list.
+	for (TObjectIterator<UProjectileWorldCollisionComponent> It; It; ++It)
+	{
+		if (!It->IsRegistered() || It->IsBeingDestroyed() || It->GetWorld() != World) continue;
+		AActor* Copy = It->GetOwner();
+		if (!IsValid(Copy) || Copy->IsActorBeingDestroyed() || Copy->GetOwner() != Weapon) continue;
+		const auto* Id = FindFProperty<FIntProperty>(Copy->GetClass(), TEXT("projectileId"));
+		const auto* Damage = FindFProperty<FBoolProperty>(Copy->GetClass(), TEXT("canDealDamage"));
+		if (Id && Damage && Id->GetPropertyValue_InContainer(Copy) == ProjectileId
+			&& !Damage->GetPropertyValue_InContainer(Copy)) Copies.AddUnique(Copy);
+	}
+	// Destroy outside the iterator: BP EndPlay may destroy other copies/components.
+	int32 Destroyed = 0;
+	for (const TWeakObjectPtr<AActor>& Copy : Copies)
+		if (Copy.IsValid() && !Copy->IsActorBeingDestroyed() && Copy->Destroy()) ++Destroyed;
+	return Destroyed;
+}
 
 namespace
 {
@@ -87,12 +114,17 @@ bool UWeaponProjectileAimLibrary::TryGetProjectileBoreTransform(USceneComponent*
 
 const USphereComponent* UWeaponProjectileAimLibrary::GetProjectileCollisionTemplate(AActor* Weapon)
 {
-	if (!IsValid(Weapon)) return nullptr;
+	if (!IsValid(Weapon) || Weapon->IsActorBeingDestroyed()) return nullptr;
 	const FObjectPropertyBase* DataProperty = FindFProperty<FObjectPropertyBase>(Weapon->GetClass(), TEXT("weaponData"));
 	UObject* Data = DataProperty ? DataProperty->GetObjectPropertyValue_InContainer(Weapon) : nullptr;
 	const FClassProperty* ClassProperty = IsValid(Data) ? FindFProperty<FClassProperty>(Data->GetClass(), TEXT("projectileClass")) : nullptr;
 	UClass* Class = ClassProperty ? Cast<UClass>(ClassProperty->GetObjectPropertyValue_InContainer(Data)) : nullptr;
-	return Class && Class->IsChildOf<AActor>() ? AActor::GetActorClassDefaultComponent<USphereComponent>(Class) : nullptr;
+	if (!IsValid(Class) || !Class->IsChildOf<AActor>()) return nullptr;
+	// The large root sphere is now the player hit shape on split projectiles.
+	// Muzzle/camera safety must use the separately configured environment shape.
+	if (const auto* WorldCollision = AActor::GetActorClassDefaultComponent<UProjectileWorldCollisionComponent>(Class))
+		return WorldCollision;
+	return AActor::GetActorClassDefaultComponent<USphereComponent>(Class);
 }
 
 bool UWeaponProjectileAimLibrary::IsProjectileStartBlocked(UWorld* World, const USphereComponent* Collision,

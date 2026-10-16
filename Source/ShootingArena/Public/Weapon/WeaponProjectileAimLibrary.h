@@ -15,6 +15,12 @@ class SHOOTINGARENA_API UWeaponProjectileAimLibrary : public UBlueprintFunctionL
 {
 	GENERATED_BODY()
 public:
+	/** Receives the weapon's reliable impact multicast. Only local, non-damaging
+	 * copies of this weapon/shot are retired; their own muzzle path may miss the hit.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Weapon|Projectile")
+	static int32 DestroyProjectileVisualsById(AActor* Weapon, int32 ProjectileId);
+
 	/** Each client's cosmetic projectile starts at its locally selected FP/TP muzzle.
 	 * Authority retains the server-resolved start; every peer retains the server flight target.
 	 */
