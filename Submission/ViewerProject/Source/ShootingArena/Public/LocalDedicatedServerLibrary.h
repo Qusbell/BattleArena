@@ -1,0 +1,149 @@
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Kismet/BlueprintFunctionLibrary.h"
+
+#include "LocalDedicatedServerLibrary.generated.h"
+
+/**
+ * 캠페인 진입 시 로컬에 전용 서버(ShootingArenaServer.exe) 프로세스를 띄우고,
+ * 캠페인 종료 시 그 프로세스를 정리하기 위한 래핑 라이브러리.
+ */
+UCLASS()
+class SHOOTINGARENA_API ULocalDedicatedServerLibrary : public UBlueprintFunctionLibrary
+{
+	GENERATED_BODY()
+
+public:
+
+	/**
+	* 로컬 전용 서버 프로세스(Binaries/Win64/ShootingArenaServer.exe)를 백그라운드로 실행합니다.
+	* 이미 실행 중인 로컬 전용 서버가 있다면 아무 것도 하지 않고 false를 반환합니다.
+	*
+	* @param MapName 서버가 시작 시 로드할 맵 이름 (예: "Campaign_Map_01")
+	* @param Port 서버가 사용할 포트 번호 (기본값 7777)
+	* @return 프로세스 생성에 성공하면 true
+	*/
+	UFUNCTION(BlueprintCallable, Category = "Server|LocalDedicatedServer", meta = (Keywords = "Campaign Server Start Dedicated Process"))
+	static bool StartLocalDedicatedServer(const FString& MapName, int32 Port = 7777);
+
+	/**
+	* StartLocalDedicatedServer로 띄운 로컬 전용 서버 프로세스를 종료합니다.
+	* 실행 중인 프로세스가 없다면 아무 일도 일어나지 않습니다.
+	*/
+	UFUNCTION(BlueprintCallable, Category = "Server|LocalDedicatedServer", meta = (Keywords = "Campaign Server Stop Dedicated Process"))
+	static void StopLocalDedicatedServer();
+
+	/**
+	* 이미 실행 중인 로컬 전용 서버에게 "맵을 이 맵으로 바꿔 두라"고 요청합니다.
+	* 클라이언트가 서버에 접속해 있을 필요가 없습니다 (파일 기반 명령 전달).
+	*
+	* - 호출 즉시 Ready 가 해제(IsLocalDedicatedServerReady == false)되고,
+	*   서버가 맵 전환을 마치면 다시 Ready 가 됩니다. 따라서 "플레이" 시점에는
+	*   IsLocalDedicatedServerReady 가 true 가 될 때까지만 기다렸다가 접속하면 됩니다.
+	* - 서버가 아직 부팅 중이어도 안전합니다 (부팅이 끝난 뒤 명령이 처리됩니다).
+	* - 이미 그 맵이면 전환 없이 Ready 만 유지됩니다.
+	* - "Map_01?Difficulty=1" 처럼 URL 옵션이 붙은 요청은 같은 맵이어도 재로드합니다 (게임모드가 옵션을 다시 읽도록).
+	*
+	* @param MapName 이동할 맵 (예: "Campaign_Map_02" 또는 "/Game/.../Campaign_Map_02")
+	* @return 서버가 실행 중이고 명령 기록에 성공하면 true
+	*/
+	UFUNCTION(BlueprintCallable, Category = "Server|LocalDedicatedServer", meta = (Keywords = "Campaign Server Map Change Travel Dedicated Process"))
+	static bool SetLocalDedicatedServerMap(const FString& MapName);
+
+	/**
+	* 서버 프로세스(-LocalServerCommandFile 인자가 있는 프로세스)에서만 맵 변경 명령 감시를 시작합니다.
+	* 그 외 프로세스에서는 아무 일도 하지 않습니다. GameInstance::Init 에서 호출합니다. (BP 노출 없음)
+	*/
+	static void InitServerCommandWatcher();
+
+	/**
+	* StartLocalDedicatedServer로 띄운 로컬 전용 서버 프로세스가 현재 실행 중인지 확인합니다.
+	*/
+	UFUNCTION(BlueprintPure, Category = "Server|LocalDedicatedServer", meta = (Keywords = "Campaign Server Running Dedicated Process"))
+	static bool IsLocalDedicatedServerRunning();
+
+
+	/**
+	* 로컬 전용 서버가 클라이언트 접속을 받을 준비가 되었는지 확인합니다.
+	*
+	* 서버 프로세스가 살아 있고,
+	* 해당 서버 프로세스가 Ready 파일을 생성한 경우 true를 반환합니다.
+	*/
+	UFUNCTION(BlueprintPure, Category = "Server|LocalDedicatedServer",
+		meta = (Keywords = "Campaign Server Ready Dedicated Process"))
+	static bool IsLocalDedicatedServerReady();
+
+	/**
+	 * 현재 Dedicated Server 프로세스가 클라이언트 접속 준비를 완료했음을 표시합니다.
+	 *
+	 * 서버 측 ServerEntry GameMode 등에서 호출합니다.
+	 * Dedicated Server가 아니거나 NetDriver가 아직 준비되지 않았다면 false를 반환합니다.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Server|LocalDedicatedServer",
+		meta = (
+			WorldContext = "WorldContextObject",
+			Keywords = "Campaign Server Ready Mark Dedicated Process"
+			))
+	static bool MarkLocalDedicatedServerReady(UObject* WorldContextObject);
+
+	// --------------------------------------------------------------------
+	// 매치 서버(로비 서버가 "게임 시작" 시 별도 프로세스로 띄우는 서버)용 함수들입니다.
+	// 위 캠페인용 StartLocalDedicatedServer와 로직은 거의 같지만,
+	// - "Dedicated Server 프로세스 안에서는 호출 금지" 가드가 없습니다 (로비 서버 자체가
+	//   Dedicated Server이고, 그 안에서 이 함수를 호출하는 게 정상적인 사용 시나리오이기 때문).
+	// - 위 캠페인용 핸들과는 별도의 핸들로 추적합니다 (서로 독립적인 프로세스).
+	// Ready 확인은 캠페인용과 동일하게 MarkLocalDedicatedServerReady를 그대로 재사용합니다
+	// (매치 서버 쪽 GameMode BeginPlay에서 그 함수를 그대로 호출하면 됩니다).
+	// --------------------------------------------------------------------
+
+	/**
+	* 매치 서버 프로세스를 백그라운드로 실행합니다. 이미 실행 중인 매치 서버가 있다면
+	* 아무 것도 하지 않고 false를 반환합니다.
+	*
+	* @param MapName 서버가 시작 시 로드할 맵 이름입니다. "?Game=..."이나 "?AIEasy=1" 같은
+	*                URL 옵션을 그대로 이어붙여서 넘겨도 됩니다 (예: "Map_01?Game=BP_MultiplayerAIGameMode_C?AIEasy=1").
+	* @param Port 매치 서버가 사용할 포트 번호
+	*/
+	UFUNCTION(BlueprintCallable, Category = "Server|MatchServer", meta = (Keywords = "Match Server Start Dedicated Process"))
+	static bool StartMatchServer(const FString& MapName, int32 Port = 7778);
+
+	/**
+	* StartMatchServer로 띄운 매치 서버 프로세스를 종료합니다.
+	* 실행 중인 프로세스가 없다면 아무 일도 일어나지 않습니다.
+	*/
+	UFUNCTION(BlueprintCallable, Category = "Server|MatchServer", meta = (Keywords = "Match Server Stop Dedicated Process"))
+	static void StopMatchServer();
+
+	/**
+	* StartMatchServer로 띄운 매치 서버 프로세스가 현재 실행 중인지 확인합니다.
+	*/
+	UFUNCTION(BlueprintPure, Category = "Server|MatchServer", meta = (Keywords = "Match Server Running Dedicated Process"))
+	static bool IsMatchServerRunning();
+
+	/**
+	* 매치 서버가 클라이언트 접속을 받을 준비가 되었는지 확인합니다.
+	*/
+	UFUNCTION(BlueprintPure, Category = "Server|MatchServer", meta = (Keywords = "Match Server Ready Dedicated Process"))
+	static bool IsMatchServerReady();
+
+	/**
+	* 주어진 IP 주소가 "이 PC 자신의 주소"인지 확인합니다.
+	* (빈 문자열 / "127.0.0.1" / "localhost" / 로컬 네트워크 어댑터 주소 — Hamachi 가상 어댑터의
+	*  25.x.x.x 도 포함 — 중 하나면 true)
+	*
+	* 메인 메뉴에서 "입력한 IP == 내 IP => 내가 호스트, 아니면 => 게스트"로 분기하는 데 씁니다.
+	*/
+	UFUNCTION(BlueprintPure, Category = "Server|LocalDedicatedServer", meta = (Keywords = "Local IP Address Host Self"))
+	static bool IsLocalIPAddress(const FString& IPAddress);
+
+	/**
+	* 입력한 문자열이 접속 가능한 IP 형식인지 검사합니다.
+	* (IPv4 "a.b.c.d" — 각 0~255, 앞뒤 공백 무시 — 또는 "localhost". 빈 문자열은 false)
+	*
+	* IP 입력 화면에서 접속 버튼을 눌렀을 때, 잘못된 입력이면 경고를 띄우는 데 씁니다.
+	*/
+	UFUNCTION(BlueprintPure, Category = "Server|LocalDedicatedServer", meta = (Keywords = "Valid IP Address Check Format"))
+	static bool IsValidIPAddress(const FString& IPAddress);
+};
