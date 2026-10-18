@@ -553,8 +553,89 @@ bool UPathLinkSubsystem::CanReach(
     const FVector& TargetLocation,
     AActor* PathfindingContext) const
 {
-    FPathLinkRouteResult RouteResult;
-    return FindShortestRoute(StartLocation, TargetLocation, RouteResult, PathfindingContext);
+    UWorld* World = GetWorld();
+    if (!IsValid(World) || World->GetNetMode() == NM_Client)
+    {
+        return false;
+    }
+
+    UNavigationSystemV1* NavSystem = UNavigationSystemV1::GetCurrent(World);
+    const ANavigationData* NavData = IsValid(NavSystem)
+        ? NavSystem->GetDefaultNavDataInstance(FNavigationSystem::DontCreate)
+        : nullptr;
+    if (!IsValid(NavData))
+    {
+        return false;
+    }
+
+    FVector StartNavLocation;
+    FVector TargetNavLocation;
+    if (!ProjectToNavigation(StartLocation, StartNavLocation)
+        || !ProjectToNavigation(TargetLocation, TargetNavLocation))
+    {
+        return false;
+    }
+
+    // TestPathExistsSync와 동일하게 경로 객체 없이 연결 여부만 검사합니다.
+    auto HasNavConnection = [this, NavSystem, NavData, PathfindingContext](
+        const FVector& From, const FVector& To) -> bool
+    {
+        FPathFindingQuery Query(
+            IsValid(PathfindingContext) ? static_cast<const UObject*>(PathfindingContext) : this,
+            *NavData, From, To, NavData->GetDefaultQueryFilter());
+        Query.SetAllowPartialPaths(false);
+        Query.SetRequireNavigableEndLocation(true);
+        return NavSystem->TestPathSync(Query, EPathFindingMode::Hierarchical);
+    };
+
+    if (HasNavConnection(StartNavLocation, TargetNavLocation))
+    {
+        return true;
+    }
+
+    const FPathLinkStaticGraph* Graph = nullptr;
+    if (!EnsureRouteGraphCache(PathfindingContext, Graph) || !Graph)
+    {
+        return false;
+    }
+
+    const int32 Count = Graph->GetTraversalCount();
+    TArray<bool> Visited;
+    Visited.Init(false, Count);
+    TArray<int32> Queue;
+    Queue.Reserve(Count);
+
+    // 거리로 후보를 제한하지 않고 연결된 모든 Start Link를 수집합니다.
+    for (int32 Index = 0; Index < Count; ++Index)
+    {
+        if (HasNavConnection(StartNavLocation, Graph->Traversals[Index].EntryNavLocation))
+        {
+            Visited[Index] = true;
+            Queue.Add(Index);
+        }
+    }
+
+    for (int32 Head = 0; Head < Queue.Num(); ++Head)
+    {
+        const int32 From = Queue[Head];
+        // 같은 Traversal이 Start Link와 End Link를 겸하는 경우도 성공합니다.
+        if (HasNavConnection(Graph->Traversals[From].ExitNavLocation, TargetNavLocation))
+        {
+            return true;
+        }
+
+        for (int32 To = 0; To < Count; ++To)
+        {
+            const FPathLinkCachedTransition* Transition = Graph->GetTransition(From, To);
+            if (!Visited[To] && Transition && Transition->Reachable)
+            {
+                Visited[To] = true;
+                Queue.Add(To);
+            }
+        }
+    }
+
+    return false;
 }
 
 void UPathLinkSubsystem::InvalidateRouteGraphCache()
