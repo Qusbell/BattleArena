@@ -57,6 +57,12 @@ public:
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Lobby")
 	void Server_CleanupMatchServer();
 
+	// 서버 -> 이 클라이언트: 게임 시작 직후 로딩 화면을 띄웁니다.
+	// 방장이 시작을 눌러 트래블이 나가는 동안 비-방장 클라이언트가 로비 UI(준비 해제/나가기 등)를
+	// 조작하지 못하도록, Server_StartGame 이 승인되면 접속 중인 비-방장 전원에게 호출합니다.
+	UFUNCTION(Client, Reliable)
+	void Client_BeginMatchLoading(const FString& StatusText);
+
 private:
 	ALobbyGameState* GetLobbyGameState() const;
 	bool IsHost() const;

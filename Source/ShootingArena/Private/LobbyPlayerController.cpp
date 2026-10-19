@@ -3,6 +3,8 @@
 #include "LobbyGameMode.h"
 #include "ShootingArenaGameInstance.h"
 #include "LocalDedicatedServerLibrary.h"
+#include "Loading/LoadingBlueprintLibrary.h"
+#include "Engine/World.h"
 #include "GameFramework/PlayerState.h"
 
 ALobbyGameState* ALobbyPlayerController::GetLobbyGameState() const
@@ -191,12 +193,28 @@ void ALobbyPlayerController::Server_StartGame_Implementation()
 
 	if (ALobbyGameMode* LobbyGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<ALobbyGameMode>() : nullptr)
 	{
+		// 방장은 자기 UI(WBP_Lobby)에서 이미 로딩 화면을 띄우므로, 나머지 접속자에게만 서버가 로딩 화면을 띄웁니다.
+		// 이게 없으면 비-방장은 트래블이 나가는 동안에도 로비 UI(준비 해제/나가기 등)를 조작할 수 있습니다.
+		for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+		{
+			ALobbyPlayerController* OtherPC = Cast<ALobbyPlayerController>(It->Get());
+			if (IsValid(OtherPC) && OtherPC != this)
+			{
+				OtherPC->Client_BeginMatchLoading(TEXT("게임을 시작하는 중..."));
+			}
+		}
+
 		// OnLobbyStartGameApproved(BP)가 현재 AI 슬롯을 세어 "?AIEasy=N" URL 옵션을 만들고
 		// 매치 서버를 스폰합니다. 그게 끝난 "직후" 매치 출발을 기록해서, 플레이어가 매치에서
 		// 로비로 돌아오면 지난 세션의 AI 슬롯이 비워지도록 합니다(누적 방지).
 		LobbyGameMode->OnLobbyStartGameApproved(LobbyGameState->SelectedMapID);
 		LobbyGameMode->MarkMatchLaunched();
 	}
+}
+
+void ALobbyPlayerController::Client_BeginMatchLoading_Implementation(const FString& StatusText)
+{
+	ULoadingBlueprintLibrary::BeginLoadingScreen(this, StatusText);
 }
 
 void ALobbyPlayerController::Server_CleanupMatchServer_Implementation()
