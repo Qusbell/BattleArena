@@ -5,6 +5,7 @@
 #include "Engine/NetDriver.h"
 #include "Engine/World.h"
 #include "HAL/FileManager.h"
+#include "HAL/PlatformMisc.h"
 #include "HAL/PlatformProcess.h"
 #include "IPAddress.h"
 #include "Misc/App.h"
@@ -38,6 +39,59 @@ namespace
 
 	constexpr TCHAR LocalServerCommandArgument[] =
 		TEXT("LocalServerCommandFile=");
+
+	// 로컬 서버를 띄운 클라이언트 프로세스의 PID. 이 인자가 있는 서버만 부모 생존 감시를 합니다.
+	// (매치 서버/상주 통일 서버에는 넘기지 않으므로 영향받지 않습니다.)
+	constexpr TCHAR LocalServerParentPidArgument[] =
+		TEXT("LocalServerParentPid=");
+
+	// ------------------------------------------------------------------------
+	// 서버 프로세스 측 로직: 부모(클라이언트) 생존 감시
+	// 클라이언트가 크래시/강제 종료되어 OnPreExit 정리가 실행되지 못해도 서버가 고아로 남지 않게 합니다.
+	// ------------------------------------------------------------------------
+
+	FTSTicker::FDelegateHandle GParentWatchdogTickerHandle;
+	FProcHandle GParentProcHandle;
+
+	bool TickParentWatchdog(float /*DeltaTime*/)
+	{
+		if (!GParentProcHandle.IsValid() || FPlatformProcess::IsProcRunning(GParentProcHandle))
+		{
+			return true;
+		}
+
+		UE_LOG(LogTemp, Warning, TEXT("[LocalDedicatedServer] 부모 클라이언트 프로세스가 종료되어 로컬 서버도 종료합니다."));
+
+		// 정상 종료 경로가 막혀 있어도 확실히 내려가도록 강제 종료합니다.
+		FPlatformMisc::RequestExit(true);
+		return false;
+	}
+
+	void EnsureParentWatchdog()
+	{
+		if (GParentWatchdogTickerHandle.IsValid())
+		{
+			return;
+		}
+
+		uint32 ParentPid = 0;
+		if (!FParse::Value(FCommandLine::Get(), LocalServerParentPidArgument, ParentPid) || ParentPid == 0)
+		{
+			return;
+		}
+
+		GParentProcHandle = FPlatformProcess::OpenProcess(ParentPid);
+		if (!GParentProcHandle.IsValid())
+		{
+			// 이미 부모가 사라진 상태로 부팅된 경우.
+			UE_LOG(LogTemp, Warning, TEXT("[LocalDedicatedServer] 부모 프로세스(PID=%u)를 열 수 없어 서버를 종료합니다."), ParentPid);
+			FPlatformMisc::RequestExit(true);
+			return;
+		}
+
+		GParentWatchdogTickerHandle = FTSTicker::GetCoreTicker().AddTicker(
+			FTickerDelegate::CreateStatic(&TickParentWatchdog), 1.0f);
+	}
 
 	// ------------------------------------------------------------------------
 	// 서버 프로세스 측 로직: 맵 변경 명령 감시 + Ready 파일 갱신
@@ -493,23 +547,25 @@ bool ULocalDedicatedServerLibrary::StartLocalDedicatedServer(
 
     // Ready 파일의 "절대경로"를 서버 프로세스에 전달합니다.
     const FString Params = FString::Printf(
-        TEXT("\"%s\" %s -game -server -log -NoLiveCoding -port=%d -LocalServerReadyFile=\"%s\" -LocalServerCommandFile=\"%s\""),
+        TEXT("\"%s\" %s -game -server -log -NoLiveCoding -port=%d -LocalServerReadyFile=\"%s\" -LocalServerCommandFile=\"%s\" -LocalServerParentPid=%u"),
         *ProjectFilePath,
         *MapName,
         Port,
         *GLocalDedicatedServerReadyFilePath,
-        *GLocalDedicatedServerCommandFilePath
+        *GLocalDedicatedServerCommandFilePath,
+        FPlatformProcess::GetCurrentProcessId()
     );
 #else
     // <Project>Server.exe 는 Server 타겟(UE_SERVER=1)이라 이미 데디케이티드 서버이고,
     // 이 프로젝트 전용으로 빌드된 실행 파일이라 .uproject 경로도 -game 도 필요 없습니다.
     // (-server 는 중복이지만 무해하므로 의도를 드러내기 위해 유지합니다.)
     const FString Params = FString::Printf(
-        TEXT("%s -server -log -port=%d -LocalServerReadyFile=\"%s\" -LocalServerCommandFile=\"%s\""),
+        TEXT("%s -server -log -port=%d -LocalServerReadyFile=\"%s\" -LocalServerCommandFile=\"%s\" -LocalServerParentPid=%u"),
         *MapName,
         Port,
         *GLocalDedicatedServerReadyFilePath,
-        *GLocalDedicatedServerCommandFilePath
+        *GLocalDedicatedServerCommandFilePath,
+        FPlatformProcess::GetCurrentProcessId()
     );
 #endif
 
@@ -607,6 +663,7 @@ void ULocalDedicatedServerLibrary::StopLocalDedicatedServer()
 
 void ULocalDedicatedServerLibrary::InitServerCommandWatcher()
 {
+    EnsureParentWatchdog();
     EnsureServerCommandWatcher();
 }
 
