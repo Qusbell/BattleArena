@@ -2,10 +2,14 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "TimerManager.h"
 #include "CharacterSpawnSoundComponent.generated.h"
 
 class USoundAttenuation;
 class USoundBase;
+class AController;
+class APawn;
+class UNetConnection;
 
 UENUM(BlueprintType)
 enum class ECharacterSpawnSoundPhase : uint8
@@ -68,7 +72,21 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Character Sounds|Spawn")
 	void PlaySpawnSounds(ECharacterSpawnSoundPhase Phase);
 
+protected:
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
 private:
+	friend class FCharacterSpawnSoundInitialDeliveryTest;
+	friend class FCharacterSpawnSoundInitialQueueTest;
+	friend class FCharacterSpawnSoundDelayedLifetimeTest;
+
+	void TryDispatchInitialSpawnSounds();
+	static bool HasReadyInitialConnection(const UNetConnection* Connection);
+	void DispatchSpawnSounds(ECharacterSpawnSoundPhase Phase, const FVector& SpawnLocation);
+	void QueueInitialSpawnSounds(const FVector& SpawnLocation, bool bAudibleToOthers);
+	void TryPlayPendingInitialSpawnSounds();
+	bool IsLocalInitialPlaybackReady();
+
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastPlaySpawnSounds(ECharacterSpawnSoundPhase Phase, FVector SpawnLocation);
 
@@ -80,4 +98,20 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<USoundAttenuation> Default3DAttenuation = nullptr;
+
+	// Initial events are sent once after the new owning connection can receive multicast RPCs.
+	bool bInitialSpawnRequested = false;
+	bool bInitialServerDispatchPending = false;
+	TWeakObjectPtr<AController> InitialSpawnController;
+	FVector InitialSpawnLocation = FVector::ZeroVector;
+	FTimerHandle InitialServerRetryTimer;
+
+	// Each client independently waits for its loading overlay, possession and camera update.
+	uint8 PendingInitialAudience = 0;
+	uint8 PlayedInitialAudience = 0;
+	FVector PendingInitialLocation = FVector::ZeroVector;
+	TWeakObjectPtr<APawn> ObservedLocalPawn;
+	float LocalPawnObservedAt = -1.0f;
+	FTimerHandle InitialLocalRetryTimer;
+	TArray<FTimerHandle> DelayedSoundTimers;
 };
