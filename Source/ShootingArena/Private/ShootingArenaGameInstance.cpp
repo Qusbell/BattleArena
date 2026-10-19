@@ -34,6 +34,14 @@ void UShootingArenaGameInstance::Shutdown()
 		PostLoadMapHandle.Reset();
 	}
 
+	// PIE 종료(Esc)처럼 프로세스는 살아 있고 GameInstance 만 사라지는 경우에는
+	// OnPreExit 도 부모 PID 워치독도 동작하지 않으므로 여기서 로컬 서버를 직접 정리합니다.
+	// (서버 프로세스 자신은 제외. 매치 서버는 별도 핸들이라 건드리지 않습니다.)
+	if (!IsRunningDedicatedServer())
+	{
+		ULocalDedicatedServerLibrary::StopLocalDedicatedServer();
+	}
+
 	Super::Shutdown();
 }
 
