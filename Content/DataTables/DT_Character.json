@@ -1,20 +1,56 @@
 [
 	{
-		"Name": "Dummy",
-		"Character_Name": "Dummy",
+		"Name": "D01",
+		"Character_Name": "Dummy_1",
 		"Character_Sprite": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Map_Image/히드라리스크.히드라리스크'",
 		"Character_Modeling": "Cobalt",
 		"Characteristic_ID": [
-			"Dummy"
+			"Dummy_1"
 		]
 	},
 	{
-		"Name": "Dummy2",
-		"Character_Name": "Dummy2",
+		"Name": "D02",
+		"Character_Name": "Dummy_2",
 		"Character_Sprite": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Map_Image/히드라리스크.히드라리스크'",
 		"Character_Modeling": "Aegis",
 		"Characteristic_ID": [
-			"Dummy2"
+			"Dummy_2"
+		]
+	},
+	{
+		"Name": "D03",
+		"Character_Name": "Dummy_3",
+		"Character_Sprite": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Icon/AI.AI'",
+		"Character_Modeling": "Orange",
+		"Characteristic_ID": [
+			"Dummy_3"
+		]
+	},
+	{
+		"Name": "D04",
+		"Character_Name": "Dummy_4",
+		"Character_Sprite": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Icon/AI.AI'",
+		"Character_Modeling": "BlackCarbon",
+		"Characteristic_ID": [
+			"Dummy_4"
+		]
+	},
+	{
+		"Name": "D05",
+		"Character_Name": "Dummy_5",
+		"Character_Sprite": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Icon/AI.AI'",
+		"Character_Modeling": "Diesel",
+		"Characteristic_ID": [
+			"Dummy_5"
+		]
+	},
+	{
+		"Name": "D06",
+		"Character_Name": "Dummy_6",
+		"Character_Sprite": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Icon/AI.AI'",
+		"Character_Modeling": "Dummy_6",
+		"Characteristic_ID": [
+			"Dummy_6"
 		]
 	},
 	{
