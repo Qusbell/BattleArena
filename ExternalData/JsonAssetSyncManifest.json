@@ -125,9 +125,9 @@
 					"constraints":
 					{
 						"clampMin": "0",
-						"clampMax": "360",
+						"clampMax": "1080",
 						"uiMin": "0",
-						"uiMax": "360"
+						"uiMax": "1080"
 					},
 					"type": "int32"
 				},
