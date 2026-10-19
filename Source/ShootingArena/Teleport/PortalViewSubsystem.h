@@ -47,6 +47,9 @@ public:
 	virtual void Tick(float deltaTime) override;
 	virtual TStatId GetStatId() const override;
 
+	/** Spatial surfaces feed linear scene light into the player's own exposure/tonemapper exactly once. */
+	static void ConfigureCaptureAppearance(USceneCaptureComponent2D& capture, bool bSpatialView, bool bHighQuality);
+
 private:
 	FPortalViewInstance& FindOrCreateView(AOneWayTeleportActor* portal);
 	int32 ResolvePortalRenderTargetSize(
@@ -58,7 +61,7 @@ private:
 		const class UTeleportDataAsset& settings,
 		const FTransform& captureTransform,
 		float screenCoverage) const;
-	bool EnsureRenderTarget(FPortalViewInstance& view, int32 size, bool bUseHighQualityCapture);
+	bool EnsureRenderTarget(FPortalViewInstance& view, int32 size, bool bUseHDRCapture);
 	void ClearPortalView(AOneWayTeleportActor* portal, FPortalViewInstance& view);
 	void ClearAllPortalViews();
 

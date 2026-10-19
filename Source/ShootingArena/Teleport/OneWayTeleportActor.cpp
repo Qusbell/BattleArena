@@ -1,6 +1,7 @@
 ﻿#include "OneWayTeleportActor.h"
 
 #include "TeleportDataAsset.h"
+#include "PortalTraversalGuard.h"
 
 #include "Components/BoxComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -109,41 +110,6 @@ namespace OneWayTeleportPrivate
 			&& minimum.Y <= static_cast<float>(viewportHeight) + ViewportMargin;
 	}
 
-	// 모든 Portal이 공유합니다. 따라서 A -> B로 이동하면서 B의 Overlap이 즉시
-	// 발생해도 B가 같은 Character를 다시 텔레포트하지 않습니다.
-	TMap<TWeakObjectPtr<AActor>, double> ReentryUnlockTimes;
-
-	bool IsReentryLocked(AActor* actor, double currentTime)
-	{
-		const TWeakObjectPtr<AActor> weakActor(actor);
-		if (const double* unlockTime = ReentryUnlockTimes.Find(weakActor))
-		{
-			return *unlockTime > currentTime;
-		}
-
-		return false;
-	}
-
-	void LockReentry(AActor* actor, double unlockTime)
-	{
-		ReentryUnlockTimes.Add(TWeakObjectPtr<AActor>(actor), unlockTime);
-	}
-
-	void UnlockReentry(AActor* actor)
-	{
-		ReentryUnlockTimes.Remove(TWeakObjectPtr<AActor>(actor));
-	}
-
-	void RemoveExpiredLocks(double currentTime)
-	{
-		for (auto iterator = ReentryUnlockTimes.CreateIterator(); iterator; ++iterator)
-		{
-			if (!iterator.Key().IsValid() || iterator.Value() <= currentTime)
-			{
-				iterator.RemoveCurrent();
-			}
-		}
-	}
 }
 
 AOneWayTeleportActor::AOneWayTeleportActor()
@@ -524,6 +490,24 @@ FTransform AOneWayTeleportActor::GetPortalViewCameraTransform(
 	return FTransform(exitCameraRotation, exitCameraLocation);
 }
 
+FTransform AOneWayTeleportActor::GetPortalFrameTransform() const
+{
+	const FTransform frame = IsValid(entryCollision)
+		? entryCollision->GetComponentTransform() : GetActorTransform();
+	return FTransform(frame.GetRotation(), frame.GetLocation());
+}
+
+bool AOneWayTeleportActor::BuildPortalCaptureView(
+	const FTransform& cameraTransform, FPortalCaptureView& outView) const
+{
+	if (!IsValid(exitTarget)) return false;
+	outView = FPortalCaptureView();
+	outView.transform = GetPortalViewCameraTransform(cameraTransform);
+	outView.clipBase = exitTarget->GetActorLocation();
+	outView.clipNormal = GetExitLaunchForward();
+	return true;
+}
+
 float AOneWayTeleportActor::GetPortalViewOpacity(float distance) const
 {
 	if (!IsValid(teleportDA))
@@ -818,8 +802,8 @@ void AOneWayTeleportActor::OnEntryBeginOverlap(
 	}
 
 	const double currentTime = world->GetTimeSeconds();
-	OneWayTeleportPrivate::RemoveExpiredLocks(currentTime);
-	if (OneWayTeleportPrivate::IsReentryLocked(character, currentTime))
+	PortalTraversalGuard::Cleanup(world, currentTime);
+	if (PortalTraversalGuard::IsLocked(character, currentTime))
 	{
 		return;
 	}
@@ -868,7 +852,7 @@ void AOneWayTeleportActor::TeleportCharacter(ACharacter* character)
 	const FVector exitLocation = exitTarget->GetActorLocation();
 	const FRotator exitRotation = GetExitFacingRotation();
 	const double currentTime = world->GetTimeSeconds();
-	OneWayTeleportPrivate::LockReentry(
+	PortalTraversalGuard::Lock(
 		character,
 		currentTime + FMath::Max(0.0f, reentryLockDuration));
 
@@ -881,7 +865,7 @@ void AOneWayTeleportActor::TeleportCharacter(ACharacter* character)
 
 	if (!bTeleported)
 	{
-		OneWayTeleportPrivate::UnlockReentry(character);
+		PortalTraversalGuard::Unlock(character);
 		return;
 	}
 
