@@ -78,6 +78,7 @@ protected:
 private:
 	friend class FCharacterSpawnSoundInitialDeliveryTest;
 	friend class FCharacterSpawnSoundInitialQueueTest;
+	friend class FCharacterSpawnSoundDelayedLifetimeTest;
 
 	void TryDispatchInitialSpawnSounds();
 	static bool HasReadyInitialConnection(const UNetConnection* Connection);

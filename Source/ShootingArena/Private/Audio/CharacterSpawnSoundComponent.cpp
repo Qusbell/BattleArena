@@ -11,6 +11,7 @@
 #include "Sound/SoundAttenuation.h"
 #include "Sound/SoundBase.h"
 #include "TimerManager.h"
+#include "UObject/StrongObjectPtr.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogCharacterSpawnSound, Log, All);
 
@@ -258,13 +259,19 @@ void UCharacterSpawnSoundComponent::PlayLocalSpawnSounds(ECharacterSpawnSoundPha
 
 		FTimerHandle TimerHandle;
 		TWeakObjectPtr<UCharacterSpawnSoundComponent> WeakThis(this);
+		// A lambda's copied USTRUCT is not visited by GC if Blueprint replaces the source array.
+		TStrongObjectPtr<USoundBase> PendingSound(Entry.Sound.Get());
+		TStrongObjectPtr<USoundAttenuation> PendingAttenuation(Entry.AttenuationSettings.Get());
 		World->GetTimerManager().SetTimer(TimerHandle,
-			[WeakThis, Entry, SpawnLocation]()
+			[WeakThis, Entry, SpawnLocation, PendingSound, PendingAttenuation]()
 			{
 				if (UCharacterSpawnSoundComponent* Component = WeakThis.Get();
 					Component && Component->IsRegistered() && IsValid(Component->GetOwner()))
 				{
-					Component->PlayLocalEntry(Entry, SpawnLocation);
+					FCharacterSpawnSoundEntry PlaybackEntry = Entry;
+					PlaybackEntry.Sound = PendingSound.Get();
+					PlaybackEntry.AttenuationSettings = PendingAttenuation.Get();
+					Component->PlayLocalEntry(PlaybackEntry, SpawnLocation);
 				}
 			}, FMath::Max(0.0f, Entry.DelaySeconds), false);
 		DelayedSoundTimers.Add(TimerHandle);

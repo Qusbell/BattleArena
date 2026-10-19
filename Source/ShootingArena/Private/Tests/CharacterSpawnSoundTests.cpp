@@ -12,8 +12,10 @@
 #include "HAL/PlatformMisc.h"
 #include "Loading/LoadingScreenSubsystem.h"
 #include "Misc/AutomationTest.h"
+#include "Sound/SoundAttenuation.h"
 #include "Sound/SoundWave.h"
 #include "Tests/AutomationCommon.h"
+#include "UObject/GarbageCollection.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCharacterSpawnSoundInitialDeliveryTest,
 	"ShootingArena.Audio.Spawn.InitialConnectionReadiness",
@@ -56,10 +58,10 @@ bool FCharacterSpawnSoundInitialQueueTest::RunTest(const FString& Parameters)
 	APawn* Pawn = World->SpawnActor<APawn>();
 	PC->SetPlayer(Player);
 	PC->PlayerCameraManager = World->SpawnActor<APlayerCameraManager>();
+	if (!TestNotNull(TEXT("Local player camera"), PC->PlayerCameraManager.Get())) return false;
 	PC->PlayerCameraManager->InitializeFor(PC);
 	PC->Possess(Pawn);
 	PC->SetViewTarget(Pawn);
-	if (!TestNotNull(TEXT("Local player camera"), PC->PlayerCameraManager.Get())) return false;
 	World->SetBegunPlay(true);
 	Pawn->DispatchBeginPlay();
 	World->TimeSeconds = 1.0;
@@ -115,6 +117,60 @@ bool FCharacterSpawnSoundInitialQueueTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("Destroying the pawn component cancels delayed sound playback"),
 		World->GetTimerManager().IsTimerActive(DelayedHandle));
 	GI->RemoveLocalPlayer(Player);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCharacterSpawnSoundDelayedLifetimeTest,
+	"ShootingArena.Audio.Spawn.DelayedAssetsAndPendingTeardown",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCharacterSpawnSoundDelayedLifetimeTest::RunTest(const FString& Parameters)
+{
+	FTestWorldWrapper Context;
+	if (!Context.CreateTestWorld(EWorldType::Game)) return false;
+	UWorld* World = Context.GetTestWorld();
+	APawn* Pawn = World->SpawnActor<APawn>();
+	World->SetBegunPlay(true);
+	Pawn->DispatchBeginPlay();
+	UCharacterSpawnSoundComponent* Sounds = NewObject<UCharacterSpawnSoundComponent>(Pawn);
+	Pawn->AddInstanceComponent(Sounds);
+	Sounds->RegisterComponent();
+
+	USoundWave* Sound = NewObject<USoundWave>();
+	Sound->Duration = 1.0f;
+	USoundAttenuation* Attenuation = NewObject<USoundAttenuation>();
+	TWeakObjectPtr<USoundWave> WeakSound(Sound);
+	TWeakObjectPtr<USoundAttenuation> WeakAttenuation(Attenuation);
+	FCharacterSpawnSoundEntry Entry;
+	Entry.Sound = Sound;
+	Entry.AttenuationSettings = Attenuation;
+	Entry.DelaySeconds = 10.0f;
+	Sounds->RespawnSounds.Add(Entry);
+	Sounds->PlayLocalSpawnSounds(ECharacterSpawnSoundPhase::Respawn, FVector::ZeroVector, true);
+	if (!TestEqual(TEXT("One delayed playback is scheduled"), Sounds->DelayedSoundTimers.Num(), 1)) return false;
+	const FTimerHandle DelayedHandle = Sounds->DelayedSoundTimers[0];
+
+	// BlueprintReadWrite arrays can be replaced while an earlier sound is waiting.
+	Sounds->RespawnSounds.Reset();
+	Entry.Sound = nullptr;
+	Entry.AttenuationSettings = nullptr;
+	CollectGarbage(RF_NoFlags, true);
+	TestTrue(TEXT("A pending playback keeps its original sound alive after the array changes"), WeakSound.IsValid());
+	TestTrue(TEXT("A pending playback keeps its original attenuation alive after the array changes"), WeakAttenuation.IsValid());
+
+	// No local controller/camera exists in this world, so the initial event stays queued.
+	Sounds->QueueInitialSpawnSounds(FVector::ZeroVector, true);
+	const FTimerHandle ReadinessHandle = Sounds->InitialLocalRetryTimer;
+	TestTrue(TEXT("The initial request waits safely without a local controller"),
+		World->GetTimerManager().IsTimerActive(ReadinessHandle));
+	Sounds->DestroyComponent();
+	TestFalse(TEXT("EndPlay removes the readiness timer before its next callback"),
+		World->GetTimerManager().IsTimerActive(ReadinessHandle));
+	TestFalse(TEXT("EndPlay removes the delayed playback timer before its next callback"),
+		World->GetTimerManager().IsTimerActive(DelayedHandle));
+	CollectGarbage(RF_NoFlags, true);
+	TestFalse(TEXT("Cancelling playback releases the retained sound"), WeakSound.IsValid());
+	TestFalse(TEXT("Cancelling playback releases the retained attenuation"), WeakAttenuation.IsValid());
 	return true;
 }
 
