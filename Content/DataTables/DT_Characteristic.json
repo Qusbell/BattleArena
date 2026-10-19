@@ -1,10 +1,10 @@
 [
 	{
 		"Name": "Dummy_1",
-		"Attack_Skill": 0.59999999999999998,
+		"Attack_Skill": 0,
 		"Aim_Skill": 0.80000000000000004,
 		"Aim_Accuracy": 0.80000000000000004,
-		"View_Max_Change": 360,
+		"View_Max_Change": 740,
 		"ReactionTime": 0.29999999999999999,
 		"Aggression": 0.55000000000000004,
 		"Self_Preservation": 0.45000000000000001,
