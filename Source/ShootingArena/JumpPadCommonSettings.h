@@ -53,6 +53,20 @@ public:
 		meta = (ClampMin = "0.0", UIMin = "0.0", ForceUnits = "s"))
 	float SoundStartTime = 0.0f;
 
+	/**
+	 * 재생을 시작한 뒤 이 시간(초)이 지나면 사운드 뒷부분을 잘라낸다. 0 이면 끝까지 재생한다.
+	 * (SoundStartTime 으로 건너뛴 구간은 포함하지 않고, 실제로 들리기 시작한 시점부터 센다.)
+	 * 연속으로 밟을 때 앞 소리가 길게 남아 다음 소리를 막는 경우 짧게 잡는다.
+	 */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "JumpPad|Sound",
+		meta = (ClampMin = "0.0", UIMin = "0.0", ForceUnits = "s"))
+	float SoundPlayDuration = 0.0f;
+
+	/** SoundPlayDuration 으로 자를 때 끊김(딱 소리) 방지용 페이드아웃 시간(초). 0 이면 즉시 끊는다. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "JumpPad|Sound",
+		meta = (ClampMin = "0.0", UIMin = "0.0", ForceUnits = "s"))
+	float SoundFadeOutTime = 0.05f;
+
 	/** 최대 청취 거리(cm). 패드에서 이 거리 이상 떨어지면 들리지 않는다. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "JumpPad|Sound",
 		meta = (ClampMin = "1.0", UIMin = "1.0", ForceUnits = "cm"))
