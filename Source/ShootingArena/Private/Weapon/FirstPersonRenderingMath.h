@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Camera/CameraTypes.h"
 
 namespace FirstPersonRendering
 {
@@ -14,9 +15,36 @@ inline bool IsValidFOV(float FOV)
 	return FMath::IsFinite(FOV) && FOV >= 0.001f && FOV < 180.f;
 }
 
+/** Bake only an effect origin into world space; leave its distant endpoint alone. */
+inline bool TryTransformEffectPosition(const FMinimalViewInfo& View, const FVector& Position, FVector& OutPosition)
+{
+	OutPosition = Position;
+	if (Position.ContainsNaN() || View.Location.ContainsNaN() || View.Rotation.ContainsNaN()
+		|| View.ProjectionMode != ECameraProjectionMode::Perspective || !IsValidFOV(View.FOV)
+		|| !IsValidFOV(View.FirstPersonFOV) || !FMath::IsFinite(View.FirstPersonScale)
+		|| View.FirstPersonScale <= 0.f || View.FirstPersonScale > 1.f) return false;
+	const FVector Rendered = View.TransformWorldToFirstPerson(Position, false);
+	if (Rendered.ContainsNaN()) return false;
+	OutPosition = Rendered;
+	return true;
+}
+
 inline float SafeFirstPersonFOV(float Requested, float MainFOV)
 {
 	return IsValidFOV(Requested) ? Requested : (IsValidFOV(MainFOV) ? MainFOV : 90.f);
+}
+
+/** CPU reference for the generated FirstPersonOutput material's axial weight. */
+inline double BeamGeometryWeight(const FVector& Position, const FVector& Start, const FVector& End)
+{
+	if (Position.ContainsNaN() || Start.ContainsNaN() || End.ContainsNaN()) return 0.0;
+	const FVector Axis = End - Start;
+	const double LengthSq = Axis.SizeSquared();
+	if (!FMath::IsFinite(LengthSq) || LengthSq < 0.000001) return 0.0;
+	const double Along = FVector::DotProduct(Position - Start, Axis) / LengthSq;
+	if (!FMath::IsFinite(Along)) return 0.0;
+	const double T = FMath::Clamp(Along, 0.0, 1.0);
+	return 1.0 - T * T * (3.0 - 2.0 * T);
 }
 
 inline float SafeNearClip(float Requested, float Existing, float Global)
