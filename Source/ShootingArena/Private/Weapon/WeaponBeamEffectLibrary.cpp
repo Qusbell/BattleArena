@@ -17,6 +17,8 @@
 #include "Camera/CameraTypes.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "UObject/ConstructorHelpers.h"
+#include "Weapon/RailBeamWaveMath.h"
+#include "Weapon/FirstPersonRenderingMath.h"
 
 UWeaponBeamEffectLibrary::UWeaponBeamEffectLibrary(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -28,6 +30,13 @@ UWeaponBeamEffectLibrary::UWeaponBeamEffectLibrary(const FObjectInitializer& Obj
 
 namespace
 {
+	struct FNearWavePlayback
+	{
+		RailBeamWaves::FSegment Segment;
+		double Spacing = 120.0;
+		float SizeScale = 1.f;
+		bool bFit = false;
+	};
 	bool HasNiagaraParameter(const UNiagaraSystem* System, const FNiagaraTypeDefinition& Type, FName Name)
 	{
 		return System->GetExposedParameters().IndexOf(FNiagaraVariableBase(Type, Name)) != INDEX_NONE;
@@ -53,10 +62,36 @@ namespace
 		}
 	}
 
+	void ConfigureNearWaves(UNiagaraComponent* Component, const UNiagaraSystem* System,
+		const TArray<FBeamWaveEmitterBinding>& Bindings, const FNearWavePlayback* Playback,
+		const FTransform& Transform, FVector OriginalEnd)
+	{
+		const FVector Start = Playback && Playback->Segment.bValid ? Playback->Segment.Start : Transform.GetLocation();
+		const FVector End = Playback ? (Playback->Segment.bValid ? Playback->Segment.End : Start) : OriginalEnd;
+		SetNiagaraPositionIfPresent(Component, System, TEXT("User.FPRWaveStartLocal"), Transform.InverseTransformPosition(Start));
+		SetNiagaraPositionIfPresent(Component, System, TEXT("User.FPRWaveEndLocal"), Transform.InverseTransformPosition(End));
+		for (const auto& Binding : Bindings)
+		{
+			const int32 Count = Playback ? (Playback->bFit
+				? RailBeamWaves::FittedCount(Playback->Segment, Playback->Spacing, Binding.AuthoredCount)
+				: RailBeamWaves::Count(Playback->Segment, Playback->Spacing, Binding.AuthoredCount)) : Binding.AuthoredCount;
+			const float SizeScale = Playback ? Playback->SizeScale : 1.f;
+			if (!Binding.WidthParameter.IsNone() && FMath::IsFinite(Binding.AuthoredWidth) && Binding.AuthoredWidth >= 0)
+				SetNiagaraFloatIfPresent(Component, System, Binding.WidthParameter, Binding.AuthoredWidth * SizeScale);
+			if (!Binding.JitterParameter.IsNone() && FMath::IsFinite(Binding.AuthoredJitter) && Binding.AuthoredJitter >= 0)
+				SetNiagaraFloatIfPresent(Component, System, Binding.JitterParameter, Binding.AuthoredJitter * SizeScale);
+			if (!Binding.CountParameter.IsNone()
+				&& HasNiagaraParameter(System, FNiagaraTypeDefinition::GetIntDef(), Binding.CountParameter))
+				Component->SetVariableInt(Binding.CountParameter, Count);
+			if (Count == 0 && !Binding.Emitter.IsNone()) Component->SetEmitterEnable(Binding.Emitter, false);
+		}
+	}
+
 	bool SpawnNiagaraBeam(
 		UWorld* World, UNiagaraSystem* System, const FVector& BeamStart, const FVector& BeamEnd,
 		const FRotator& BeamRotation, float BeamDistance, float Duration,
-		bool bTrail, bool bSuppressSonicBomb, const FBeamFirstPersonSystemVariant* FirstPersonVariant)
+		bool bTrail, bool bSuppressSonicBomb, const FBeamFirstPersonSystemVariant* FirstPersonVariant,
+		const FNearWavePlayback* NearWaves)
 	{
 		if (!System)
 		{
@@ -86,6 +121,8 @@ namespace
 		const FTransform EffectTransform(BeamRotation, BeamStart);
 		SetNiagaraPositionIfPresent(Niagara, PlaybackSystem, TEXT("User.BeamStart"), FVector::ZeroVector);
 		SetNiagaraPositionIfPresent(Niagara, PlaybackSystem, TEXT("User.BeamEnd"), EffectTransform.InverseTransformPosition(BeamEnd));
+		if (bFirstPerson)
+			ConfigureNearWaves(Niagara, PlaybackSystem, FirstPersonVariant->Waves, NearWaves, EffectTransform, BeamEnd);
 		if (bFirstPerson)
 		{
 			const FVector LocalEnd = EffectTransform.InverseTransformPosition(BeamEnd);
@@ -179,7 +216,7 @@ bool UWeaponBeamEffectLibrary::PlayHitScanBeam(
 	const AActor* Weapon = Cast<AActor>(WorldContextObject);
 	if (const auto* Component = Cast<UActorComponent>(WorldContextObject)) Weapon = Component->GetOwner();
 	FMinimalViewInfo FirstPersonView;
-	FVector PhysicalMuzzle;
+	FVector PhysicalMuzzle = BeamStart;
 	const auto* Assets = GetDefault<UWeaponBeamEffectLibrary>()->FirstPersonAssets.Get();
 	const bool bOccluded = IsValid(Assets)
 		&& UProjectileFirstPersonRenderingComponent::TryGetOccludedEffectView(Weapon, FirstPersonView, PhysicalMuzzle);
@@ -193,6 +230,24 @@ bool UWeaponBeamEffectLibrary::PlayHitScanBeam(
 	};
 	const FBeamFirstPersonSystemVariant* BeamVariant = FindVariant(NiagaraEffect);
 	const FBeamFirstPersonSystemVariant* TrailVariant = FindVariant(RailGunTrailEffect);
+	const bool bLimitWaves = bOccluded && !bMachineGunWeapon && Assets->bLimitNearWaves;
+	FNearWavePlayback NearWaves;
+	if (bLimitWaves)
+	{
+		NearWaves.bFit = Assets->bFitWavesToBeam;
+		if (NearWaves.bFit)
+		{
+			NearWaves.Segment = RailBeamWaves::FitSegment(PhysicalMuzzle, BeamEnd,
+				Assets->WaveMuzzleClearance, Assets->WaveHitClearance);
+			FVector RenderedMuzzle;
+			const bool bRendered = FirstPersonRendering::TryTransformEffectPosition(FirstPersonView, PhysicalMuzzle, RenderedMuzzle);
+			NearWaves.SizeScale = RailBeamWaves::SizeScale(NearWaves.Segment.Length,
+				bRendered ? FVector::Distance(RenderedMuzzle, BeamEnd) : NearWaves.Segment.Length, Assets->WaveFullSizeDistance);
+		}
+		else NearWaves.Segment = RailBeamWaves::MakeSegment(FirstPersonView.Location, PhysicalMuzzle, BeamEnd,
+			Assets->WaveCameraClearance, Assets->WaveMuzzleClearance, Assets->WaveHitClearance);
+		NearWaves.Spacing = Assets->WaveSpacing;
+	}
 	// The FP socket remains in physical space; the material performs its only FPR
 	// transformation. Never pre-transform it or the near beam would be corrected twice.
 	const FVector NiagaraStart = BeamVariant || TrailVariant ? PhysicalMuzzle : BeamStart;
@@ -204,13 +259,13 @@ bool UWeaponBeamEffectLibrary::PlayHitScanBeam(
 
 	bSpawnedAny |= SpawnNiagaraBeam(
 		World, NiagaraEffect, NiagaraStart, BeamEnd, NiagaraRotation,
-		BeamDistance, BeamDuration, false, bMachineGunWeapon || bSeparateSonicBomb, BeamVariant);
+		BeamDistance, BeamDuration, false, bMachineGunWeapon || bSeparateSonicBomb, BeamVariant, bLimitWaves ? &NearWaves : nullptr);
 	if (!bMachineGunWeapon)
 	{
 		// Keep the trail system's authored lifetime so it can linger after the beam.
 		bSpawnedAny |= SpawnNiagaraBeam(
 			World, RailGunTrailEffect, NiagaraStart, BeamEnd, NiagaraRotation,
-			BeamDistance, BeamDuration, true, bSeparateSonicBomb, TrailVariant);
+			BeamDistance, BeamDuration, true, bSeparateSonicBomb, TrailVariant, bLimitWaves ? &NearWaves : nullptr);
 		bSpawnedAny |= SpawnNiagaraSonicBomb(
 			World, RailGunSonicBombEffect, BeamStart, BeamEnd, BeamRotation);
 	}

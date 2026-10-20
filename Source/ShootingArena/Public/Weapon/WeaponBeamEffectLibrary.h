@@ -11,6 +11,19 @@ class UParticleSystem;
 class UMaterialInterface;
 
 USTRUCT()
+struct FBeamWaveEmitterBinding
+{
+	GENERATED_BODY()
+	UPROPERTY(EditAnywhere) FName Emitter;
+	UPROPERTY(EditAnywhere) FName CountParameter;
+	UPROPERTY(EditAnywhere) int32 AuthoredCount = 0;
+	UPROPERTY(EditAnywhere) FName WidthParameter;
+	UPROPERTY(EditAnywhere) FName JitterParameter;
+	UPROPERTY(EditAnywhere) float AuthoredWidth = 0.f;
+	UPROPERTY(EditAnywhere) float AuthoredJitter = 0.f;
+};
+
+USTRUCT()
 struct FBeamFirstPersonMaterialBinding
 {
 	GENERATED_BODY()
@@ -25,6 +38,7 @@ struct FBeamFirstPersonSystemVariant
 	UPROPERTY(EditAnywhere) TObjectPtr<UNiagaraSystem> Source;
 	UPROPERTY(EditAnywhere) TObjectPtr<UNiagaraSystem> System;
 	UPROPERTY(EditAnywhere) TArray<FBeamFirstPersonMaterialBinding> Materials;
+	UPROPERTY(EditAnywhere) TArray<FBeamWaveEmitterBinding> Waves;
 };
 
 /** Hard references keep the optional local-view variants available in cooked builds. */
@@ -34,6 +48,15 @@ class SHOOTINGARENA_API UBeamFirstPersonAssets : public UDataAsset
 	GENERATED_BODY()
 public:
 	UPROPERTY(EditAnywhere) TArray<FBeamFirstPersonSystemVariant> Systems;
+	/** Used only by a local rail shot whose real muzzle is occluded by geometry. */
+	UPROPERTY(EditAnywhere, Category="Near Waves") bool bLimitNearWaves = true;
+	/** Fit the wave to short beams instead of removing it with fixed clearances. */
+	UPROPERTY(EditAnywhere, Category="Near Waves") bool bFitWavesToBeam = true;
+	UPROPERTY(EditAnywhere, Category="Near Waves", meta=(ClampMin="1", Units="cm")) float WaveFullSizeDistance = 600.f;
+	UPROPERTY(EditAnywhere, Category="Near Waves", meta=(ClampMin="0", Units="cm")) float WaveCameraClearance = 120.f;
+	UPROPERTY(EditAnywhere, Category="Near Waves", meta=(ClampMin="0", Units="cm")) float WaveMuzzleClearance = 80.f;
+	UPROPERTY(EditAnywhere, Category="Near Waves", meta=(ClampMin="0", Units="cm")) float WaveHitClearance = 30.f;
+	UPROPERTY(EditAnywhere, Category="Near Waves", meta=(ClampMin="1", Units="cm")) float WaveSpacing = 120.f;
 };
 
 /** Both weapons use instant-beam playback, with separate duration settings and rail-gun-only secondary effects. */
