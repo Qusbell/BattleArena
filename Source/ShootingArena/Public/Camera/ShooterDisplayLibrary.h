@@ -5,6 +5,7 @@
 #include "ShooterDisplayLibrary.generated.h"
 
 class APawn;
+class APlayerState;
 
 /** Read-only adapters for the existing Blueprint life and display-name data. */
 UCLASS()
@@ -16,4 +17,6 @@ public:
 	static bool IsShooterAlive(APawn* Shooter);
 	UFUNCTION(BlueprintCallable, Category = "Shooter Display")
 	static FText GetShooterDisplayName(APawn* Shooter);
+	UFUNCTION(BlueprintCallable, Category = "Shooter Display")
+	static FText GetPlayerStateDisplayName(APlayerState* State);
 };
