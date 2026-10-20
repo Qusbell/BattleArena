@@ -27,6 +27,14 @@ public:
 	UFUNCTION(CallInEditor, Category = "Spatial Portal|Setup")
 	void CopyPresentationFromSource();
 
+	/** One-shot editor move: places the opening's lower edge on a walkable floor. Never attaches or ticks. */
+	UFUNCTION(CallInEditor, Category = "Spatial Portal|Setup", meta = (DisplayName = "Snap Portal To Floor"))
+	void SnapPortalToFloor();
+
+	/** Downward search distance for the editor button, in cm. No ongoing floor following is performed. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Spatial Portal|Setup", meta = (ClampMin = "1.0", ClampMax = "20000.0"))
+	float floorSnapSearchDistance = 2000.0f;
+
 	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Spatial Portal|Setup")
 	TObjectPtr<AOneWayTeleportActor> presentationSource;
 
@@ -37,8 +45,25 @@ public:
 	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Spatial Portal|Traversal")
 	TArray<TObjectPtr<AActor>> passageWalls;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Spatial Portal|Traversal")
-	bool bEllipticalOpening = false;
+	/** Also changes the default screen geometry. Equal Portal Shape Scale X/Y makes a circle; unequal makes an oval.
+	 * An explicitly assigned custom mesh is always retained. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Spatial Portal|Setup", meta = (DisplayName = "Elliptical Opening"))
+	bool bEllipticalOpening = true;
+
+	/** Enter at the first front-side capsule contact with the opening, without waiting for its centre.
+	 * Does not expand the opening, change the real capsule, or bypass destination collision. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Spatial Portal|Traversal", meta = (DisplayName = "Allow Partial Capsule Entry"))
+	bool bAllowPartialCapsuleEntry = true;
+
+	/** Arrival only: discard the entrance's sideways offset, so both edges use the same exit centre.
+	 * Keep height, momentum and view transformation. Disabling restores relative sideways mapping. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Spatial Portal|Traversal", meta = (DisplayName = "Center Exit Horizontally"))
+	bool bCenterExitHorizontally = true;
+
+	/** Strict mode only: allow a little head/foot overhang while the torso crosses the plane.
+	 * Does not shrink the real capsule or relax destination collision. 0 restores full-height eligibility. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Spatial Portal|Traversal", meta = (DisplayName = "Head And Foot Tolerance", EditCondition = "!bAllowPartialCapsuleEntry", ClampMin = "0.0", ClampMax = "50.0", Units = "cm"))
+	float headAndFootTolerance = 20.0f;
 
 	/** Non-spatial targets (any Actor, including legacy portals) are exit anchors, not matching doorway meshes.
 	 * Align their virtual exit floor to the entrance floor. Rendering and traversal use the same frame.
@@ -69,6 +94,7 @@ public:
 
 protected:
 	virtual void OnConstruction(const FTransform& transform) override;
+	virtual void PostRegisterAllComponents() override;
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type reason) override;
 	virtual void OnEntryBeginOverlap(UPrimitiveComponent*, AActor*, UPrimitiveComponent*, int32,
@@ -76,6 +102,9 @@ protected:
 
 private:
 	void AlignSpatialScreen();
+	void UpdateSpatialOpening();
+	UPROPERTY(Transient, DuplicateTransient)
+	TObjectPtr<UStaticMesh> generatedEllipseMesh;
 	void AlignActorExitFrame(FTransform& frame) const;
 	// Reuse the two floor queries across characters/capture candidates; no extra per-frame capture work.
 	mutable TWeakObjectPtr<AActor> cachedActorExit;

@@ -22,6 +22,65 @@
 #include "NiagaraComponent.h"
 #include "Sound/SoundBase.h"
 #include "UObject/ConstructorHelpers.h"
+#include "MeshDescription.h"
+#include "StaticMeshAttributes.h"
+#if WITH_EDITOR
+#include "ScopedTransaction.h"
+#endif
+
+namespace SpatialPortalGeometry
+{
+	// Shared, transient, code-generated surface. No Content asset or per-portal simulation is required.
+	static TWeakObjectPtr<UStaticMesh> EllipseMesh;
+	static UStaticMesh* GetEllipseMesh()
+	{
+		if (EllipseMesh.IsValid()) return EllipseMesh.Get();
+		FMeshDescription description;
+		FStaticMeshAttributes attributes(description);
+		attributes.Register();
+		auto positions = attributes.GetVertexPositions();
+		auto uvs = attributes.GetVertexInstanceUVs();
+		uvs.SetNumChannels(1);
+		auto normals = attributes.GetVertexInstanceNormals();
+		auto tangents = attributes.GetVertexInstanceTangents();
+		auto signs = attributes.GetVertexInstanceBinormalSigns();
+		auto colors = attributes.GetVertexInstanceColors();
+		const FPolygonGroupID group = description.CreatePolygonGroup();
+		attributes.GetPolygonGroupMaterialSlotNames()[group] = TEXT("PortalScreen");
+		constexpr int32 segments = 128;
+		TArray<FVertexInstanceID, TInlineAllocator<segments+1>> vertices;
+		for (int32 i = 0; i <= segments; ++i)
+		{
+			const double angle = (i-1) * 2.0 * PI / segments;
+			const FVector3f p = i == 0 ? FVector3f::ZeroVector : FVector3f(50*FMath::Cos(angle),50*FMath::Sin(angle),0);
+			const FVertexID vertex = description.CreateVertex();
+			positions[vertex] = p;
+			const FVertexInstanceID instance = description.CreateVertexInstance(vertex);
+			uvs.Set(instance,0,FVector2f(0.5f+p.X/100,0.5f+p.Y/100));
+			normals[instance] = FVector3f(0,0,1);
+			tangents[instance] = FVector3f(1,0,0);
+			signs[instance] = 1;
+			colors[instance] = FVector4f(1,1,1,1);
+			vertices.Add(instance);
+		}
+		for (int32 i = 0; i < segments; ++i)
+		{
+			const FVertexInstanceID triangle[] = {vertices[0],vertices[(i+1)%segments+1],vertices[i+1]};
+			description.CreateTriangle(group,MakeArrayView(triangle));
+		}
+		UStaticMesh* mesh = NewObject<UStaticMesh>(GetTransientPackage(),NAME_None,RF_Transient);
+		mesh->GetStaticMaterials().Add(FStaticMaterial(nullptr,TEXT("PortalScreen")));
+		UStaticMesh::FBuildMeshDescriptionsParams params;
+		params.bFastBuild = true;
+		params.bBuildSimpleCollision = false;
+		params.bCommitMeshDescription = false;
+		params.bMarkPackageDirty = false;
+		params.bAllowCpuAccess = true;
+		if (!mesh->BuildFromMeshDescriptions({&description},params)) return nullptr;
+		EllipseMesh = mesh;
+		return mesh;
+	}
+}
 
 ASeamlessPortalActor::ASeamlessPortalActor()
 {
@@ -29,6 +88,8 @@ ASeamlessPortalActor::ASeamlessPortalActor()
 	bShowPortalInGame = false;
 	portalOpacity = 0;
 	portalShapeScale = FVector2D(3.5, 5);
+	portalCollisionDepth = 2.0f;
+	bEllipticalOpening = true;
 	// Code-only default: opaque unlit texture, with ordinary planar UVs and no distance fade.
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> material(
 		TEXT("/Engine/EngineMaterials/Widget3DPassThrough_Opaque.Widget3DPassThrough_Opaque"));
@@ -44,13 +105,27 @@ void ASeamlessPortalActor::OnConstruction(const FTransform& transform)
 {
 	cachedActorExit.Reset();
 	Super::OnConstruction(transform);
+	UpdateSpatialOpening();
 	AlignSpatialScreen();
+}
+
+void ASeamlessPortalActor::PostRegisterAllComponents()
+{
+	Super::PostRegisterAllComponents();
+	// Transient generated geometry is recreated on map load/component re-registration, not saved as an asset.
+	if (IsValid(entryCollision) && IsValid(portalScreen) && IsValid(portalVisual))
+	{
+		UpdatePortalVisual();
+		UpdateSpatialOpening();
+		AlignSpatialScreen();
+	}
 }
 
 void ASeamlessPortalActor::BeginPlay()
 {
 	cachedActorExit.Reset();
 	Super::BeginPlay();
+	UpdateSpatialOpening();
 	AlignSpatialScreen();
 	// Plane crossings are processed once per authority world. Legacy overlap-launch is not used.
 	if (IsValid(entryCollision))
@@ -74,6 +149,76 @@ void ASeamlessPortalActor::OnEntryBeginOverlap(UPrimitiveComponent*, AActor*, UP
 	// Deliberately not the legacy teleport/LaunchCharacter path.
 }
 
+void ASeamlessPortalActor::UpdateSpatialOpening()
+{
+	if (!IsValid(portalScreen) || !IsValid(portalVisual)) return;
+	const bool bDefaultVisual = !portalVisual->GetStaticMesh()
+		|| portalVisual->GetStaticMesh()->GetPathName() == TEXT("/Engine/BasicShapes/Cube.Cube");
+	if (bDefaultVisual) portalVisual->SetVisibility(false);
+	// The planning team's custom shape is authoritative. Never replace it with a stock/generated mesh.
+	if (IsValid(portalShapeMesh) || !bDefaultVisual) return;
+	UStaticMesh* current = portalScreen->GetStaticMesh();
+	if (IsValid(current) && current != generatedEllipseMesh && current != SpatialPortalGeometry::EllipseMesh.Get()
+		&& current->GetPathName() != TEXT("/Engine/BasicShapes/Plane.Plane")) return;
+	if (bEllipticalOpening)
+	{
+		if (!IsValid(generatedEllipseMesh)) generatedEllipseMesh = SpatialPortalGeometry::GetEllipseMesh();
+		if (IsValid(generatedEllipseMesh)) portalScreen->SetStaticMesh(generatedEllipseMesh);
+	}
+	else if (!IsValid(current) || current == generatedEllipseMesh || current == SpatialPortalGeometry::EllipseMesh.Get())
+		portalScreen->SetStaticMesh(LoadObject<UStaticMesh>(nullptr,TEXT("/Engine/BasicShapes/Plane.Plane")));
+}
+
+void ASeamlessPortalActor::SnapPortalToFloor()
+{
+#if WITH_EDITOR
+	UWorld* world = GetWorld();
+	if (!IsValid(world) || world->IsGameWorld() || world->bIsTearingDown || !IsValid(entryCollision)
+		|| !FMath::IsFinite(floorSnapSearchDistance)) return;
+	const FTransform frame = GetPortalFrameTransform();
+	const FVector2D halfSize = GetOpeningHalfSize();
+	if (!SeamlessPortalMath::IsValidFrame(frame) || halfSize.ContainsNaN() || halfSize.X <= 0 || halfSize.Y <= 0) return;
+	const FVector right = frame.GetRotation().GetRightVector();
+	const FVector up = frame.GetRotation().GetUpVector();
+	const double verticalExtent = bEllipticalOpening
+		? FMath::Sqrt(FMath::Square(halfSize.X*right.Z)+FMath::Square(halfSize.Y*up.Z))
+		: halfSize.X*FMath::Abs(right.Z)+halfSize.Y*FMath::Abs(up.Z);
+	FCollisionQueryParams query(SCENE_QUERY_STAT(SpatialPortalSnapFloor),false,this);
+	for (AActor* wall : passageWalls) if (IsValid(wall)) query.AddIgnoredActor(wall);
+	FCollisionObjectQueryParams objects;
+	objects.AddObjectTypesToQuery(ECC_WorldStatic);
+	objects.AddObjectTypesToQuery(ECC_WorldDynamic);
+	TArray<FHitResult> hits;
+	world->LineTraceMultiByObjectType(hits,frame.GetLocation()+FVector::UpVector*(verticalExtent+10),
+		frame.GetLocation()-FVector::UpVector*FMath::Clamp(floorSnapSearchDistance,1.0f,20000.0f),objects,query);
+	const FHitResult* floor = nullptr;
+	for (const FHitResult& hit : hits)
+	{
+		const UPrimitiveComponent* component = hit.GetComponent();
+		if (hit.bStartPenetrating || hit.ImpactNormal.Z < 0.7 || !IsValid(component)
+			|| component->GetCollisionResponseToChannel(ECC_Pawn) != ECR_Block) continue;
+		const bool bBelow = hit.ImpactPoint.Z <= frame.GetLocation().Z+2;
+		const bool bPreviousBelow = floor && floor->ImpactPoint.Z <= frame.GetLocation().Z+2;
+		if (!floor || (bBelow && !bPreviousBelow)
+			|| (bBelow == bPreviousBelow && FMath::Abs(hit.ImpactPoint.Z-frame.GetLocation().Z)
+				< FMath::Abs(floor->ImpactPoint.Z-frame.GetLocation().Z))) floor = &hit;
+	}
+	if (!floor) return;
+	const double y = halfSize.X*FVector::DotProduct(right,floor->ImpactNormal);
+	const double z = halfSize.Y*FVector::DotProduct(up,floor->ImpactNormal);
+	const double support = bEllipticalOpening ? FMath::Sqrt(y*y+z*z) : FMath::Abs(y)+FMath::Abs(z);
+	const double delta = (support-FVector::DotProduct(frame.GetLocation()-floor->ImpactPoint,floor->ImpactNormal))/floor->ImpactNormal.Z;
+	if (!FMath::IsFinite(delta) || FMath::Abs(delta) > floorSnapSearchDistance+verticalExtent+10) return;
+	if (FMath::Abs(delta) < 0.001) return;
+	const FScopedTransaction transaction(NSLOCTEXT("SpatialPortal","SnapFloor","Snap Portal To Floor"));
+	Modify();
+	SetActorLocation(GetActorLocation()+FVector::UpVector*delta,false,nullptr,ETeleportType::TeleportPhysics);
+	cachedActorExit.Reset();
+	PostEditMove(true);
+	MarkPackageDirty();
+#endif
+}
+
 void ASeamlessPortalActor::AlignSpatialScreen()
 {
 	if (!IsValid(portalScreen) || !IsValid(entryCollision)) return;
@@ -81,6 +226,18 @@ void ASeamlessPortalActor::AlignSpatialScreen()
 	portalScreen->UpdateBounds();
 	// Engine Plane's V increases along local +Y. Turn that axis down for the capture texture's top-left origin.
 	FVector scale = portalScreen->GetComponentScale();
+	if (const UStaticMesh* mesh = portalScreen->GetStaticMesh())
+	{
+		const FVector extent = mesh->GetBounds().BoxExtent;
+		const FVector2D opening = GetOpeningHalfSize();
+		// The base class uses world scale without actor scale. A spatial surface must match the
+		// physical opening used by projection, traversal, and floor snapping, including actor scale.
+		if (extent.X > UE_SMALL_NUMBER && extent.Y > UE_SMALL_NUMBER)
+		{
+			scale.X = -opening.X/extent.X;
+			scale.Y = -opening.Y/extent.Y;
+		}
+	}
 	scale.Y = -FMath::Abs(scale.Y);
 	portalScreen->SetWorldScale3D(scale);
 	portalScreen->UpdateBounds();
@@ -308,8 +465,18 @@ void ASeamlessPortalActor::ApplyPortalView(UTextureRenderTarget2D* target, float
 bool ASeamlessPortalActor::FitsAt(const ACharacter* character, const FVector& position) const
 {
 	const UCapsuleComponent* capsule = IsValid(character) ? character->GetCapsuleComponent() : nullptr;
-	return IsValid(capsule) && SeamlessPortalMath::CapsuleFits(GetPortalFrameTransform(), position,
-		capsule->GetUpVector(), capsule->GetScaledCapsuleRadius(), capsule->GetScaledCapsuleHalfHeight(),
+	if (!IsValid(capsule)) return false;
+	const double radius = capsule->GetScaledCapsuleRadius();
+	const double halfHeight = capsule->GetScaledCapsuleHalfHeight();
+	if (bAllowPartialCapsuleEntry)
+		return SeamlessPortalMath::CapsuleTouchesOpening(GetPortalFrameTransform(), position,
+			capsule->GetUpVector(), radius, halfHeight, GetOpeningHalfSize(), bEllipticalOpening);
+	if (!FMath::IsFinite(headAndFootTolerance)) return false;
+	// Only shorten the projected head/foot ends, never the torso radius. Keep at least half of the
+	// cylindrical segment even on small/crouched characters or with an excessive tolerance value.
+	const double allowance = FMath::Clamp(double(headAndFootTolerance),0.0,FMath::Max(0.0,(halfHeight-radius)*0.5));
+	return SeamlessPortalMath::CapsuleFits(GetPortalFrameTransform(), position,
+		capsule->GetUpVector(), radius, halfHeight-allowance,
 		GetOpeningHalfSize() + FVector2D(1.0, 1.0), bEllipticalOpening);
 }
 
@@ -342,6 +509,13 @@ bool ASeamlessPortalActor::FindCrossing(const ACharacter* character, const FVect
 	if (!CanTraverse() || !IsValid(character) || !FMath::IsFinite(maximumTraversalStep)
 		|| maximumTraversalStep <= 0 || FVector::DistSquared(previous, character->GetActorLocation()) > FMath::Square(maximumTraversalStep)) return false;
 	const FTransform frame = GetPortalFrameTransform();
+	if (bAllowPartialCapsuleEntry)
+	{
+		const UCapsuleComponent* capsule = character->GetCapsuleComponent();
+		return IsValid(capsule) && SeamlessPortalMath::FindFrontCapsuleContact(frame,previous,character->GetActorLocation(),
+			capsule->GetUpVector(),capsule->GetScaledCapsuleRadius(),capsule->GetScaledCapsuleHalfHeight(),
+			GetOpeningHalfSize(),bEllipticalOpening,fraction);
+	}
 	FVector local;
 	return SeamlessPortalMath::FindFrontCrossing(frame.InverseTransformPositionNoScale(previous),
 		frame.InverseTransformPositionNoScale(character->GetActorLocation()), local, fraction)
@@ -360,7 +534,15 @@ bool ASeamlessPortalActor::TryTraverse(ACharacter* character, const FVector& pre
 	UCapsuleComponent* capsule = character->GetCapsuleComponent();
 	if (!IsValid(movement) || !IsValid(capsule)) return false;
 	const FTransform entry = GetPortalFrameTransform();
-	const FVector position = SeamlessPortalMath::MapPoint(entry, destination, character->GetActorLocation());
+	const FVector right = destination.GetRotation().GetRightVector();
+	auto MapArrival = [&](const FVector& point)
+	{
+		FVector mapped = SeamlessPortalMath::MapPoint(entry,destination,point);
+		if (bCenterExitHorizontally)
+			mapped -= right*FVector::DotProduct(mapped-destination.GetLocation(),right);
+		return mapped;
+	};
+	FVector position = MapArrival(character->GetActorLocation());
 	const FVector velocity = SeamlessPortalMath::MapVector(entry, destination, movement->Velocity);
 	const FRotator facing(0, SeamlessPortalMath::MapRotation(entry, destination, character->GetActorQuat()).Rotator().Yaw, 0);
 	if (position.ContainsNaN() || velocity.ContainsNaN()) return false;
@@ -372,6 +554,10 @@ bool ASeamlessPortalActor::TryTraverse(ACharacter* character, const FVector& pre
 	safeExit = position + normal * FMath::Max(0.0, extent + (exitPortal ? exitPortal->GetPassageFrontExtent() : 0)
 		+ 2.0 - FVector::DotProduct(position - destination.GetLocation(), normal));
 	if (safeExit.ContainsNaN()) return false;
+	// Early contact maps the source centre behind the exit. Emerge clear of the exit plane instead;
+	// retain tangential placement, rotation and velocity, and preserve the former mapping for late steps.
+	if (bAllowPartialCapsuleEntry && FVector::DotProduct(position-destination.GetLocation(),normal) < 0)
+		position = safeExit;
 	FCollisionQueryParams query(SCENE_QUERY_STAT(SpatialPortalDestination), false, character);
 	query.AddIgnoredActor(this);
 	// Only a portal's own visual/trigger is exempt. A mesh used as an anchor remains solid.
@@ -384,7 +570,12 @@ bool ASeamlessPortalActor::TryTraverse(ACharacter* character, const FVector& pre
 		|| world->OverlapBlockingTestByChannel(safeExit, facing.Quaternion(), capsule->GetCollisionObjectType(), shape, query, responses)) return false;
 	FHitResult hit;
 	const FVector crossing = FMath::Lerp(previous, character->GetActorLocation(), fraction);
-	if (world->SweepSingleByChannel(hit, SeamlessPortalMath::MapPoint(entry, destination, crossing), position,
+	// Validate the actual centred arrival path, not an imaginary path from the old edge position.
+	FVector sweepStart = MapArrival(crossing);
+	if (bAllowPartialCapsuleEntry)
+		sweepStart += normal*FMath::Max(0.0,extent+(exitPortal ? exitPortal->GetPassageFrontExtent() : 0)+2.0
+			-FVector::DotProduct(sweepStart-destination.GetLocation(),normal));
+	if (world->SweepSingleByChannel(hit, sweepStart, position,
 		facing.Quaternion(), capsule->GetCollisionObjectType(), shape, query, responses)) return false;
 	PortalTraversalGuard::Lock(character, world->GetTimeSeconds() + FMath::Max(0.01f, reentryLockDuration));
 	if (!character->TeleportTo(position, facing, false, true))
@@ -416,10 +607,13 @@ void ASeamlessPortalActor::CopyPresentationFromSource()
 		|| !IsValid(source->portalVFX)) return;
 	Modify();
 	teleportDA = source->teleportDA;
-	portalShapeMesh = IsValid(source->portalShapeMesh) ? source->portalShapeMesh : source->portalScreen->GetStaticMesh();
+	UStaticMesh* sourceShape = IsValid(source->portalShapeMesh) ? source->portalShapeMesh : source->portalScreen->GetStaticMesh();
+	// A default plane is not a designer-authored override of this portal's code-generated opening.
+	portalShapeMesh = IsValid(sourceShape) && sourceShape->GetPathName() != TEXT("/Engine/BasicShapes/Plane.Plane")
+		&& sourceShape != SpatialPortalGeometry::EllipseMesh.Get() ? sourceShape : nullptr;
 	portalShapeScale = source->portalShapeScale;
 	bAutoFitCollisionToPortalMesh = source->bAutoFitCollisionToPortalMesh;
-	portalCollisionDepth = source->portalCollisionDepth;
+	// Plane crossings do not need the legacy portal's thick overlap volume.
 	entryCollision->SetRelativeTransform(source->entryCollision->GetRelativeTransform());
 	bEnablePortalVFX = source->bEnablePortalVFX;
 	portalVFXSystem = source->portalVFXSystem;
@@ -435,5 +629,6 @@ void ASeamlessPortalActor::CopyPresentationFromSource()
 	portalVFXColor = source->portalVFXColor;
 	portalVFX->SetRelativeLocationAndRotation(source->portalVFX->GetRelativeLocation(), source->portalVFX->GetRelativeRotation());
 	UpdatePortalVisual();
+	UpdateSpatialOpening();
 	AlignSpatialScreen();
 }

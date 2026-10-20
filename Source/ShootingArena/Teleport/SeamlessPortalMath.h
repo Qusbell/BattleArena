@@ -16,4 +16,13 @@ namespace SeamlessPortalMath
 		FVector& outCrossing, double& outFraction);
 	bool CapsuleFits(const FTransform& frame, const FVector& centre, const FVector& capsuleUp,
 		double radius, double halfHeight, const FVector2D& halfSize, bool bEllipse);
+	/** Aperture-only eligibility for passage-wall clearance and destination checks. Ignores normal
+	 * distance; actual entry timing/direction is authorized by FindFrontCapsuleContact below. */
+	bool CapsuleTouchesOpening(const FTransform& frame, const FVector& centre, const FVector& capsuleUp,
+		double radius, double halfHeight, const FVector2D& halfSize, bool bEllipse);
+	/** First swept capsule contact with the actual plane/aperture from its front side.
+	 * Includes lateral grazing and fast steps; never requires the centre to cross the plane. */
+	bool FindFrontCapsuleContact(const FTransform& frame, const FVector& previous, const FVector& current,
+		const FVector& capsuleUp, double radius, double halfHeight, const FVector2D& halfSize,
+		bool bEllipse, double& outFraction);
 }
