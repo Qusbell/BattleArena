@@ -1,6 +1,7 @@
 ﻿#include "OneWayTeleportActor.h"
 
 #include "TeleportDataAsset.h"
+#include "PortalTraversalGuard.h"
 
 #include "Components/BoxComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -109,41 +110,6 @@ namespace OneWayTeleportPrivate
 			&& minimum.Y <= static_cast<float>(viewportHeight) + ViewportMargin;
 	}
 
-	// 모든 Portal이 공유합니다. 따라서 A -> B로 이동하면서 B의 Overlap이 즉시
-	// 발생해도 B가 같은 Character를 다시 텔레포트하지 않습니다.
-	TMap<TWeakObjectPtr<AActor>, double> ReentryUnlockTimes;
-
-	bool IsReentryLocked(AActor* actor, double currentTime)
-	{
-		const TWeakObjectPtr<AActor> weakActor(actor);
-		if (const double* unlockTime = ReentryUnlockTimes.Find(weakActor))
-		{
-			return *unlockTime > currentTime;
-		}
-
-		return false;
-	}
-
-	void LockReentry(AActor* actor, double unlockTime)
-	{
-		ReentryUnlockTimes.Add(TWeakObjectPtr<AActor>(actor), unlockTime);
-	}
-
-	void UnlockReentry(AActor* actor)
-	{
-		ReentryUnlockTimes.Remove(TWeakObjectPtr<AActor>(actor));
-	}
-
-	void RemoveExpiredLocks(double currentTime)
-	{
-		for (auto iterator = ReentryUnlockTimes.CreateIterator(); iterator; ++iterator)
-		{
-			if (!iterator.Key().IsValid() || iterator.Value() <= currentTime)
-			{
-				iterator.RemoveCurrent();
-			}
-		}
-	}
 }
 
 AOneWayTeleportActor::AOneWayTeleportActor()
@@ -524,6 +490,27 @@ FTransform AOneWayTeleportActor::GetPortalViewCameraTransform(
 	return FTransform(exitCameraRotation, exitCameraLocation);
 }
 
+FTransform AOneWayTeleportActor::GetPortalFrameTransform() const
+{
+	const FTransform frame = IsValid(entryCollision)
+		? entryCollision->GetComponentTransform() : GetActorTransform();
+	return FTransform(frame.GetRotation(), frame.GetLocation());
+}
+
+bool AOneWayTeleportActor::BuildPortalCaptureView(
+	const FTransform& cameraTransform, FPortalCaptureView& outView) const
+{
+	outView = FPortalCaptureView();
+	if (!IsValid(exitTarget) || exitTarget == this || exitTarget->GetWorld() != GetWorld()
+		|| cameraTransform.ContainsNaN() || !cameraTransform.GetRotation().IsNormalized()
+		|| exitTarget->GetActorTransform().ContainsNaN()) return false;
+	outView.transform = GetPortalViewCameraTransform(cameraTransform);
+	outView.clipBase = exitTarget->GetActorLocation();
+	outView.clipNormal = GetExitLaunchForward();
+	return !outView.transform.ContainsNaN() && outView.transform.GetRotation().IsNormalized()
+		&& !outView.clipBase.ContainsNaN() && !outView.clipNormal.ContainsNaN();
+}
+
 float AOneWayTeleportActor::GetPortalViewOpacity(float distance) const
 {
 	if (!IsValid(teleportDA))
@@ -568,6 +555,7 @@ void AOneWayTeleportActor::ApplyPortalView(
 		portalScreenMID = UMaterialInstanceDynamic::Create(material, this);
 		portalScreen->SetMaterial(0, portalScreenMID);
 	}
+	if (!IsValid(portalScreenMID)) return;
 
 	portalScreenMID->SetTextureParameterValue(TEXT("PortalTexture"), renderTarget);
 	portalScreenMID->SetScalarParameterValue(TEXT("BlurStrength"), blurStrength);
@@ -818,8 +806,8 @@ void AOneWayTeleportActor::OnEntryBeginOverlap(
 	}
 
 	const double currentTime = world->GetTimeSeconds();
-	OneWayTeleportPrivate::RemoveExpiredLocks(currentTime);
-	if (OneWayTeleportPrivate::IsReentryLocked(character, currentTime))
+	PortalTraversalGuard::Cleanup(world, currentTime);
+	if (PortalTraversalGuard::IsLocked(character, currentTime))
 	{
 		return;
 	}
@@ -852,6 +840,7 @@ void AOneWayTeleportActor::OnEntryBeginOverlap(
 void AOneWayTeleportActor::TeleportCharacter(ACharacter* character)
 {
 	if (!IsValid(character)
+		|| !IsValid(this) || !HasAuthority()
 		|| !IsValid(exitTarget)
 		|| exitTarget.Get() == this
 		|| !IsValid(teleportDA))
@@ -860,15 +849,19 @@ void AOneWayTeleportActor::TeleportCharacter(ACharacter* character)
 	}
 
 	UWorld* world = GetWorld();
-	if (!IsValid(world) || world->bIsTearingDown)
+	if (!IsValid(world) || world->bIsTearingDown || character->GetWorld() != world || exitTarget->GetWorld() != world)
 	{
 		return;
 	}
 
 	const FVector exitLocation = exitTarget->GetActorLocation();
 	const FRotator exitRotation = GetExitFacingRotation();
+	const FVector launchVelocity = GetLaunchVelocity();
+	const float moveLockTime = teleportDA->moveLockTime;
+	if (exitLocation.ContainsNaN() || exitRotation.ContainsNaN() || launchVelocity.ContainsNaN()
+		|| !FMath::IsFinite(reentryLockDuration)) return;
 	const double currentTime = world->GetTimeSeconds();
-	OneWayTeleportPrivate::LockReentry(
+	PortalTraversalGuard::Lock(
 		character,
 		currentTime + FMath::Max(0.0f, reentryLockDuration));
 
@@ -881,9 +874,11 @@ void AOneWayTeleportActor::TeleportCharacter(ACharacter* character)
 
 	if (!bTeleported)
 	{
-		OneWayTeleportPrivate::UnlockReentry(character);
+		PortalTraversalGuard::Unlock(character);
 		return;
 	}
+	// Moving updates overlaps synchronously; Blueprint callbacks can delete the portal/player/settings.
+	if (!IsValid(this) || !IsValid(character) || !IsValid(teleportDA) || world->bIsTearingDown) return;
 
 	if (AController* controller = character->GetController())
 	{
@@ -896,7 +891,7 @@ void AOneWayTeleportActor::TeleportCharacter(ACharacter* character)
 
 			// PlayerController의 Client RPC이므로 포탈을 실제 이용한 플레이어의
 			// 클라이언트에서만 재생됩니다. 다른 플레이어와 서버에는 들리지 않습니다.
-			if (IsValid(teleportDA->teleportSound))
+			if (IsValid(teleportDA->teleportSound) && FMath::IsFinite(teleportDA->soundVolumeMultiplier))
 			{
 				playerController->ClientPlaySound(
 					teleportDA->teleportSound,
@@ -906,12 +901,13 @@ void AOneWayTeleportActor::TeleportCharacter(ACharacter* character)
 	}
 
 	character->LaunchCharacter(
-		GetLaunchVelocity(),
+		launchVelocity,
 		true,
 		true);
 
-	ApplyMoveLock(character, teleportDA->moveLockTime);
-	character->ForceNetUpdate();
+	if (!IsValid(this) || !IsValid(character) || world->bIsTearingDown) return;
+	ApplyMoveLock(character, moveLockTime);
+	if (IsValid(character)) character->ForceNetUpdate();
 }
 
 FRotator AOneWayTeleportActor::GetExitFacingRotation() const
@@ -946,7 +942,8 @@ void AOneWayTeleportActor::ApplyMoveLock_Implementation(
 	ACharacter* character,
 	float duration)
 {
-	if (!IsValid(character) || duration <= 0.0f)
+	if (!IsValid(character) || !IsValid(GetWorld()) || GetWorld()->bIsTearingDown
+		|| !FMath::IsFinite(duration) || duration <= 0.0f)
 	{
 		return;
 	}
