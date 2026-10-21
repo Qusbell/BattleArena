@@ -114,7 +114,7 @@ The runtime estimate now blends this representative estimate with endpoint strai
 
 The weight uses the directed baked **polygon-center path length**, not the dynamic endpoint straight
 distance. Default controls are `PathLink.EstimateBlendStrength 1` and
-`PathLink.EstimateBlendRangeCm 2000` (20m). Strength 0 restores the previous estimator. Nonpositive
+`PathLink.EstimateBlendRangeCm 4000` (40m). Strength 0 restores the previous estimator. Nonpositive
 range or nonfinite settings disable blending. Unreachable entries are rejected before blending.
 Only approximate endpoint-to-endpoint/Link endpoint walking estimates change: exact link traversal
 costs, exact baked Link-to-Link transitions, detailed routes and `TotalDistance` remain unchanged.
@@ -201,3 +201,60 @@ seeded pairs across 13 settings to `Saved/PathLinkBench/Blend200.csv`, checks de
 invariance, restores the previous controls, and leaves map saving to the normal workflow.
 Run `python Scripts/AnalyzePathLinkBlend.py` to generate error summaries. See
 `docs/PathLinkBlendResults.md` for the measured PortalMap results and sampling limitations.
+
+
+For area-weighted independent random map-wide endpoint tests, use
+`PathLink.BenchmarkRandomRoutes [count=200] [seed=20261022]`. It compares the current blend controls
+with strength 0 on identical pairs, writes a map/count/seed-specific CSV in Saved/PathLinkBench,
+and restores the controls. `Scripts/AnalyzePathLinkRandom.py --maps Lvl_PortalMap` aggregates the
+selected map. See `docs/PathLinkRandomResults.md` for the additional PortalMap test and reachability
+coverage. Lvl_02Map results were excluded at the user's request because PathLinks are not installed.
+
+
+For the playable/mutually reachable variant, export authored player spawn components and actual AI
+capsule dimensions with `Scripts/ExportPathLinkPlayableAnchors.py` through Unreal MCP, then run
+`PathLink.BenchmarkRandomRoutes 200 20261024 playable`. This rejects unsupported/blocked points,
+points unreachable from the exported spawns, and pairs lacking complete routes in either direction.
+It collects 200 accepted pairs independently of estimate success. See `docs/PathLinkPlayableResults.md`
+for the explicit playability proxy and updated results. Analyze with
+`python Scripts/AnalyzePathLinkRandom.py --maps Lvl_PortalMap --kind Playable`.
+
+Default updated by user request to strength 1 / 40m after the same-200-pair sweep; historical result reports retain their original tested settings.
+
+
+## Baked departure direction (format version 2)
+
+Each ordered ground-poly pair now also stores the forward tangent of the first nonzero segment
+of the already-computed center-to-center NavMesh path. This adds no pathfinding calls to the bake.
+The three unit-vector components are quantized to 8 bits with an explicit validity bit in one uint32
+(4 bytes). Runtime decode normalizes the vector; direction is approximate. Diagonal, unreachable,
+and zero-length path cases have no invented direction. A->B and B->A entries remain independent.
+
+Distance remains float32 (4 bytes), so the two arrays occupy 8 bytes per ordered pair: twice the
+previous table payload. Existing diagnostics still report the requested distance-only float32 size;
+bake logs additionally show departure and combined table sizes. The bake memory budget accounts
+for both arrays and runtime memory accounting includes the new allocation. Format version 1 caches
+are rejected and the existing pre-play/pre-save automatic bake regenerates them. No extra actors,
+manual maintenance, per-pair waypoints, or runtime path reconstruction were added.
+
+Native consumers can call GetNormalDepartureDirection(FromPoly, ToPoly, OutDirection). This task
+stores the data only; existing distance estimates (strength 1, range 40m), detailed routes, static
+Link transitions, physical movement and Blueprint signatures are unchanged. No arrival direction
+is stored. Negating Departure(B,A) can serve as an approximate arrival tangent for A->B only when
+reverse routing follows the same corridor; that symmetry is not assumed by the data/API.
+
+A proposed later correction projects the start offset onto this tangent:
+D(A,CenterB) ~= D(CenterA,CenterB) - dot(A-CenterA, Departure(A,B)).
+For an eastbound initial segment, a start 2m east of the center subtracts about 2m; a start 2m west
+adds about 2m; a perpendicular offset contributes zero at first order. This is a local approximation,
+not an exact arbitrary-offset distance or a way to recover the next polygon uniquely. It is not yet
+applied to runtime scoring.
+
+
+Verification on PortalMap: 57,232 directed table entries, distance-only 0.218MiB plus departure
+0.218MiB, combined 0.437MiB; whole baked payload 0.478MiB. Bake took 0.793s in this run.
+BakedRouting automation passed (positive/negative 3D packing, unavailable/same-poly/reverse handling,
+serialization, migration and version-1 rejection). Editor and Win64 Development game builds passed.
+After refreshing the editor Link registry, all 200 fixed playable pairs retained their prior detailed
+distances and strength-1/40m estimates (0.001cm tolerance). Saved verification is in
+Saved/PathLinkBench/DepartureBakeVerification.json. PortalMap was rebaked and saved.

@@ -1,6 +1,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 #include "AI/PathLink/PathLinkRoutingCache.h"
 #include "AI/PathLink/PathLink.h"
+#include "AI/PathLink/Internal/PathLinkNavSnapshot.h"
 #include "Engine/World.h"
 #include "Misc/AutomationTest.h"
 #include "HAL/IConsoleManager.h"
@@ -32,7 +33,11 @@ bool FPathLinkRoutingCacheTest::RunTest(const FString& Parameters)
             FPathLinkBakedPoly& P = Cache->Polygons.AddDefaulted_GetRef();
             P.Center = Centers[I]; P.Island = IslandIDs[I]; P.LocalIndex = Cache->Islands[P.Island].PolygonCount++;
         }
-        for (auto& Island : Cache->Islands) Island.Distances.Init(-1, Island.PolygonCount * Island.PolygonCount);
+        for (auto& Island : Cache->Islands)
+        {
+            Island.Distances.Init(-1, Island.PolygonCount * Island.PolygonCount);
+            Island.DepartureDirections.SetNumZeroed(Island.PolygonCount*Island.PolygonCount);
+        }
         for (auto& Island : Cache->Islands)
             for (int32 I = 0; I < Island.PolygonCount; ++I) Island.Distances[I*Island.PolygonCount+I] = 0;
     };
@@ -84,11 +89,23 @@ bool FPathLinkRoutingCacheTest::RunTest(const FString& Parameters)
     Link(0,1,0); Cache->TransitionDistances = {-1};
     Cache->EstimateRoute(0, FVector::ZeroVector, 1, FVector(1000,0,0), Distance);
     TestEqual(TEXT("Same island can prefer a teleport"), Distance, 0.0);
-    Cache->DataVersion = 1; Cache->NavigationSignature = TEXT("TestSignature");
+    Cache->DataVersion = PathLinkBake::Version; Cache->NavigationSignature = TEXT("TestSignature");
     TestTrue(TEXT("Complete directed cache"), Cache->IsBaked());
     FPathLinkStaticGraph Graph; Cache->ExportStaticGraph(Graph);
     TestEqual(TEXT("Traversal cost survives graph export"), Graph.Traversals[0].LinkCost, 0.0);
     TestFalse(TEXT("Negative transition sentinel exports as unreachable"), Graph.Transitions[0].Reachable);
+    const FVector Tangent=FVector(1,2,3).GetSafeNormal();
+    Cache->Islands[0].DepartureDirections[1].Set(Tangent);
+    FVector Decoded;
+    TestTrue(TEXT("Stored departure direction available"),Cache->GetNormalDepartureDirection(0,1,Decoded));
+    TestTrue(TEXT("Compressed direction within 0.01 unit vector error"),Decoded.Equals(Tangent,0.01));
+    TestFalse(TEXT("No direction invented for diagonal"),Cache->GetNormalDepartureDirection(0,0,Decoded));
+    TestFalse(TEXT("Reverse direction has independent storage"),Cache->GetNormalDepartureDirection(1,0,Decoded));
+    FPathLinkBakedDepartureDirection EmptyDirection;
+    TestFalse(TEXT("Zero tangent remains explicitly unavailable"),EmptyDirection.Get(Decoded));
+    EmptyDirection.Set(-Tangent);
+    TestTrue(TEXT("Negative 3D direction is representable"),EmptyDirection.Get(Decoded));
+    TestTrue(TEXT("Signed compressed direction"),Decoded.Equals(-Tangent,0.01));
     TArray<uint8> Bytes;
     FObjectWriter Writer(Cache, Bytes);
     UPathLinkRoutingCacheData* Restored = NewObject<UPathLinkRoutingCacheData>(World);
@@ -96,7 +113,7 @@ bool FPathLinkRoutingCacheTest::RunTest(const FString& Parameters)
     TestTrue(TEXT("Cache properties survive serialization"), Restored->IsBaked());
     TestEqual(TEXT("Float32 matrix survives serialization"), Restored->Islands[0].Distances[1], 1000.0f);
     auto* Legacy = World->SpawnActor<APathLinkRoutingCache>();
-    Legacy->DataVersion = 1; Legacy->NavigationSignature = TEXT("LegacySignature");
+    Legacy->DataVersion = PathLinkBake::Version; Legacy->NavigationSignature = TEXT("LegacySignature");
     Legacy->Polygons = Cache->Polygons; Legacy->Islands = Cache->Islands;
     Legacy->Traversals = Cache->Traversals; Legacy->TransitionDistances = Cache->TransitionDistances;
     auto* Migrated = NewObject<UPathLinkRoutingCacheData>(World);
@@ -106,6 +123,10 @@ bool FPathLinkRoutingCacheTest::RunTest(const FString& Parameters)
     auto* Storage = NewObject<UPathLinkCacheStorageComponent>(World);
     TestNotNull(TEXT("Managed storage creates its payload without a placed actor"), Storage->Cache.Get());
     TestEqual(TEXT("Payload resolves world through its outer"), Cache->GetWorld(), World);
+    TestTrue(TEXT("Departure direction survives serialization"),Restored->GetNormalDepartureDirection(0,1,Decoded));
+    TestTrue(TEXT("Serialized compressed tangent"),Decoded.Equals(Tangent,0.01));
+    Restored->DataVersion = 1;
+    TestFalse(TEXT("Old distance-only bake version rejected"),Restored->IsBaked());
     Restored->DataVersion = 0;
     TestFalse(TEXT("Invalid bake rejected"), Restored->IsBaked());
     Cache->Traversals.Reset();

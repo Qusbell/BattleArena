@@ -21,9 +21,59 @@ DEFINE_LOG_CATEGORY_STATIC(LogPathLinkBake, Log, All);
 
 static TAutoConsoleVariable<float> CVarPathLinkBlendStrength(TEXT("PathLink.EstimateBlendStrength"), 1.0f,
     TEXT("Straight-distance blend strength [0,1], for approximate normal movement only. 0 restores center estimates."));
-static TAutoConsoleVariable<float> CVarPathLinkBlendRange(TEXT("PathLink.EstimateBlendRangeCm"), 2000.0f,
+static TAutoConsoleVariable<float> CVarPathLinkBlendRange(TEXT("PathLink.EstimateBlendRangeCm"), 4000.0f,
     TEXT("Center-to-center baked path distance at which straight-distance blending reaches zero, in cm."));
 
+
+namespace
+{
+    // Three signed components quantized to 8 bits plus an explicit valid bit; 4 bytes per 3D tangent.
+    uint32 PackDirection(const FVector& Value)
+    {
+        if (Value.ContainsNaN()) return 0;
+        const FVector Unit=Value.GetSafeNormal();
+        if (Unit.IsNearlyZero()) return 0;
+        auto Pack=[](double Axis) { return uint32(FMath::Clamp(FMath::RoundToInt(Axis*127.0),-127,127)+127); };
+        return 0x80000000u | Pack(Unit.X) | (Pack(Unit.Y)<<8) | (Pack(Unit.Z)<<16);
+    }
+    FVector UnpackDirection(uint32 Value)
+    {
+        if (!(Value&0x80000000u)) return FVector::ZeroVector;
+        return FVector(int32(Value&255)-127,int32((Value>>8)&255)-127,int32((Value>>16)&255)-127).GetSafeNormal();
+    }
+    FPathLinkBakedDepartureDirection PathDirection(const FNavigationPath& Path)
+    {
+        const auto& Points=Path.GetPathPoints();
+        FVector Departure=FVector::ZeroVector;
+        for (int32 I=1; I<Points.Num(); ++I)
+        {
+            Departure=(Points[I].Location-Points[0].Location).GetSafeNormal();
+            if (!Departure.IsNearlyZero()) break;
+        }
+        FPathLinkBakedDepartureDirection Result; Result.Set(Departure); return Result;
+    }
+}
+
+void FPathLinkBakedDepartureDirection::Set(const FVector& Direction)
+{ Packed=PackDirection(Direction); }
+bool FPathLinkBakedDepartureDirection::Get(FVector& OutDirection) const
+{
+    OutDirection=UnpackDirection(Packed);
+    return !OutDirection.IsNearlyZero();
+}
+static_assert(sizeof(FPathLinkBakedDepartureDirection)==4,"Baked departure must occupy 4 bytes.");
+
+bool UPathLinkRoutingCacheData::GetNormalDepartureDirection(int32 FromPoly,int32 ToPoly,FVector& OutDirection) const
+{
+    OutDirection=FVector::ZeroVector;
+    if (!Polygons.IsValidIndex(FromPoly) || !Polygons.IsValidIndex(ToPoly) || FromPoly==ToPoly) return false;
+    const auto& A=Polygons[FromPoly]; const auto& B=Polygons[ToPoly];
+    if (A.Island!=B.Island || !Islands.IsValidIndex(A.Island)) return false;
+    const auto& Island=Islands[A.Island];
+    const int64 Index=int64(A.LocalIndex)*Island.PolygonCount+B.LocalIndex;
+    if (!Island.Distances.IsValidIndex(Index) || Island.Distances[Index]<0 || !Island.DepartureDirections.IsValidIndex(Index)) return false;
+    return Island.DepartureDirections[Index].Get(OutDirection);
+}
 
 FString UPathLinkRoutingCacheData::ComputeLinkSignature(UWorld* World)
 {
@@ -49,7 +99,8 @@ bool UPathLinkRoutingCacheData::IsBaked() const
 {
     if (DataVersion != PathLinkBake::Version || Polygons.IsEmpty() || Islands.IsEmpty() || NavigationSignature.IsEmpty()) return false;
     for (const FPathLinkIslandInfo& Island : Islands)
-        if (int64(Island.PolygonCount) * Island.PolygonCount != Island.Distances.Num()) return false;
+        if (int64(Island.PolygonCount) * Island.PolygonCount != Island.Distances.Num()
+            || Island.DepartureDirections.Num()!=Island.Distances.Num()) return false;
     for (const FPathLinkBakedPoly& Poly : Polygons)
         if (!Islands.IsValidIndex(Poly.Island) || Poly.LocalIndex < 0
             || Poly.LocalIndex >= Islands[Poly.Island].PolygonCount || Poly.Center.ContainsNaN()) return false;
@@ -139,7 +190,7 @@ SIZE_T UPathLinkRoutingCacheData::GetCacheAllocatedSize() const
 {
     SIZE_T Bytes = Polygons.GetAllocatedSize() + Traversals.GetAllocatedSize() + TransitionDistances.GetAllocatedSize()
         + Islands.GetAllocatedSize() + NavigationSignature.GetAllocatedSize() + LinkSignature.GetAllocatedSize();
-    for (const FPathLinkIslandInfo& Island : Islands) Bytes += Island.Distances.GetAllocatedSize();
+    for (const FPathLinkIslandInfo& Island : Islands) Bytes += Island.Distances.GetAllocatedSize()+Island.DepartureDirections.GetAllocatedSize();
     return Bytes;
 }
 
@@ -175,6 +226,8 @@ void UPathLinkRoutingCacheData::AnalyzeNavigation()
         ExpectedTableMiB += Islands[I].Float32TableMiB;
         QueryCount += N * (N - 1);
     }
+    UE_LOG(LogPathLinkBake, Display, TEXT("All-pairs tables: distances=%.3fMiB departure-directions=%.3fMiB combined=%.3fMiB (4+4 bytes/pair)."),
+        ExpectedTableMiB, ExpectedTableMiB, ExpectedTableMiB*2);
     const double SampleStart = FPlatformTime::Seconds();
     int32 Samples = 0;
     for (const TArray<int32>& Component : Snapshot.Components)
@@ -232,7 +285,7 @@ void UPathLinkRoutingCacheData::BakeRoutingCache()
         if (It->IsEnabled() && It->IsValidLinkForRouteCache()) Links.Add(*It);
     }
     const int64 MaxTraversals = int64(Links.Num()) * 2;
-    const double EstimatedMiB = ExpectedTableMiB + double(MaxTraversals * MaxTraversals * sizeof(double)
+    const double EstimatedMiB = ExpectedTableMiB * (1.0+double(sizeof(FPathLinkBakedDepartureDirection))/sizeof(float)) + double(MaxTraversals * MaxTraversals * sizeof(double)
         + int64(Snapshot.Refs.Num()) * sizeof(FPathLinkBakedPoly)) / (1024.0 * 1024.0);
     if (EstimatedMiB > MemoryBudgetMiB || EstimatedBakeSeconds > TimeBudgetSeconds)
     { Diagnostic = FString::Printf(TEXT("Bake refused: estimated %.3fMiB / %.1fs exceeds budget %.3fMiB / %.1fs. All-Pairs was not allocated."),
@@ -270,6 +323,7 @@ void UPathLinkRoutingCacheData::BakeRoutingCache()
         const int32 N = Component.Num();
         TArray<float>& Table = Islands[Island].Distances;
         Table.Init(-1.0f, N * N);
+        Islands[Island].DepartureDirections.SetNumZeroed(N*N);
         for (int32 A = 0; A < N; ++A)
             for (int32 B = 0; B < N; ++B)
             {
@@ -278,7 +332,11 @@ void UPathLinkRoutingCacheData::BakeRoutingCache()
                 if (A == B) { Table[A * N + B] = 0; continue; }
                 const FNavPathSharedPtr Path = PathLinkNavigation::FindPath(World, Snapshot.Centers[Component[A]],
                     Snapshot.Centers[Component[B]], NavigationData, Snapshot.GroundFilter, false);
-                if (Path) Table[A * N + B] = float(Path->GetLength());
+                if (Path)
+                {
+                    Table[A * N + B] = float(Path->GetLength());
+                    Islands[Island].DepartureDirections[A*N+B]=PathDirection(*Path);
+                }
             }
     }
     Traversals.Reset();

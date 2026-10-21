@@ -17,6 +17,16 @@ struct FPathLinkBakedPoly
     UPROPERTY() int32 LocalIndex = INDEX_NONE;
 };
 
+/** Forward travel tangent of the first nonzero center-path segment; zero means unavailable. */
+USTRUCT()
+struct SHOOTINGARENA_API FPathLinkBakedDepartureDirection
+{
+    GENERATED_BODY()
+    UPROPERTY() uint32 Packed = 0;
+    void Set(const FVector& Direction);
+    bool Get(FVector& OutDirection) const;
+};
+
 USTRUCT(BlueprintType)
 struct FPathLinkIslandInfo
 {
@@ -25,6 +35,8 @@ struct FPathLinkIslandInfo
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Bake") double Float32TableMiB = 0;
     // Directed row-major N*N. -1 means no complete path; no waypoint arrays are serialized.
     UPROPERTY() TArray<float> Distances;
+    // Same directed row-major indexing as Distances. 4 extra bytes per pair, no waypoints.
+    UPROPERTY() TArray<FPathLinkBakedDepartureDirection> DepartureDirections;
 };
 
 USTRUCT()
@@ -81,6 +93,7 @@ public:
         double& OutDistance) const;
     void ExportStaticGraph(FPathLinkStaticGraph& Out) const;
     SIZE_T GetCacheAllocatedSize() const;
+    bool GetNormalDepartureDirection(int32 FromPoly, int32 ToPoly, FVector& OutDirection) const;
     static FString ComputeLinkSignature(UWorld* World);
 };
 

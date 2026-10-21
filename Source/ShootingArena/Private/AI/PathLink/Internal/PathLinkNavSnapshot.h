@@ -19,6 +19,6 @@ struct FPathLinkNavSnapshot
 
 namespace PathLinkBake
 {
-    constexpr int32 Version = 1;
+    constexpr int32 Version = 2;
     bool ReadNavigation(ARecastNavMesh* Nav, FPathLinkNavSnapshot& Out, FString& Error);
 }
