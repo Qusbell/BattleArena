@@ -123,6 +123,13 @@ public:
 	bool SetModelingRowName(FName newModelingRowName);
 
 	/**
+	 * Row Name을 이 Client에서만 적용합니다. 권한 검사와 replication을 사용하지 않으므로
+	 * 메인메뉴 아바타처럼 로컬 연출에만 사용합니다.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Character Appearance")
+	bool SetModelingRowNameLocal(FName newModelingRowName);
+
+	/**
 	 * DT_Character의 Character_Modeling Data Table Row Handle을 직접 적용합니다.
 	 * 직접 입력한 문자열 대신 Editor의 Row 선택 목록을 사용하기 위한 권장 진입점입니다.
 	 */

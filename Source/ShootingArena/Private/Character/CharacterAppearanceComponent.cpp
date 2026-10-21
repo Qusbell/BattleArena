@@ -96,6 +96,17 @@ bool UCharacterAppearanceComponent::SetModelingRowName(const FName newModelingRo
 	return ApplyModelingIdInternal(activeModelingId);
 }
 
+bool UCharacterAppearanceComponent::SetModelingRowNameLocal(const FName newModelingRowName)
+{
+	if (newModelingRowName.IsNone())
+	{
+		UE_LOG(LogCharacterAppearance, Warning, TEXT("빈 Modeling Row Name은 적용할 수 없습니다. Owner=%s"), *GetNameSafe(GetOwner()));
+		return false;
+	}
+
+	return ApplyModelingIdInternal(newModelingRowName.ToString());
+}
+
 bool UCharacterAppearanceComponent::SetModelingRowHandle(const FDataTableRowHandle& newModelingRowHandle)
 {
 	if (newModelingRowHandle.DataTable == nullptr || newModelingRowHandle.RowName.IsNone())
