@@ -12,6 +12,25 @@ class UPathLinkRoutingCacheData;
 class ANavigationData;
 class ARecastNavMesh;
 
+/** Result of the last estimate query, separate from validation of the baked data. */
+UENUM(BlueprintType)
+enum class EPathLinkEstimateStatus : uint8
+{
+    NotQueried,
+    Success,
+    InvalidCoordinates,
+    ClientWorld,
+    CacheUnavailable,
+    MissingNavigationData,
+    NavigationDataMismatch,
+    UnsupportedFilter,
+    StartProjectionFailed,
+    TargetProjectionFailed,
+    StartPolygonMissing,
+    TargetPolygonMissing,
+    Unreachable
+};
+
 /**
  * 현재 World에 존재하는 PathLink를 자동 관리하고,
  * Blueprint / AI 로직이 길찾기 기능을 호출하는 단일 진입점입니다.
@@ -120,6 +139,8 @@ public:
     UFUNCTION(BlueprintPure, Category = "AI|PathLink|Performance") double GetMaxRouteMilliseconds() const { return MaxRouteMilliseconds; }
     UFUNCTION(BlueprintPure, Category = "AI|PathLink|Performance") double GetMaxRouteWorkPerFrameMilliseconds() const { return MaxRouteWorkPerFrameMilliseconds; }
     UFUNCTION(BlueprintPure, Category = "AI|PathLink|Performance") FString GetRoutingCacheStatus() const { return RoutingCacheStatus; }
+    /** Read immediately after GetEstimatedRouteDistance; cache validation alone does not describe query success. */
+    UFUNCTION(BlueprintPure, Category = "AI|PathLink|Debug") EPathLinkEstimateStatus GetLastEstimateStatus() const { return LastEstimateStatus; }
 
     /** NavMesh + Link를 사용했을 때 목표 위치까지 도달 가능한지만 검사합니다. */
     UFUNCTION(BlueprintCallable, Category = "AI|PathLink|Route", meta = (AdvancedDisplay = "PathfindingContext"))
@@ -161,9 +182,12 @@ public:
     bool PrepareRoutingCacheForEditor(bool bForceRebuild = false);
 #endif
 private:
+    mutable EPathLinkEstimateStatus LastEstimateStatus = EPathLinkEstimateStatus::NotQueried;
+    mutable double NextEstimateDiagnosticTime = 0;
     UPROPERTY(Transient) TObjectPtr<UPathLinkRoutingCacheData> LegacyRoutingData;
     UFUNCTION() void OnNavigationGenerationFinished(ANavigationData* Data);
     void OnNavMeshUpdated();
+    bool RefreshBakedNavigationReferences() const;
     bool CalculateRoute(const FVector& Start, const FVector& Target, FPathLinkRouteResult& Out,
         AActor* Context, bool bBuildSegments) const;
     void RecordRouteStats() const;
@@ -229,6 +253,8 @@ private:
     mutable bool bBakeValidationPending = true;
     mutable TWeakObjectPtr<UPathLinkRoutingCacheData> ValidatedRoutingCache;
     mutable TMap<NavNodeRef, int32> BakedPolyIndexByRef;
+    mutable TArray<NavNodeRef> ValidatedNavTileRefs;
+    mutable uint64 NavigationReferenceCheckFrame = MAX_uint64;
     mutable FSharedConstNavQueryFilter BakedGroundFilter;
     mutable TArray<FPathLinkPlacementState> ValidatedLinkPlacements;
     mutable TArray<TWeakObjectPtr<ARecastNavMesh>> ObservedNavMeshes;

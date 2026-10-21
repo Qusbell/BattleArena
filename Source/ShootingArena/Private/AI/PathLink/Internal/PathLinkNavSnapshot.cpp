@@ -17,8 +17,13 @@ bool PathLinkBake::ReadNavigation(ARecastNavMesh* Nav, FPathLinkNavSnapshot& Out
     const auto* Filter = static_cast<const FRecastQueryFilter*>(Out.GroundFilter->GetImplementation());
 
     TArray<const dtMeshTile*> Tiles;
+    Out.TileRefs.SetNumZeroed(Mesh->getMaxTiles());
     for (int32 Index = 0; Index < Mesh->getMaxTiles(); ++Index)
-        if (const dtMeshTile* Tile = Mesh->getTile(Index); Tile && Tile->header) Tiles.Add(Tile);
+        if (const dtMeshTile* Tile = Mesh->getTile(Index); Tile && Tile->header)
+        {
+            Tiles.Add(Tile);
+            Out.TileRefs[Index] = Mesh->getTileRef(Tile);
+        }
     Tiles.Sort([](const dtMeshTile& A, const dtMeshTile& B)
     {
         if (A.header->x != B.header->x) return A.header->x < B.header->x;
@@ -113,5 +118,22 @@ bool PathLinkBake::ReadNavigation(ARecastNavMesh* Nav, FPathLinkNavSnapshot& Out
 #else
     Error = TEXT("This target has no Recast support.");
     return false;
+#endif
+}
+
+bool PathLinkBake::HaveTileReferencesChanged(ARecastNavMesh* Nav, const TArray<NavNodeRef>& TileRefs)
+{
+#if WITH_RECAST
+    const dtNavMesh* Mesh = Nav ? Nav->GetRecastMesh() : nullptr;
+    if (!Mesh || Mesh->getMaxTiles() != TileRefs.Num()) return true;
+    for (int32 Index = 0; Index < TileRefs.Num(); ++Index)
+    {
+        const dtMeshTile* Tile = Mesh->getTile(Index);
+        const NavNodeRef Ref = Tile && Tile->header ? Mesh->getTileRef(Tile) : 0;
+        if (Ref != TileRefs[Index]) return true;
+    }
+    return false;
+#else
+    return true;
 #endif
 }

@@ -47,8 +47,9 @@ overlay; repeated calls do not accumulate geometry. Other systems' debug batches
 1. Fully load the gameplay level, navigation tiles and PathLinks. Build Navigation normally.
 2. Play/Simulate, or save the map. `UPathLinkCacheEditorSubsystem` automatically asks the world
    `UPathLinkSubsystem` to validate the NavMesh and PathLink signatures before world duplication/save.
-3. On a cache hit, reuse the tables. On a miss, invalidate them first and automatically bake the current
-   default Recast NavData. A pending Recast build is completed before checking.
+3. Complete editor navigation initialization before checking the tables. This includes queued work
+   that has not been submitted when a map was just opened; unreadable navigation alone never clears
+   a complete bake. On a confirmed cache miss, automatically bake the current default Recast NavData.
 4. The subsystem creates a native storage component on the existing WorldSettings automatically.
    No routing actor needs to be placed. Its instanced UObject payload is serialized/cooked with the map.
    A single legacy routing actor is migrated once; an invalid managed cache never falls back to it.
@@ -61,13 +62,25 @@ overlay; repeated calls do not accumulate geometry. Other systems' debug batches
 For an explicit forced rebuild, stop PIE/Simulate and enter `PathLink.BuildRoutingCache` in the
 editor Output Log's Cmd console. It clears the managed bake and regenerates it from the current
 NavMesh and PathLinks using the same budgets/validation as automatic preparation. Save the map
-afterward. This command builds the routing cache; use Unreal's normal Build Navigation for terrain
-changes that have not yet been reflected in NavMesh. A failed/cancelled forced build stays invalid.
+afterward. If editor navigation is pending or empty, preparation finishes a navigation build first.
+A failed/cancelled routing bake stays invalid.
 
 The old actor class remains only for serialized-map compatibility. Runtime managed-cache queries
 use the UObject directly. Editor hooks do not run in cook commandlets. A never-saved/new or changed
 map must be saved normally before packaging. Load the intended full level before checking streamed
 maps; runtime validation refuses signatures from a different loaded navigation/link set.
+
+Runtime Recast tile replacement can change polygon references even when geometry is identical.
+The subsystem checks tile references once per queried frame, revalidates the geometry/topology
+signature after a replacement, and refreshes the polygon-reference lookup on an exact signature
+match. An actual geometry/topology mismatch invalidates the old routing data. This never runs an
+all-pairs bake or synchronous path query at runtime.
+
+Read `GetLastEstimateStatus` immediately after a query to distinguish projection failures, stale
+polygon references, unavailable cache, unsupported context, and unreachable endpoints.
+`GetRoutingCacheStatus` describes bake validation rather than the last individual query.
+For temporary native/Blueprint call diagnostics, use `PathLink.EstimateDebug 1` (or `2` for extra
+missing-reference inspection); restore `PathLink.EstimateDebug 0` after debugging.
 
 Islands are weak connected components of ordinary, default-filter-traversable Recast polygons.
 Cross-tile polygon adjacency is included. Native off-mesh links are excluded, as are project

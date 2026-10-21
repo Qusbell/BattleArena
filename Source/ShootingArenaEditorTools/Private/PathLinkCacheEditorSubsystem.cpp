@@ -23,20 +23,21 @@ namespace
 
     FAutoConsoleCommandWithWorldArgsAndOutputDevice BuildRoutingCacheCommand(
         TEXT("PathLink.BuildRoutingCache"),
-        TEXT("Force rebuild the current editor map's PathLink routing cache. Stop PIE first, then save the map. Does not rebuild NavMesh."),
+        TEXT("Force rebuild the current editor map's PathLink routing cache. Stop PIE first, then save the map. Finishes pending/empty editor navigation first if necessary."),
         FConsoleCommandWithWorldArgsAndOutputDeviceDelegate::CreateStatic(&BuildRoutingCache));
 }
 
 void UPathLinkCacheEditorSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
     Super::Initialize(Collection);
-    FEditorDelegates::PreBeginPIE.AddUObject(this, &ThisClass::PrepareForPlay);
+    // BeginPIE is after the engine's async-loading flush but before world duplication/navigation lock.
+    FEditorDelegates::BeginPIE.AddUObject(this, &ThisClass::PrepareForPlay);
     FEditorDelegates::PreSaveWorldWithContext.AddUObject(this, &ThisClass::PrepareForSave);
 }
 
 void UPathLinkCacheEditorSubsystem::Deinitialize()
 {
-    FEditorDelegates::PreBeginPIE.RemoveAll(this);
+    FEditorDelegates::BeginPIE.RemoveAll(this);
     FEditorDelegates::PreSaveWorldWithContext.RemoveAll(this);
     Super::Deinitialize();
 }
