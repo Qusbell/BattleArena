@@ -6,6 +6,7 @@
 #include "AI/PathLink/Internal/PathLinkRouteFinder.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
+#include "UObject/UnrealType.h"
 #include "NavMesh/RecastNavMesh.h"
 #include "NavigationSystem.h"
 #include "Misc/Crc.h"
@@ -17,16 +18,7 @@
 
 DEFINE_LOG_CATEGORY_STATIC(LogPathLinkBake, Log, All);
 
-APathLinkRoutingCache::APathLinkRoutingCache()
-{
-    PrimaryActorTick.bCanEverTick = false;
-    bReplicates = false;
-#if WITH_EDITOR
-    bIsSpatiallyLoaded = false;
-#endif
-}
-
-FString APathLinkRoutingCache::ComputeLinkSignature(UWorld* World)
+FString UPathLinkRoutingCacheData::ComputeLinkSignature(UWorld* World)
 {
     // Object names are intentionally omitted: PIE changes package prefixes, and cook remaps actor references.
     TArray<FString> Rows;
@@ -46,7 +38,7 @@ FString APathLinkRoutingCache::ComputeLinkSignature(UWorld* World)
     return BytesToHex(Digest, sizeof(Digest));
 }
 
-bool APathLinkRoutingCache::IsBaked() const
+bool UPathLinkRoutingCacheData::IsBaked() const
 {
     if (DataVersion != PathLinkBake::Version || Polygons.IsEmpty() || Islands.IsEmpty() || NavigationSignature.IsEmpty()) return false;
     for (const FPathLinkIslandInfo& Island : Islands)
@@ -57,7 +49,7 @@ bool APathLinkRoutingCache::IsBaked() const
     return int64(Traversals.Num()) * Traversals.Num() == TransitionDistances.Num();
 }
 
-double APathLinkRoutingCache::EstimateNormalDistance(int32 FromPoly, const FVector& From,
+double UPathLinkRoutingCacheData::EstimateNormalDistance(int32 FromPoly, const FVector& From,
     int32 ToPoly, const FVector& To) const
 {
     if (!Polygons.IsValidIndex(FromPoly) || !Polygons.IsValidIndex(ToPoly)) return -1;
@@ -72,7 +64,7 @@ double APathLinkRoutingCache::EstimateNormalDistance(int32 FromPoly, const FVect
     return FVector::Distance(From, A.Center) + Island.Distances[Index] + FVector::Distance(B.Center, To);
 }
 
-bool APathLinkRoutingCache::EstimateRoute(int32 StartPoly, const FVector& Start,
+bool UPathLinkRoutingCacheData::EstimateRoute(int32 StartPoly, const FVector& Start,
     int32 TargetPoly, const FVector& Target, double& OutDistance) const
 {
     OutDistance = 0;
@@ -112,7 +104,7 @@ bool APathLinkRoutingCache::EstimateRoute(int32 StartPoly, const FVector& Start,
     return true;
 }
 
-void APathLinkRoutingCache::ExportStaticGraph(FPathLinkStaticGraph& Out) const
+void UPathLinkRoutingCacheData::ExportStaticGraph(FPathLinkStaticGraph& Out) const
 {
     Out.Reset(); Out.Traversals.Reserve(Traversals.Num());
     for (const FPathLinkBakedTraversal& T : Traversals)
@@ -130,7 +122,7 @@ void APathLinkRoutingCache::ExportStaticGraph(FPathLinkStaticGraph& Out) const
     }
 }
 
-SIZE_T APathLinkRoutingCache::GetCacheAllocatedSize() const
+SIZE_T UPathLinkRoutingCacheData::GetCacheAllocatedSize() const
 {
     SIZE_T Bytes = Polygons.GetAllocatedSize() + Traversals.GetAllocatedSize() + TransitionDistances.GetAllocatedSize()
         + Islands.GetAllocatedSize() + NavigationSignature.GetAllocatedSize() + LinkSignature.GetAllocatedSize();
@@ -138,7 +130,7 @@ SIZE_T APathLinkRoutingCache::GetCacheAllocatedSize() const
     return Bytes;
 }
 
-void APathLinkRoutingCache::AnalyzeNavigation()
+void UPathLinkRoutingCacheData::AnalyzeNavigation()
 {
 #if WITH_EDITOR
     UWorld* World = GetWorld();
@@ -193,7 +185,7 @@ void APathLinkRoutingCache::AnalyzeNavigation()
 #endif
 }
 
-void APathLinkRoutingCache::ClearRoutingCache()
+void UPathLinkRoutingCacheData::ClearRoutingCache()
 {
 #if WITH_EDITOR
     if (!GetWorld() || GetWorld()->IsGameWorld()) return;
@@ -204,7 +196,7 @@ void APathLinkRoutingCache::ClearRoutingCache()
 #endif
 }
 
-void APathLinkRoutingCache::BakeRoutingCache()
+void UPathLinkRoutingCacheData::BakeRoutingCache()
 {
 #if WITH_EDITOR
     UWorld* World = GetWorld();
@@ -310,7 +302,59 @@ void APathLinkRoutingCache::BakeRoutingCache()
     NavigationSignature = Snapshot.Signature; LinkSignature = ComputeLinkSignature(World);
     bHasNativeOffMeshLinks = Snapshot.bHasNativeOffMeshLinks;
     DataVersion = PathLinkBake::Version;
-    Diagnostic = FString::Printf(TEXT("Bake complete. Polygons=%d Islands=%d Traversals=%d Persistent=%.3fMiB. Save this actor/map to cook the cache."),
+    Diagnostic = FString::Printf(TEXT("Bake complete. Polygons=%d Islands=%d Traversals=%d Persistent=%.3fMiB. Save the map to cook the cache."),
         Polygons.Num(), Islands.Num(), Traversals.Num(), double(GetCacheAllocatedSize()) / (1024*1024));
 #endif
 }
+
+APathLinkRoutingCache::APathLinkRoutingCache()
+{
+    PrimaryActorTick.bCanEverTick = false;
+    bReplicates = false;
+#if WITH_EDITOR
+    bIsSpatiallyLoaded = false;
+#endif
+}
+
+
+UWorld* UPathLinkRoutingCacheData::GetWorld() const
+{
+    return GetOuter() ? GetOuter()->GetWorld() : nullptr;
+}
+
+UPathLinkCacheStorageComponent::UPathLinkCacheStorageComponent()
+{
+    PrimaryComponentTick.bCanEverTick = false;
+    Cache = CreateDefaultSubobject<UPathLinkRoutingCacheData>(TEXT("RoutingData"));
+}
+
+// Retain the old actor's reflected properties so existing maps migrate without losing their bake.
+static void CopyRoutingProperties(const UObject* Source, UObject* Target)
+{
+    for (TFieldIterator<FProperty> It(UPathLinkRoutingCacheData::StaticClass()); It; ++It)
+    {
+        FProperty* Destination = Target->GetClass()->FindPropertyByName(It->GetFName());
+        FProperty* Origin = Source->GetClass()->FindPropertyByName(It->GetFName());
+        if (Destination && Origin && Destination->SameType(Origin))
+            Destination->CopyCompleteValue(Destination->ContainerPtrToValuePtr<void>(Target),
+                Origin->ContainerPtrToValuePtr<void>(Source));
+    }
+}
+void APathLinkRoutingCache::CopyToData(UPathLinkRoutingCacheData* Data) const { CopyRoutingProperties(this, Data); }
+static UPathLinkRoutingCacheData* LegacyData(const APathLinkRoutingCache* Actor)
+{
+    auto* Data = NewObject<UPathLinkRoutingCacheData>(const_cast<APathLinkRoutingCache*>(Actor));
+    Actor->CopyToData(Data);
+    return Data;
+}
+void APathLinkRoutingCache::AnalyzeNavigation() { auto* Data = LegacyData(this); Data->AnalyzeNavigation(); CopyRoutingProperties(Data, this); }
+void APathLinkRoutingCache::BakeRoutingCache() { auto* Data = LegacyData(this); Data->BakeRoutingCache(); CopyRoutingProperties(Data, this); }
+void APathLinkRoutingCache::ClearRoutingCache() { auto* Data = LegacyData(this); Data->ClearRoutingCache(); CopyRoutingProperties(Data, this); }
+bool APathLinkRoutingCache::IsBaked() const { return LegacyData(this)->IsBaked(); }
+double APathLinkRoutingCache::EstimateNormalDistance(int32 A, const FVector& From, int32 B, const FVector& To) const
+{ return LegacyData(this)->EstimateNormalDistance(A, From, B, To); }
+bool APathLinkRoutingCache::EstimateRoute(int32 A, const FVector& From, int32 B, const FVector& To, double& Out) const
+{ return LegacyData(this)->EstimateRoute(A, From, B, To, Out); }
+void APathLinkRoutingCache::ExportStaticGraph(FPathLinkStaticGraph& Out) const { LegacyData(this)->ExportStaticGraph(Out); }
+SIZE_T APathLinkRoutingCache::GetCacheAllocatedSize() const { return LegacyData(this)->GetCacheAllocatedSize(); }
+FString APathLinkRoutingCache::ComputeLinkSignature(UWorld* World) { return UPathLinkRoutingCacheData::ComputeLinkSignature(World); }

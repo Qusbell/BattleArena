@@ -15,7 +15,7 @@ bool FPathLinkRoutingCacheTest::RunTest(const FString& Parameters)
         .CreateNavigation(false).CreateAISystem(false).ShouldSimulatePhysics(false).SetTransactional(false);
     UWorld* World = UWorld::CreateWorld(EWorldType::Game, false, NAME_None, nullptr, true, ERHIFeatureLevel::Num, &Values);
     if (!TestNotNull(TEXT("World"), World)) return false;
-    APathLinkRoutingCache* Cache = World->SpawnActor<APathLinkRoutingCache>();
+    UPathLinkRoutingCacheData* Cache = NewObject<UPathLinkRoutingCacheData>(World);
     auto SetPolys = [&](const TArray<FVector>& Centers, const TArray<int32>& IslandIDs)
     {
         Cache->Polygons.Reset(); Cache->Islands.Reset();
@@ -84,10 +84,21 @@ bool FPathLinkRoutingCacheTest::RunTest(const FString& Parameters)
     TestFalse(TEXT("Negative transition sentinel exports as unreachable"), Graph.Transitions[0].Reachable);
     TArray<uint8> Bytes;
     FObjectWriter Writer(Cache, Bytes);
-    APathLinkRoutingCache* Restored = World->SpawnActor<APathLinkRoutingCache>();
+    UPathLinkRoutingCacheData* Restored = NewObject<UPathLinkRoutingCacheData>(World);
     FObjectReader Reader(Restored, Bytes);
     TestTrue(TEXT("Cache properties survive serialization"), Restored->IsBaked());
     TestEqual(TEXT("Float32 matrix survives serialization"), Restored->Islands[0].Distances[1], 1000.0f);
+    auto* Legacy = World->SpawnActor<APathLinkRoutingCache>();
+    Legacy->DataVersion = 1; Legacy->NavigationSignature = TEXT("LegacySignature");
+    Legacy->Polygons = Cache->Polygons; Legacy->Islands = Cache->Islands;
+    Legacy->Traversals = Cache->Traversals; Legacy->TransitionDistances = Cache->TransitionDistances;
+    auto* Migrated = NewObject<UPathLinkRoutingCacheData>(World);
+    Legacy->CopyToData(Migrated);
+    TestTrue(TEXT("Legacy actor migrates a complete bake"), Migrated->IsBaked());
+    TestEqual(TEXT("Migration preserves float32 distances"), Migrated->Islands[0].Distances[1], 1000.0f);
+    auto* Storage = NewObject<UPathLinkCacheStorageComponent>(World);
+    TestNotNull(TEXT("Managed storage creates its payload without a placed actor"), Storage->Cache.Get());
+    TestEqual(TEXT("Payload resolves world through its outer"), Cache->GetWorld(), World);
     Restored->DataVersion = 0;
     TestFalse(TEXT("Invalid bake rejected"), Restored->IsBaked());
     World->DestroyWorld(false);

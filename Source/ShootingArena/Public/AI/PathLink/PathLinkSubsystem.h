@@ -8,7 +8,7 @@
 
 class AActor;
 class APathLink;
-class APathLinkRoutingCache;
+class UPathLinkRoutingCacheData;
 class ANavigationData;
 class ARecastNavMesh;
 
@@ -156,10 +156,14 @@ public:
     /** Editor bake/clear notification; discards validated references and graph imports. */
     void NotifyRoutingCacheChanged() { InvalidateRouteGraphCache(); }
 
+    const UPathLinkRoutingCacheData* GetValidatedRoutingCache() const;
+#if WITH_EDITOR
+    bool PrepareRoutingCacheForEditor(bool bForceRebuild = false);
+#endif
 private:
+    UPROPERTY(Transient) TObjectPtr<UPathLinkRoutingCacheData> LegacyRoutingData;
     UFUNCTION() void OnNavigationGenerationFinished(ANavigationData* Data);
     void OnNavMeshUpdated();
-    const APathLinkRoutingCache* GetValidatedRoutingCache() const;
     bool CalculateRoute(const FVector& Start, const FVector& Target, FPathLinkRouteResult& Out,
         AActor* Context, bool bBuildSegments) const;
     void RecordRouteStats() const;
@@ -223,7 +227,7 @@ private:
     mutable TOptional<bool> bDefaultGraphOwnerIndependent;
     mutable int64 StaticNavQueryCounter = 0;
     mutable bool bBakeValidationPending = true;
-    mutable TWeakObjectPtr<APathLinkRoutingCache> ValidatedRoutingCache;
+    mutable TWeakObjectPtr<UPathLinkRoutingCacheData> ValidatedRoutingCache;
     mutable TMap<NavNodeRef, int32> BakedPolyIndexByRef;
     mutable FSharedConstNavQueryFilter BakedGroundFilter;
     mutable TArray<FPathLinkPlacementState> ValidatedLinkPlacements;

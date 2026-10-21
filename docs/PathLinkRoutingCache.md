@@ -23,15 +23,51 @@ policy; it does not claim that the existing bounded search is an unrestricted gl
 
 ## Editor analysis and bake
 
-1. Fully load the gameplay level, its navigation tiles and PathLinks; build Navigation and wait for completion.
-2. Place one native **PathLinkRoutingCache** actor in the world. It is non-spatial in World Partition.
-3. Choose the Recast NavigationData, or let **Analyze Navigation** select the default.
-4. Inspect Details and Output Log: ordinary traversable ground polygons, connected islands, per-island
-   counts, largest island, float32 directed-table MiB, and sampled bake-time estimate.
-5. **Bake Routing Cache** enforces memory/time budgets (128MiB / 120 seconds by default), supports
-   cancellation, records actual time, and refuses oversized N² arrays before allocating them.
-6. Save the cache actor/map. These are regular serialized UPROPERTY fields, not editor-only data.
-   Cook the map normally. No external Saved-directory file is required at runtime.
+For a read-only count of the currently open editor map, enter `PathLink.NavStats` in the
+editor Output Log's **Cmd** console. Use `PathLink.NavStats details` for per-island counts.
+No cache actor or bake is required; this reads the currently loaded NavMesh, reports each
+Recast NavData separately, and does not dirty the map or change saved cache data. Counts
+include default-filter-traversable ground polygons and exclude off-mesh links. For World
+Partition/streamed levels, load all intended navigation tiles before treating this as a full-map count.
+
+`PathLink.NavLargePolys 10` ranks polygons by their 3D vertex-to-vertex diameter, printing center,
+bounds (cm), center-to-vertex radius, area (m²), and diameter percentiles. Add `draw` to outline
+those polygons in alternating yellow/cyan for 180 seconds: `PathLink.NavLargePolys 10 draw`.
+`PathLink.NavPolyAt x y z` inspects the polygon projected from a world coordinate (cm). Supply a
+second XYZ triple to compare exact normal NavMesh distance with the baked normal estimate.
+These diagnostics read current navigation; polygon indices/refs are only valid for that navigation state.
+
+`PathLink.NavDrawPolys` draws **every** loaded traversable ground polygon's outline and representative
+center until `PathLink.NavClearPolys` is run. An optional positive duration, e.g. `PathLink.NavDrawPolys 180`,
+expires using editor wall-clock time rather than editor-world simulation ticks. Clear removes both
+outlines and center points from this diagnostic batch. The largest-polygon drawing uses that same
+batch and a wall-clock 180-second timeout. Each drawing command replaces the previous NavPoly
+overlay; repeated calls do not accumulate geometry. Other systems' debug batches are retained.
+
+1. Fully load the gameplay level, navigation tiles and PathLinks. Build Navigation normally.
+2. Play/Simulate, or save the map. `UPathLinkCacheEditorSubsystem` automatically asks the world
+   `UPathLinkSubsystem` to validate the NavMesh and PathLink signatures before world duplication/save.
+3. On a cache hit, reuse the tables. On a miss, invalidate them first and automatically bake the current
+   default Recast NavData. A pending Recast build is completed before checking.
+4. The subsystem creates a native storage component on the existing WorldSettings automatically.
+   No routing actor needs to be placed. Its instanced UObject payload is serialized/cooked with the map.
+   A single legacy routing actor is migrated once; an invalid managed cache never falls back to it.
+5. Save the map after Play if the automatic bake dirtied it. Map-save also checks/bakes automatically;
+   it does not silently save unrelated changes. Cook uses the saved data, with no runtime bake.
+6. Memory/time budgets remain 128MiB / 120 seconds by default. Oversized or cancelled bakes remain
+   invalid, log their diagnostic and allow exact routing to continue; approximate scoring returns false.
+   No all-pairs generation happens during game execution. Runtime mismatches block the old bake.
+
+For an explicit forced rebuild, stop PIE/Simulate and enter `PathLink.BuildRoutingCache` in the
+editor Output Log's Cmd console. It clears the managed bake and regenerates it from the current
+NavMesh and PathLinks using the same budgets/validation as automatic preparation. Save the map
+afterward. This command builds the routing cache; use Unreal's normal Build Navigation for terrain
+changes that have not yet been reflected in NavMesh. A failed/cancelled forced build stays invalid.
+
+The old actor class remains only for serialized-map compatibility. Runtime managed-cache queries
+use the UObject directly. Editor hooks do not run in cook commandlets. A never-saved/new or changed
+map must be saved normally before packaging. Load the intended full level before checking streamed
+maps; runtime validation refuses signatures from a different loaded navigation/link set.
 
 Islands are weak connected components of ordinary, default-filter-traversable Recast polygons.
 Cross-tile polygon adjacency is included. Native off-mesh links are excluded, as are project
@@ -75,6 +111,11 @@ surface detail, float32 rounding, weighted corridor choice and the existing deta
 can produce differences from a detailed route. Close points on opposite polygon edges can have large
 relative errors. This is neither an exact metric at arbitrary coordinates nor a certified error bound.
 Projection uses the existing 150×150×400cm extent, so an off-mesh item can project to nearby ground.
+
+The representative-center formula does **not** connect every intermediate polygon center.
+`BakedLength(A,B)` is a regular engine-generated NavMesh path from CenterA to CenterB, including
+its normal corridor/string-pulling behavior. Only the first and last polygon centers are forced
+anchors. On a flat unobstructed surface, that middle path can be a straight line across many polygons.
 
 False means unavailable, unsupported Context/filter, projection failure, or no complete estimated
 route. It never silently invokes expensive pathfinding. `GetRoutingCacheStatus` diagnoses cache and
@@ -124,3 +165,18 @@ and unreachable targets, parallel links, explicit reverse, multiple hops, telepo
 coordinates, same-island shortcuts and property serialization. The live-map regression complements
 these synthetic fixtures. Representative gameplay with the intended AI/target count is still needed
 for a production maximum-frame/spike comparison.
+
+## Automatic lifecycle verification (2026-10-21)
+
+Editor and Win64 Development game builds passed. `ShootingArena.PathLink.BakedRouting` passed,
+including UObject serialization and migration from the legacy actor. On PortalMap, first PIE migrated
+910 polygons / 210 islands without another bake. Clearing the managed cache then starting PIE
+triggered an automatic 0.640-second bake. Moving a runtime PathLink invalidated the estimate
+immediately. The 42 baseline detailed routes remained identical (`Saved/PathLinkBench/managed.json`);
+41 estimates succeeded with zero synchronous path searches and unchanged approximation errors.
+
+The legacy actor was removed from PortalMap after migration. Saving/reloading retained the managed
+component and tables without an actor. Navigation changed on reload in this map's dynamic navigation
+configuration: cold validation correctly rejected that signature, and the next PIE automatically baked
+again in 0.609 seconds. The PIE authority validated the actor-free cache. The final map was saved.
+A cooked-package execution has not been performed; the non-editor game target compiles successfully.

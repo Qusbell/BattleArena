@@ -7,6 +7,7 @@
 #include "AI/PathLink/PathLinkRoutingCache.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
+#include "GameFramework/WorldSettings.h"
 #include "NavigationPath.h"
 #include "NavigationSystem.h"
 #include "DrawDebugHelpers.h"
@@ -72,7 +73,7 @@ void UPathLinkSubsystem::OnNavMeshUpdated()
     OnNavigationGenerationFinished(nullptr);
 }
 
-const APathLinkRoutingCache* UPathLinkSubsystem::GetValidatedRoutingCache() const
+const UPathLinkRoutingCacheData* UPathLinkSubsystem::GetValidatedRoutingCache() const
 {
     TRACE_CPUPROFILER_EVENT_SCOPE(PathLink_ValidateBake);
     UWorld* World = GetWorld();
@@ -83,11 +84,20 @@ const APathLinkRoutingCache* UPathLinkSubsystem::GetValidatedRoutingCache() cons
         { RoutingCacheStatus = TEXT("Navigation is building/locked."); return nullptr; }
         bBakeValidationPending = false;
         ValidatedRoutingCache.Reset(); BakedPolyIndexByRef.Reset(); ValidatedLinkPlacements.Reset();
-        APathLinkRoutingCache* Bake = nullptr;
-        for (TActorIterator<APathLinkRoutingCache> It(World); It; ++It)
+        UPathLinkRoutingCacheData* Bake = nullptr;
+        const auto* Settings = World->GetWorldSettings();
+        const auto* Storage = Settings ? Settings->FindComponentByClass<UPathLinkCacheStorageComponent>() : nullptr;
+        if (Storage) Bake = Storage->Cache;
+        else // Never fall back over invalid managed data.
         {
-            if (Bake) { RoutingCacheStatus = TEXT("More than one routing cache actor; select one cache per world."); return nullptr; }
-            Bake = *It;
+            auto* Self = const_cast<UPathLinkSubsystem*>(this);
+            for (TActorIterator<APathLinkRoutingCache> It(World); It; ++It)
+            {
+                if (Bake) { RoutingCacheStatus = TEXT("Multiple legacy routing caches."); return nullptr; }
+                Self->LegacyRoutingData = NewObject<UPathLinkRoutingCacheData>(Self);
+                It->CopyToData(Self->LegacyRoutingData);
+                Bake = Self->LegacyRoutingData;
+            }
         }
         if (!Bake || !Bake->IsBaked()) { RoutingCacheStatus = TEXT("No complete baked routing cache."); return nullptr; }
         if (Bake->NavigationData && !ObservedNavMeshes.Contains(Bake->NavigationData.Get()))
@@ -99,7 +109,7 @@ const APathLinkRoutingCache* UPathLinkSubsystem::GetValidatedRoutingCache() cons
         if (!PathLinkBake::ReadNavigation(Bake->NavigationData, Snapshot, RoutingCacheStatus)) return nullptr;
         if (Snapshot.Signature != Bake->NavigationSignature || Snapshot.Refs.Num() != Bake->Polygons.Num())
         { RoutingCacheStatus = TEXT("NavMesh signature mismatch; rebake the level."); return nullptr; }
-        if (Bake->LinkSignature != APathLinkRoutingCache::ComputeLinkSignature(World))
+        if (Bake->LinkSignature != UPathLinkRoutingCacheData::ComputeLinkSignature(World))
         { RoutingCacheStatus = TEXT("PathLink placement signature mismatch; rebake the level."); return nullptr; }
         for (const auto& T : Bake->Traversals)
             if (!IsValid(T.Link) || !Bake->Polygons.IsValidIndex(T.EntryPoly) || !Bake->Polygons.IsValidIndex(T.ExitPoly))
@@ -138,7 +148,7 @@ bool UPathLinkSubsystem::GetEstimatedRouteDistance(const FVector& StartLocation,
     const double Begin = FPlatformTime::Seconds();
     ON_SCOPE_EXIT { LastEstimateStats.TotalMilliseconds = (FPlatformTime::Seconds() - Begin) * 1000.0; };
     if (StartLocation.ContainsNaN() || TargetLocation.ContainsNaN()) return false;
-    const APathLinkRoutingCache* Bake = GetValidatedRoutingCache();
+    const UPathLinkRoutingCacheData* Bake = GetValidatedRoutingCache();
     if (!Bake || !Bake->NavigationData) return false;
     ARecastNavMesh* Nav = Bake->NavigationData;
     if (PathLinkNavigation::ResolveNavData(GetWorld(), PathfindingContext, StartLocation) != Nav
@@ -914,7 +924,7 @@ bool UPathLinkSubsystem::EnsureRouteGraphCache(
         {
             FPathLinkStaticGraph NewGraph;
             const TArray<APathLink*> RouteLinks = GetCachedRouteLinks();
-            const APathLinkRoutingCache* Bake = GetValidatedRoutingCache();
+            const UPathLinkRoutingCacheData* Bake = GetValidatedRoutingCache();
             UNavigationSystemV1* Nav = UNavigationSystemV1::GetCurrent(World);
             const bool bImport = Bake && !Bake->bHasNativeOffMeshLinks && bDefaultGraphOwnerIndependent.GetValue()
                 && Nav && Bake->NavigationData == Nav->GetDefaultNavDataInstance(FNavigationSystem::DontCreate);
@@ -1079,3 +1089,62 @@ void UPathLinkSubsystem::UnregisterLink(APathLink* Link)
         InvalidateRouteGraphCache();
     }
 }
+
+#if WITH_EDITOR
+bool UPathLinkSubsystem::PrepareRoutingCacheForEditor(bool bForceRebuild)
+{
+    UWorld* World = GetWorld();
+    if (!World || World->WorldType != EWorldType::Editor) return false;
+    auto* NavSystem = UNavigationSystemV1::GetCurrent(World);
+    auto* Nav = NavSystem ? Cast<ARecastNavMesh>(NavSystem->GetDefaultNavDataInstance(FNavigationSystem::DontCreate)) : nullptr;
+    AWorldSettings* Settings = World->GetWorldSettings();
+    if (!Settings) return false;
+    auto* Storage = Settings->FindComponentByClass<UPathLinkCacheStorageComponent>();
+    if (!Nav)
+    {
+        if (Storage && Storage->Cache) Storage->Cache->ClearRoutingCache();
+        RoutingCacheStatus = TEXT("No default Recast NavMesh; baked routing unavailable.");
+        return false;
+    }
+    Nav->EnsureBuildCompletion();
+    if (!Storage)
+    {
+        Settings->Modify();
+        Storage = NewObject<UPathLinkCacheStorageComponent>(Settings, NAME_None, RF_Transactional);
+        Settings->AddInstanceComponent(Storage);
+        Storage->RegisterComponent();
+        Settings->MarkPackageDirty();
+        APathLinkRoutingCache* Legacy = nullptr;
+        int32 Count = 0;
+        for (TActorIterator<APathLinkRoutingCache> It(World); It; ++It) { Legacy = *It; ++Count; }
+        if (Count == 1) Legacy->CopyToData(Storage->Cache);
+    }
+    UPathLinkRoutingCacheData* Data = Storage->Cache;
+    if (!Data) { Storage->Modify(); Data = Storage->Cache = NewObject<UPathLinkRoutingCacheData>(Storage, NAME_None, RF_Transactional); }
+    FPathLinkNavSnapshot Snapshot;
+    FString Error;
+    bool bReferencesValid = true;
+    for (const auto& T : Data->Traversals)
+        bReferencesValid &= IsValid(T.Link) && T.Link->GetWorld() == World
+            && Data->Polygons.IsValidIndex(T.EntryPoly) && Data->Polygons.IsValidIndex(T.ExitPoly);
+    const bool bCurrent = !bForceRebuild && bReferencesValid && Data->IsBaked() && Data->NavigationData == Nav
+        && !UNavigationSystemV1::IsNavigationBeingBuiltOrLocked(World)
+        && PathLinkBake::ReadNavigation(Nav, Snapshot, Error)
+        && Snapshot.Signature == Data->NavigationSignature
+        && Snapshot.Refs.Num() == Data->Polygons.Num()
+        && UPathLinkRoutingCacheData::ComputeLinkSignature(World) == Data->LinkSignature;
+    if (!bCurrent)
+    {
+        Data->Modify(); Data->DataVersion = 0;
+        Data->NavigationData = Nav;
+        NotifyRoutingCacheChanged();
+        UE_LOG(LogPathLinkSubsystem, Display, TEXT("Routing cache build requested (missing, changed or forced): %s."), *World->GetName());
+        Data->BakeRoutingCache();
+        Settings->MarkPackageDirty();
+    }
+    NotifyRoutingCacheChanged();
+    RoutingCacheStatus = Data->IsBaked() ? TEXT("Managed routing cache ready.") : Data->Diagnostic;
+    UE_LOG(LogPathLinkSubsystem, Display, TEXT("%s"), *RoutingCacheStatus);
+    return Data->IsBaked();
+}
+#endif
