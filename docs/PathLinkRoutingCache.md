@@ -106,6 +106,21 @@ For two different polygons the normal estimate is:
 
 `distance(Start, CenterA) + BakedLength(A,B) + distance(CenterB, Target)`
 
+The runtime estimate now blends this representative estimate with endpoint straight distance:
+
+`w = clamp(Strength,0,1) * clamp(1 - BakedLength(A,B)/RangeCm,0,1)`
+
+`Corrected = (1-w)*RepresentativeEstimate + w*distance(Start,Target)`
+
+The weight uses the directed baked **polygon-center path length**, not the dynamic endpoint straight
+distance. Default controls are `PathLink.EstimateBlendStrength 1` and
+`PathLink.EstimateBlendRangeCm 2000` (20m). Strength 0 restores the previous estimator. Nonpositive
+range or nonfinite settings disable blending. Unreachable entries are rejected before blending.
+Only approximate endpoint-to-endpoint/Link endpoint walking estimates change: exact link traversal
+costs, exact baked Link-to-Link transitions, detailed routes and `TotalDistance` remain unchanged.
+This can underestimate obstacle detours; it is a scoring heuristic, not a path or distance bound.
+No rebake is needed when adjusting these controls.
+
 For the same convex polygon it uses the projected endpoints' straight distance. Center detours,
 surface detail, float32 rounding, weighted corridor choice and the existing detailed candidate policy
 can produce differences from a detailed route. Close points on opposite polygon edges can have large
@@ -180,3 +195,9 @@ component and tables without an actor. Navigation changed on reload in this map'
 configuration: cold validation correctly rejected that signature, and the next PIE automatically baked
 again in 0.609 seconds. The PIE authority validated the actor-free cache. The final map was saved.
 A cooked-package execution has not been performed; the non-editor game target compiles successfully.
+
+For repeatable tuning, run `PathLink.BenchmarkEstimateBlend` with PIE stopped. It writes 200
+seeded pairs across 13 settings to `Saved/PathLinkBench/Blend200.csv`, checks detailed route output
+invariance, restores the previous controls, and leaves map saving to the normal workflow.
+Run `python Scripts/AnalyzePathLinkBlend.py` to generate error summaries. See
+`docs/PathLinkBlendResults.md` for the measured PortalMap results and sampling limitations.

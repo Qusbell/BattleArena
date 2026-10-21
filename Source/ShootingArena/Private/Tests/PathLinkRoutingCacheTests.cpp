@@ -3,6 +3,8 @@
 #include "AI/PathLink/PathLink.h"
 #include "Engine/World.h"
 #include "Misc/AutomationTest.h"
+#include "HAL/IConsoleManager.h"
+#include "Misc/ScopeExit.h"
 #include "Serialization/ObjectWriter.h"
 #include "Serialization/ObjectReader.h"
 
@@ -11,6 +13,11 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPathLinkRoutingCacheTest, "ShootingArena.PathL
 
 bool FPathLinkRoutingCacheTest::RunTest(const FString& Parameters)
 {
+    IConsoleVariable* Strength = IConsoleManager::Get().FindConsoleVariable(TEXT("PathLink.EstimateBlendStrength"));
+    IConsoleVariable* Range = IConsoleManager::Get().FindConsoleVariable(TEXT("PathLink.EstimateBlendRangeCm"));
+    const float OldStrength = Strength->GetFloat(), OldRange = Range->GetFloat();
+    ON_SCOPE_EXIT { Strength->SetWithCurrentPriority(OldStrength); Range->SetWithCurrentPriority(OldRange); };
+    Strength->SetWithCurrentPriority(0.0f);
     const auto Values = UWorld::InitializationValues().AllowAudioPlayback(false).CreatePhysicsScene(false)
         .CreateNavigation(false).CreateAISystem(false).ShouldSimulatePhysics(false).SetTransactional(false);
     UWorld* World = UWorld::CreateWorld(EWorldType::Game, false, NAME_None, nullptr, true, ERHIFeatureLevel::Num, &Values);
@@ -101,6 +108,20 @@ bool FPathLinkRoutingCacheTest::RunTest(const FString& Parameters)
     TestEqual(TEXT("Payload resolves world through its outer"), Cache->GetWorld(), World);
     Restored->DataVersion = 0;
     TestFalse(TEXT("Invalid bake rejected"), Restored->IsBaked());
+    Cache->Traversals.Reset();
+    SetPolys({FVector(0,0,0), FVector(100,0,0)}, {0,0});
+    Cache->Islands[0].Distances = {0, 200, -1, 0};
+    Strength->SetWithCurrentPriority(1.0f); Range->SetWithCurrentPriority(400.0f);
+    TestEqual(TEXT("Blend uses baked polygon distance: weight=0.5"),
+        Cache->EstimateNormalDistance(0, FVector::ZeroVector, 1, FVector(100,0,0)), 150.0);
+    TestEqual(TEXT("Blend preserves directed unreachable sentinel"),
+        Cache->EstimateNormalDistance(1, FVector(100,0,0), 0, FVector::ZeroVector), -1.0);
+    Range->SetWithCurrentPriority(100.0f);
+    TestEqual(TEXT("Beyond blend range is unchanged"),
+        Cache->EstimateNormalDistance(0, FVector::ZeroVector, 1, FVector(100,0,0)), 200.0);
+    Range->SetWithCurrentPriority(0.0f);
+    TestEqual(TEXT("Zero range disables blend without division by zero"),
+        Cache->EstimateNormalDistance(0, FVector::ZeroVector, 1, FVector(100,0,0)), 200.0);
     World->DestroyWorld(false);
     return true;
 }

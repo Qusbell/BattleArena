@@ -10,6 +10,7 @@
 #include "NavMesh/RecastNavMesh.h"
 #include "NavigationSystem.h"
 #include "Misc/Crc.h"
+#include "HAL/IConsoleManager.h"
 #include "Misc/SecureHash.h"
 #include "Misc/ScopeExit.h"
 #if WITH_EDITOR
@@ -17,6 +18,12 @@
 #endif
 
 DEFINE_LOG_CATEGORY_STATIC(LogPathLinkBake, Log, All);
+
+static TAutoConsoleVariable<float> CVarPathLinkBlendStrength(TEXT("PathLink.EstimateBlendStrength"), 1.0f,
+    TEXT("Straight-distance blend strength [0,1], for approximate normal movement only. 0 restores center estimates."));
+static TAutoConsoleVariable<float> CVarPathLinkBlendRange(TEXT("PathLink.EstimateBlendRangeCm"), 2000.0f,
+    TEXT("Center-to-center baked path distance at which straight-distance blending reaches zero, in cm."));
+
 
 FString UPathLinkRoutingCacheData::ComputeLinkSignature(UWorld* World)
 {
@@ -61,7 +68,13 @@ double UPathLinkRoutingCacheData::EstimateNormalDistance(int32 FromPoly, const F
     const int64 Index = int64(A.LocalIndex) * Island.PolygonCount + B.LocalIndex;
     if (!Island.Distances.IsValidIndex(Index) || Island.Distances[Index] < 0) return -1;
     // Representative-center detour, in cm. This is deliberately an estimate, not TotalDistance's exact path.
-    return FVector::Distance(From, A.Center) + Island.Distances[Index] + FVector::Distance(B.Center, To);
+    const double Estimate = FVector::Distance(From, A.Center) + Island.Distances[Index] + FVector::Distance(B.Center, To);
+    const double Strength = CVarPathLinkBlendStrength.GetValueOnGameThread();
+    const double Range = CVarPathLinkBlendRange.GetValueOnGameThread();
+    if (!FMath::IsFinite(Strength) || !FMath::IsFinite(Range) || Strength <= 0 || Range <= 0) return Estimate;
+    // Gate by the baked P1->P2 distance, NOT the dynamic A->B straight distance.
+    const double Weight = FMath::Clamp(Strength, 0.0, 1.0) * FMath::Clamp(1.0 - Island.Distances[Index] / Range, 0.0, 1.0);
+    return FMath::Lerp(Estimate, FVector::Distance(From, To), Weight);
 }
 
 bool UPathLinkRoutingCacheData::EstimateRoute(int32 StartPoly, const FVector& Start,
