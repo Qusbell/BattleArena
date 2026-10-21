@@ -5,6 +5,30 @@
 
 class APathLink;
 
+struct FPathLinkPlacementState
+{
+    TWeakObjectPtr<APathLink> Link;
+    FVector Entry;
+    FVector Exit;
+    bool bEnabled = false;
+    bool bTwoWay = false;
+    bool bHasExit = false;
+    uint8 Type = 0;
+};
+
+/** Last request counters. Timings include unsuccessful requests; Nav queries exclude projection. */
+USTRUCT(BlueprintType)
+struct SHOOTINGARENA_API FPathLinkQueryStats
+{
+    GENERATED_BODY()
+    UPROPERTY(BlueprintReadOnly, Category = "AI|PathLink|Performance") double TotalMilliseconds = 0;
+    UPROPERTY(BlueprintReadOnly, Category = "AI|PathLink|Performance") double CandidateMilliseconds = 0;
+    UPROPERTY(BlueprintReadOnly, Category = "AI|PathLink|Performance") double DijkstraMilliseconds = 0;
+    UPROPERTY(BlueprintReadOnly, Category = "AI|PathLink|Performance") double PathPointsMilliseconds = 0;
+    UPROPERTY(BlueprintReadOnly, Category = "AI|PathLink|Performance") int32 SynchronousNavQueries = 0;
+    UPROPERTY(BlueprintReadOnly, Category = "AI|PathLink|Performance") int32 SolveCount = 0;
+};
+
 /**
  * PathLink가 표현하는 특수 이동 종류입니다.
  * 색상은 APathLink 내부에서 타입별로 고정되며 Blueprint에서 변경할 수 없습니다.

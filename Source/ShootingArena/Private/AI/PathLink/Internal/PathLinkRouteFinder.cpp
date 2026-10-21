@@ -2,17 +2,40 @@
 
 #include "AI/PathLink/PathLink.h"
 #include "AI/PathLink/PathLinkSettings.h"
+#include "AI/PathLink/Internal/PathLinkNavigation.h"
 #include "Algo/Reverse.h"
 #include "CollisionQueryParams.h"
 #include "Engine/World.h"
 #include "HAL/PlatformTime.h"
 #include "NavigationPath.h"
 #include "NavigationSystem.h"
+#include "Misc/ScopeExit.h"
+#include "ProfilingDebugging/CpuProfilerTrace.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogPathLinkRouteFinder, Log, All);
 
 namespace
 {
+    struct FRequestPath
+    {
+        FVector From;
+        FVector To;
+        FNavPathSharedPtr Path;
+    };
+
+    using FRequestPaths = TArray<FRequestPath>;
+
+    FNavPathSharedPtr QueryPath(UWorld* World, const FVector& From, const FVector& To,
+        AActor* Context, int32* Count, FRequestPaths* Cache)
+    {
+        if (Cache)
+            for (const FRequestPath& Entry : *Cache)
+                if (Entry.From == From && Entry.To == To) return Entry.Path;
+        if (Count) ++*Count;
+        FNavPathSharedPtr Path = PathLinkNavigation::FindPath(World, From, To, Context);
+        if (Cache) Cache->Add({From, To, Path});
+        return Path;
+    }
     const FVector NavProjectionExtent(150.0, 150.0, 400.0);
 
     enum class EDynamicRouteEdgeType : uint8
@@ -37,6 +60,7 @@ namespace
 
         /** EnterTraversal일 때 새로 진입하는 Traversal Index입니다. */
         int32 TraversalIndex = INDEX_NONE;
+        bool bEnabled = true;
     };
 
     bool ProjectToNavigation(
@@ -76,7 +100,8 @@ namespace
         const FVector& ToNavLocation,
         AActor* PathfindingContext,
         double& OutDistance,
-        int32* InOutNavQueryCount = nullptr)
+        int32* InOutNavQueryCount = nullptr,
+        FRequestPaths* Cache = nullptr)
     {
         OutDistance = 0.0;
 
@@ -85,24 +110,14 @@ namespace
             return true;
         }
 
-        if (InOutNavQueryCount)
-        {
-            ++(*InOutNavQueryCount);
-        }
-
-        UNavigationPath* Path = UNavigationSystemV1::FindPathToLocationSynchronously(
-            World,
-            FromNavLocation,
-            ToNavLocation,
-            PathfindingContext,
-            nullptr);
-
-        if (!IsValid(Path) || !Path->IsValid() || Path->IsPartial())
+        const FNavPathSharedPtr Path = QueryPath(World, FromNavLocation, ToNavLocation,
+            PathfindingContext, InOutNavQueryCount, Cache);
+        if (!Path)
         {
             return false;
         }
 
-        OutDistance = Path->GetPathLength();
+        OutDistance = Path->GetLength();
         return true;
     }
 
@@ -114,7 +129,8 @@ namespace
         AActor* PathfindingContext,
         double& OutDistance,
         TArray<FVector>& OutPathPoints,
-        int32* InOutNavQueryCount = nullptr)
+        int32* InOutNavQueryCount = nullptr,
+        FRequestPaths* Cache = nullptr)
     {
         OutDistance = 0.0;
         OutPathPoints.Reset();
@@ -126,25 +142,16 @@ namespace
             return true;
         }
 
-        if (InOutNavQueryCount)
-        {
-            ++(*InOutNavQueryCount);
-        }
-
-        UNavigationPath* Path = UNavigationSystemV1::FindPathToLocationSynchronously(
-            World,
-            FromNavLocation,
-            ToNavLocation,
-            PathfindingContext,
-            nullptr);
-
-        if (!IsValid(Path) || !Path->IsValid() || Path->IsPartial())
+        const FNavPathSharedPtr Path = QueryPath(World, FromNavLocation, ToNavLocation,
+            PathfindingContext, InOutNavQueryCount, Cache);
+        if (!Path)
         {
             return false;
         }
 
-        OutDistance = Path->GetPathLength();
-        OutPathPoints = Path->PathPoints;
+        OutDistance = Path->GetLength();
+        OutPathPoints.Reserve(Path->GetPathPoints().Num());
+        for (const FNavPathPoint& Point : Path->GetPathPoints()) OutPathPoints.Add(Point.Location);
         return true;
     }
 
@@ -171,7 +178,8 @@ namespace
 bool FPathLinkRouteFinder::BuildStaticGraph(
     const TArray<APathLink*>& Links,
     AActor* PathfindingContext,
-    FPathLinkStaticGraph& OutGraph) const
+    FPathLinkStaticGraph& OutGraph,
+    bool bComputeTransitions) const
 {
     OutGraph.Reset();
 
@@ -256,6 +264,7 @@ bool FPathLinkRouteFinder::BuildStaticGraph(
 
     const int32 TraversalCount = OutGraph.Traversals.Num();
     OutGraph.Transitions.SetNum(TraversalCount * TraversalCount);
+    if (!bComputeTransitions) return true;
 
     int32 NavQueryCount = 0;
 
@@ -320,8 +329,16 @@ bool FPathLinkRouteFinder::FindShortestRoute(
     const FVector& TargetLocation,
     const FPathLinkStaticGraph& StaticGraph,
     AActor* PathfindingContext,
-    FPathLinkRouteResult& OutResult) const
+    FPathLinkRouteResult& OutResult,
+    bool bBuildSegments,
+    FPathLinkQueryStats* OutStats) const
 {
+    TRACE_CPUPROFILER_EVENT_SCOPE(PathLink_DetailedRoute);
+    FPathLinkQueryStats Stats;
+    const double RequestStart = FPlatformTime::Seconds();
+    ON_SCOPE_EXIT { Stats.TotalMilliseconds = (FPlatformTime::Seconds() - RequestStart) * 1000.0;
+        if (OutStats) *OutStats = Stats; };
+    FRequestPaths RequestPaths;
     OutResult.Reset();
 
     if (!IsValid(World))
@@ -369,7 +386,7 @@ bool FPathLinkRouteFinder::FindShortestRoute(
     struct FEndpointCandidate
     {
         TWeakObjectPtr<APathLink> Link;
-        TArray<int32> TraversalIndices;
+        TArray<int32, TInlineAllocator<2>> TraversalIndices;
 
         /** Nearest N을 고를 때 사용하는 순수 직선거리입니다. */
         double BestStraightDistance = TNumericLimits<double>::Max();
@@ -454,6 +471,8 @@ bool FPathLinkRouteFinder::FindShortestRoute(
     {
         TArray<FEndpointCandidate> Candidates;
         TMap<APathLink*, int32> CandidateIndexByLink;
+        Candidates.Reserve(StaticGraph.Traversals.Num());
+        CandidateIndexByLink.Reserve(StaticGraph.Traversals.Num());
 
         for (int32 TraversalIndex = 0; TraversalIndex < StaticGraph.Traversals.Num(); ++TraversalIndex)
         {
@@ -502,6 +521,7 @@ bool FPathLinkRouteFinder::FindShortestRoute(
         return Candidates;
     };
 
+    const double CandidateStart = FPlatformTime::Seconds();
     const TArray<FEndpointCandidate> StartCandidates = BuildEndpointCandidates(
         StartLocation,
         true);
@@ -509,6 +529,7 @@ bool FPathLinkRouteFinder::FindShortestRoute(
     const TArray<FEndpointCandidate> EndCandidates = BuildEndpointCandidates(
         TargetLocation,
         false);
+    Stats.CandidateMilliseconds += (FPlatformTime::Seconds() - CandidateStart) * 1000.0;
 
     TArray<FEndpointState> StartStates;
     StartStates.SetNum(TraversalCount);
@@ -527,6 +548,7 @@ bool FPathLinkRouteFinder::FindShortestRoute(
      * 실제 NavMesh Query는 아직 하지 않습니다.
      */
     auto ActivateNextCandidates = [
+        &Stats,
         &StaticGraph,
         &StartCandidates,
         &EndCandidates,
@@ -543,6 +565,8 @@ bool FPathLinkRouteFinder::FindShortestRoute(
         const bool bStartSide,
         const int32 RequestedLinkCount)
     {
+        const double ActivationStart = FPlatformTime::Seconds();
+        ON_SCOPE_EXIT { Stats.CandidateMilliseconds += (FPlatformTime::Seconds() - ActivationStart) * 1000.0; };
         const TArray<FEndpointCandidate>& Candidates = bStartSide
             ? StartCandidates
             : EndCandidates;
@@ -620,7 +644,7 @@ bool FPathLinkRouteFinder::FindShortestRoute(
     ActivateNextCandidates(true, InitialCandidateCount);
     ActivateNextCandidates(false, InitialCandidateCount);
 
-    int32 DynamicNavQueryCount = 0;
+    int32& DynamicNavQueryCount = Stats.SynchronousNavQueries;
 
     /**
      * 순수 NavMesh Start -> Target은 비교 기준으로 하나만 정확히 계산합니다.
@@ -633,10 +657,16 @@ bool FPathLinkRouteFinder::FindShortestRoute(
         TargetNavLocation,
         PathfindingContext,
         DirectDistance,
-        &DynamicNavQueryCount);
+        &DynamicNavQueryCount, &RequestPaths);
 
     TArray<FDynamicRouteEdge> SelectedEdges;
     TArray<int32> SelectedRouteEdgeIndices;
+    TArray<TArray<int32>> Adjacency;
+    Adjacency.SetNum(NodeCount);
+    TArray<double> Distances;
+    TArray<int32> PreviousEdge;
+    TArray<bool> Visited;
+    bool bGraphBuilt = false;
 
     /**
      * 현재 활성화된 Start/End 후보와 정밀한 Link -> Link Static Graph를 합쳐 Dijkstra를 수행합니다.
@@ -644,6 +674,7 @@ bool FPathLinkRouteFinder::FindShortestRoute(
      * 실제로 선택된 Endpoint만 이후에 정확한 NavMesh 거리로 검증/교체합니다.
      */
     auto SolveWithCurrentCandidates = [
+        &Stats, &Adjacency, &Distances, &PreviousEdge, &Visited, &bGraphBuilt,
         &StaticGraph,
         TraversalCount,
         StartNode,
@@ -657,132 +688,149 @@ bool FPathLinkRouteFinder::FindShortestRoute(
         TArray<FDynamicRouteEdge>& OutEdges,
         TArray<int32>& OutRouteEdgeIndices) -> bool
     {
-        OutEdges.Reset();
+        TRACE_CPUPROFILER_EVENT_SCOPE(PathLink_Dijkstra);
+        const double SolveStart = FPlatformTime::Seconds();
+        ON_SCOPE_EXIT { Stats.DijkstraMilliseconds += (FPlatformTime::Seconds() - SolveStart) * 1000.0; ++Stats.SolveCount; };
         OutRouteEdgeIndices.Reset();
 
-        TArray<TArray<int32>> Adjacency;
-        Adjacency.SetNum(NodeCount);
-
-        auto AddEdge = [&OutEdges, &Adjacency](FDynamicRouteEdge&& Edge)
+        if (!bGraphBuilt)
         {
-            const int32 EdgeIndex = OutEdges.Add(MoveTemp(Edge));
-
-            if (Adjacency.IsValidIndex(OutEdges[EdgeIndex].From))
+            auto AddEdge = [&OutEdges, &Adjacency](FDynamicRouteEdge&& Edge)
             {
-                Adjacency[OutEdges[EdgeIndex].From].Add(EdgeIndex);
-            }
-        };
+                const int32 EdgeIndex = OutEdges.Add(MoveTemp(Edge));
 
-        if (bDirectReachable)
-        {
-            FDynamicRouteEdge DirectEdge;
-            DirectEdge.From = StartNode;
-            DirectEdge.To = TargetNode;
-            DirectEdge.Cost = DirectDistance;
-            DirectEdge.NavDistance = DirectDistance;
-            DirectEdge.Type = EDynamicRouteEdgeType::DirectToTarget;
-            AddEdge(MoveTemp(DirectEdge));
-        }
-
-        for (int32 TraversalIndex = 0; TraversalIndex < TraversalCount; ++TraversalIndex)
-        {
-            if (!StaticGraph.Traversals.IsValidIndex(TraversalIndex))
-            {
-                continue;
-            }
-
-            const FPathLinkTraversalNode& Traversal = StaticGraph.Traversals[TraversalIndex];
-            if (!Traversal.Link.IsValid())
-            {
-                continue;
-            }
-
-            const int32 TraversalNode = FirstTraversalNode + TraversalIndex;
-
-            if (StartStates.IsValidIndex(TraversalIndex))
-            {
-                const FEndpointState& StartState = StartStates[TraversalIndex];
-
-                if (StartState.bActive && !StartState.bRejected)
+                if (Adjacency.IsValidIndex(OutEdges[EdgeIndex].From))
                 {
-                    const double StartDistance = StartState.bExactDistanceReady
-                        ? StartState.ExactNavDistance
-                        : StartState.EstimatedDistance;
-
-                    FDynamicRouteEdge StartEdge;
-                    StartEdge.From = StartNode;
-                    StartEdge.To = TraversalNode;
-                    StartEdge.NavDistance = StartDistance;
-                    StartEdge.Cost = StartDistance + Traversal.LinkCost;
-                    StartEdge.Type = EDynamicRouteEdgeType::EnterTraversal;
-                    StartEdge.TraversalIndex = TraversalIndex;
-                    AddEdge(MoveTemp(StartEdge));
+                    Adjacency[OutEdges[EdgeIndex].From].Add(EdgeIndex);
                 }
+            };
+
+            if (bDirectReachable)
+            {
+                FDynamicRouteEdge DirectEdge;
+                DirectEdge.From = StartNode;
+                DirectEdge.To = TargetNode;
+                DirectEdge.Cost = DirectDistance;
+                DirectEdge.NavDistance = DirectDistance;
+                DirectEdge.Type = EDynamicRouteEdgeType::DirectToTarget;
+                AddEdge(MoveTemp(DirectEdge));
             }
 
-            if (EndStates.IsValidIndex(TraversalIndex))
+            for (int32 TraversalIndex = 0; TraversalIndex < TraversalCount; ++TraversalIndex)
             {
-                const FEndpointState& EndState = EndStates[TraversalIndex];
-
-                if (EndState.bActive && !EndState.bRejected)
-                {
-                    const double EndDistance = EndState.bExactDistanceReady
-                        ? EndState.ExactNavDistance
-                        : EndState.EstimatedDistance;
-
-                    FDynamicRouteEdge TargetEdge;
-                    TargetEdge.From = TraversalNode;
-                    TargetEdge.To = TargetNode;
-                    TargetEdge.NavDistance = EndDistance;
-                    TargetEdge.Cost = EndDistance;
-                    TargetEdge.Type = EDynamicRouteEdgeType::TraversalToTarget;
-                    AddEdge(MoveTemp(TargetEdge));
-                }
-            }
-        }
-
-        // Link -> Link는 기존 정밀 NavMesh Cache를 그대로 사용합니다.
-        for (int32 FromIndex = 0; FromIndex < TraversalCount; ++FromIndex)
-        {
-            const int32 FromNode = FirstTraversalNode + FromIndex;
-
-            for (int32 ToIndex = 0; ToIndex < TraversalCount; ++ToIndex)
-            {
-                const FPathLinkCachedTransition* Transition = StaticGraph.GetTransition(
-                    FromIndex,
-                    ToIndex);
-
-                if (!Transition || !Transition->Reachable)
+                if (!StaticGraph.Traversals.IsValidIndex(TraversalIndex))
                 {
                     continue;
                 }
 
-                const FPathLinkTraversalNode& ToTraversal = StaticGraph.Traversals[ToIndex];
-                if (!ToTraversal.Link.IsValid())
+                const FPathLinkTraversalNode& Traversal = StaticGraph.Traversals[TraversalIndex];
+                if (!Traversal.Link.IsValid())
                 {
                     continue;
                 }
 
-                FDynamicRouteEdge CachedEdge;
-                CachedEdge.From = FromNode;
-                CachedEdge.To = FirstTraversalNode + ToIndex;
-                CachedEdge.NavDistance = Transition->NavDistance;
-                CachedEdge.Cost = Transition->NavDistance + ToTraversal.LinkCost;
-                CachedEdge.Type = EDynamicRouteEdgeType::EnterTraversal;
-                CachedEdge.TraversalIndex = ToIndex;
-                AddEdge(MoveTemp(CachedEdge));
+                const int32 TraversalNode = FirstTraversalNode + TraversalIndex;
+
+                if (StartStates.IsValidIndex(TraversalIndex))
+                {
+                    const FEndpointState& StartState = StartStates[TraversalIndex];
+
+                    // Allocate every dynamic edge once; later passes only change cost/enabled state.
+                    {
+                        const double StartDistance = StartState.bExactDistanceReady
+                            ? StartState.ExactNavDistance
+                            : StartState.EstimatedDistance;
+
+                        FDynamicRouteEdge StartEdge;
+                        StartEdge.From = StartNode;
+                        StartEdge.To = TraversalNode;
+                        StartEdge.NavDistance = StartDistance;
+                        StartEdge.Cost = StartDistance + Traversal.LinkCost;
+                        StartEdge.Type = EDynamicRouteEdgeType::EnterTraversal;
+                        StartEdge.TraversalIndex = TraversalIndex;
+                        AddEdge(MoveTemp(StartEdge));
+                    }
+                }
+
+                if (EndStates.IsValidIndex(TraversalIndex))
+                {
+                    const FEndpointState& EndState = EndStates[TraversalIndex];
+
+                    {
+                        const double EndDistance = EndState.bExactDistanceReady
+                            ? EndState.ExactNavDistance
+                            : EndState.EstimatedDistance;
+
+                        FDynamicRouteEdge TargetEdge;
+                        TargetEdge.From = TraversalNode;
+                        TargetEdge.To = TargetNode;
+                        TargetEdge.NavDistance = EndDistance;
+                        TargetEdge.Cost = EndDistance;
+                        TargetEdge.Type = EDynamicRouteEdgeType::TraversalToTarget;
+                        AddEdge(MoveTemp(TargetEdge));
+                    }
+                }
+            }
+
+            // Link -> Link는 기존 정밀 NavMesh Cache를 그대로 사용합니다.
+            for (int32 FromIndex = 0; FromIndex < TraversalCount; ++FromIndex)
+            {
+                const int32 FromNode = FirstTraversalNode + FromIndex;
+
+                for (int32 ToIndex = 0; ToIndex < TraversalCount; ++ToIndex)
+                {
+                    const FPathLinkCachedTransition* Transition = StaticGraph.GetTransition(
+                        FromIndex,
+                        ToIndex);
+
+                    if (!Transition || !Transition->Reachable)
+                    {
+                        continue;
+                    }
+
+                    const FPathLinkTraversalNode& ToTraversal = StaticGraph.Traversals[ToIndex];
+                    if (!ToTraversal.Link.IsValid())
+                    {
+                        continue;
+                    }
+
+                    FDynamicRouteEdge CachedEdge;
+                    CachedEdge.From = FromNode;
+                    CachedEdge.To = FirstTraversalNode + ToIndex;
+                    CachedEdge.NavDistance = Transition->NavDistance;
+                    CachedEdge.Cost = Transition->NavDistance + ToTraversal.LinkCost;
+                    CachedEdge.Type = EDynamicRouteEdgeType::EnterTraversal;
+                    CachedEdge.TraversalIndex = ToIndex;
+                    AddEdge(MoveTemp(CachedEdge));
+                }
+            }
+
+            bGraphBuilt = true;
+        }
+
+        for (FDynamicRouteEdge& Edge : OutEdges)
+        {
+            if (Edge.From == StartNode && Edge.Type == EDynamicRouteEdgeType::EnterTraversal)
+            {
+                const FEndpointState& State = StartStates[Edge.TraversalIndex];
+                Edge.bEnabled = State.bActive && !State.bRejected;
+                Edge.NavDistance = State.bExactDistanceReady ? State.ExactNavDistance : State.EstimatedDistance;
+                Edge.Cost = Edge.NavDistance + StaticGraph.Traversals[Edge.TraversalIndex].LinkCost;
+            }
+            else if (Edge.Type == EDynamicRouteEdgeType::TraversalToTarget)
+            {
+                const FEndpointState& State = EndStates[Edge.From - FirstTraversalNode];
+                Edge.bEnabled = State.bActive && !State.bRejected;
+                Edge.Cost = Edge.NavDistance = State.bExactDistanceReady ? State.ExactNavDistance : State.EstimatedDistance;
             }
         }
 
         const double Infinity = TNumericLimits<double>::Max();
 
-        TArray<double> Distances;
         Distances.Init(Infinity, NodeCount);
 
-        TArray<int32> PreviousEdge;
         PreviousEdge.Init(INDEX_NONE, NodeCount);
 
-        TArray<bool> Visited;
         Visited.Init(false, NodeCount);
 
         Distances[StartNode] = 0.0;
@@ -822,6 +870,7 @@ bool FPathLinkRouteFinder::FindShortestRoute(
                 }
 
                 const FDynamicRouteEdge& Edge = OutEdges[EdgeIndex];
+                if (!Edge.bEnabled) continue;
                 const double NewDistance = Distances[CurrentNode] + Edge.Cost;
 
                 if (NewDistance + KINDA_SMALL_NUMBER < Distances[Edge.To])
@@ -869,6 +918,7 @@ bool FPathLinkRouteFinder::FindShortestRoute(
         &StaticGraph,
         PathfindingContext,
         &DynamicNavQueryCount,
+        &RequestPaths,
         StartNavLocation,
         TargetNavLocation,
         ExcessiveRatio,
@@ -920,14 +970,14 @@ bool FPathLinkRouteFinder::FindShortestRoute(
                 Traversal.EntryNavLocation,
                 PathfindingContext,
                 ActualNavDistance,
-                &DynamicNavQueryCount)
+                &DynamicNavQueryCount, &RequestPaths)
             : BuildNavigationDistance(
                 World,
                 Traversal.ExitNavLocation,
                 TargetNavLocation,
                 PathfindingContext,
                 ActualNavDistance,
-                &DynamicNavQueryCount);
+                &DynamicNavQueryCount, &RequestPaths);
 
         if (!bReachable)
         {
@@ -1109,7 +1159,9 @@ bool FPathLinkRouteFinder::FindShortestRoute(
         return false;
     }
 
-    auto AddNormalSegment = [this, PathfindingContext, &OutResult, &DynamicNavQueryCount](
+    const double PointsStart = FPlatformTime::Seconds();
+    ON_SCOPE_EXIT { if (bBuildSegments) Stats.PathPointsMilliseconds = (FPlatformTime::Seconds() - PointsStart) * 1000.0; };
+    auto AddNormalSegment = [this, PathfindingContext, bBuildSegments, &OutResult, &DynamicNavQueryCount, &RequestPaths](
         const FVector& RawStart,
         const FVector& NavStart,
         const FVector& RawEnd,
@@ -1118,6 +1170,14 @@ bool FPathLinkRouteFinder::FindShortestRoute(
         double ActualDistance = 0.0;
         TArray<FVector> PathPoints;
 
+        if (!bBuildSegments)
+        {
+            if (!BuildNavigationDistance(World, NavStart, NavEnd, PathfindingContext,
+                ActualDistance, &DynamicNavQueryCount, &RequestPaths)) return false;
+            OutResult.TotalDistance += ActualDistance;
+            return true;
+        }
+
         if (!BuildNavigationPath(
             World,
             NavStart,
@@ -1125,7 +1185,7 @@ bool FPathLinkRouteFinder::FindShortestRoute(
             PathfindingContext,
             ActualDistance,
             PathPoints,
-            &DynamicNavQueryCount))
+            &DynamicNavQueryCount, &RequestPaths))
         {
             return false;
         }
@@ -1141,8 +1201,9 @@ bool FPathLinkRouteFinder::FindShortestRoute(
         return true;
     };
 
-    auto AddLinkSegment = [&OutResult](const FPathLinkTraversalNode& Traversal)
+    auto AddLinkSegment = [&OutResult, bBuildSegments](const FPathLinkTraversalNode& Traversal)
     {
+        if (!bBuildSegments) { OutResult.TotalDistance += Traversal.LinkCost; return; }
         FPathLinkRouteSegment& Segment = OutResult.Segments.AddDefaulted_GetRef();
         Segment.SegmentType = EPathLinkSegmentType::Link;
         Segment.StartLocation = Traversal.EntryLocation;

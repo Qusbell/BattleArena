@@ -2,11 +2,19 @@
 
 #include "AI/PathLink/PathLink.h"
 #include "AI/PathLink/Internal/PathLinkRouteFinder.h"
+#include "AI/PathLink/Internal/PathLinkNavigation.h"
+#include "AI/PathLink/Internal/PathLinkNavSnapshot.h"
+#include "AI/PathLink/PathLinkRoutingCache.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "NavigationPath.h"
 #include "NavigationSystem.h"
 #include "DrawDebugHelpers.h"
+#include "NavMesh/RecastNavMesh.h"
+#include "NavFilters/NavigationQueryFilter.h"
+#include "Misc/ScopeExit.h"
+#include "Misc/App.h"
+#include "ProfilingDebugging/CpuProfilerTrace.h"
 
 #if WITH_EDITOR
 #include "Editor.h"
@@ -14,6 +22,145 @@
 #endif
 
 DEFINE_LOG_CATEGORY_STATIC(LogPathLinkSubsystem, Log, All);
+
+void UPathLinkSubsystem::Tick(float DeltaTime)
+{
+    MaxFrameMilliseconds = FMath::Max(MaxFrameMilliseconds, FApp::GetDeltaTime() * 1000.0);
+    // Reclaim dead context graphs outside route requests, once per second.
+    if (GetWorld() && FMath::FloorToInt(GetWorld()->GetTimeSeconds()) != FMath::FloorToInt(GetWorld()->GetTimeSeconds() - DeltaTime))
+        for (auto It = ContextRouteGraphs.CreateIterator(); It; ++It)
+            if (!It.Key().IsValid()) It.RemoveCurrent();
+}
+
+bool UPathLinkSubsystem::IsTickable() const
+{
+    return !IsTemplate() && GetWorld() && GetWorld()->IsGameWorld() && GetWorld()->GetNetMode() != NM_Client;
+}
+
+TStatId UPathLinkSubsystem::GetStatId() const
+{
+    RETURN_QUICK_DECLARE_CYCLE_STAT(UPathLinkSubsystem, STATGROUP_Tickables);
+}
+
+void UPathLinkSubsystem::RecordRouteStats() const
+{
+    MaxRouteMilliseconds = FMath::Max(MaxRouteMilliseconds, LastRouteStats.TotalMilliseconds);
+    if (RouteWorkFrame != GFrameCounter) { RouteWorkFrame = GFrameCounter; RouteWorkMilliseconds = 0; }
+    RouteWorkMilliseconds += LastRouteStats.TotalMilliseconds;
+    MaxRouteWorkPerFrameMilliseconds = FMath::Max(MaxRouteWorkPerFrameMilliseconds, RouteWorkMilliseconds);
+}
+
+double UPathLinkSubsystem::GetRuntimeCacheMiB() const
+{
+    SIZE_T Bytes = ContextRouteGraphs.GetAllocatedSize() + CachedRouteLinks.GetAllocatedSize()
+        + RegisteredLinks.GetAllocatedSize() + BakedPolyIndexByRef.GetAllocatedSize() + ValidatedLinkPlacements.GetAllocatedSize();
+    Bytes += DefaultRouteGraph.Traversals.GetAllocatedSize() + DefaultRouteGraph.Transitions.GetAllocatedSize();
+    for (const auto& Pair : ContextRouteGraphs)
+        Bytes += Pair.Value.Traversals.GetAllocatedSize() + Pair.Value.Transitions.GetAllocatedSize();
+    if (const auto* Bake = ValidatedRoutingCache.Get()) Bytes += Bake->GetCacheAllocatedSize();
+    return double(Bytes) / (1024.0 * 1024.0);
+}
+
+void UPathLinkSubsystem::OnNavigationGenerationFinished(ANavigationData* Data)
+{
+    InvalidateRouteGraphCache();
+    RoutingCacheStatus = TEXT("Navigation regenerated. Bake signature must be validated again.");
+}
+
+void UPathLinkSubsystem::OnNavMeshUpdated()
+{
+    OnNavigationGenerationFinished(nullptr);
+}
+
+const APathLinkRoutingCache* UPathLinkSubsystem::GetValidatedRoutingCache() const
+{
+    TRACE_CPUPROFILER_EVENT_SCOPE(PathLink_ValidateBake);
+    UWorld* World = GetWorld();
+    if (!World || World->GetNetMode() == NM_Client) return nullptr;
+    if (bBakeValidationPending)
+    {
+        if (UNavigationSystemV1::IsNavigationBeingBuiltOrLocked(World))
+        { RoutingCacheStatus = TEXT("Navigation is building/locked."); return nullptr; }
+        bBakeValidationPending = false;
+        ValidatedRoutingCache.Reset(); BakedPolyIndexByRef.Reset(); ValidatedLinkPlacements.Reset();
+        APathLinkRoutingCache* Bake = nullptr;
+        for (TActorIterator<APathLinkRoutingCache> It(World); It; ++It)
+        {
+            if (Bake) { RoutingCacheStatus = TEXT("More than one routing cache actor; select one cache per world."); return nullptr; }
+            Bake = *It;
+        }
+        if (!Bake || !Bake->IsBaked()) { RoutingCacheStatus = TEXT("No complete baked routing cache."); return nullptr; }
+        if (Bake->NavigationData && !ObservedNavMeshes.Contains(Bake->NavigationData.Get()))
+        {
+            ObservedNavMeshes.Add(Bake->NavigationData);
+            Bake->NavigationData->OnNavMeshUpdate.AddUObject(const_cast<UPathLinkSubsystem*>(this), &UPathLinkSubsystem::OnNavMeshUpdated);
+        }
+        FPathLinkNavSnapshot Snapshot;
+        if (!PathLinkBake::ReadNavigation(Bake->NavigationData, Snapshot, RoutingCacheStatus)) return nullptr;
+        if (Snapshot.Signature != Bake->NavigationSignature || Snapshot.Refs.Num() != Bake->Polygons.Num())
+        { RoutingCacheStatus = TEXT("NavMesh signature mismatch; rebake the level."); return nullptr; }
+        if (Bake->LinkSignature != APathLinkRoutingCache::ComputeLinkSignature(World))
+        { RoutingCacheStatus = TEXT("PathLink placement signature mismatch; rebake the level."); return nullptr; }
+        for (const auto& T : Bake->Traversals)
+            if (!IsValid(T.Link) || !Bake->Polygons.IsValidIndex(T.EntryPoly) || !Bake->Polygons.IsValidIndex(T.ExitPoly))
+            { RoutingCacheStatus = TEXT("Baked PathLink reference/endpoint is invalid; rebake the level."); return nullptr; }
+        for (int32 I = 0; I < Snapshot.Refs.Num(); ++I) BakedPolyIndexByRef.Add(Snapshot.Refs[I], I);
+        BakedGroundFilter = Snapshot.GroundFilter;
+        for (const auto& Weak : RegisteredLinks)
+            if (const APathLink* Link = Weak.Get())
+                ValidatedLinkPlacements.Add({Weak, Link->GetEntryLocation(), Link->GetExitLocation(),
+                    Link->IsEnabled(), Link->IsTwoWay(), IsValid(Link->GetExitActor()), uint8(Link->GetLinkType())});
+        ValidatedRoutingCache = Bake;
+        RoutingCacheStatus = TEXT("Bake validated. Estimated distances use representative polygon centers.");
+    }
+    if (!ValidatedRoutingCache.IsValid()) return nullptr;
+    for (const FPathLinkPlacementState& State : ValidatedLinkPlacements)
+    {
+        const APathLink* Link = State.Link.Get();
+        if (!Link || Link->GetEntryLocation() != State.Entry || Link->GetExitLocation() != State.Exit
+            || Link->IsEnabled() != State.bEnabled || Link->IsTwoWay() != State.bTwoWay
+            || IsValid(Link->GetExitActor()) != State.bHasExit || uint8(Link->GetLinkType()) != State.Type)
+        {
+            InvalidateRouteGraphCache();
+            bBakeValidationPending = false;
+            RoutingCacheStatus = TEXT("PathLink placement changed after validation; rebake the level.");
+            return nullptr;
+        }
+    }
+    return ValidatedRoutingCache.Get();
+}
+
+bool UPathLinkSubsystem::GetEstimatedRouteDistance(const FVector& StartLocation, const FVector& TargetLocation,
+    double& OutDistance, AActor* PathfindingContext) const
+{
+    TRACE_CPUPROFILER_EVENT_SCOPE(PathLink_EstimatedDistance);
+    LastEstimateStats = {}; OutDistance = 0;
+    const double Begin = FPlatformTime::Seconds();
+    ON_SCOPE_EXIT { LastEstimateStats.TotalMilliseconds = (FPlatformTime::Seconds() - Begin) * 1000.0; };
+    if (StartLocation.ContainsNaN() || TargetLocation.ContainsNaN()) return false;
+    const APathLinkRoutingCache* Bake = GetValidatedRoutingCache();
+    if (!Bake || !Bake->NavigationData) return false;
+    ARecastNavMesh* Nav = Bake->NavigationData;
+    if (PathLinkNavigation::ResolveNavData(GetWorld(), PathfindingContext, StartLocation) != Nav
+        || PathLinkNavigation::ResolveNavData(GetWorld(), PathfindingContext, TargetLocation) != Nav)
+    { RoutingCacheStatus = TEXT("Context resolves to a different NavData; bake that NavData separately."); return false; }
+    FSharedConstNavQueryFilter Filter = UNavigationQueryFilter::GetQueryFilter(*Nav, PathfindingContext, nullptr);
+    const auto Default = Nav->GetDefaultQueryFilter();
+    if (!Filter) Filter = Default;
+    if (!Filter || !(*Filter == *Default) || Filter->GetMaxSearchNodes() != Default->GetMaxSearchNodes())
+    { RoutingCacheStatus = TEXT("Context query filter differs from the bake filter."); return false; }
+    FNavLocation Start, Target;
+    if (!Nav->ProjectPoint(StartLocation, Start, FVector(150,150,400), BakedGroundFilter, PathfindingContext)
+        || !Nav->ProjectPoint(TargetLocation, Target, FVector(150,150,400), BakedGroundFilter, PathfindingContext)) return false;
+    const int32* A = BakedPolyIndexByRef.Find(Start.NodeRef);
+    const int32* B = BakedPolyIndexByRef.Find(Target.NodeRef);
+    if (!A || !B) return false;
+    const double Solve = FPlatformTime::Seconds();
+    const bool bFound = Bake->EstimateRoute(*A, Start.Location, *B, Target.Location, OutDistance);
+    LastEstimateStats.DijkstraMilliseconds = (FPlatformTime::Seconds() - Solve) * 1000.0;
+    LastEstimateStats.SolveCount = 1;
+    return bFound;
+}
 
 void UPathLinkSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -24,6 +171,12 @@ void UPathLinkSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 
 void UPathLinkSubsystem::Deinitialize()
 {
+    for (auto& Weak : ObservedNavMeshes)
+        if (ARecastNavMesh* Nav = Weak.Get()) Nav->OnNavMeshUpdate.RemoveAll(this);
+    ObservedNavMeshes.Reset();
+    if (UNavigationSystemV1* Nav = UNavigationSystemV1::GetCurrent(GetWorld()))
+        Nav->OnNavigationGenerationFinishedDelegate.RemoveDynamic(this, &UPathLinkSubsystem::OnNavigationGenerationFinished);
+    ValidatedRoutingCache.Reset(); BakedPolyIndexByRef.Reset(); BakedGroundFilter.Reset();
     RegisteredLinks.Reset();
     CachedRouteLinks.Reset();
     DefaultRouteGraph.Reset();
@@ -39,6 +192,8 @@ void UPathLinkSubsystem::Deinitialize()
 void UPathLinkSubsystem::OnWorldBeginPlay(UWorld& InWorld)
 {
     Super::OnWorldBeginPlay(InWorld);
+    if (UNavigationSystemV1* Nav = UNavigationSystemV1::GetCurrent(&InWorld))
+        Nav->OnNavigationGenerationFinishedDelegate.AddUniqueDynamic(this, &UPathLinkSubsystem::OnNavigationGenerationFinished);
 
     // BeginPlay 호출 순서에 상관없이 현재 레벨의 Link를 한 번 확실하게 수집합니다.
     // 이후 Streaming으로 새로 들어오는 Link는 각 APathLink::BeginPlay에서 자동 등록됩니다.
@@ -468,6 +623,18 @@ bool UPathLinkSubsystem::FindShortestRoute(
     FPathLinkRouteResult& OutResult,
     AActor* PathfindingContext) const
 {
+    return CalculateRoute(StartLocation, TargetLocation, OutResult, PathfindingContext, true);
+}
+
+bool UPathLinkSubsystem::CalculateRoute(const FVector& StartLocation, const FVector& TargetLocation,
+    FPathLinkRouteResult& OutResult, AActor* PathfindingContext, bool bBuildSegments) const
+{
+    TRACE_CPUPROFILER_EVENT_SCOPE(PathLink_RouteRequest);
+    const double Begin = FPlatformTime::Seconds();
+    const int64 PreviousQueries = StaticNavQueryCounter;
+    LastRouteStats = {};
+    ON_SCOPE_EXIT { LastRouteStats.TotalMilliseconds = (FPlatformTime::Seconds() - Begin) * 1000.0;
+        LastRouteStats.SynchronousNavQueries += int32(StaticNavQueryCounter - PreviousQueries); RecordRouteStats(); };
     OutResult.Reset();
 
     UWorld* World = GetWorld();
@@ -508,7 +675,7 @@ bool UPathLinkSubsystem::FindShortestRoute(
         TargetLocation,
         *RouteGraph,
         PathfindingContext,
-        OutResult);
+        OutResult, bBuildSegments, &LastRouteStats);
 }
 
 bool UPathLinkSubsystem::FindShortestRouteToActor(
@@ -539,7 +706,7 @@ bool UPathLinkSubsystem::GetRouteDistance(
     OutDistance = 0.0;
 
     FPathLinkRouteResult RouteResult;
-    if (!FindShortestRoute(StartLocation, TargetLocation, RouteResult, PathfindingContext))
+    if (!CalculateRoute(StartLocation, TargetLocation, RouteResult, PathfindingContext, false))
     {
         return false;
     }
@@ -638,8 +805,11 @@ bool UPathLinkSubsystem::CanReach(
     return false;
 }
 
-void UPathLinkSubsystem::InvalidateRouteGraphCache()
+void UPathLinkSubsystem::InvalidateRouteGraphCache() const
 {
+    bDefaultGraphOwnerIndependent.Reset();
+    bBakeValidationPending = true;
+    ValidatedRoutingCache.Reset(); BakedPolyIndexByRef.Reset(); BakedGroundFilter.Reset();
     bRouteGraphCacheDirty = true;
     bCommonRouteCacheReady = false;
     bDefaultRouteGraphReady = false;
@@ -720,6 +890,7 @@ bool UPathLinkSubsystem::EnsureRouteGraphCache(
         return false;
     }
 
+    if (ValidatedRoutingCache.IsValid()) GetValidatedRoutingCache();
     if (bRouteGraphCacheDirty || !bCommonRouteCacheReady)
     {
         RebuildCommonRouteCache();
@@ -730,34 +901,51 @@ bool UPathLinkSubsystem::EnsureRouteGraphCache(
         return false;
     }
 
-    const TArray<APathLink*> RouteLinks = GetCachedRouteLinks();
     FPathLinkRouteFinder RouteFinder(World);
 
-    if (!IsValid(PathfindingContext))
+    if (!bDefaultGraphOwnerIndependent.IsSet())
+        bDefaultGraphOwnerIndependent = PathLinkNavigation::CanShareDefaultGraph(World, nullptr);
+    const bool bShareDefault = IsValid(PathfindingContext) && bDefaultGraphOwnerIndependent.GetValue()
+        && PathLinkNavigation::CanShareDefaultGraph(World, PathfindingContext, false);
+
+    if (!IsValid(PathfindingContext) || bShareDefault)
     {
         if (!bDefaultRouteGraphReady)
         {
             FPathLinkStaticGraph NewGraph;
-            if (!RouteFinder.BuildStaticGraph(RouteLinks, nullptr, NewGraph))
+            const TArray<APathLink*> RouteLinks = GetCachedRouteLinks();
+            const APathLinkRoutingCache* Bake = GetValidatedRoutingCache();
+            UNavigationSystemV1* Nav = UNavigationSystemV1::GetCurrent(World);
+            const bool bImport = Bake && !Bake->bHasNativeOffMeshLinks && bDefaultGraphOwnerIndependent.GetValue()
+                && Nav && Bake->NavigationData == Nav->GetDefaultNavDataInstance(FNavigationSystem::DontCreate);
+            if (bImport)
+            {
+                // Preserve the registry's traversal order, including equal-cost Dijkstra tie behavior.
+                FPathLinkStaticGraph Baked;
+                Bake->ExportStaticGraph(Baked);
+                TArray<int32> Order;
+                for (APathLink* Link : RouteLinks)
+                    for (int32 I = 0; I < Baked.Traversals.Num(); ++I)
+                        if (Baked.Traversals[I].Link.Get() == Link)
+                        { Order.Add(I); NewGraph.Traversals.Add(Baked.Traversals[I]); }
+                const int32 N = Order.Num();
+                NewGraph.Transitions.SetNum(N * N);
+                for (int32 A = 0; A < N; ++A)
+                    for (int32 B = 0; B < N; ++B)
+                        NewGraph.Transitions[A*N+B] = Baked.Transitions[Order[A]*Baked.Traversals.Num()+Order[B]];
+            }
+            else if (!RouteFinder.BuildStaticGraph(RouteLinks, nullptr, NewGraph))
             {
                 return false;
             }
 
             DefaultRouteGraph = MoveTemp(NewGraph);
+            StaticNavQueryCounter += DefaultRouteGraph.PrecomputedNavQueryCount;
             bDefaultRouteGraphReady = true;
         }
 
         OutGraph = &DefaultRouteGraph;
         return true;
-    }
-
-    // 파괴된 AI Context Cache는 가볍게 정리합니다.
-    for (auto It = ContextRouteGraphs.CreateIterator(); It; ++It)
-    {
-        if (!It.Key().IsValid())
-        {
-            It.RemoveCurrent();
-        }
     }
 
     const TWeakObjectPtr<AActor> ContextKey(PathfindingContext);
@@ -768,12 +956,13 @@ bool UPathLinkSubsystem::EnsureRouteGraphCache(
     }
 
     FPathLinkStaticGraph NewGraph;
-    if (!RouteFinder.BuildStaticGraph(RouteLinks, PathfindingContext, NewGraph))
+    if (!RouteFinder.BuildStaticGraph(GetCachedRouteLinks(), PathfindingContext, NewGraph))
     {
         return false;
     }
 
     FPathLinkStaticGraph& StoredGraph = ContextRouteGraphs.Add(ContextKey, MoveTemp(NewGraph));
+    StaticNavQueryCounter += StoredGraph.PrecomputedNavQueryCount;
     OutGraph = &StoredGraph;
     return true;
 }

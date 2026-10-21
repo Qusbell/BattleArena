@@ -3,17 +3,21 @@
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "AI/PathLink/PathLinkTypes.h"
+#include "AI/Navigation/NavigationTypes.h"
 #include "PathLinkSubsystem.generated.h"
 
 class AActor;
 class APathLink;
+class APathLinkRoutingCache;
+class ANavigationData;
+class ARecastNavMesh;
 
 /**
  * 현재 World에 존재하는 PathLink를 자동 관리하고,
  * Blueprint / AI 로직이 길찾기 기능을 호출하는 단일 진입점입니다.
  */
 UCLASS()
-class SHOOTINGARENA_API UPathLinkSubsystem : public UWorldSubsystem
+class SHOOTINGARENA_API UPathLinkSubsystem : public UTickableWorldSubsystem
 {
     GENERATED_BODY()
 
@@ -21,6 +25,9 @@ public:
     virtual void Initialize(FSubsystemCollectionBase& Collection) override;
     virtual void Deinitialize() override;
     virtual void OnWorldBeginPlay(UWorld& InWorld) override;
+    virtual void Tick(float DeltaTime) override;
+    virtual TStatId GetStatId() const override;
+    virtual bool IsTickable() const override;
 
     /**
      * 현재 World의 APathLink를 다시 검색해 Registry를 재구성합니다.
@@ -99,6 +106,21 @@ public:
         double& OutDistance,
         AActor* PathfindingContext = nullptr) const;
 
+    /** Cheap baked estimate in cm; false means unavailable/unsupported/unreachable, not an exact reachability proof.
+     * Two projections, no synchronous path search and no PathPoints. Detailed route generation remains FindShortestRoute.
+     */
+    UFUNCTION(BlueprintCallable, Category = "AI|PathLink|Route", meta = (AdvancedDisplay = "PathfindingContext"))
+    bool GetEstimatedRouteDistance(const FVector& StartLocation, const FVector& TargetLocation,
+        double& OutDistance, AActor* PathfindingContext = nullptr) const;
+
+    UFUNCTION(BlueprintPure, Category = "AI|PathLink|Performance") FPathLinkQueryStats GetLastRouteStats() const { return LastRouteStats; }
+    UFUNCTION(BlueprintPure, Category = "AI|PathLink|Performance") FPathLinkQueryStats GetLastEstimateStats() const { return LastEstimateStats; }
+    UFUNCTION(BlueprintPure, Category = "AI|PathLink|Performance") double GetRuntimeCacheMiB() const;
+    UFUNCTION(BlueprintPure, Category = "AI|PathLink|Performance") double GetMaxFrameMilliseconds() const { return MaxFrameMilliseconds; }
+    UFUNCTION(BlueprintPure, Category = "AI|PathLink|Performance") double GetMaxRouteMilliseconds() const { return MaxRouteMilliseconds; }
+    UFUNCTION(BlueprintPure, Category = "AI|PathLink|Performance") double GetMaxRouteWorkPerFrameMilliseconds() const { return MaxRouteWorkPerFrameMilliseconds; }
+    UFUNCTION(BlueprintPure, Category = "AI|PathLink|Performance") FString GetRoutingCacheStatus() const { return RoutingCacheStatus; }
+
     /** NavMesh + Link를 사용했을 때 목표 위치까지 도달 가능한지만 검사합니다. */
     UFUNCTION(BlueprintCallable, Category = "AI|PathLink|Route", meta = (AdvancedDisplay = "PathfindingContext"))
     bool CanReach(
@@ -131,13 +153,21 @@ public:
 
     /** APathLink의 EndPlay에서 자동 호출합니다. */
     void UnregisterLink(APathLink* Link);
+    /** Editor bake/clear notification; discards validated references and graph imports. */
+    void NotifyRoutingCacheChanged() { InvalidateRouteGraphCache(); }
 
 private:
+    UFUNCTION() void OnNavigationGenerationFinished(ANavigationData* Data);
+    void OnNavMeshUpdated();
+    const APathLinkRoutingCache* GetValidatedRoutingCache() const;
+    bool CalculateRoute(const FVector& Start, const FVector& Target, FPathLinkRouteResult& Out,
+        AActor* Context, bool bBuildSegments) const;
+    void RecordRouteStats() const;
     /**
      * Link 등록/해제 또는 Refresh가 발생했을 때 정적 Route Cache를 무효화합니다.
      * 다음 Route 요청에서 Link 구조 Validation과 Link -> Link NavMesh 거리를 다시 구축합니다.
      */
-    void InvalidateRouteGraphCache();
+    void InvalidateRouteGraphCache() const;
 
     /**
      * 등록 Link의 구조 Validation/중복 검사를 한 번만 수행하고 Route 후보 Link를 캐시합니다.
@@ -147,7 +177,8 @@ private:
 
     /**
      * PathfindingContext별 Link -> Link 정적 Graph를 반환합니다.
-     * nullptr Context는 World 시작 시 미리 구축하고, 개별 Context는 최초 요청 시 한 번 구축한 뒤 재사용합니다.
+     * nullptr Context는 World 시작 시 미리 구축합니다. 동일한 기본 NavData/Filter이며 Native Off-Mesh Link가 없는 Context는 공유하고,
+     * 그 외의 개별 Context는 최초 요청 시 한 번 구축한 뒤 재사용합니다.
      */
     bool EnsureRouteGraphCache(
         AActor* PathfindingContext,
@@ -189,6 +220,22 @@ private:
      * 같은 AI가 Route를 반복 요청하면 Link -> Link NavMesh Query는 최초 1회만 발생합니다.
      */
     mutable TMap<TWeakObjectPtr<AActor>, FPathLinkStaticGraph> ContextRouteGraphs;
+    mutable TOptional<bool> bDefaultGraphOwnerIndependent;
+    mutable int64 StaticNavQueryCounter = 0;
+    mutable bool bBakeValidationPending = true;
+    mutable TWeakObjectPtr<APathLinkRoutingCache> ValidatedRoutingCache;
+    mutable TMap<NavNodeRef, int32> BakedPolyIndexByRef;
+    mutable FSharedConstNavQueryFilter BakedGroundFilter;
+    mutable TArray<FPathLinkPlacementState> ValidatedLinkPlacements;
+    mutable TArray<TWeakObjectPtr<ARecastNavMesh>> ObservedNavMeshes;
+    mutable FString RoutingCacheStatus;
+    mutable FPathLinkQueryStats LastRouteStats;
+    mutable FPathLinkQueryStats LastEstimateStats;
+    mutable double MaxRouteMilliseconds = 0;
+    double MaxFrameMilliseconds = 0;
+    mutable uint64 RouteWorkFrame = MAX_uint64;
+    mutable double RouteWorkMilliseconds = 0;
+    mutable double MaxRouteWorkPerFrameMilliseconds = 0;
 
     /** WeakPtr로 보관해 Level Streaming / World Partition Unload 시 Actor 수명을 붙잡지 않습니다. */
     TArray<TWeakObjectPtr<APathLink>> RegisteredLinks;
