@@ -500,12 +500,15 @@ FTransform AOneWayTeleportActor::GetPortalFrameTransform() const
 bool AOneWayTeleportActor::BuildPortalCaptureView(
 	const FTransform& cameraTransform, FPortalCaptureView& outView) const
 {
-	if (!IsValid(exitTarget)) return false;
 	outView = FPortalCaptureView();
+	if (!IsValid(exitTarget) || exitTarget == this || exitTarget->GetWorld() != GetWorld()
+		|| cameraTransform.ContainsNaN() || !cameraTransform.GetRotation().IsNormalized()
+		|| exitTarget->GetActorTransform().ContainsNaN()) return false;
 	outView.transform = GetPortalViewCameraTransform(cameraTransform);
 	outView.clipBase = exitTarget->GetActorLocation();
 	outView.clipNormal = GetExitLaunchForward();
-	return true;
+	return !outView.transform.ContainsNaN() && outView.transform.GetRotation().IsNormalized()
+		&& !outView.clipBase.ContainsNaN() && !outView.clipNormal.ContainsNaN();
 }
 
 float AOneWayTeleportActor::GetPortalViewOpacity(float distance) const
@@ -552,6 +555,7 @@ void AOneWayTeleportActor::ApplyPortalView(
 		portalScreenMID = UMaterialInstanceDynamic::Create(material, this);
 		portalScreen->SetMaterial(0, portalScreenMID);
 	}
+	if (!IsValid(portalScreenMID)) return;
 
 	portalScreenMID->SetTextureParameterValue(TEXT("PortalTexture"), renderTarget);
 	portalScreenMID->SetScalarParameterValue(TEXT("BlurStrength"), blurStrength);
@@ -836,6 +840,7 @@ void AOneWayTeleportActor::OnEntryBeginOverlap(
 void AOneWayTeleportActor::TeleportCharacter(ACharacter* character)
 {
 	if (!IsValid(character)
+		|| !IsValid(this) || !HasAuthority()
 		|| !IsValid(exitTarget)
 		|| exitTarget.Get() == this
 		|| !IsValid(teleportDA))
@@ -844,13 +849,17 @@ void AOneWayTeleportActor::TeleportCharacter(ACharacter* character)
 	}
 
 	UWorld* world = GetWorld();
-	if (!IsValid(world) || world->bIsTearingDown)
+	if (!IsValid(world) || world->bIsTearingDown || character->GetWorld() != world || exitTarget->GetWorld() != world)
 	{
 		return;
 	}
 
 	const FVector exitLocation = exitTarget->GetActorLocation();
 	const FRotator exitRotation = GetExitFacingRotation();
+	const FVector launchVelocity = GetLaunchVelocity();
+	const float moveLockTime = teleportDA->moveLockTime;
+	if (exitLocation.ContainsNaN() || exitRotation.ContainsNaN() || launchVelocity.ContainsNaN()
+		|| !FMath::IsFinite(reentryLockDuration)) return;
 	const double currentTime = world->GetTimeSeconds();
 	PortalTraversalGuard::Lock(
 		character,
@@ -868,6 +877,8 @@ void AOneWayTeleportActor::TeleportCharacter(ACharacter* character)
 		PortalTraversalGuard::Unlock(character);
 		return;
 	}
+	// Moving updates overlaps synchronously; Blueprint callbacks can delete the portal/player/settings.
+	if (!IsValid(this) || !IsValid(character) || !IsValid(teleportDA) || world->bIsTearingDown) return;
 
 	if (AController* controller = character->GetController())
 	{
@@ -880,7 +891,7 @@ void AOneWayTeleportActor::TeleportCharacter(ACharacter* character)
 
 			// PlayerController의 Client RPC이므로 포탈을 실제 이용한 플레이어의
 			// 클라이언트에서만 재생됩니다. 다른 플레이어와 서버에는 들리지 않습니다.
-			if (IsValid(teleportDA->teleportSound))
+			if (IsValid(teleportDA->teleportSound) && FMath::IsFinite(teleportDA->soundVolumeMultiplier))
 			{
 				playerController->ClientPlaySound(
 					teleportDA->teleportSound,
@@ -890,12 +901,13 @@ void AOneWayTeleportActor::TeleportCharacter(ACharacter* character)
 	}
 
 	character->LaunchCharacter(
-		GetLaunchVelocity(),
+		launchVelocity,
 		true,
 		true);
 
-	ApplyMoveLock(character, teleportDA->moveLockTime);
-	character->ForceNetUpdate();
+	if (!IsValid(this) || !IsValid(character) || world->bIsTearingDown) return;
+	ApplyMoveLock(character, moveLockTime);
+	if (IsValid(character)) character->ForceNetUpdate();
 }
 
 FRotator AOneWayTeleportActor::GetExitFacingRotation() const
@@ -930,7 +942,8 @@ void AOneWayTeleportActor::ApplyMoveLock_Implementation(
 	ACharacter* character,
 	float duration)
 {
-	if (!IsValid(character) || duration <= 0.0f)
+	if (!IsValid(character) || !IsValid(GetWorld()) || GetWorld()->bIsTearingDown
+		|| !FMath::IsFinite(duration) || duration <= 0.0f)
 	{
 		return;
 	}

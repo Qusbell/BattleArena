@@ -854,6 +854,60 @@ bool FSpatialPortalPlacementTest::RunTest(const FString&)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSpatialPortalLifetimeTest, "ShootingArena.Portal.Spatial.LifetimeSafety",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSpatialPortalLifetimeTest::RunTest(const FString&)
+{
+	const auto values = UWorld::InitializationValues().AllowAudioPlayback(false).RequiresHitProxies(false)
+		.CreatePhysicsScene(true).CreateNavigation(false).CreateAISystem(false).ShouldSimulatePhysics(false).SetTransactional(false);
+	UWorld* world = UWorld::CreateWorld(EWorldType::Game, false, NAME_None, nullptr, true, ERHIFeatureLevel::Num, &values);
+	if (!TestNotNull(TEXT("Isolated lifetime regression world"), world)) return false;
+	GEngine->CreateNewWorldContext(EWorldType::Game).SetCurrentWorld(world);
+	auto* subsystem = world->GetSubsystem<USeamlessPortalTraversalSubsystem>();
+	if (!TestNotNull(TEXT("Traversal lifetime subsystem"), subsystem))
+	{ world->DestroyWorld(false); GEngine->DestroyWorldContext(world); return false; }
+
+	ATargetPoint* target = world->SpawnActor<ATargetPoint>();
+	target->SetActorLocation(FVector(1000, 0, 0));
+	for (bool bShutdownOnArrival : {false, true})
+	{
+		auto* portal = world->SpawnActor<ASeamlessPortalActor>();
+		portal->bAlignActorExitToFloor = false;
+		portal->SetDestination(target);
+		auto* character = world->SpawnActor<ACharacter>();
+		character->GetCapsuleComponent()->SetCapsuleSize(20, 40);
+		character->SetActorLocation(FVector(100, 0, 0));
+		subsystem->RegisterPortal(portal);
+		subsystem->Tick(1.f / 60);
+		character->SetActorLocation(FVector(10, 0, 0));
+		bool bArrivalCallback = false;
+		const FDelegateHandle handle = character->GetRootComponent()->TransformUpdated.AddLambda(
+			[&](USceneComponent* component, EUpdateTransformFlags, ETeleportType)
+			{
+				if (bArrivalCallback || component->GetComponentLocation().X < 500) return;
+				bArrivalCallback = true;
+				// These callbacks run synchronously inside TeleportTo, before Tick resumes.
+				subsystem->UnregisterPortal(portal);
+				portal->Destroy();
+				if (bShutdownOnArrival) world->bIsTearingDown = true;
+			});
+		subsystem->Tick(1.f / 60);
+		character->GetRootComponent()->TransformUpdated.Remove(handle);
+		TestTrue(TEXT("Arrival callback executed during traversal"), bArrivalCallback);
+		TestFalse(TEXT("Portal can be destroyed synchronously without retaining an invalid iterator"), IsValid(portal));
+		TestTrue(TEXT("A successful teleport is not rolled back after its portal is removed"), character->GetActorLocation().X > 1000);
+		TestTrue(TEXT("Arrival still starts the shared anti-reentry lock"), PortalTraversalGuard::IsLocked(character, world->GetTimeSeconds()));
+		// Let DestroyWorld own subsystem Deinitialize; calling it manually would deinitialize it twice.
+		world->bIsTearingDown = false;
+		PortalTraversalGuard::Unlock(character);
+		character->Destroy();
+	}
+	world->DestroyWorld(false);
+	GEngine->DestroyWorldContext(world);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSpatialPortalDefaultSurfaceTest, "ShootingArena.Portal.Spatial.DefaultSurface",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 

@@ -51,7 +51,8 @@ void UPortalViewSubsystem::Deinitialize()
 void UPortalViewSubsystem::Tick(float deltaTime)
 {
 	UWorld* world = GetWorld();
-	if (!IsValid(world) || world->GetNetMode() == NM_DedicatedServer)
+	if (!IsValid(world) || world->bIsTearingDown || !FMath::IsFinite(deltaTime)
+		|| world->GetNetMode() == NM_DedicatedServer)
 	{
 		return;
 	}
@@ -66,6 +67,11 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 
 	const FVector cameraLocation = playerController->PlayerCameraManager->GetCameraLocation();
 	const FRotator cameraRotation = playerController->PlayerCameraManager->GetCameraRotation();
+	if (cameraLocation.ContainsNaN() || cameraRotation.ContainsNaN())
+	{
+		ClearAllPortalViews();
+		return;
+	}
 	const FVector aimDirection = cameraRotation.Vector();
 
 	TArray<PortalViewPrivate::FPortalCandidate> candidates;
@@ -86,7 +92,7 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 				distance,
 				score,
 				screenCoverage)
-			)
+			&& FMath::IsFinite(distance) && FMath::IsFinite(score) && FMath::IsFinite(screenCoverage))
 		{
 			candidates.Add({ portal, distance, score, screenCoverage });
 		}
@@ -129,7 +135,11 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 		visiblePortals.Add(portal);
 		FPortalCaptureView captureView;
 		const FTransform playerCameraTransform(cameraRotation, cameraLocation);
-		if (!portal->BuildPortalCaptureView(playerCameraTransform, captureView))
+		if (!portal->BuildPortalCaptureView(playerCameraTransform, captureView)
+			|| captureView.transform.ContainsNaN() || !captureView.transform.GetRotation().IsNormalized()
+			|| (captureView.bCustomProjection && captureView.projection.ContainsNaN())
+			|| (captureView.bEnableClipPlane && (captureView.clipBase.ContainsNaN()
+				|| captureView.clipNormal.ContainsNaN() || captureView.clipNormal.IsNearlyZero())))
 		{
 			visiblePortals.Remove(portal);
 			continue;
@@ -224,6 +234,7 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 
 		FPortalViewInstance* view = portalViews.Find(TWeakObjectPtr<AOneWayTeleportActor>(portal));
 		if (view == nullptr || !IsValid(view->renderTarget) || !IsValid(view->sceneCapture)
+			|| !view->sceneCapture->IsRegistered() || world->bIsTearingDown
 			|| !IsValid(portal->GetExitTarget()))
 		{
 			continue;
@@ -332,7 +343,7 @@ FPortalViewInstance& UPortalViewSubsystem::FindOrCreateView(AOneWayTeleportActor
 	const TWeakObjectPtr<AOneWayTeleportActor> portalKey(portal);
 	if (FPortalViewInstance* existing = portalViews.Find(portalKey))
 	{
-		if (IsValid(existing->sceneCapture))
+		if (IsValid(existing->sceneCapture) && existing->sceneCapture->IsRegistered())
 		{
 			return *existing;
 		}
@@ -342,6 +353,7 @@ FPortalViewInstance& UPortalViewSubsystem::FindOrCreateView(AOneWayTeleportActor
 	}
 
 	FPortalViewInstance& newView = portalViews.Add(portalKey);
+	if (!IsValid(portal) || !IsValid(portal->GetWorld()) || portal->GetWorld()->bIsTearingDown) return newView;
 	// SceneCapture를 Subsystem 소유로 등록하면 레벨 전환/GC 중 Subsystem은 이미
 	// unreachable인데 렌더 업데이트가 남을 수 있다. 포탈 Actor의 런타임 컴포넌트로
 	// 소유시켜 Actor의 종료 순서에 맞춰 안전하게 unregister 되도록 한다.
@@ -465,7 +477,8 @@ bool UPortalViewSubsystem::EnsureRenderTarget(
 	int32 size,
 	bool bUseHDRCapture)
 {
-	if (!IsValid(view.sceneCapture) || !IsValid(view.sceneCapture->GetOwner()))
+	if (!IsValid(view.sceneCapture) || !view.sceneCapture->IsRegistered()
+		|| !IsValid(view.sceneCapture->GetOwner()) || !IsValid(GetWorld()) || GetWorld()->bIsTearingDown)
 	{
 		return false;
 	}

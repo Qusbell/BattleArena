@@ -36,4 +36,7 @@ private:
 	void UpdatePassageIgnores(ACharacter* character, FTraveller& state, float deltaTime);
 	TSet<TWeakObjectPtr<ASeamlessPortalActor>> portals;
 	TMap<TWeakObjectPtr<ACharacter>, FTraveller> travellers;
+	// Teleport/overlap callbacks may unregister a portal or tear down the world synchronously.
+	bool bUpdatingTravellers = false;
+	bool bDeinitializing = false;
 };

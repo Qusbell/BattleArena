@@ -527,7 +527,8 @@ bool ASeamlessPortalActor::TryTraverse(ACharacter* character, const FVector& pre
 	double fraction;
 	FTransform destination;
 	UWorld* world = GetWorld();
-	if (!HasAuthority() || !IsValid(character) || !world || world->bIsTearingDown
+	if (!IsValid(this) || !HasAuthority() || !IsValid(character) || !IsValid(world) || world->bIsTearingDown
+		|| character->GetWorld() != world || !FMath::IsFinite(reentryLockDuration)
 		|| !FindCrossing(character, previous, fraction) || !GetDestinationFrame(destination)
 		|| PortalTraversalGuard::IsLocked(character, world->GetTimeSeconds())) return false;
 	UCharacterMovementComponent* movement = character->GetCharacterMovement();
@@ -545,7 +546,7 @@ bool ASeamlessPortalActor::TryTraverse(ACharacter* character, const FVector& pre
 	FVector position = MapArrival(character->GetActorLocation());
 	const FVector velocity = SeamlessPortalMath::MapVector(entry, destination, movement->Velocity);
 	const FRotator facing(0, SeamlessPortalMath::MapRotation(entry, destination, character->GetActorQuat()).Rotator().Yaw, 0);
-	if (position.ContainsNaN() || velocity.ContainsNaN()) return false;
+	if (position.ContainsNaN() || velocity.ContainsNaN() || facing.ContainsNaN()) return false;
 	const auto* exitPortal = Cast<ASeamlessPortalActor>(exitTarget);
 	if (exitPortal && !exitPortal->FitsAt(character, position)) return false;
 	const FVector normal = destination.GetRotation().GetForwardVector();
@@ -580,11 +581,16 @@ bool ASeamlessPortalActor::TryTraverse(ACharacter* character, const FVector& pre
 	PortalTraversalGuard::Lock(character, world->GetTimeSeconds() + FMath::Max(0.01f, reentryLockDuration));
 	if (!character->TeleportTo(position, facing, false, true))
 	{ PortalTraversalGuard::Unlock(character); return false; }
-	if (!IsValid(character) || !IsValid(movement) || world->bIsTearingDown) return false;
+	// The teleport already succeeded: do not report a failure and roll back a valid arrival
+	// merely because an arrival callback removed this portal or its movement component.
+	if (!IsValid(this) || !IsValid(character) || !IsValid(movement) || world->bIsTearingDown) return true;
 	character->SetBase(nullptr);
+	if (!IsValid(this) || !IsValid(character) || !IsValid(movement) || world->bIsTearingDown) return true;
 	movement->Velocity = velocity;
 	movement->bJustTeleported = true;
 	movement->SetMovementMode(MOVE_Falling);
+	// Movement-mode/base delegates may destroy either actor or begin a level transition.
+	if (!IsValid(this) || !IsValid(character) || world->bIsTearingDown) return true;
 	if (AController* controller = character->GetController())
 	{
 		const FRotator control = SeamlessPortalMath::MapRotation(entry, destination, controller->GetControlRotation().Quaternion()).Rotator();
@@ -593,7 +599,8 @@ bool ASeamlessPortalActor::TryTraverse(ACharacter* character, const FVector& pre
 		{
 			player->ClientSetRotation(FRotator(control.Pitch, control.Yaw, 0), false);
 			const auto* settings = GetTeleportDataAsset();
-			if (IsValid(settings->teleportSound)) player->ClientPlaySound(settings->teleportSound, settings->soundVolumeMultiplier);
+			if (IsValid(settings) && IsValid(settings->teleportSound) && FMath::IsFinite(settings->soundVolumeMultiplier))
+				player->ClientPlaySound(settings->teleportSound, FMath::Max(0.0f, settings->soundVolumeMultiplier));
 		}
 	}
 	character->ForceNetUpdate();
@@ -603,7 +610,8 @@ bool ASeamlessPortalActor::TryTraverse(ACharacter* character, const FVector& pre
 void ASeamlessPortalActor::CopyPresentationFromSource()
 {
 	AOneWayTeleportActor* source = presentationSource;
-	if (!IsValid(source) || source == this || !IsValid(source->portalScreen) || !IsValid(source->entryCollision)
+	if (!IsValid(entryCollision) || !IsValid(portalVFX) || !IsValid(source) || source == this
+		|| !IsValid(source->portalScreen) || !IsValid(source->entryCollision)
 		|| !IsValid(source->portalVFX)) return;
 	Modify();
 	teleportDA = source->teleportDA;
