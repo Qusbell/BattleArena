@@ -679,13 +679,57 @@ bool UPathLinkSubsystem::CalculateRoute(const FVector& StartLocation, const FVec
         return false;
     }
 
+    // Only the owner-independent default graph rules out native off-mesh shortcuts and custom filters.
+    // For other contexts use zero normal-edge bounds; estimates are optional and never decide reachability.
+    const bool bSafeBounds = bDefaultGraphOwnerIndependent.IsSet() && bDefaultGraphOwnerIndependent.GetValue()
+        && (!IsValid(PathfindingContext) || PathLinkNavigation::CanShareDefaultGraph(World, PathfindingContext, false));
+    FPathLinkRouteEstimates Estimates;
+    const FPathLinkRouteEstimates* EstimatePtr = nullptr;
+    const UPathLinkRoutingCacheData* Bake = bSafeBounds ? GetValidatedRoutingCache() : nullptr;
+    const double CandidateBegin = FPlatformTime::Seconds();
+    if (Bake && Bake->NavigationData && !Bake->bHasNativeOffMeshLinks)
+    {
+        FNavLocation Start, Target;
+        if (Bake->NavigationData->ProjectPoint(StartLocation, Start, FVector(150,150,400), BakedGroundFilter, PathfindingContext)
+            && Bake->NavigationData->ProjectPoint(TargetLocation, Target, FVector(150,150,400), BakedGroundFilter, PathfindingContext))
+        {
+            const int32* A = BakedPolyIndexByRef.Find(Start.NodeRef);
+            const int32* B = BakedPolyIndexByRef.Find(Target.NodeRef);
+            if (A && B)
+            {
+                Estimates.DirectDistance = Bake->EstimateNormalDistance(*A, Start.Location, *B, Target.Location);
+                Estimates.bDirectDisconnected = Bake->Polygons[*A].Island != Bake->Polygons[*B].Island;
+                Estimates.StartDistances.Init(-1, RouteGraph->Traversals.Num());
+                Estimates.EndDistances.Init(-1, RouteGraph->Traversals.Num());
+                Estimates.StartDisconnected.Init(false, RouteGraph->Traversals.Num());
+                Estimates.EndDisconnected.Init(false, RouteGraph->Traversals.Num());
+                for (int32 I = 0; I < RouteGraph->Traversals.Num(); ++I)
+                {
+                    const auto& T = RouteGraph->Traversals[I];
+                    for (const auto& Baked : Bake->Traversals)
+                        if (Baked.Link == T.Link.Get() && Baked.Reverse == T.Reverse)
+                        {
+                            Estimates.StartDistances[I] = Bake->EstimateNormalDistance(*A, Start.Location, Baked.EntryPoly, T.EntryNavLocation);
+                            Estimates.EndDistances[I] = Bake->EstimateNormalDistance(Baked.ExitPoly, T.ExitNavLocation, *B, Target.Location);
+                            Estimates.StartDisconnected[I] = Bake->Polygons[*A].Island != Bake->Polygons[Baked.EntryPoly].Island;
+                            Estimates.EndDisconnected[I] = Bake->Polygons[Baked.ExitPoly].Island != Bake->Polygons[*B].Island;
+                            break;
+                        }
+                }
+                EstimatePtr = &Estimates;
+            }
+        }
+    }
+    const double EstimateMilliseconds = (FPlatformTime::Seconds() - CandidateBegin) * 1000.0;
     FPathLinkRouteFinder RouteFinder(World);
-    return RouteFinder.FindShortestRoute(
+    const bool bFound = RouteFinder.FindShortestRoute(
         StartLocation,
         TargetLocation,
         *RouteGraph,
         PathfindingContext,
-        OutResult, bBuildSegments, &LastRouteStats);
+        OutResult, bBuildSegments, &LastRouteStats, EstimatePtr, bSafeBounds);
+    LastRouteStats.CandidateMilliseconds += EstimateMilliseconds;
+    return bFound;
 }
 
 bool UPathLinkSubsystem::FindShortestRouteToActor(

@@ -1,10 +1,8 @@
 #include "AI/PathLink/Internal/PathLinkRouteFinder.h"
 
 #include "AI/PathLink/PathLink.h"
-#include "AI/PathLink/PathLinkSettings.h"
+#include "AI/PathLink/Internal/PathLinkLazySearch.h"
 #include "AI/PathLink/Internal/PathLinkNavigation.h"
-#include "Algo/Reverse.h"
-#include "CollisionQueryParams.h"
 #include "Engine/World.h"
 #include "HAL/PlatformTime.h"
 #include "NavigationPath.h"
@@ -331,7 +329,9 @@ bool FPathLinkRouteFinder::FindShortestRoute(
     AActor* PathfindingContext,
     FPathLinkRouteResult& OutResult,
     bool bBuildSegments,
-    FPathLinkQueryStats* OutStats) const
+    FPathLinkQueryStats* OutStats,
+    const FPathLinkRouteEstimates* Estimates,
+    bool bEuclideanBoundsSafe) const
 {
     TRACE_CPUPROFILER_EVENT_SCOPE(PathLink_DetailedRoute);
     FPathLinkQueryStats Stats;
@@ -363,801 +363,97 @@ bool FPathLinkRouteFinder::FindShortestRoute(
         return false;
     }
 
-    const UPathLinkSettings* Settings = GetDefault<UPathLinkSettings>();
-    const int32 InitialCandidateCount = FMath::Max(1, Settings ? Settings->DynamicCandidateCount : 6);
-    const int32 ExpansionStep = FMath::Max(1, Settings ? Settings->CandidateExpansionStep : 3);
-    const int32 MaxExpansionPasses = FMath::Max(0, Settings ? Settings->MaxCandidateExpansionPasses : 3);
-    const double BlockedMultiplier = FMath::Max(
-        1.0,
-        static_cast<double>(Settings ? Settings->BlockedTraceDistanceMultiplier : 1.5f));
-    const double ExcessiveRatio = FMath::Max(
-        1.0,
-        static_cast<double>(Settings ? Settings->ExcessiveNavDistanceRatio : 3.5f));
-    const float TraceHeight = FMath::Max(
-        0.0f,
-        Settings ? Settings->CandidateTraceHeight : 100.0f);
-
     const int32 TraversalCount = StaticGraph.Traversals.Num();
     const int32 StartNode = 0;
     const int32 FirstTraversalNode = 1;
     const int32 TargetNode = FirstTraversalNode + TraversalCount;
     const int32 NodeCount = TargetNode + 1;
-
-    struct FEndpointCandidate
-    {
-        TWeakObjectPtr<APathLink> Link;
-        TArray<int32, TInlineAllocator<2>> TraversalIndices;
-
-        /** Nearest N을 고를 때 사용하는 순수 직선거리입니다. */
-        double BestStraightDistance = TNumericLimits<double>::Max();
-    };
-
-    struct FEndpointState
-    {
-        /** 현재 후보 Pool에 들어온 Traversal인지 여부입니다. */
-        bool bActive = false;
-
-        /** 실제 NavMesh 확인 결과 도달 불가능(Island 등)하여 제외된 Traversal입니다. */
-        bool bRejected = false;
-
-        /** 선택된 뒤 실제 NavMesh 거리까지 확인한 Traversal입니다. */
-        bool bExactDistanceReady = false;
-
-        /** 직선거리 + LineTrace 보정으로 얻은 싼 근사 거리입니다. */
-        double EstimatedDistance = 0.0;
-
-        /** 실제 NavMesh로 확인한 거리입니다. */
-        double ExactNavDistance = 0.0;
-
-        bool bTraceBlocked = false;
-    };
-
-    /**
-     * 후보용 Trace는 지면에 바로 맞는 것을 줄이기 위해 시작/끝을 같은 Z Offset만큼 올립니다.
-     * PathfindingContext, 해당 PathLink, 해당 Link의 ExitActor는 자기 자신을 장애물로 보지 않도록 제외합니다.
-     */
-    auto IsCandidateTraceBlocked = [this, PathfindingContext, TraceHeight](
-        const FVector& RawFrom,
-        const FVector& RawTo,
-        const APathLink* Link) -> bool
-    {
-        if (RawFrom.Equals(RawTo, 1.0f))
-        {
-            return false;
-        }
-
-        FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(PathLinkDynamicCandidateTrace), false);
-
-        if (IsValid(PathfindingContext))
-        {
-            QueryParams.AddIgnoredActor(PathfindingContext);
-        }
-
-        if (IsValid(Link))
-        {
-            QueryParams.AddIgnoredActor(Link);
-
-            if (AActor* ExitActor = Link->GetExitActor(); IsValid(ExitActor))
-            {
-                QueryParams.AddIgnoredActor(ExitActor);
-            }
-        }
-
-        FCollisionObjectQueryParams ObjectQueryParams;
-        ObjectQueryParams.AddObjectTypesToQuery(ECC_WorldStatic);
-        ObjectQueryParams.AddObjectTypesToQuery(ECC_WorldDynamic);
-
-        FHitResult Hit;
-        const FVector HeightOffset = FVector::UpVector * TraceHeight;
-
-        return World->LineTraceSingleByObjectType(
-            Hit,
-            RawFrom + HeightOffset,
-            RawTo + HeightOffset,
-            ObjectQueryParams,
-            QueryParams);
-    };
-
-    /**
-     * Nearest는 "Traversal 수"가 아니라 실제 PathLink Actor 수를 기준으로 셉니다.
-     * TwoWay Link가 선택되면 그 Link의 Forward/Reverse Traversal은 둘 다 후보로 활성화합니다.
-     *
-     * 여기서는 아직 LineTrace/NavMesh Query를 하지 않습니다.
-     * 모든 Link에 대해 직선거리만 계산하고 정렬하므로 비용이 매우 작습니다.
-     */
-    auto BuildEndpointCandidates = [&StaticGraph](
-        const FVector& AnchorRawLocation,
-        const bool bStartSide) -> TArray<FEndpointCandidate>
-    {
-        TArray<FEndpointCandidate> Candidates;
-        TMap<APathLink*, int32> CandidateIndexByLink;
-        Candidates.Reserve(StaticGraph.Traversals.Num());
-        CandidateIndexByLink.Reserve(StaticGraph.Traversals.Num());
-
-        for (int32 TraversalIndex = 0; TraversalIndex < StaticGraph.Traversals.Num(); ++TraversalIndex)
-        {
-            const FPathLinkTraversalNode& Traversal = StaticGraph.Traversals[TraversalIndex];
-            APathLink* Link = Traversal.Link.Get();
-
-            // ExitActor가 없는 PathLink는 StaticGraph에 원칙적으로 들어오지 않지만
-            // 방어적으로 여기서도 제외합니다.
-            if (!IsValid(Link) || !IsValid(Link->GetExitActor()))
-            {
-                continue;
-            }
-
-            const FVector EndpointLocation = bStartSide
-                ? Traversal.EntryLocation
-                : Traversal.ExitLocation;
-
-            const double StraightDistance = FVector::Distance(
-                AnchorRawLocation,
-                EndpointLocation);
-
-            int32* ExistingIndex = CandidateIndexByLink.Find(Link);
-            if (!ExistingIndex)
-            {
-                FEndpointCandidate& Candidate = Candidates.AddDefaulted_GetRef();
-                Candidate.Link = Link;
-                Candidate.BestStraightDistance = StraightDistance;
-                Candidate.TraversalIndices.Add(TraversalIndex);
-                CandidateIndexByLink.Add(Link, Candidates.Num() - 1);
-            }
-            else
-            {
-                FEndpointCandidate& Candidate = Candidates[*ExistingIndex];
-                Candidate.BestStraightDistance = FMath::Min(
-                    Candidate.BestStraightDistance,
-                    StraightDistance);
-                Candidate.TraversalIndices.Add(TraversalIndex);
-            }
-        }
-
-        Candidates.Sort([](const FEndpointCandidate& A, const FEndpointCandidate& B)
-        {
-            return A.BestStraightDistance < B.BestStraightDistance;
-        });
-
-        return Candidates;
-    };
-
-    const double CandidateStart = FPlatformTime::Seconds();
-    const TArray<FEndpointCandidate> StartCandidates = BuildEndpointCandidates(
-        StartLocation,
-        true);
-
-    const TArray<FEndpointCandidate> EndCandidates = BuildEndpointCandidates(
-        TargetLocation,
-        false);
-    Stats.CandidateMilliseconds += (FPlatformTime::Seconds() - CandidateStart) * 1000.0;
-
-    TArray<FEndpointState> StartStates;
-    StartStates.SetNum(TraversalCount);
-
-    TArray<FEndpointState> EndStates;
-    EndStates.SetNum(TraversalCount);
-
-    int32 StartCandidateCursor = 0;
-    int32 EndCandidateCursor = 0;
-    int32 StartActivatedLinkCount = 0;
-    int32 EndActivatedLinkCount = 0;
-
-    /**
-     * 정렬된 Nearest 후보 중 다음 N개의 PathLink만 Pool에 추가합니다.
-     * 이때에만 LineTrace를 수행하고, Hit이면 직선거리 * 보정배수로 EstimatedDistance를 만듭니다.
-     * 실제 NavMesh Query는 아직 하지 않습니다.
-     */
-    auto ActivateNextCandidates = [
-        &Stats,
-        &StaticGraph,
-        &StartCandidates,
-        &EndCandidates,
-        &StartStates,
-        &EndStates,
-        &StartCandidateCursor,
-        &EndCandidateCursor,
-        &StartActivatedLinkCount,
-        &EndActivatedLinkCount,
-        StartLocation,
-        TargetLocation,
-        BlockedMultiplier,
-        &IsCandidateTraceBlocked](
-        const bool bStartSide,
-        const int32 RequestedLinkCount)
-    {
-        const double ActivationStart = FPlatformTime::Seconds();
-        ON_SCOPE_EXIT { Stats.CandidateMilliseconds += (FPlatformTime::Seconds() - ActivationStart) * 1000.0; };
-        const TArray<FEndpointCandidate>& Candidates = bStartSide
-            ? StartCandidates
-            : EndCandidates;
-
-        TArray<FEndpointState>& States = bStartSide
-            ? StartStates
-            : EndStates;
-
-        int32& Cursor = bStartSide
-            ? StartCandidateCursor
-            : EndCandidateCursor;
-
-        int32& ActivatedLinkCount = bStartSide
-            ? StartActivatedLinkCount
-            : EndActivatedLinkCount;
-
-        int32 AddedLinkCount = 0;
-
-        while (Cursor < Candidates.Num() && AddedLinkCount < RequestedLinkCount)
-        {
-            const FEndpointCandidate& Candidate = Candidates[Cursor++];
-            ++AddedLinkCount;
-            ++ActivatedLinkCount;
-
-            for (const int32 TraversalIndex : Candidate.TraversalIndices)
-            {
-                if (!StaticGraph.Traversals.IsValidIndex(TraversalIndex)
-                    || !States.IsValidIndex(TraversalIndex))
-                {
-                    continue;
-                }
-
-                FEndpointState& State = States[TraversalIndex];
-                if (State.bActive)
-                {
-                    continue;
-                }
-
-                const FPathLinkTraversalNode& Traversal = StaticGraph.Traversals[TraversalIndex];
-                APathLink* Link = Traversal.Link.Get();
-
-                if (!IsValid(Link) || !IsValid(Link->GetExitActor()))
-                {
-                    continue;
-                }
-
-                const FVector EndpointLocation = bStartSide
-                    ? Traversal.EntryLocation
-                    : Traversal.ExitLocation;
-
-                const FVector AnchorLocation = bStartSide
-                    ? StartLocation
-                    : TargetLocation;
-
-                double EstimatedDistance = FVector::Distance(
-                    AnchorLocation,
-                    EndpointLocation);
-
-                const bool bBlocked = bStartSide
-                    ? IsCandidateTraceBlocked(StartLocation, EndpointLocation, Link)
-                    : IsCandidateTraceBlocked(EndpointLocation, TargetLocation, Link);
-
-                if (bBlocked)
-                {
-                    EstimatedDistance *= BlockedMultiplier;
-                }
-
-                State.bActive = true;
-                State.EstimatedDistance = EstimatedDistance;
-                State.bTraceBlocked = bBlocked;
-            }
-        }
-    };
-
-    ActivateNextCandidates(true, InitialCandidateCount);
-    ActivateNextCandidates(false, InitialCandidateCount);
-
     int32& DynamicNavQueryCount = Stats.SynchronousNavQueries;
-
-    /**
-     * 순수 NavMesh Start -> Target은 비교 기준으로 하나만 정확히 계산합니다.
-     * 이 1회 Query 덕분에 Link 후보가 근사값이어도 "그냥 걸어가는 편이 더 낫다"는 경로는 안정적으로 남습니다.
-     */
-    double DirectDistance = 0.0;
-    const bool bDirectReachable = BuildNavigationDistance(
-        World,
-        StartNavLocation,
-        TargetNavLocation,
-        PathfindingContext,
-        DirectDistance,
-        &DynamicNavQueryCount, &RequestPaths);
-
     TArray<FDynamicRouteEdge> SelectedEdges;
+    TArray<FPathLinkLazyEdge> SearchEdges;
     TArray<int32> SelectedRouteEdgeIndices;
-    TArray<TArray<int32>> Adjacency;
-    Adjacency.SetNum(NodeCount);
-    TArray<double> Distances;
-    TArray<int32> PreviousEdge;
-    TArray<bool> Visited;
-    bool bGraphBuilt = false;
+    const double CandidateStart = FPlatformTime::Seconds();
 
-    /**
-     * 현재 활성화된 Start/End 후보와 정밀한 Link -> Link Static Graph를 합쳐 Dijkstra를 수행합니다.
-     * Start/End Edge는 아직 NavMesh를 전부 계산하지 않고 EstimatedDistance를 사용하며,
-     * 실제로 선택된 Endpoint만 이후에 정확한 NavMesh 거리로 검증/교체합니다.
-     */
-    auto SolveWithCurrentCandidates = [
-        &Stats, &Adjacency, &Distances, &PreviousEdge, &Visited, &bGraphBuilt,
-        &StaticGraph,
-        TraversalCount,
-        StartNode,
-        FirstTraversalNode,
-        TargetNode,
-        NodeCount,
-        bDirectReachable,
-        DirectDistance,
-        &StartStates,
-        &EndStates](
-        TArray<FDynamicRouteEdge>& OutEdges,
-        TArray<int32>& OutRouteEdgeIndices) -> bool
+    auto AddDynamicEdge = [&](int32 From, int32 To, const FVector& A, const FVector& B,
+        EDynamicRouteEdgeType Type, int32 TraversalIndex, double LinkCost, double Estimate, bool bDisconnected)
     {
-        TRACE_CPUPROFILER_EVENT_SCOPE(PathLink_Dijkstra);
-        const double SolveStart = FPlatformTime::Seconds();
-        ON_SCOPE_EXIT { Stats.DijkstraMilliseconds += (FPlatformTime::Seconds() - SolveStart) * 1000.0; ++Stats.SolveCount; };
-        OutRouteEdgeIndices.Reset();
-
-        if (!bGraphBuilt)
-        {
-            auto AddEdge = [&OutEdges, &Adjacency](FDynamicRouteEdge&& Edge)
-            {
-                const int32 EdgeIndex = OutEdges.Add(MoveTemp(Edge));
-
-                if (Adjacency.IsValidIndex(OutEdges[EdgeIndex].From))
-                {
-                    Adjacency[OutEdges[EdgeIndex].From].Add(EdgeIndex);
-                }
-            };
-
-            if (bDirectReachable)
-            {
-                FDynamicRouteEdge DirectEdge;
-                DirectEdge.From = StartNode;
-                DirectEdge.To = TargetNode;
-                DirectEdge.Cost = DirectDistance;
-                DirectEdge.NavDistance = DirectDistance;
-                DirectEdge.Type = EDynamicRouteEdgeType::DirectToTarget;
-                AddEdge(MoveTemp(DirectEdge));
-            }
-
-            for (int32 TraversalIndex = 0; TraversalIndex < TraversalCount; ++TraversalIndex)
-            {
-                if (!StaticGraph.Traversals.IsValidIndex(TraversalIndex))
-                {
-                    continue;
-                }
-
-                const FPathLinkTraversalNode& Traversal = StaticGraph.Traversals[TraversalIndex];
-                if (!Traversal.Link.IsValid())
-                {
-                    continue;
-                }
-
-                const int32 TraversalNode = FirstTraversalNode + TraversalIndex;
-
-                if (StartStates.IsValidIndex(TraversalIndex))
-                {
-                    const FEndpointState& StartState = StartStates[TraversalIndex];
-
-                    // Allocate every dynamic edge once; later passes only change cost/enabled state.
-                    {
-                        const double StartDistance = StartState.bExactDistanceReady
-                            ? StartState.ExactNavDistance
-                            : StartState.EstimatedDistance;
-
-                        FDynamicRouteEdge StartEdge;
-                        StartEdge.From = StartNode;
-                        StartEdge.To = TraversalNode;
-                        StartEdge.NavDistance = StartDistance;
-                        StartEdge.Cost = StartDistance + Traversal.LinkCost;
-                        StartEdge.Type = EDynamicRouteEdgeType::EnterTraversal;
-                        StartEdge.TraversalIndex = TraversalIndex;
-                        AddEdge(MoveTemp(StartEdge));
-                    }
-                }
-
-                if (EndStates.IsValidIndex(TraversalIndex))
-                {
-                    const FEndpointState& EndState = EndStates[TraversalIndex];
-
-                    {
-                        const double EndDistance = EndState.bExactDistanceReady
-                            ? EndState.ExactNavDistance
-                            : EndState.EstimatedDistance;
-
-                        FDynamicRouteEdge TargetEdge;
-                        TargetEdge.From = TraversalNode;
-                        TargetEdge.To = TargetNode;
-                        TargetEdge.NavDistance = EndDistance;
-                        TargetEdge.Cost = EndDistance;
-                        TargetEdge.Type = EDynamicRouteEdgeType::TraversalToTarget;
-                        AddEdge(MoveTemp(TargetEdge));
-                    }
-                }
-            }
-
-            // Link -> Link는 기존 정밀 NavMesh Cache를 그대로 사용합니다.
-            for (int32 FromIndex = 0; FromIndex < TraversalCount; ++FromIndex)
-            {
-                const int32 FromNode = FirstTraversalNode + FromIndex;
-
-                for (int32 ToIndex = 0; ToIndex < TraversalCount; ++ToIndex)
-                {
-                    const FPathLinkCachedTransition* Transition = StaticGraph.GetTransition(
-                        FromIndex,
-                        ToIndex);
-
-                    if (!Transition || !Transition->Reachable)
-                    {
-                        continue;
-                    }
-
-                    const FPathLinkTraversalNode& ToTraversal = StaticGraph.Traversals[ToIndex];
-                    if (!ToTraversal.Link.IsValid())
-                    {
-                        continue;
-                    }
-
-                    FDynamicRouteEdge CachedEdge;
-                    CachedEdge.From = FromNode;
-                    CachedEdge.To = FirstTraversalNode + ToIndex;
-                    CachedEdge.NavDistance = Transition->NavDistance;
-                    CachedEdge.Cost = Transition->NavDistance + ToTraversal.LinkCost;
-                    CachedEdge.Type = EDynamicRouteEdgeType::EnterTraversal;
-                    CachedEdge.TraversalIndex = ToIndex;
-                    AddEdge(MoveTemp(CachedEdge));
-                }
-            }
-
-            bGraphBuilt = true;
-        }
-
-        for (FDynamicRouteEdge& Edge : OutEdges)
-        {
-            if (Edge.From == StartNode && Edge.Type == EDynamicRouteEdgeType::EnterTraversal)
-            {
-                const FEndpointState& State = StartStates[Edge.TraversalIndex];
-                Edge.bEnabled = State.bActive && !State.bRejected;
-                Edge.NavDistance = State.bExactDistanceReady ? State.ExactNavDistance : State.EstimatedDistance;
-                Edge.Cost = Edge.NavDistance + StaticGraph.Traversals[Edge.TraversalIndex].LinkCost;
-            }
-            else if (Edge.Type == EDynamicRouteEdgeType::TraversalToTarget)
-            {
-                const FEndpointState& State = EndStates[Edge.From - FirstTraversalNode];
-                Edge.bEnabled = State.bActive && !State.bRejected;
-                Edge.Cost = Edge.NavDistance = State.bExactDistanceReady ? State.ExactNavDistance : State.EstimatedDistance;
-            }
-        }
-
-        const double Infinity = TNumericLimits<double>::Max();
-
-        Distances.Init(Infinity, NodeCount);
-
-        PreviousEdge.Init(INDEX_NONE, NodeCount);
-
-        Visited.Init(false, NodeCount);
-
-        Distances[StartNode] = 0.0;
-
-        // NavMesh Query가 아닌 Dijkstra 자체는 상대적으로 매우 저렴하므로 단순 구현을 유지합니다.
-        for (int32 Iteration = 0; Iteration < NodeCount; ++Iteration)
-        {
-            int32 CurrentNode = INDEX_NONE;
-            double CurrentDistance = Infinity;
-
-            for (int32 NodeIndex = 0; NodeIndex < NodeCount; ++NodeIndex)
-            {
-                if (!Visited[NodeIndex] && Distances[NodeIndex] < CurrentDistance)
-                {
-                    CurrentNode = NodeIndex;
-                    CurrentDistance = Distances[NodeIndex];
-                }
-            }
-
-            if (CurrentNode == INDEX_NONE)
-            {
-                break;
-            }
-
-            if (CurrentNode == TargetNode)
-            {
-                break;
-            }
-
-            Visited[CurrentNode] = true;
-
-            for (const int32 EdgeIndex : Adjacency[CurrentNode])
-            {
-                if (!OutEdges.IsValidIndex(EdgeIndex))
-                {
-                    continue;
-                }
-
-                const FDynamicRouteEdge& Edge = OutEdges[EdgeIndex];
-                if (!Edge.bEnabled) continue;
-                const double NewDistance = Distances[CurrentNode] + Edge.Cost;
-
-                if (NewDistance + KINDA_SMALL_NUMBER < Distances[Edge.To])
-                {
-                    Distances[Edge.To] = NewDistance;
-                    PreviousEdge[Edge.To] = EdgeIndex;
-                }
-            }
-        }
-
-        if (PreviousEdge[TargetNode] == INDEX_NONE)
-        {
-            return false;
-        }
-
-        int32 TraceNode = TargetNode;
-
-        while (TraceNode != StartNode)
-        {
-            const int32 EdgeIndex = PreviousEdge[TraceNode];
-
-            if (!OutEdges.IsValidIndex(EdgeIndex))
-            {
-                OutRouteEdgeIndices.Reset();
-                return false;
-            }
-
-            OutRouteEdgeIndices.Add(EdgeIndex);
-            TraceNode = OutEdges[EdgeIndex].From;
-        }
-
-        Algo::Reverse(OutRouteEdgeIndices);
-        return true;
+        FDynamicRouteEdge Edge;
+        Edge.From = From; Edge.To = To; Edge.Type = Type; Edge.TraversalIndex = TraversalIndex;
+        SelectedEdges.Add(Edge);
+        FPathLinkLazyEdge Search;
+        Search.From = From; Search.To = To; Search.bExact = false;
+        // Preserve the existing <=1cm zero-distance shortcut even at a polygon boundary.
+        Search.bEnabled = !bDisconnected || A.Equals(B, 1.0f);
+        // Native off-mesh shortcuts may be cheaper than Euclidean distance. Use zero unless ruled out.
+        const double NormalBound = bEuclideanBoundsSafe && !A.Equals(B, 1.0f) ? FVector::Distance(A, B) : 0.0;
+        Search.LowerBound = NormalBound + LinkCost;
+        Search.Estimate = (FMath::IsFinite(Estimate) && Estimate >= 0 ? FMath::Max(NormalBound, Estimate) : NormalBound) + LinkCost;
+        SearchEdges.Add(Search);
     };
-
-    /**
-     * Dijkstra가 실제로 선택한 Start/End Endpoint만 정확한 NavMesh로 확인합니다.
-     *
-     * - Path가 없으면 Island/분리된 NavMesh로 판단하고 해당 Traversal을 후보에서 제외합니다.
-     * - 실제 NavDistance가 추정치보다 ExcessiveRatio 이상 크면, 비용을 정확한 값으로 교체하고
-     *   다음 후보를 조금 더 열어 다시 비교합니다.
-     */
-    auto ValidateSelectedEndpoint = [
-        this,
-        &StaticGraph,
-        PathfindingContext,
-        &DynamicNavQueryCount,
-        &RequestPaths,
-        StartNavLocation,
-        TargetNavLocation,
-        ExcessiveRatio,
-        &StartStates,
-        &EndStates](
-        const bool bStartSide,
-        const int32 TraversalIndex,
-        bool& bOutRejected,
-        bool& bOutExactDistanceUpdated,
-        bool& bOutExcessive) -> bool
+    AddDynamicEdge(StartNode, TargetNode, StartNavLocation, TargetNavLocation,
+        EDynamicRouteEdgeType::DirectToTarget, INDEX_NONE, 0, Estimates ? Estimates->DirectDistance : -1,
+        Estimates && Estimates->bDirectDisconnected);
+    for (int32 I = 0; I < TraversalCount; ++I)
     {
-        bOutRejected = false;
-        bOutExactDistanceUpdated = false;
-        bOutExcessive = false;
-
-        if (!StaticGraph.Traversals.IsValidIndex(TraversalIndex))
+        const auto& T = StaticGraph.Traversals[I];
+        if (!T.Link.IsValid()) continue;
+        AddDynamicEdge(StartNode, FirstTraversalNode + I, StartNavLocation, T.EntryNavLocation,
+            EDynamicRouteEdgeType::EnterTraversal, I, T.LinkCost,
+            Estimates && Estimates->StartDistances.IsValidIndex(I) ? Estimates->StartDistances[I] : -1,
+            Estimates && Estimates->StartDisconnected.IsValidIndex(I) && Estimates->StartDisconnected[I]);
+        AddDynamicEdge(FirstTraversalNode + I, TargetNode, T.ExitNavLocation, TargetNavLocation,
+            EDynamicRouteEdgeType::TraversalToTarget, I, 0,
+            Estimates && Estimates->EndDistances.IsValidIndex(I) ? Estimates->EndDistances[I] : -1,
+            Estimates && Estimates->EndDisconnected.IsValidIndex(I) && Estimates->EndDisconnected[I]);
+    }
+    for (int32 From = 0; From < TraversalCount; ++From)
+        for (int32 To = 0; To < TraversalCount; ++To)
         {
-            return false;
+            const auto* Transition = StaticGraph.GetTransition(From, To);
+            if (!Transition || !Transition->Reachable || !StaticGraph.Traversals[From].Link.IsValid()
+                || !StaticGraph.Traversals[To].Link.IsValid()) continue;
+            FDynamicRouteEdge Edge;
+            Edge.From = FirstTraversalNode + From; Edge.To = FirstTraversalNode + To;
+            Edge.Type = EDynamicRouteEdgeType::EnterTraversal; Edge.TraversalIndex = To;
+            Edge.NavDistance = Transition->NavDistance;
+            Edge.Cost = Edge.NavDistance + StaticGraph.Traversals[To].LinkCost;
+            SelectedEdges.Add(Edge);
+            FPathLinkLazyEdge Search;
+            Search.From = Edge.From; Search.To = Edge.To;
+            Search.Cost = Search.LowerBound = Search.Estimate = Edge.Cost;
+            SearchEdges.Add(Search);
         }
-
-        TArray<FEndpointState>& States = bStartSide
-            ? StartStates
-            : EndStates;
-
-        if (!States.IsValidIndex(TraversalIndex))
+    Stats.CandidateMilliseconds += (FPlatformTime::Seconds() - CandidateStart) * 1000.0;
+    auto Resolve = [&](int32 Index, double& Cost)
+    {
+        auto& Edge = SelectedEdges[Index];
+        FVector A = StartNavLocation, B = TargetNavLocation;
+        double LinkCost = 0;
+        if (Edge.Type == EDynamicRouteEdgeType::EnterTraversal)
         {
-            return false;
+            const auto& T = StaticGraph.Traversals[Edge.TraversalIndex];
+            B = T.EntryNavLocation; LinkCost = T.LinkCost;
         }
-
-        FEndpointState& State = States[TraversalIndex];
-
-        if (!State.bActive || State.bRejected)
-        {
-            return false;
-        }
-
-        if (State.bExactDistanceReady)
-        {
-            return true;
-        }
-
-        const FPathLinkTraversalNode& Traversal = StaticGraph.Traversals[TraversalIndex];
-
-        double ActualNavDistance = 0.0;
-        const bool bReachable = bStartSide
-            ? BuildNavigationDistance(
-                World,
-                StartNavLocation,
-                Traversal.EntryNavLocation,
-                PathfindingContext,
-                ActualNavDistance,
-                &DynamicNavQueryCount, &RequestPaths)
-            : BuildNavigationDistance(
-                World,
-                Traversal.ExitNavLocation,
-                TargetNavLocation,
-                PathfindingContext,
-                ActualNavDistance,
-                &DynamicNavQueryCount, &RequestPaths);
-
-        if (!bReachable)
-        {
-            // Nearest 후보가 다른 NavMesh Island에 있거나 실제로 도달 불가능하면 이 Traversal은 완전히 제외합니다.
-            State.bRejected = true;
-            bOutRejected = true;
-            return false;
-        }
-
-        State.bExactDistanceReady = true;
-        State.ExactNavDistance = ActualNavDistance;
-        bOutExactDistanceUpdated = true;
-
-        const double SafeEstimate = FMath::Max(1.0, State.EstimatedDistance);
-        bOutExcessive = ActualNavDistance > SafeEstimate * ExcessiveRatio;
-
-        return true;
+        else if (Edge.Type == EDynamicRouteEdgeType::TraversalToTarget)
+            A = StaticGraph.Traversals[Edge.TraversalIndex].ExitNavLocation;
+        const bool bFound = BuildNavigationDistance(World, A, B, PathfindingContext,
+            Edge.NavDistance, &DynamicNavQueryCount, &RequestPaths);
+        Edge.Cost = Cost = Edge.NavDistance + LinkCost;
+        return bFound;
     };
-
-    int32 ExpansionPassesUsed = 0;
-
-    // Endpoint 검증/비용 교체 때문에 같은 후보 Pool에서 몇 차례 재계산할 수 있습니다.
-    // 각 Traversal의 Exact/Rejected 상태는 한 번만 바뀌므로 실제 반복 횟수는 제한적입니다.
-    const int32 SafetyIterationLimit = FMath::Max(16, TraversalCount * 4 + 16);
-    int32 SafetyIteration = 0;
-
-    while (SafetyIteration++ < SafetyIterationLimit)
-    {
-        const bool bFoundRoute = SolveWithCurrentCandidates(
-            SelectedEdges,
-            SelectedRouteEdgeIndices);
-
-        if (!bFoundRoute)
+    const double SolveStart = FPlatformTime::Seconds();
+    double NavQuerySeconds = 0;
+    int32 ResolvedCount = 0;
+    const bool bFound = PathLinkLazySearch::FindRoute(NodeCount, StartNode, TargetNode, SearchEdges,
+        [&](int32 Index, double& Cost)
         {
-            const bool bCanExpandStart = StartCandidateCursor < StartCandidates.Num();
-            const bool bCanExpandEnd = EndCandidateCursor < EndCandidates.Num();
-
-            if (ExpansionPassesUsed >= MaxExpansionPasses
-                || (!bCanExpandStart && !bCanExpandEnd))
-            {
-                return false;
-            }
-
-            if (bCanExpandStart)
-            {
-                ActivateNextCandidates(true, ExpansionStep);
-            }
-
-            if (bCanExpandEnd)
-            {
-                ActivateNextCandidates(false, ExpansionStep);
-            }
-
-            ++ExpansionPassesUsed;
-            continue;
-        }
-
-        int32 SelectedStartTraversal = INDEX_NONE;
-        int32 SelectedEndTraversal = INDEX_NONE;
-
-        for (const int32 EdgeIndex : SelectedRouteEdgeIndices)
-        {
-            if (!SelectedEdges.IsValidIndex(EdgeIndex))
-            {
-                continue;
-            }
-
-            const FDynamicRouteEdge& Edge = SelectedEdges[EdgeIndex];
-
-            if (Edge.Type == EDynamicRouteEdgeType::EnterTraversal
-                && Edge.From == StartNode)
-            {
-                SelectedStartTraversal = Edge.TraversalIndex;
-            }
-            else if (Edge.Type == EDynamicRouteEdgeType::TraversalToTarget)
-            {
-                SelectedEndTraversal = Edge.From - FirstTraversalNode;
-            }
-        }
-
-        // Direct NavMesh Route라면 Link Endpoint 검증 자체가 필요 없습니다.
-        if (SelectedStartTraversal == INDEX_NONE
-            && SelectedEndTraversal == INDEX_NONE)
-        {
-            break;
-        }
-
-        bool bNeedResolveAgain = false;
-        bool bNeedExpandStart = false;
-        bool bNeedExpandEnd = false;
-
-        if (SelectedStartTraversal != INDEX_NONE)
-        {
-            bool bRejected = false;
-            bool bExactUpdated = false;
-            bool bExcessive = false;
-
-            ValidateSelectedEndpoint(
-                true,
-                SelectedStartTraversal,
-                bRejected,
-                bExactUpdated,
-                bExcessive);
-
-            if (bRejected || bExactUpdated)
-            {
-                bNeedResolveAgain = true;
-            }
-
-            // Island이면 다음 후보를 보충하고,
-            // 실제 NavPath가 추정치보다 지나치게 길어도 다음 후보를 조금 더 열어 비교합니다.
-            bNeedExpandStart = bRejected || bExcessive;
-        }
-
-        if (SelectedEndTraversal != INDEX_NONE)
-        {
-            bool bRejected = false;
-            bool bExactUpdated = false;
-            bool bExcessive = false;
-
-            ValidateSelectedEndpoint(
-                false,
-                SelectedEndTraversal,
-                bRejected,
-                bExactUpdated,
-                bExcessive);
-
-            if (bRejected || bExactUpdated)
-            {
-                bNeedResolveAgain = true;
-            }
-
-            bNeedExpandEnd = bRejected || bExcessive;
-        }
-
-        const bool bCanExpandStart = bNeedExpandStart
-            && StartCandidateCursor < StartCandidates.Num();
-        const bool bCanExpandEnd = bNeedExpandEnd
-            && EndCandidateCursor < EndCandidates.Num();
-
-        if (ExpansionPassesUsed < MaxExpansionPasses
-            && (bCanExpandStart || bCanExpandEnd))
-        {
-            if (bCanExpandStart)
-            {
-                ActivateNextCandidates(
-                    true,
-                    bNeedExpandStart ? ExpansionStep : 0);
-            }
-
-            if (bCanExpandEnd)
-            {
-                ActivateNextCandidates(
-                    false,
-                    bNeedExpandEnd ? ExpansionStep : 0);
-            }
-
-            ++ExpansionPassesUsed;
-            bNeedResolveAgain = true;
-        }
-
-        if (bNeedResolveAgain)
-        {
-            continue;
-        }
-
-        // 선택된 Start/End Edge가 이미 Exact 상태이고 더 확장할 이유도 없으면 최종 Route로 확정합니다.
-        break;
-    }
-
-    if (SafetyIteration > SafetyIterationLimit)
-    {
-        UE_LOG(
-            LogPathLinkRouteFinder,
-            Warning,
-            TEXT("[PathLink][Route] 후보 검증 반복 상한에 도달했습니다. Traversals=%d | Context=%s"),
-            TraversalCount,
-            *GetNameSafe(PathfindingContext));
-        return false;
-    }
+            const double Begin = FPlatformTime::Seconds();
+            const bool bReachable = Resolve(Index, Cost);
+            NavQuerySeconds += FPlatformTime::Seconds() - Begin;
+            return bReachable;
+        }, SelectedRouteEdgeIndices, Stats.SolveCount, ResolvedCount);
+    Stats.DijkstraMilliseconds += FMath::Max(0.0, FPlatformTime::Seconds() - SolveStart - NavQuerySeconds) * 1000.0;
+    if (!bFound) return false;
 
     const double PointsStart = FPlatformTime::Seconds();
     ON_SCOPE_EXIT { if (bBuildSegments) Stats.PathPointsMilliseconds = (FPlatformTime::Seconds() - PointsStart) * 1000.0; };
@@ -1314,46 +610,10 @@ bool FPathLinkRouteFinder::FindShortestRoute(
 
     OutResult.Success = true;
 
-    int32 StartTraceBlockedCount = 0;
-    int32 EndTraceBlockedCount = 0;
-    int32 RejectedStartTraversalCount = 0;
-    int32 RejectedEndTraversalCount = 0;
-
-    for (const FEndpointState& State : StartStates)
-    {
-        StartTraceBlockedCount += (State.bActive && State.bTraceBlocked) ? 1 : 0;
-        RejectedStartTraversalCount += State.bRejected ? 1 : 0;
-    }
-
-    for (const FEndpointState& State : EndStates)
-    {
-        EndTraceBlockedCount += (State.bActive && State.bTraceBlocked) ? 1 : 0;
-        RejectedEndTraversalCount += State.bRejected ? 1 : 0;
-    }
-
-    const double RouteMilliseconds = (FPlatformTime::Seconds() - RouteStartSeconds) * 1000.0;
-
-    UE_LOG(
-        LogPathLinkRouteFinder,
-        Verbose,
-        TEXT("[PathLink][Route] Success | Traversals=%d | CandidateLinks(Start=%d/%d End=%d/%d) | TraceBlocked(Start=%d End=%d) | RejectedIslandTraversal(Start=%d End=%d) | ExpansionPasses=%d | UsedLinks=%d | DynamicNavQueries=%d | Segments=%d | Distance=%.2f | Time=%.3fms | Context=%s"),
-        TraversalCount,
-        StartActivatedLinkCount,
-        StartCandidates.Num(),
-        EndActivatedLinkCount,
-        EndCandidates.Num(),
-        StartTraceBlockedCount,
-        EndTraceBlockedCount,
-        RejectedStartTraversalCount,
-        RejectedEndTraversalCount,
-        ExpansionPassesUsed,
-        OutResult.UsedLinks.Num(),
-        DynamicNavQueryCount,
-        OutResult.Segments.Num(),
-        OutResult.TotalDistance,
-        RouteMilliseconds,
-        *GetNameSafe(PathfindingContext));
-
+    UE_LOG(LogPathLinkRouteFinder, Verbose,
+        TEXT("[PathLink][Route] Success | Traversals=%d | BakedPriority=%d | BoundsSafe=%d | ResolvedEdges=%d | Solves=%d | UsedLinks=%d | DynamicNavQueries=%d | Distance=%.2f | Time=%.3fms | Context=%s"),
+        TraversalCount, Estimates != nullptr, bEuclideanBoundsSafe, ResolvedCount, Stats.SolveCount,
+        OutResult.UsedLinks.Num(), DynamicNavQueryCount, OutResult.TotalDistance,
+        (FPlatformTime::Seconds() - RouteStartSeconds) * 1000.0, *GetNameSafe(PathfindingContext));
     return true;
 }
-

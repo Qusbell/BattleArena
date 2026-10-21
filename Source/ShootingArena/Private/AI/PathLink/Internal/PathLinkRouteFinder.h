@@ -7,6 +7,17 @@ class AActor;
 class APathLink;
 class UWorld;
 
+/** Optional baked estimates aligned with StaticGraph.Traversals; negative means unavailable, never unreachable. */
+struct FPathLinkRouteEstimates
+{
+    TArray<double> StartDistances;
+    TArray<double> EndDistances;
+    TArray<bool> StartDisconnected;
+    TArray<bool> EndDisconnected;
+    double DirectDistance = -1;
+    bool bDirectDisconnected = false;
+};
+
 /**
  * UPathLinkSubsystem에서만 사용하는 순수 C++ 최단 경로 계산기입니다.
  * Area / Risk와 전혀 관계없이 NavMesh 거리와 PathLink 거리만 사용합니다.
@@ -36,7 +47,7 @@ public:
         bool bComputeTransitions = true) const;
 
     /**
-     * 이미 구축된 Link -> Link Graph를 재사용하고, Start/Target 쪽은 Nearest 후보 + 근사 비용으로 줄인 뒤 선택 Endpoint만 NavMesh로 정밀 검증합니다.
+     * Baked estimates prioritize all endpoints. Lazy exact validation stops only when remaining bounds cannot improve the route.
      */
     bool FindShortestRoute(
         const FVector& StartLocation,
@@ -45,7 +56,9 @@ public:
         AActor* PathfindingContext,
         FPathLinkRouteResult& OutResult,
         bool bBuildSegments = true,
-        FPathLinkQueryStats* OutStats = nullptr) const;
+        FPathLinkQueryStats* OutStats = nullptr,
+        const FPathLinkRouteEstimates* Estimates = nullptr,
+        bool bEuclideanBoundsSafe = false) const;
 
 private:
     UWorld* World = nullptr;
