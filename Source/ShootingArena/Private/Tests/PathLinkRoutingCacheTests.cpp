@@ -16,6 +16,10 @@ bool FPathLinkRoutingCacheTest::RunTest(const FString& Parameters)
 {
     IConsoleVariable* Strength = IConsoleManager::Get().FindConsoleVariable(TEXT("PathLink.EstimateBlendStrength"));
     IConsoleVariable* Range = IConsoleManager::Get().FindConsoleVariable(TEXT("PathLink.EstimateBlendRangeCm"));
+    IConsoleVariable* Direction=IConsoleManager::Get().FindConsoleVariable(TEXT("PathLink.EstimateDirectionStrength"));
+    const float OldDirection=Direction->GetFloat();
+    ON_SCOPE_EXIT { Direction->SetWithCurrentPriority(OldDirection); };
+    Direction->SetWithCurrentPriority(0.0f);
     const float OldStrength = Strength->GetFloat(), OldRange = Range->GetFloat();
     ON_SCOPE_EXIT { Strength->SetWithCurrentPriority(OldStrength); Range->SetWithCurrentPriority(OldRange); };
     Strength->SetWithCurrentPriority(0.0f);
@@ -143,6 +147,18 @@ bool FPathLinkRoutingCacheTest::RunTest(const FString& Parameters)
     Range->SetWithCurrentPriority(0.0f);
     TestEqual(TEXT("Zero range disables blend without division by zero"),
         Cache->EstimateNormalDistance(0, FVector::ZeroVector, 1, FVector(100,0,0)), 200.0);
+    Strength->SetWithCurrentPriority(0.0f); Direction->SetWithCurrentPriority(1.0f);
+    SetPolys({FVector(0,0,0),FVector(1000,0,0)},{0,0});
+    Cache->Islands[0].Distances={0,1000,1000,0};
+    Cache->Islands[0].DepartureDirections[1].Set(FVector(1,0,0));
+    Cache->Islands[0].DepartureDirections[2].Set(FVector(-1,0,0));
+    TestEqual(TEXT("Forward start offset subtracts distance"),Cache->EstimateNormalDistance(0,FVector(200,0,0),1,FVector(1000,0,0)),800.0);
+    TestEqual(TEXT("Backward start offset adds distance"),Cache->EstimateNormalDistance(0,FVector(-200,0,0),1,FVector(1000,0,0)),1200.0);
+    TestEqual(TEXT("Reverse departure approximates arrival correction"),Cache->EstimateNormalDistance(0,FVector(200,0,0),1,FVector(1100,0,0)),900.0);
+    TestTrue(TEXT("Projected estimate never below straight distance"),Cache->EstimateNormalDistance(0,FVector(0,200,0),1,FVector(1000,0,0))>=FVector::Distance(FVector(0,200,0),FVector(1000,0,0)));
+    Cache->Islands[0].DepartureDirections[1].Set(FVector::ZeroVector);
+    Cache->Islands[0].DepartureDirections[2].Set(FVector::ZeroVector);
+    TestEqual(TEXT("Missing directions preserve legacy endpoint offsets"),Cache->EstimateNormalDistance(0,FVector(200,0,0),1,FVector(1000,0,0)),1200.0);
     World->DestroyWorld(false);
     return true;
 }

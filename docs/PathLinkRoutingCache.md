@@ -113,8 +113,8 @@ The runtime estimate now blends this representative estimate with endpoint strai
 `Corrected = (1-w)*RepresentativeEstimate + w*distance(Start,Target)`
 
 The weight uses the directed baked **polygon-center path length**, not the dynamic endpoint straight
-distance. Default controls are `PathLink.EstimateBlendStrength 1` and
-`PathLink.EstimateBlendRangeCm 4000` (40m). Strength 0 restores the previous estimator. Nonpositive
+distance. The previous straight-blend controls were `PathLink.EstimateBlendStrength 1` and
+`PathLink.EstimateBlendRangeCm 4000` (40m). With DirectionStrength 0, straight-blend strength 0 restores the pure center estimator. Nonpositive
 range or nonfinite settings disable blending. Unreachable entries are rejected before blending.
 Only approximate endpoint-to-endpoint/Link endpoint walking estimates change: exact link traversal
 costs, exact baked Link-to-Link transitions, detailed routes and `TotalDistance` remain unchanged.
@@ -237,9 +237,9 @@ for both arrays and runtime memory accounting includes the new allocation. Forma
 are rejected and the existing pre-play/pre-save automatic bake regenerates them. No extra actors,
 manual maintenance, per-pair waypoints, or runtime path reconstruction were added.
 
-Native consumers can call GetNormalDepartureDirection(FromPoly, ToPoly, OutDirection). This task
-stores the data only; existing distance estimates (strength 1, range 40m), detailed routes, static
-Link transitions, physical movement and Blueprint signatures are unchanged. No arrival direction
+Native consumers can call GetNormalDepartureDirection(FromPoly, ToPoly, OutDirection). The initial direction-data task
+stored the data only. The subsequent directional correction now uses it as described below;
+detailed routes, static Link transitions, physical movement and Blueprint signatures remain unchanged. No arrival direction
 is stored. Negating Departure(B,A) can serve as an approximate arrival tangent for A->B only when
 reverse routing follows the same corridor; that symmetry is not assumed by the data/API.
 
@@ -247,8 +247,7 @@ A proposed later correction projects the start offset onto this tangent:
 D(A,CenterB) ~= D(CenterA,CenterB) - dot(A-CenterA, Departure(A,B)).
 For an eastbound initial segment, a start 2m east of the center subtracts about 2m; a start 2m west
 adds about 2m; a perpendicular offset contributes zero at first order. This is a local approximation,
-not an exact arbitrary-offset distance or a way to recover the next polygon uniquely. It is not yet
-applied to runtime scoring.
+not an exact arbitrary-offset distance or a way to recover the next polygon uniquely. It is now applied to runtime scoring through the correction described below.
 
 
 Verification on PortalMap: 57,232 directed table entries, distance-only 0.218MiB plus departure
@@ -258,3 +257,19 @@ serialization, migration and version-1 rejection). Editor and Win64 Development 
 After refreshing the editor Link registry, all 200 fixed playable pairs retained their prior detailed
 distances and strength-1/40m estimates (0.001cm tolerance). Saved verification is in
 Saved/PathLinkBench/DepartureBakeVerification.json. PortalMap was rebaked and saved.
+
+
+## Current runtime default: directional offset correction
+
+`PathLink.EstimateDirectionStrength 1` and `PathLink.EstimateBlendStrength 0` select the measured
+new default. BlendRangeCm remains 4000 but is inactive with BlendStrength 0. Each available forward
+start tangent subtracts the signed start offset along that tangent. The reverse departure approximates
+the arrival correction. Missing directions retain their former positive offset contribution; normal
+walking estimates are floored at endpoint Euclidean distance before optional legacy straight blending.
+This adds no pathfinding/raycast queries or path arrays. DirectionStrength 0 disables this new stage.
+To restore the old 1/40m policy, also set BlendStrength 1 and BlendRangeCm 4000.
+
+See `docs/PathLinkDirectionCorrectionResults.md`: original 200 pairs give 4/200 outside +/-10%,
+and an independent 200-pair playable holdout gives 0/200. Rare fixed-set underestimates remain,
+including one about 26.15m too short. This is a cheap scoring approximation, not a guaranteed
+error bound. The previous reports retain historical settings and measurements.

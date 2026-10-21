@@ -19,7 +19,9 @@
 
 DEFINE_LOG_CATEGORY_STATIC(LogPathLinkBake, Log, All);
 
-static TAutoConsoleVariable<float> CVarPathLinkBlendStrength(TEXT("PathLink.EstimateBlendStrength"), 1.0f,
+static TAutoConsoleVariable<float> CVarPathLinkDirectionStrength(TEXT("PathLink.EstimateDirectionStrength"), 1.0f,
+    TEXT("[0,1] center-offset correction using baked departure tangents. 0 restores the legacy representative estimate."));
+static TAutoConsoleVariable<float> CVarPathLinkBlendStrength(TEXT("PathLink.EstimateBlendStrength"), 0.0f,
     TEXT("Straight-distance blend strength [0,1], for approximate normal movement only. 0 restores center estimates."));
 static TAutoConsoleVariable<float> CVarPathLinkBlendRange(TEXT("PathLink.EstimateBlendRangeCm"), 4000.0f,
     TEXT("Center-to-center baked path distance at which straight-distance blending reaches zero, in cm."));
@@ -119,7 +121,24 @@ double UPathLinkRoutingCacheData::EstimateNormalDistance(int32 FromPoly, const F
     const int64 Index = int64(A.LocalIndex) * Island.PolygonCount + B.LocalIndex;
     if (!Island.Distances.IsValidIndex(Index) || Island.Distances[Index] < 0) return -1;
     // Representative-center detour, in cm. This is deliberately an estimate, not TotalDistance's exact path.
-    const double Estimate = FVector::Distance(From, A.Center) + Island.Distances[Index] + FVector::Distance(B.Center, To);
+    const FVector StartOffset=From-A.Center, TargetOffset=To-B.Center;
+    const double Legacy=StartOffset.Size()+Island.Distances[Index]+TargetOffset.Size();
+    double Estimate=Legacy;
+    const double DirectionStrength=CVarPathLinkDirectionStrength.GetValueOnGameThread();
+    if (FMath::IsFinite(DirectionStrength) && DirectionStrength>0)
+    {
+        FVector Departure;
+        double StartCost=StartOffset.Size(), TargetCost=TargetOffset.Size();
+        if (Island.DepartureDirections.IsValidIndex(Index) && Island.DepartureDirections[Index].Get(Departure))
+            StartCost=-FVector::DotProduct(StartOffset,Departure);
+        const int64 ReverseIndex=int64(B.LocalIndex)*Island.PolygonCount+A.LocalIndex;
+        // Reverse departure is only an approximate arrival tangent; reverse corridors can differ.
+        if (Island.Distances.IsValidIndex(ReverseIndex) && Island.Distances[ReverseIndex]>=0
+            && Island.DepartureDirections.IsValidIndex(ReverseIndex) && Island.DepartureDirections[ReverseIndex].Get(Departure))
+            TargetCost=-FVector::DotProduct(TargetOffset,Departure);
+        const double Projected=FMath::Max(FVector::Distance(From,To),Island.Distances[Index]+StartCost+TargetCost);
+        Estimate=FMath::Lerp(Legacy,Projected,FMath::Clamp(DirectionStrength,0.0,1.0));
+    }
     const double Strength = CVarPathLinkBlendStrength.GetValueOnGameThread();
     const double Range = CVarPathLinkBlendRange.GetValueOnGameThread();
     if (!FMath::IsFinite(Strength) || !FMath::IsFinite(Range) || Strength <= 0 || Range <= 0) return Estimate;

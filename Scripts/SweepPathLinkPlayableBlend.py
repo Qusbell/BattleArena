@@ -17,8 +17,11 @@ assert len(pairs) == 200 and len({r["sample"] for r in pairs}) == 200
 strength_name, range_name = "PathLink.EstimateBlendStrength", "PathLink.EstimateBlendRangeCm"
 old_strength = unreal.SystemLibrary.get_console_variable_float_value(strength_name)
 old_range = unreal.SystemLibrary.get_console_variable_float_value(range_name)
+direction_name="PathLink.EstimateDirectionStrength"
+old_direction=unreal.SystemLibrary.get_console_variable_float_value(direction_name)
 
 def set_controls(strength, distance):
+    unreal.SystemLibrary.execute_console_command(world,f"{direction_name} 0")
     unreal.SystemLibrary.execute_console_command(world, f"{strength_name} {strength:.9g}")
     unreal.SystemLibrary.execute_console_command(world, f"{range_name} {distance:.9g}")
     if abs(unreal.SystemLibrary.get_console_variable_float_value(strength_name) - strength) > 1e-6:
@@ -93,6 +96,7 @@ try:
             detailed_mismatches.append(int(row["sample"]))
 finally:
     set_controls(old_strength,old_range)
+    unreal.SystemLibrary.execute_console_command(world,f"{direction_name} {old_direction:.9g}")
 
 with (folder/"PlayableBlendSweep200.csv").open("w",newline="",encoding="utf-8") as out:
     writer=csv.DictWriter(out,fieldnames=list(raw[0])); writer.writeheader(); writer.writerows(raw)
