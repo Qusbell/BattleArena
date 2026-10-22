@@ -38,6 +38,11 @@ bool UShooterDisplayLibrary::IsShooterAlive(APawn* Shooter)
 FText UShooterDisplayLibrary::GetShooterDisplayName(APawn* Shooter)
 {
 	APlayerState* State = IsValid(Shooter) && !Shooter->IsActorBeingDestroyed() ? Shooter->GetPlayerState() : nullptr;
+	return GetPlayerStateDisplayName(State);
+}
+
+FText UShooterDisplayLibrary::GetPlayerStateDisplayName(APlayerState* State)
+{
 	if (!IsValid(State) || State->IsActorBeingDestroyed()) return FText::GetEmpty();
 	// BP_QuakePlayerState resolves campaign/AI names through DT_Character in GetDisplayName.
 	if (UFunction* Function = State->FindFunction(TEXT("GetDisplayName")))

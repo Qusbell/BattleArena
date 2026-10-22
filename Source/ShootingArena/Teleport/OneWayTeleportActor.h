@@ -17,6 +17,19 @@ class UNiagaraSystem;
 class UStaticMesh;
 class ACharacter;
 class APlayerController;
+class ASeamlessPortalActor;
+
+/** One capture and its projection must be applied together, including after a budget deferral. */
+struct FPortalCaptureView
+{
+	FTransform transform = FTransform::Identity;
+	FMatrix projection = FMatrix::Identity;
+	FVector clipBase = FVector::ZeroVector;
+	FVector clipNormal = FVector::ForwardVector;
+	bool bCustomProjection = false;
+	bool bEnableClipPlane = true;
+	bool bSpatialView = false;
+};
 
 /**
  * 기획서 기준 단방향 텔레포트 Actor입니다.
@@ -39,7 +52,7 @@ public:
 	AOneWayTeleportActor();
 
 	/** PortalViewSubsystem이 로컬 플레이어의 주시 대상인지 판정할 때 사용합니다. */
-	bool CanDisplayPortalView(
+	virtual bool CanDisplayPortalView(
 		const APlayerController* playerController,
 		const FVector& cameraLocation,
 		const FVector& aimDirection,
@@ -48,15 +61,18 @@ public:
 		float& outScreenCoverage) const;
 
 	/** 입구 카메라 시점을 출구 Launch 방향 기준의 카메라 시점으로 변환합니다. */
-	FTransform GetPortalViewCameraTransform(const FTransform& cameraTransform) const;
+	virtual FTransform GetPortalViewCameraTransform(const FTransform& cameraTransform) const;
+	virtual bool BuildPortalCaptureView(const FTransform& cameraTransform, FPortalCaptureView& outView) const;
+	virtual bool NeedsFullRatePortalView(float distance) const { return false; }
+	FTransform GetPortalFrameTransform() const;
 
 	/** 로컬 클라이언트의 Render Target과 거리 기반 화면 값을 포탈 화면에 적용합니다. */
-	void ApplyPortalView(UTextureRenderTarget2D* renderTarget, float blurStrength, float screenOpacity);
+	virtual void ApplyPortalView(UTextureRenderTarget2D* renderTarget, float blurStrength, float screenOpacity);
 	void ClearPortalView();
 	float GetPortalViewOpacity(float distance) const;
 
 	AActor* GetExitTarget() const { return exitTarget.Get(); }
-	const UTeleportDataAsset* GetTeleportDataAsset() const { return teleportDA.Get(); }
+	virtual const UTeleportDataAsset* GetTeleportDataAsset() const { return teleportDA.Get(); }
 	FVector GetExitLaunchForward() const;
 
 protected:
@@ -264,7 +280,7 @@ protected:
 	// ---------------------------------------------------------------------
 
 	UFUNCTION()
-	void OnEntryBeginOverlap(
+	virtual void OnEntryBeginOverlap(
 		UPrimitiveComponent* overlappedComponent,
 		AActor* otherActor,
 		UPrimitiveComponent* otherComp,
@@ -289,6 +305,7 @@ protected:
 	virtual void ApplyMoveLock_Implementation(ACharacter* character, float duration);
 
 private:
+	friend class ASeamlessPortalActor;
 	/** PortalVisual 색/투명도 갱신용 MID */
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInstanceDynamic> portalVisualMID;

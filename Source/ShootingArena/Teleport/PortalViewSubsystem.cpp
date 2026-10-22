@@ -25,7 +25,7 @@ namespace PortalViewPrivate
 		TObjectPtr<AOneWayTeleportActor> portal;
 		float score = 0.0f;
 		float accumulatedWaitTime = 0.0f;
-		FTransform captureTransform = FTransform::Identity;
+		FPortalCaptureView captureView;
 	};
 }
 
@@ -51,7 +51,8 @@ void UPortalViewSubsystem::Deinitialize()
 void UPortalViewSubsystem::Tick(float deltaTime)
 {
 	UWorld* world = GetWorld();
-	if (!IsValid(world) || world->GetNetMode() == NM_DedicatedServer)
+	if (!IsValid(world) || world->bIsTearingDown || !FMath::IsFinite(deltaTime)
+		|| world->GetNetMode() == NM_DedicatedServer)
 	{
 		return;
 	}
@@ -66,13 +67,20 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 
 	const FVector cameraLocation = playerController->PlayerCameraManager->GetCameraLocation();
 	const FRotator cameraRotation = playerController->PlayerCameraManager->GetCameraRotation();
+	if (cameraLocation.ContainsNaN() || cameraRotation.ContainsNaN())
+	{
+		ClearAllPortalViews();
+		return;
+	}
 	const FVector aimDirection = cameraRotation.Vector();
 
 	TArray<PortalViewPrivate::FPortalCandidate> candidates;
+	TArray<AOneWayTeleportActor*> allPortals;
 
 	for (TActorIterator<AOneWayTeleportActor> iterator(world); iterator; ++iterator)
 	{
 		AOneWayTeleportActor* portal = *iterator;
+		allPortals.Add(portal);
 		float distance = 0.0f;
 		float score = 0.0f;
 		float screenCoverage = 0.0f;
@@ -84,7 +92,7 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 				distance,
 				score,
 				screenCoverage)
-			)
+			&& FMath::IsFinite(distance) && FMath::IsFinite(score) && FMath::IsFinite(screenCoverage))
 		{
 			candidates.Add({ portal, distance, score, screenCoverage });
 		}
@@ -125,6 +133,17 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 		}
 
 		visiblePortals.Add(portal);
+		FPortalCaptureView captureView;
+		const FTransform playerCameraTransform(cameraRotation, cameraLocation);
+		if (!portal->BuildPortalCaptureView(playerCameraTransform, captureView)
+			|| captureView.transform.ContainsNaN() || !captureView.transform.GetRotation().IsNormalized()
+			|| (captureView.bCustomProjection && captureView.projection.ContainsNaN())
+			|| (captureView.bEnableClipPlane && (captureView.clipBase.ContainsNaN()
+				|| captureView.clipNormal.ContainsNaN() || captureView.clipNormal.IsNearlyZero())))
+		{
+			visiblePortals.Remove(portal);
+			continue;
+		}
 		FPortalViewInstance& view = FindOrCreateView(portal);
 		const int32 desiredRenderTargetSize = ResolvePortalRenderTargetSize(
 			view,
@@ -133,7 +152,7 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 		const bool bRenderTargetRecreated = EnsureRenderTarget(
 			view,
 			desiredRenderTargetSize,
-			settings->bUseHighQualityPortalCapture);
+			captureView.bSpatialView || settings->bUseHighQualityPortalCapture);
 		if (!IsValid(view.renderTarget) || !IsValid(view.sceneCapture))
 		{
 			continue;
@@ -143,8 +162,7 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 			// 새 Render Target의 검은 화면이 남지 않도록 이번 프레임 캡처 대상으로 올립니다.
 			view.captureAccumulator = 60.0f;
 		}
-		const FTransform playerCameraTransform(cameraRotation, cameraLocation);
-		const FTransform captureTransform = portal->GetPortalViewCameraTransform(playerCameraTransform);
+		const FTransform& captureTransform = captureView.transform;
 
 		// View Distance 바깥은 CanDisplayPortalView에서 이미 제외됩니다. 이 안에서도
 		// Clarity Start Distance보다 멀면 Far Blur를 유지하고, 그 거리부터 입구까지
@@ -158,12 +176,13 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 			settings->blurAtNearDistance,
 			settings->blurAtFarDistance,
 			blurAlpha);
-		portal->ApplyPortalView(view.renderTarget, blurStrength, portal->GetPortalViewOpacity(candidate.distance));
+		portal->ApplyPortalView(view.renderTarget, captureView.bSpatialView ? 0.0f : blurStrength,
+			captureView.bSpatialView ? 1.0f : portal->GetPortalViewOpacity(candidate.distance));
 
 		view.captureAccumulator = FMath::Min(
 			view.captureAccumulator + FMath::Max(deltaTime, 0.0f),
 			60.0f);
-		const float updateRate = ResolvePortalUpdateRate(
+		const float updateRate = portal->NeedsFullRatePortalView(candidate.distance) ? 0.0f : ResolvePortalUpdateRate(
 			view,
 			*settings,
 			captureTransform,
@@ -181,7 +200,7 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 			continue;
 		}
 
-		readyCaptures.Add({ portal, candidate.score, view.captureAccumulator, captureTransform });
+		readyCaptures.Add({ portal, candidate.score, view.captureAccumulator, captureView });
 	}
 
 	// 예산에서 밀린 포탈은 누적 대기 시간이 계속 증가합니다. 다음 프레임에는 가장 오래
@@ -215,6 +234,7 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 
 		FPortalViewInstance* view = portalViews.Find(TWeakObjectPtr<AOneWayTeleportActor>(portal));
 		if (view == nullptr || !IsValid(view->renderTarget) || !IsValid(view->sceneCapture)
+			|| !view->sceneCapture->IsRegistered() || world->bIsTearingDown
 			|| !IsValid(portal->GetExitTarget()))
 		{
 			continue;
@@ -227,25 +247,8 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 			continue;
 		}
 
-		const bool bHighQuality = settings->bUseHighQualityPortalCapture;
-		view->sceneCapture->CaptureSource = bHighQuality
-			? ESceneCaptureSource::SCS_SceneColorHDR
-			: ESceneCaptureSource::SCS_FinalColorLDR;
-
-		// 포탈 전용 캡처에만 적용됩니다. 메인 카메라의 ShowFlags는 변경하지 않습니다.
-		// 저품질 모드에서도 기본 조명과 Translucency는 유지해 출구 판독성을 보존합니다.
-		view->sceneCapture->ShowFlags.SetDynamicShadows(bHighQuality);
-		view->sceneCapture->ShowFlags.SetLumenGlobalIllumination(bHighQuality);
-		view->sceneCapture->ShowFlags.SetLumenReflections(bHighQuality);
-		view->sceneCapture->ShowFlags.SetScreenSpaceReflections(bHighQuality);
-		view->sceneCapture->ShowFlags.SetAmbientOcclusion(bHighQuality);
-		view->sceneCapture->ShowFlags.SetContactShadows(bHighQuality);
-		view->sceneCapture->ShowFlags.SetVolumetricFog(bHighQuality);
-		view->sceneCapture->ShowFlags.SetMotionBlur(bHighQuality);
-		view->sceneCapture->ShowFlags.SetDepthOfField(bHighQuality);
-		view->sceneCapture->ShowFlags.SetLensFlares(bHighQuality);
-		view->sceneCapture->ShowFlags.SetBloom(bHighQuality);
-		view->sceneCapture->ShowFlags.SetEyeAdaptation(bHighQuality);
+		const FPortalCaptureView& captureView = readyCaptures[captureIndex].captureView;
+		ConfigureCaptureAppearance(*view->sceneCapture, captureView.bSpatialView, settings->bUseHighQualityPortalCapture);
 
 		// SceneCapture는 메인 카메라와 별도의 View이므로 출구 시점에서 Occlusion을 다시 계산합니다.
 		// Disable 플래그를 명시적으로 반대로 설정해 에디터 ShowFlag 상태에 영향받지 않게 합니다.
@@ -258,18 +261,35 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 			settings->portalCaptureLODDistanceFactor,
 			0.01f);
 
-		view->sceneCapture->SetWorldTransform(readyCaptures[captureIndex].captureTransform);
+		view->sceneCapture->SetWorldTransform(captureView.transform);
+		view->sceneCapture->bUseCustomProjectionMatrix = captureView.bCustomProjection;
+		view->sceneCapture->CustomProjectionMatrix = captureView.projection;
+		view->sceneCapture->bEnableClipPlane = captureView.bEnableClipPlane;
 		view->sceneCapture->TextureTarget = view->renderTarget;
-		view->sceneCapture->ClipPlaneBase = portal->GetExitTarget()->GetActorLocation();
-		view->sceneCapture->ClipPlaneNormal = portal->GetExitLaunchForward();
+		view->sceneCapture->ClipPlaneBase = captureView.clipBase;
+		view->sceneCapture->ClipPlaneNormal = captureView.clipNormal;
 		view->sceneCapture->HiddenActors.Empty();
 		view->sceneCapture->HiddenActors.Add(portal);
 		if (AOneWayTeleportActor* exitPortal = Cast<AOneWayTeleportActor>(portal->GetExitTarget()))
 		{
 			view->sceneCapture->HiddenActors.Add(exitPortal);
 		}
-		view->sceneCapture->CaptureScene();
-		view->lastCaptureTransform = readyCaptures[captureIndex].captureTransform;
+		if (captureView.bSpatialView)
+		{
+			// No recursive feedback or a separate Niagara render inside each portal view.
+			for (AOneWayTeleportActor* otherPortal : allPortals)
+				view->sceneCapture->HiddenActors.AddUnique(otherPortal);
+			view->sceneCapture->ShowFlags.SetMotionBlur(false);
+			view->sceneCapture->ShowFlags.SetDepthOfField(false);
+		}
+		if (captureView.bSpatialView)
+		{
+			// UE supplies the current player's resolved PP (including volumes/camera blends) here.
+			// Do not copy its camera/projection/resolution or keep a raw main-view pointer ourselves.
+			view->sceneCapture->CaptureSceneDeferred();
+		}
+		else view->sceneCapture->CaptureScene();
+		view->lastCaptureTransform = captureView.transform;
 		view->bHasCaptured = true;
 	}
 
@@ -283,6 +303,36 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 	}
 }
 
+void UPortalViewSubsystem::ConfigureCaptureAppearance(USceneCaptureComponent2D& capture, bool bSpatialView, bool bHighQuality)
+{
+	// FinalColorLDR would bake exposure + filmic tone mapping, then the opaque portal's emissive
+	// would be exposed/tone mapped AGAIN by the player view. Keep spatial textures scene-linear.
+	capture.CaptureSource = bSpatialView || bHighQuality ? SCS_SceneColorHDR : SCS_FinalColorLDR;
+	capture.bMainViewFamily = bSpatialView;
+	capture.bInheritMainViewCameraPostProcessSettings = bSpatialView;
+	capture.bMainViewCamera = false;
+	capture.bMainViewResolution = false;
+	// Main-view PP is inherited by the renderer only for deferred spatial captures. No second set of
+	// camera blendables/color grades/exposure is baked into the scene-color texture.
+	capture.PostProcessBlendWeight = bSpatialView ? 0.0f : 1.0f;
+	capture.bAlwaysPersistRenderingState = bSpatialView && bHighQuality;
+	// Preserve the existing lighting-cost switches, independently of the HDR texture format.
+	capture.ShowFlags.SetDynamicShadows(bHighQuality);
+	capture.ShowFlags.SetLumenGlobalIllumination(bHighQuality);
+	capture.ShowFlags.SetLumenReflections(bHighQuality);
+	capture.ShowFlags.SetScreenSpaceReflections(bHighQuality);
+	capture.ShowFlags.SetAmbientOcclusion(bHighQuality);
+	capture.ShowFlags.SetContactShadows(bHighQuality);
+	// Fog directly changes scene brightness/color, so spatial windows cannot silently drop it.
+	capture.ShowFlags.SetFog(true);
+	capture.ShowFlags.SetVolumetricFog(bSpatialView || bHighQuality);
+	capture.ShowFlags.SetMotionBlur(!bSpatialView && bHighQuality);
+	capture.ShowFlags.SetDepthOfField(!bSpatialView && bHighQuality);
+	capture.ShowFlags.SetLensFlares(!bSpatialView && bHighQuality);
+	capture.ShowFlags.SetBloom(!bSpatialView && bHighQuality);
+	capture.ShowFlags.SetEyeAdaptation(!bSpatialView && bHighQuality);
+}
+
 TStatId UPortalViewSubsystem::GetStatId() const
 {
 	RETURN_QUICK_DECLARE_CYCLE_STAT(UPortalViewSubsystem, STATGROUP_Tickables);
@@ -293,7 +343,7 @@ FPortalViewInstance& UPortalViewSubsystem::FindOrCreateView(AOneWayTeleportActor
 	const TWeakObjectPtr<AOneWayTeleportActor> portalKey(portal);
 	if (FPortalViewInstance* existing = portalViews.Find(portalKey))
 	{
-		if (IsValid(existing->sceneCapture))
+		if (IsValid(existing->sceneCapture) && existing->sceneCapture->IsRegistered())
 		{
 			return *existing;
 		}
@@ -303,6 +353,7 @@ FPortalViewInstance& UPortalViewSubsystem::FindOrCreateView(AOneWayTeleportActor
 	}
 
 	FPortalViewInstance& newView = portalViews.Add(portalKey);
+	if (!IsValid(portal) || !IsValid(portal->GetWorld()) || portal->GetWorld()->bIsTearingDown) return newView;
 	// SceneCapture를 Subsystem 소유로 등록하면 레벨 전환/GC 중 Subsystem은 이미
 	// unreachable인데 렌더 업데이트가 남을 수 있다. 포탈 Actor의 런타임 컴포넌트로
 	// 소유시켜 Actor의 종료 순서에 맞춰 안전하게 unregister 되도록 한다.
@@ -424,9 +475,10 @@ float UPortalViewSubsystem::ResolvePortalUpdateRate(
 bool UPortalViewSubsystem::EnsureRenderTarget(
 	FPortalViewInstance& view,
 	int32 size,
-	bool bUseHighQualityCapture)
+	bool bUseHDRCapture)
 {
-	if (!IsValid(view.sceneCapture) || !IsValid(view.sceneCapture->GetOwner()))
+	if (!IsValid(view.sceneCapture) || !view.sceneCapture->IsRegistered()
+		|| !IsValid(view.sceneCapture->GetOwner()) || !IsValid(GetWorld()) || GetWorld()->bIsTearingDown)
 	{
 		return false;
 	}
@@ -444,7 +496,7 @@ bool UPortalViewSubsystem::EnsureRenderTarget(
 			size,
 			clampedSize);
 	}
-	const ETextureRenderTargetFormat desiredFormat = bUseHighQualityCapture
+	const ETextureRenderTargetFormat desiredFormat = bUseHDRCapture
 		? ETextureRenderTargetFormat::RTF_RGBA16f
 		: ETextureRenderTargetFormat::RTF_RGBA8_SRGB;
 	if (IsValid(view.renderTarget)
@@ -467,6 +519,12 @@ bool UPortalViewSubsystem::EnsureRenderTarget(
 
 	newRenderTarget->ClearColor = FLinearColor::Black;
 	newRenderTarget->RenderTargetFormat = desiredFormat;
+	// HDR is scene radiance, not display-referred sRGB. Let the player's camera do the final conversion.
+	if (bUseHDRCapture)
+	{
+		newRenderTarget->bForceLinearGamma = true;
+		newRenderTarget->TargetGamma = 1.0f;
+	}
 	newRenderTarget->InitAutoFormat(clampedSize, clampedSize);
 	newRenderTarget->UpdateResourceImmediate(true);
 	view.renderTarget = newRenderTarget;

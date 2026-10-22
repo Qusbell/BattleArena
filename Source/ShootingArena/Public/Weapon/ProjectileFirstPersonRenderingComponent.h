@@ -9,6 +9,7 @@ class UCameraComponent;
 class USkeletalMesh;
 class USkeletalMeshComponent;
 class APlayerController;
+class APawn;
 class FSceneViewExtensionBase;
 struct FMinimalViewInfo;
 
@@ -39,12 +40,23 @@ public:
 	virtual void OnUnregister() override;
 	virtual void Deactivate() override;
 	/** Game-thread view hook: apply current-frame scale and near clip to this local FP view only. */
-	void ApplyFirstPersonView(const APlayerController* Controller, FMinimalViewInfo& View) const;
+	bool ApplyFirstPersonView(const APlayerController* Controller, FMinimalViewInfo& View) const;
+	/** Only when world geometry occludes the real muzzle, convert its cosmetic
+	 * origin to the rendered FP position. An unobstructed muzzle stays unchanged.
+	 */
+	static bool TryTransformEffectPosition(const AActor* Weapon, FVector Position, FVector& OutPosition);
+	/** Read the active local view and physical FP socket only when world geometry occludes it. */
+	static bool TryGetOccludedEffectView(const AActor* Weapon, FMinimalViewInfo& OutView, FVector& OutMuzzle);
+	/** Narrow camera-to-muzzle visibility check; ignores pawns, projectiles and overlaps. */
+	static bool IsEffectMuzzleOccluded(UWorld* World, FVector Eye, FVector Muzzle,
+		const AActor* Weapon, const AActor* Shooter);
 	/** Called immediately after the existing Cascade/Niagara spawn. */
 	UFUNCTION(BlueprintCallable, Category="Weapon|Projectile")
 	static void ApplyFirstPersonMuzzleEffect(AActor* Weapon, UPrimitiveComponent* Effect);
 private:
 	bool CanUpdateRendering() const;
+	float CalculateRenderScale(const APawn* Pawn, const USkeletalMeshComponent* Arms,
+		const UPrimitiveComponent* Gun, const FMinimalViewInfo& View) const;
 	void Track(UPrimitiveComponent* Primitive);
 	void Restore();
 	void RestoreView();
