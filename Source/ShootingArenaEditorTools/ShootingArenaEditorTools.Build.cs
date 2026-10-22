@@ -16,6 +16,7 @@ public class ShootingArenaEditorTools : ModuleRules
                 "CoreUObject",
                 "Engine",
                 "UnrealEd",
+                "EditorSubsystem",
                 "AssetRegistry",
                 "Slate",
                 "SlateCore",
