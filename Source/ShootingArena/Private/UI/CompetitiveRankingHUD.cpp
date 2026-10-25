@@ -188,9 +188,10 @@ void UCompetitiveRankingHUD::PositionBesideTimer(const FGeometry& Geometry)
 	if (!FMath::IsFinite(Determinant) || FMath::IsNearlyZero(Determinant) || Digits.GetLocalSize().Y <= 0 || Frame.GetLocalSize().X <= 0) return;
 	const FVector2D Top = Geometry.AbsoluteToLocal(Digits.LocalToAbsolute(FVector2D(Digits.GetLocalSize().X, 0)));
 	const FVector2D Bottom = Geometry.AbsoluteToLocal(Digits.LocalToAbsolute(Digits.GetLocalSize()));
-	// Anchor horizontally to the fixed timer frame, not variable-width digits.
-	const FVector2D Left = Geometry.AbsoluteToLocal(Frame.LocalToAbsolute(FVector2D::ZeroVector));
-	const FVector2D Right = Geometry.AbsoluteToLocal(Frame.LocalToAbsolute(FVector2D(Frame.GetLocalSize().X, 0)));
+	// Layout coordinates exclude our render offset, avoiding feedback from last frame's position.
+	const auto ToRootLayout = Concatenate(Frame.GetAccumulatedLayoutTransform(), Inverse(Geometry.GetAccumulatedLayoutTransform()));
+	const FVector2D Left = TransformPoint(ToRootLayout, FVector2D::ZeroVector);
+	const FVector2D Right = TransformPoint(ToRootLayout, FVector2D(Frame.GetLocalSize().X, 0));
 	if (Top.ContainsNaN() || Bottom.ContainsNaN() || Left.ContainsNaN() || Right.ContainsNaN()) return;
 	const float Scale = FMath::Clamp(float((Bottom.Y - Top.Y) / PanelHeight), 0.975f, 2.25f);
 	if (!FMath::IsNearlyEqual(float(RankingSlot->GetSize().X), PanelWidth * Scale))
@@ -219,12 +220,11 @@ void UCompetitiveRankingHUD::PositionBesideTimer(const FGeometry& Geometry)
 		}
 	}
 	const double Shift = (Geometry.GetLocalSize().X - (Left.X + Right.X + TimerGap + PanelWidth * Scale)) * 0.5;
-	if (FMath::Abs(Shift) > 0.5)
-		TimerContainer->SetRenderTranslation(TimerContainer->GetRenderTransform().Translation + FVector2D(Shift, 0));
+	TimerContainer->SetRenderTranslation(FVector2D(Shift, TimerContainer->GetRenderTransform().Translation.Y));
 	RankingPanel->SetVisibility(ESlateVisibility::HitTestInvisible);
 	RankingPanel->SetRenderTransformPivot(FVector2D::ZeroVector);
 	RankingPanel->SetRenderScale(FVector2D(1.0f));
-	RankingSlot->SetPosition(FVector2D(FMath::Clamp(Right.X + TimerGap, 0.0,
+	RankingSlot->SetPosition(FVector2D(FMath::Clamp(Right.X + Shift + TimerGap, 0.0,
 		FMath::Max(0.0, Geometry.GetLocalSize().X - PanelWidth * Scale - 8.0)),
 		FMath::Max(0.0, (Top.Y + Bottom.Y - PanelHeight * Scale) * 0.5)));
 }

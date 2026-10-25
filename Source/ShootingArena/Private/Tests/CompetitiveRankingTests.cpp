@@ -139,6 +139,16 @@ bool FCompetitiveRankingPIETest::RunTest(const FString& Parameters)
 				TestTrue(TEXT("Panel has a visible position alongside the timer"), HUD->RankingPanel->IsVisible()
 					&& HUD->RankingPanel->GetRenderOpacity() > 0 && HUD->RankingSlot->GetPosition().X > 0);
 				UUserWidget* Timer = Cast<UUserWidget>(HUD->GetWidgetFromName(TEXT("WB_Timer")));
+				if (UWidget* Container = HUD->GetWidgetFromName(TEXT("SB_Timer")))
+				{
+					HUD->PositionBesideTimer(HUD->GetCachedGeometry());
+					const FVector2D Stable = Container->GetRenderTransform().Translation;
+					const FVector2D PanelPosition = HUD->RankingSlot->GetPosition();
+					Container->SetRenderTranslation(Stable + FVector2D(100, 0));
+					HUD->PositionBesideTimer(HUD->GetCachedGeometry());
+					TestTrue(TEXT("Centering does not accumulate previous render offsets"), Container->GetRenderTransform().Translation.Equals(Stable));
+					TestTrue(TEXT("Ranking position is independent of previous render offsets"), HUD->RankingSlot->GetPosition().Equals(PanelPosition));
+				}
 				if (UWidget* TimerFrame = Timer ? Timer->GetWidgetFromName(TEXT("b_Timer")) : nullptr)
 				{
 					const FGeometry& Root = HUD->GetCachedGeometry();
