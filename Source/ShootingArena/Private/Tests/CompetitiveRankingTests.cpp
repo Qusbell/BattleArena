@@ -132,14 +132,22 @@ bool FCompetitiveRankingPIETest::RunTest(const FString& Parameters)
 			if (HUD->GetCachedGeometry().GetLocalSize().X > 0)
 			{
 				++VisibleClientCount;
+				TestTrue(TEXT("Ranking text is not enlarged by a render transform"),
+					HUD->RankingPanel->GetRenderTransform().Scale.Equals(FVector2D(1.0f)));
+				TestEqual(TEXT("Player names have no blurring drop shadow"),
+					HUD->NameLabels[0]->GetShadowOffset(), FVector2D::ZeroVector);
 				TestTrue(TEXT("Panel has a visible position alongside the timer"), HUD->RankingPanel->IsVisible()
 					&& HUD->RankingPanel->GetRenderOpacity() > 0 && HUD->RankingSlot->GetPosition().X > 0);
 				UUserWidget* Timer = Cast<UUserWidget>(HUD->GetWidgetFromName(TEXT("WB_Timer")));
-				if (UWidget* Minutes = Timer ? Timer->GetWidgetFromName(TEXT("Text_Minutes")) : nullptr)
+				if (UWidget* TimerFrame = Timer ? Timer->GetWidgetFromName(TEXT("b_Timer")) : nullptr)
 				{
 					const FGeometry& Root = HUD->GetCachedGeometry();
 					const FGeometry& Panel = HUD->RankingPanel->GetCachedGeometry();
-					const double Left = Root.AbsoluteToLocal(Minutes->GetCachedGeometry().LocalToAbsolute(FVector2D::ZeroVector)).X;
+					const FGeometry& Frame = TimerFrame->GetCachedGeometry();
+					const double Left = Root.AbsoluteToLocal(Frame.LocalToAbsolute(FVector2D::ZeroVector)).X;
+					const double TimerRight = Root.AbsoluteToLocal(Frame.LocalToAbsolute(FVector2D(Frame.GetLocalSize().X, 0))).X;
+					TestTrue(TEXT("Ranking uses the fixed timer frame with a 5-unit gap"),
+						FMath::Abs(HUD->RankingSlot->GetPosition().X - TimerRight - 5.0) < 2.0);
 					const double Right = Root.AbsoluteToLocal(Panel.LocalToAbsolute(FVector2D(Panel.GetLocalSize().X, 0))).X;
 					TestTrue(TEXT("Timer and ranking form one centered group"), FMath::Abs((Left + Right - Root.GetLocalSize().X) * 0.5) < 2.0);
 				}

@@ -18,11 +18,14 @@
 #include "GameFramework/PlayerState.h"
 #include "UObject/UnrealType.h"
 #include "Styling/CoreStyle.h"
+#include "Framework/Application/SlateApplication.h"
+#include "Fonts/FontMeasure.h"
 
 namespace
 {
 	constexpr float PanelWidth = 286.0f;
 	constexpr float PanelHeight = 48.0f;
+	constexpr float TimerGap = 5.0f;
 	const FLinearColor OpponentColor(0.95f, 0.32f, 0.055f, 0.85f);
 	const FLinearColor LocalColor(0.025f, 0.68f, 0.90f, 0.85f);
 
@@ -59,6 +62,17 @@ void UCompetitiveRankingHUD::NativeConstruct()
 	UUserWidget* Timer = Cast<UUserWidget>(GetWidgetFromName(TEXT("WB_Timer")));
 	UTextBlock* TimerText = Timer ? Cast<UTextBlock>(Timer->GetWidgetFromName(TEXT("Text_Minutes"))) : nullptr;
 	FSlateFontInfo Font = TimerText ? TimerText->GetFont() : FCoreStyle::GetDefaultFontStyle("Regular", 16);
+	if (USizeBox* TimerBox = Timer ? Cast<USizeBox>(Timer->GetWidgetFromName(TEXT("SB_Timer"))) : nullptr)
+	{
+		const auto Measure = FSlateApplication::Get().GetRenderer()->GetFontMeasureService();
+		float DigitWidth = 0;
+		for (TCHAR Digit = TEXT('0'); Digit <= TEXT('9'); ++Digit)
+			DigitWidth = FMath::Max(DigitWidth, float(Measure->Measure(FString::Chr(Digit), Font).X));
+		// Reserve the widest digits so time changes never alter the frame width.
+		const float TimerWidth = FMath::CeilToFloat(4.0f * DigitWidth + Measure->Measure(TEXT(":"), Font).X + 4.0f);
+		ensure(TimerWidth > 4.0f * DigitWidth);
+		TimerBox->SetWidthOverride(TimerWidth);
+	}
 	Font.Size = 16;
 	for (int32 Index = 0; Index < 2; ++Index)
 	{
@@ -86,6 +100,11 @@ void UCompetitiveRankingHUD::NativeConstruct()
 			Text->SetShadowOffset(FVector2D(1, 1));
 			if (Column == 1)
 			{
+				FSlateFontInfo NameFont = Font;
+				NameFont.TypefaceFontName = TEXT("Barlow_Semibold");
+				Text->SetFont(NameFont);
+				Text->SetShadowOffset(FVector2D::ZeroVector);
+				Text->SetPixelSnapping(EWidgetPixelSnapping::SnapToPixel);
 				Text->SetClipping(EWidgetClipping::ClipToBounds);
 				Text->SetTextOverflowPolicy(ETextOverflowPolicy::Ellipsis);
 				Row->AddChildToHorizontalBox(Text)->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
@@ -164,23 +183,48 @@ void UCompetitiveRankingHUD::PositionBesideTimer(const FGeometry& Geometry)
 		return;
 	}
 	const FGeometry& Digits = Seconds->GetCachedGeometry();
+	const FGeometry& Frame = TimerFrame->GetCachedGeometry();
 	const float Determinant = Geometry.GetAccumulatedRenderTransform().GetMatrix().Determinant();
-	if (!FMath::IsFinite(Determinant) || FMath::IsNearlyZero(Determinant) || Digits.GetLocalSize().Y <= 0) return;
+	if (!FMath::IsFinite(Determinant) || FMath::IsNearlyZero(Determinant) || Digits.GetLocalSize().Y <= 0 || Frame.GetLocalSize().X <= 0) return;
 	const FVector2D Top = Geometry.AbsoluteToLocal(Digits.LocalToAbsolute(FVector2D(Digits.GetLocalSize().X, 0)));
 	const FVector2D Bottom = Geometry.AbsoluteToLocal(Digits.LocalToAbsolute(Digits.GetLocalSize()));
-	if (Top.ContainsNaN() || Bottom.ContainsNaN()) return;
-	const float Scale = FMath::Clamp(float((Bottom.Y - Top.Y) / PanelHeight), 0.65f, 1.5f);
-	if (UWidget* Minutes = Timer->GetWidgetFromName(TEXT("Text_Minutes")))
+	// Anchor horizontally to the fixed timer frame, not variable-width digits.
+	const FVector2D Left = Geometry.AbsoluteToLocal(Frame.LocalToAbsolute(FVector2D::ZeroVector));
+	const FVector2D Right = Geometry.AbsoluteToLocal(Frame.LocalToAbsolute(FVector2D(Frame.GetLocalSize().X, 0)));
+	if (Top.ContainsNaN() || Bottom.ContainsNaN() || Left.ContainsNaN() || Right.ContainsNaN()) return;
+	const float Scale = FMath::Clamp(float((Bottom.Y - Top.Y) / PanelHeight), 0.975f, 2.25f);
+	if (!FMath::IsNearlyEqual(float(RankingSlot->GetSize().X), PanelWidth * Scale))
 	{
-		const FVector2D Left = Geometry.AbsoluteToLocal(Minutes->GetCachedGeometry().LocalToAbsolute(FVector2D::ZeroVector));
-		const double Shift = (Geometry.GetLocalSize().X - (Left.X + Top.X + 10.0 + PanelWidth * Scale)) * 0.5;
-		if (!Left.ContainsNaN() && FMath::Abs(Shift) > 0.5)
-			TimerContainer->SetRenderTranslation(TimerContainer->GetRenderTransform().Translation + FVector2D(Shift, 0));
+		// Resize layout and glyphs instead of stretching the rendered text.
+		RankingSlot->SetSize(FVector2D(PanelWidth, PanelHeight) * Scale);
+		CastChecked<USizeBox>(LeaderProgress->GetParent())->SetHeightOverride(4.0f * Scale);
+		for (int32 Index = 0; Index < RowBorders.Num(); ++Index)
+		{
+			UBorder* Outline = RowBorders[Index];
+			Outline->SetPadding(FMargin(Scale));
+			UBorder* Background = CastChecked<UBorder>(Outline->GetContent());
+			Background->SetPadding(FMargin(4.0f * Scale, 0));
+			CastChecked<USizeBox>(Background->GetContent())->SetHeightOverride(20.0f * Scale);
+			CastChecked<USizeBox>(RankLabels[Index]->GetParent())->SetWidthOverride(28.0f * Scale);
+			CastChecked<USizeBox>(ScoreLabels[Index]->GetParent())->SetWidthOverride(44.0f * Scale);
+			for (UTextBlock* Label : {RankLabels[Index].Get(), NameLabels[Index].Get(), ScoreLabels[Index].Get()})
+			{
+				FSlateFontInfo Font = Label->GetFont();
+				Font.Size = FMath::RoundToInt(16.0f * Scale);
+				Font.TypefaceFontName = TEXT("Barlow_Medium");
+				Label->SetFont(Font);
+				Label->SetShadowOffset(FVector2D::ZeroVector);
+				Label->SetPixelSnapping(EWidgetPixelSnapping::SnapToPixel);
+			}
+		}
 	}
+	const double Shift = (Geometry.GetLocalSize().X - (Left.X + Right.X + TimerGap + PanelWidth * Scale)) * 0.5;
+	if (FMath::Abs(Shift) > 0.5)
+		TimerContainer->SetRenderTranslation(TimerContainer->GetRenderTransform().Translation + FVector2D(Shift, 0));
 	RankingPanel->SetVisibility(ESlateVisibility::HitTestInvisible);
 	RankingPanel->SetRenderTransformPivot(FVector2D::ZeroVector);
-	RankingPanel->SetRenderScale(FVector2D(Scale));
-	RankingSlot->SetPosition(FVector2D(FMath::Clamp(Top.X + 10.0, 0.0,
+	RankingPanel->SetRenderScale(FVector2D(1.0f));
+	RankingSlot->SetPosition(FVector2D(FMath::Clamp(Right.X + TimerGap, 0.0,
 		FMath::Max(0.0, Geometry.GetLocalSize().X - PanelWidth * Scale - 8.0)),
 		FMath::Max(0.0, (Top.Y + Bottom.Y - PanelHeight * Scale) * 0.5)));
 }
