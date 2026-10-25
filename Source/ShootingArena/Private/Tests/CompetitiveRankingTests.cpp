@@ -128,18 +128,51 @@ bool FCompetitiveRankingPIETest::RunTest(const FString& Parameters)
 				TestEqual(TEXT("Displayed actual rank"), HUD->RankLabels[Index]->GetText().ToString(), FString::FromInt(Expected[Index].Rank));
 				TestEqual(TEXT("Displayed kill score"), HUD->ScoreLabels[Index]->GetText().ToString(), FString::FromInt(Expected[Index].Kills));
 				TestTrue(TEXT("Uses the existing Blueprint name resolver"), HUD->NameLabels[Index]->GetText().EqualTo(UShooterDisplayLibrary::GetPlayerStateDisplayName(Expected[Index].Player)));
+				TestTrue(TEXT("Leader is highlighted; other rows retain player colors"),
+					HUD->NameLabels[Index]->GetColorAndOpacity().GetSpecifiedColor().Equals(Expected[Index].Rank == 1
+						? FLinearColor(1.0f, 0.92f, 0.60f) : Expected[Index].Player == PC->PlayerState
+						? FLinearColor(0.50f, 0.83f, 0.92f) : FLinearColor(1.0f, 0.64f, 0.30f)));
 			}
 			if (HUD->GetCachedGeometry().GetLocalSize().X > 0)
 			{
 				++VisibleClientCount;
+				TestTrue(TEXT("Ranking text is not enlarged by a render transform"),
+					HUD->RankingPanel->GetRenderTransform().Scale.Equals(FVector2D(1.0f)));
+				TestEqual(TEXT("Player names have no blurring drop shadow"),
+					HUD->NameLabels[0]->GetShadowOffset(), FVector2D::ZeroVector);
 				TestTrue(TEXT("Panel has a visible position alongside the timer"), HUD->RankingPanel->IsVisible()
 					&& HUD->RankingPanel->GetRenderOpacity() > 0 && HUD->RankingSlot->GetPosition().X > 0);
 				UUserWidget* Timer = Cast<UUserWidget>(HUD->GetWidgetFromName(TEXT("WB_Timer")));
-				if (UWidget* Minutes = Timer ? Timer->GetWidgetFromName(TEXT("Text_Minutes")) : nullptr)
+				if (UWidget* Container = HUD->GetWidgetFromName(TEXT("SB_Timer")))
 				{
+					HUD->PositionBesideTimer(HUD->GetCachedGeometry());
+					const FVector2D Stable = Container->GetRenderTransform().Translation;
+					const FVector2D PanelPosition = HUD->RankingSlot->GetPosition();
+					Container->SetRenderTranslation(Stable + FVector2D(100, 0));
+					HUD->PositionBesideTimer(HUD->GetCachedGeometry());
+					TestTrue(TEXT("Centering does not accumulate previous render offsets"), Container->GetRenderTransform().Translation.Equals(Stable));
+					TestTrue(TEXT("Ranking position is independent of previous render offsets"), HUD->RankingSlot->GetPosition().Equals(PanelPosition));
+				}
+				if (UWidget* TimerFrame = Timer ? Timer->GetWidgetFromName(TEXT("b_Timer")) : nullptr)
+				{
+					for (const TCHAR* Name : {TEXT("Text_Minutes"), TEXT("Text_Seconds")})
+						if (UTextBlock* Digits = Cast<UTextBlock>(Timer->GetWidgetFromName(Name)))
+						{
+							TestTrue(TEXT("Timer digits use uniform character advances"), Digits->GetFont().bForceMonospaced);
+							const FText Original = Digits->GetText();
+							Digits->SetText(FText::FromString(TEXT("11"))); HUD->ForceLayoutPrepass();
+							const FVector2D Narrow = Digits->GetDesiredSize();
+							Digits->SetText(FText::FromString(TEXT("88"))); HUD->ForceLayoutPrepass();
+							TestTrue(TEXT("Different timer digits keep the same layout width"), FMath::IsNearlyEqual(Narrow.X, Digits->GetDesiredSize().X));
+							Digits->SetText(Original);
+						}
 					const FGeometry& Root = HUD->GetCachedGeometry();
 					const FGeometry& Panel = HUD->RankingPanel->GetCachedGeometry();
-					const double Left = Root.AbsoluteToLocal(Minutes->GetCachedGeometry().LocalToAbsolute(FVector2D::ZeroVector)).X;
+					const FGeometry& Frame = TimerFrame->GetCachedGeometry();
+					const double Left = Root.AbsoluteToLocal(Frame.LocalToAbsolute(FVector2D::ZeroVector)).X;
+					const double TimerRight = Root.AbsoluteToLocal(Frame.LocalToAbsolute(FVector2D(Frame.GetLocalSize().X, 0))).X;
+					TestTrue(TEXT("Ranking uses the fixed timer frame with a 5-unit gap"),
+						FMath::Abs(HUD->RankingSlot->GetPosition().X - TimerRight - 5.0) < 2.0);
 					const double Right = Root.AbsoluteToLocal(Panel.LocalToAbsolute(FVector2D(Panel.GetLocalSize().X, 0))).X;
 					TestTrue(TEXT("Timer and ranking form one centered group"), FMath::Abs((Left + Right - Root.GetLocalSize().X) * 0.5) < 2.0);
 				}
