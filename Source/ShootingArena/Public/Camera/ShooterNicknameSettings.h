@@ -42,11 +42,11 @@ public:
 	FShooterNicknameStyle Style;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Nickname|Targeting")
 	TSoftClassPtr<APawn> ShooterClass;
-	/** Match the equipped weapon's existing trace channel and range when weapon data is available. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Nickname|Targeting")
+	/** Retained for older assets only. Weapon settings no longer affect nickname targeting. */
+	UPROPERTY(BlueprintReadOnly, Category = "Nickname|Targeting", meta = (DeprecatedProperty, DeprecationMessage = "Nickname targeting always uses its own TraceChannel and MaxDistance."))
 	bool bUseEquippedWeaponTraceChannel = true;
-	/** Fallback damage query channel when no equipped weapon data is available, or automatic selection is disabled. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Nickname|Targeting")
+	/** Shared nickname query channel for every weapon. Must be detected by the character's existing collision. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Nickname|Targeting", meta = (DisplayName = "Nickname Trace Channel"))
 	TEnumAsByte<ECollisionChannel> TraceChannel = ECC_GameTraceChannel2;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Nickname|Targeting", meta = (ClampMin = "1.0", Units = "cm"))
 	float MaxDistance = 20000.0f;

@@ -25,7 +25,6 @@ bool FCharacterNicknameSphereTraceTest::RunTest(const FString& Parameters)
 	UShooterNicknameComponent* Nickname = NewObject<UShooterNicknameComponent>(PC);
 	Nickname->RegisterComponent();
 	Nickname->ShooterClass = APawn::StaticClass();
-	Nickname->bUseEquippedWeaponTraceChannel = false;
 	auto Body = [&](FVector Location)
 	{
 		APawn* Pawn = World->SpawnActor<APawn>();

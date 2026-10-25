@@ -5,16 +5,12 @@
 #include "Camera/ShooterDisplayLibrary.h"
 #include "Camera/ShooterNicknameWidget.h"
 #include "Camera/ShooterRevengeComponent.h"
-#include "Components/SphereComponent.h"
 #include "Engine/LocalPlayer.h"
 #include "Engine/GameViewportClient.h"
 #include "Engine/World.h"
-#include "EngineUtils.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
 #include "SceneView.h"
-#include "UObject/StructOnScope.h"
-#include "UObject/UnrealType.h"
 
 UShooterNicknameComponent::UShooterNicknameComponent()
 {
@@ -59,7 +55,6 @@ void UShooterNicknameComponent::ApplyNicknameSettings(UShooterNicknameSettings* 
 	Settings = NewSettings;
 	ShooterClass = NewSettings->ShooterClass.LoadSynchronous();
 	TraceChannel = NewSettings->TraceChannel < ECC_MAX ? NewSettings->TraceChannel.GetValue() : ECC_GameTraceChannel2;
-	bUseEquippedWeaponTraceChannel = NewSettings->bUseEquippedWeaponTraceChannel;
 	MaxDistance = ShooterDisplayValidation::FiniteClamp(NewSettings->MaxDistance, 1.0f, MAX_flt, 20000.0f);
 	SetNicknameSphereTraceEnabled(NewSettings->bUseSphereTraceFallback);
 	SetNicknameSphereTraceRadius(NewSettings->SphereTraceRadius);
@@ -142,67 +137,6 @@ bool UShooterNicknameComponent::ResolveAimRay(FVector& Origin, FVector& Directio
 	return !Origin.ContainsNaN() && !Direction.ContainsNaN() && !Direction.IsNearlyZero();
 }
 
-ECollisionChannel UShooterNicknameComponent::ResolveWeaponDamageTraceChannel(UObject* Data, float& Distance,
-	FCollisionResponseParams& Responses) const
-{
-	if (!IsValid(Data)) return TraceChannel;
-	if (const FNumericProperty* RangeProperty = FindFProperty<FNumericProperty>(Data->GetClass(), TEXT("range")))
-		if (RangeProperty->IsFloatingPoint())
-		{
-			const double Range = RangeProperty->GetFloatingPointPropertyValue(RangeProperty->ContainerPtrToValuePtr<void>(Data));
-			if (FMath::IsFinite(Range)) Distance = FMath::Min(Distance, static_cast<float>(FMath::Clamp(Range, 0.0, static_cast<double>(MAX_flt))));
-		}
-	// Projectile aim traces can use Visibility even though the damage capsule ignores it.
-	// Query with the actual projectile's object channel and responses, along the crosshair ray.
-	const FClassProperty* ProjectileProperty = FindFProperty<FClassProperty>(Data->GetClass(), TEXT("projectileClass"));
-	UClass* ProjectileClass = ProjectileProperty ? Cast<UClass>(ProjectileProperty->GetObjectPropertyValue_InContainer(Data)) : nullptr;
-	if (IsValid(ProjectileClass) && ProjectileClass->IsChildOf<AActor>())
-		if (const USphereComponent* Collision = AActor::GetActorClassDefaultComponent<USphereComponent>(ProjectileClass))
-			if (Collision->IsQueryCollisionEnabled() && Collision->GetCollisionObjectType() < ECC_MAX)
-			{
-				Responses = FCollisionResponseParams(Collision->GetCollisionResponseToChannels());
-				return Collision->GetCollisionObjectType();
-			}
-	const FByteProperty* ChannelProperty = FindFProperty<FByteProperty>(Data->GetClass(), TEXT("traceChannel"));
-	if (!ChannelProperty) return TraceChannel;
-	const uint8 QueryChannel = ChannelProperty->GetPropertyValue_InContainer(Data);
-	if (QueryChannel >= TraceTypeQuery_MAX) return TraceChannel;
-	const ECollisionChannel WeaponChannel = UEngineTypes::ConvertToCollisionChannel(static_cast<ETraceTypeQuery>(QueryChannel));
-	return WeaponChannel < ECC_MAX ? WeaponChannel : TraceChannel;
-}
-
-ECollisionChannel UShooterNicknameComponent::ResolveDamageTraceChannel(float& Distance, FCollisionResponseParams& Responses) const
-{
-	if (!bUseEquippedWeaponTraceChannel) return TraceChannel;
-	const APlayerController* PC = Cast<APlayerController>(GetOwner());
-	APawn* Pawn = IsValid(PC) ? PC->GetPawn() : nullptr;
-	if (!IsValid(Pawn) || Pawn->IsActorBeingDestroyed()) return TraceChannel;
-	TInlineComponentArray<UActorComponent*> Components(Pawn);
-	for (UActorComponent* Component : Components)
-	{
-		if (!IsValid(Component) || Component->IsBeingDestroyed()) continue;
-		bool bInventory = false;
-		for (UClass* Class = Component->GetClass(); Class; Class = Class->GetSuperClass())
-			bInventory |= Class->GetName() == TEXT("BPC_Inventory_C");
-		UFunction* GetSelected = bInventory ? Component->FindFunction(TEXT("GetSelectedItem")) : nullptr;
-		if (!GetSelected) continue;
-		FStructOnScope Parameters(GetSelected);
-		Component->ProcessEvent(GetSelected, Parameters.GetStructMemory());
-		if (!IsValid(Component) || Component->IsBeingDestroyed() || !IsValid(Pawn) || Pawn->IsActorBeingDestroyed()) return TraceChannel;
-		for (TFieldIterator<FProperty> It(GetSelected); It; ++It)
-		{
-			if (!It->HasAllPropertyFlags(CPF_Parm | CPF_OutParm)) continue;
-			const FObjectPropertyBase* ItemProperty = CastField<FObjectPropertyBase>(*It);
-			UObject* Weapon = ItemProperty ? ItemProperty->GetObjectPropertyValue_InContainer(Parameters.GetStructMemory()) : nullptr;
-			const FObjectPropertyBase* DataProperty = IsValid(Weapon) ? FindFProperty<FObjectPropertyBase>(Weapon->GetClass(), TEXT("weaponData")) : nullptr;
-			UObject* Data = DataProperty ? DataProperty->GetObjectPropertyValue_InContainer(Weapon) : nullptr;
-			if (!IsValid(Data)) continue;
-			return ResolveWeaponDamageTraceChannel(Data, Distance, Responses);
-		}
-	}
-	return TraceChannel;
-}
-
 APawn* UShooterNicknameComponent::FindAimTarget(const FVector& Origin, const FVector& Direction)
 {
 	const APlayerController* PC = Cast<APlayerController>(GetOwner());
@@ -212,9 +146,10 @@ APawn* UShooterNicknameComponent::FindAimTarget(const FVector& Origin, const FVe
 		|| Direction.IsNearlyZero()) return nullptr;
 	const FVector RayDirection = Direction.GetSafeNormal();
 	if (RayDirection.ContainsNaN() || RayDirection.IsNearlyZero()) return nullptr;
-	float Distance = MaxDistance;
+	const float Distance = MaxDistance;
 	FCollisionResponseParams Responses;
-	const ECollisionChannel Channel = ResolveDamageTraceChannel(Distance, Responses);
+	// Nickname detection uses one hitscan-style query for every equipped weapon.
+	const ECollisionChannel Channel = TraceChannel;
 	if (Channel >= ECC_MAX || !FMath::IsFinite(Distance) || Distance <= 0.0f) return nullptr;
 	const FVector End = Origin + RayDirection * Distance;
 	if (End.ContainsNaN()
