@@ -68,12 +68,22 @@ void UCompetitiveRankingHUD::NativeConstruct()
 		float DigitWidth = 0;
 		for (TCHAR Digit = TEXT('0'); Digit <= TEXT('9'); ++Digit)
 			DigitWidth = FMath::Max(DigitWidth, float(Measure->Measure(FString::Chr(Digit), Font).X));
+		FSlateFontInfo DigitFont = Font;
+		DigitFont.bForceMonospaced = true;
+		DigitFont.MonospacedWidth = DigitWidth / Font.Size;
+		for (const TCHAR* Name : {TEXT("Text_Minutes"), TEXT("Text_Seconds")})
+			if (UTextBlock* Text = Cast<UTextBlock>(Timer->GetWidgetFromName(Name)))
+			{
+				Text->SetFont(DigitFont);
+				Text->SetMinDesiredWidth(2.0f * DigitWidth);
+				Text->SetJustification(ETextJustify::Right);
+			}
 		// Reserve the widest digits so time changes never alter the frame width.
 		const float TimerWidth = FMath::CeilToFloat(4.0f * DigitWidth + Measure->Measure(TEXT(":"), Font).X + 4.0f);
 		ensure(TimerWidth > 4.0f * DigitWidth);
 		TimerBox->SetWidthOverride(TimerWidth);
 	}
-	Font.Size = 16;
+	Font = FCoreStyle::GetDefaultFontStyle("Regular", 16);
 	for (int32 Index = 0; Index < 2; ++Index)
 	{
 		UBorder* Outline = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), *FString::Printf(TEXT("RankingRow%d"), Index));
@@ -100,9 +110,6 @@ void UCompetitiveRankingHUD::NativeConstruct()
 			Text->SetShadowOffset(FVector2D(1, 1));
 			if (Column == 1)
 			{
-				FSlateFontInfo NameFont = Font;
-				NameFont.TypefaceFontName = TEXT("Barlow_Semibold");
-				Text->SetFont(NameFont);
 				Text->SetShadowOffset(FVector2D::ZeroVector);
 				Text->SetPixelSnapping(EWidgetPixelSnapping::SnapToPixel);
 				Text->SetClipping(EWidgetClipping::ClipToBounds);
@@ -212,7 +219,6 @@ void UCompetitiveRankingHUD::PositionBesideTimer(const FGeometry& Geometry)
 			{
 				FSlateFontInfo Font = Label->GetFont();
 				Font.Size = FMath::RoundToInt(16.0f * Scale);
-				Font.TypefaceFontName = TEXT("Barlow_Medium");
 				Label->SetFont(Font);
 				Label->SetShadowOffset(FVector2D::ZeroVector);
 				Label->SetPixelSnapping(EWidgetPixelSnapping::SnapToPixel);
@@ -224,9 +230,11 @@ void UCompetitiveRankingHUD::PositionBesideTimer(const FGeometry& Geometry)
 	RankingPanel->SetVisibility(ESlateVisibility::HitTestInvisible);
 	RankingPanel->SetRenderTransformPivot(FVector2D::ZeroVector);
 	RankingPanel->SetRenderScale(FVector2D(1.0f));
-	RankingSlot->SetPosition(FVector2D(FMath::Clamp(Right.X + Shift + TimerGap, 0.0,
+	const FVector2D Position(FMath::Clamp(Right.X + Shift + TimerGap, 0.0,
 		FMath::Max(0.0, Geometry.GetLocalSize().X - PanelWidth * Scale - 8.0)),
-		FMath::Max(0.0, (Top.Y + Bottom.Y - PanelHeight * Scale) * 0.5)));
+		FMath::Max(0.0, (Top.Y + Bottom.Y - PanelHeight * Scale) * 0.5));
+	const FVector2D Absolute = Geometry.LocalToAbsolute(Position);
+	RankingSlot->SetPosition(Geometry.AbsoluteToLocal(FVector2D(FMath::RoundToDouble(Absolute.X), FMath::RoundToDouble(Absolute.Y))));
 }
 
 void UCompetitiveRankingHUD::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)

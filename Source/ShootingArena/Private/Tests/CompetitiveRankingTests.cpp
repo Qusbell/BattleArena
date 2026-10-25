@@ -151,6 +151,17 @@ bool FCompetitiveRankingPIETest::RunTest(const FString& Parameters)
 				}
 				if (UWidget* TimerFrame = Timer ? Timer->GetWidgetFromName(TEXT("b_Timer")) : nullptr)
 				{
+					for (const TCHAR* Name : {TEXT("Text_Minutes"), TEXT("Text_Seconds")})
+						if (UTextBlock* Digits = Cast<UTextBlock>(Timer->GetWidgetFromName(Name)))
+						{
+							TestTrue(TEXT("Timer digits use uniform character advances"), Digits->GetFont().bForceMonospaced);
+							const FText Original = Digits->GetText();
+							Digits->SetText(FText::FromString(TEXT("11"))); HUD->ForceLayoutPrepass();
+							const FVector2D Narrow = Digits->GetDesiredSize();
+							Digits->SetText(FText::FromString(TEXT("88"))); HUD->ForceLayoutPrepass();
+							TestTrue(TEXT("Different timer digits keep the same layout width"), FMath::IsNearlyEqual(Narrow.X, Digits->GetDesiredSize().X));
+							Digits->SetText(Original);
+						}
 					const FGeometry& Root = HUD->GetCachedGeometry();
 					const FGeometry& Panel = HUD->RankingPanel->GetCachedGeometry();
 					const FGeometry& Frame = TimerFrame->GetCachedGeometry();
