@@ -18,7 +18,8 @@ class UMaterialInterface;
  * - Camera는 Center를 기준으로 Killer의 반대편에 위치
  * - Killer 이동 시 새 기본 위치를 계산하고 부드럽게 이동
  * - 지형 충돌 시 Hit Normal을 기준으로 벽면을 따라 Slide
- * - Camera는 항상 Center를 바라봄
+	 * - 기본 Camera는 Center를 바라봄
+	 * - 모서리에서 뒤쪽 공간이 부족한 경우에만 사망 위치에 고정하고 Killer를 바라봄
  *
  * 네트워크 / ViewTarget / Spawn / Destroy는 DeathCamComponent가 담당합니다.
  */
@@ -90,6 +91,9 @@ private:
 
 	bool bDeathCamActive = false;
 
+	/** 사망 시 한 번 결정합니다. 모서리 예외 시점과 기본 시점을 매 프레임 오가지 않게 합니다. */
+	bool bUseDeathLocationCamera = false;
+
 	// DataAsset 값을 런타임에 복사합니다.
 	// DataAsset이 비어 있어도 아래 기본값으로 안전하게 동작합니다.
 	float centerOffset = 0.0f;
@@ -105,14 +109,19 @@ private:
 	// 기존 SpringArm Camera Collision과 같은 역할을 하는 Probe 반경입니다.
 	static constexpr float cameraProbeRadius = 12.0f;
 
-	// Sweep가 벽에 정확히 맞닿은 지점에서 다음 Sweep을 시작하면
-	// 같은 벽을 Time=0으로 다시 맞아 Slide가 뻑뻑해질 수 있습니다.
-	// 충돌 후 카메라를 표면에서 아주 조금 떼어 두는 기술적 여유값입니다.
+	// 벽과의 여유 공간을 Sweep 반경에 포함합니다.
+	// 충돌 후 위치를 법선 방향으로 밀면 좁은 모서리에서 다른 벽/이동 제한과 충돌할 수 있습니다.
 	static constexpr float cameraCollisionSkin = 2.0f;
+
+	// 접촉점보다 이동 경로를 따라 조금 앞에서 멈춰 다음 Sweep의 초기 겹침을 방지합니다.
+	static constexpr float cameraSweepPullback = 0.1f;
 
 	// 모서리처럼 한 프레임에 두 면 이상을 만나는 경우에도
 	// 남은 이동량을 다시 투영할 수 있도록 제한된 횟수만 반복합니다.
 	static constexpr int32 maxSlideIterations = 3;
+
+	// 뒤쪽 카메라 거리와 주변 벽을 검사하는 모서리 예외 기준(cm)입니다.
+	static constexpr float cornerCameraDistance = 100.0f;
 
 	/** Killer Highlight 종료 시 원래 CustomDepth 상태로 되돌리기 위한 백업입니다. */
 	struct FHighlightComponentState
@@ -136,10 +145,16 @@ private:
 	/** DeathCam 첫 프레임 위치를 지형 안에 생성하지 않도록 Center -> 초기 위치 Sweep을 수행합니다. */
 	FVector ResolveInitialCameraLocation(const FVector& desiredCameraLocation) const;
 
+	/** 뒤쪽 공간이 부족하고 서로 다른 방향의 벽이 가까이 있는 사망인지 확인합니다. */
+	bool ShouldUseDeathLocationCamera(const FVector& initialCameraLocation) const;
+
+	/** 모서리 예외 시점에서만 Killer를 직접 바라봅니다. */
+	FRotator CalculateLookAtKillerRotation(const FVector& cameraLocation) const;
+
 	/** 현재 위치에서 원하는 이동량만큼 움직이되, 충돌하면 Hit Normal 기준으로 벽면 Slide를 적용합니다. */
 	FVector MoveCameraWithCollision(const FVector& cameraMove, const FVector& killerDirection) const;
 
-	/** MaxDistance와 'Center를 넘어 Killer 방향으로 이동 금지' 규칙을 마지막에 강제합니다. */
+	/** MaxDistance와 'Center를 넘어 Killer 방향으로 이동 금지' 규칙을 Sweep 목표에 적용합니다. */
 	FVector ClampCameraLocation(const FVector& candidateLocation, const FVector& killerDirection) const;
 
 	/** Camera가 어느 위치에 있든 Center를 바라보도록 회전을 갱신합니다. */

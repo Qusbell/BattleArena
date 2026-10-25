@@ -72,12 +72,19 @@ bool ADeathCamActor::InitializeDeathCam(
 
 	// 초기 위치가 벽 안쪽이면 Center -> 초기 위치 Sweep으로 가능한 지점까지만 이동합니다.
 	// 실제 Camera-Center 거리가 MaxDistance보다 짧아지는 것은 기획상 허용됩니다.
-	const FVector initialCameraLocation = ResolveInitialCameraLocation(initialDesiredLocation);
-	const FVector clampedInitialLocation = ClampCameraLocation(initialCameraLocation, killerDirection);
-	const FRotator initialRotation = CalculateLookAtCenterRotation(clampedInitialLocation);
+	FVector initialCameraLocation = ResolveInitialCameraLocation(initialDesiredLocation);
+	bUseDeathLocationCamera = ShouldUseDeathLocationCamera(initialCameraLocation);
+	if (bUseDeathLocationCamera)
+	{
+		// 기본 Center는 바꾸지 않고, 이 사망의 카메라 위치만 실제 사망 위치에 고정합니다.
+		initialCameraLocation = deathLocation;
+	}
+	const FRotator initialRotation = bUseDeathLocationCamera
+		? CalculateLookAtKillerRotation(initialCameraLocation)
+		: CalculateLookAtCenterRotation(initialCameraLocation);
 
 	SetActorLocationAndRotation(
-		clampedInitialLocation,
+		initialCameraLocation,
 		initialRotation,
 		false,
 		nullptr,
@@ -96,6 +103,10 @@ bool ADeathCamActor::InitializeDeathCam(
 		*centerLocation.ToString(),
 		*GetNameSafe(otherActor),
 		maxDistance);
+	if (bUseDeathLocationCamera)
+	{
+		UE_LOG(LogDeathCamActor, Log, TEXT("DeathCam corner fallback: fixed at death location, looking at Killer."));
+	}
 
 	return true;
 }
@@ -143,6 +154,14 @@ void ADeathCamActor::UpdateDeathCam(float deltaSeconds)
 	if (!IsValid(ownerPlayerController))
 	{
 		StopDeathCam();
+		return;
+	}
+
+	if (bUseDeathLocationCamera)
+	{
+		// 위치는 사망 위치에 유지하고 Killer의 이동에 맞춰 시선만 갱신합니다.
+		// Killer가 사라지면 마지막 시선을 유지합니다.
+		SetActorRotation(CalculateLookAtKillerRotation(GetActorLocation()));
 		return;
 	}
 
@@ -228,36 +247,122 @@ FVector ADeathCamActor::ResolveInitialCameraLocation(const FVector& desiredCamer
 		queryParams.AddIgnoredActor(otherActor);
 	}
 
+	const FVector constrainedLocation = ClampCameraLocation(desiredCameraLocation, CalculateKillerDirection());
+	const FCollisionShape probeShape = FCollisionShape::MakeSphere(cameraProbeRadius + cameraCollisionSkin);
 	FHitResult hitResult;
 	const bool bHit = GetWorld()->SweepSingleByChannel(
 		hitResult,
 		centerLocation,
-		desiredCameraLocation,
+		constrainedLocation,
 		FQuat::Identity,
 		ECC_Camera,
-		FCollisionShape::MakeSphere(cameraProbeRadius),
+		probeShape,
 		queryParams);
 
 	if (!bHit)
 	{
-		return desiredCameraLocation;
+		return constrainedLocation;
 	}
 
-	// Sphere 중심을 충돌면에 정확히 붙여두면 첫 Tick부터 같은 면을 Time=0으로
-	// 재충돌할 수 있으므로 표면 법선 방향으로 아주 조금 떼어 둡니다.
-	const FVector hitNormal = hitResult.ImpactNormal.GetSafeNormal();
-	FVector safeLocation = hitResult.Location;
-
-	if (!hitNormal.IsNearlyZero())
+	if (hitResult.bStartPenetrating)
 	{
-		const float pushOutDistance = hitResult.bStartPenetrating
-			? hitResult.PenetrationDepth + cameraCollisionSkin
-			: cameraCollisionSkin;
-
-		safeLocation += hitNormal * pushOutDistance;
+		// Center 자체가 벽에 겹친 경우에만 밀어내기를 시도합니다.
+		// 이동 제한 안이면서 다른 벽에도 겹치지 않는 위치만 채택합니다.
+		const FVector safeLocation = ClampCameraLocation(
+			centerLocation + hitResult.Normal.GetSafeNormal() * (hitResult.PenetrationDepth + cameraSweepPullback),
+			CalculateKillerDirection());
+		return GetWorld()->OverlapBlockingTestByChannel(
+			safeLocation, FQuat::Identity, ECC_Camera, probeShape, queryParams)
+			? centerLocation : safeLocation;
 	}
 
-	return safeLocation;
+	// 법선 방향으로 밀지 않고, 검사한 이동 경로에서 접촉점보다 조금 앞에 멈춥니다.
+	const FVector initialMove = constrainedLocation - centerLocation;
+	const double safeTime = FMath::Max(0.0,
+		static_cast<double>(hitResult.Time) - cameraSweepPullback / FMath::Max(initialMove.Size(), UE_DOUBLE_SMALL_NUMBER));
+	return centerLocation + initialMove * safeTime;
+}
+
+bool ADeathCamActor::ShouldUseDeathLocationCamera(const FVector& initialCameraLocation) const
+{
+	if (!GetWorld() || !IsValid(otherActor))
+	{
+		return false;
+	}
+
+	// 원래 설정 거리가 짧은 경우에는 예외를 켜지 않습니다.
+	// 벽 때문에 뒤쪽 거리가 100cm 미만이면서 설정 거리의 절반 미만으로 줄어든 경우만 검사합니다.
+	const float distanceThreshold = FMath::Min(cornerCameraDistance, maxDistance * 0.5f);
+	if (FVector::DistSquared(initialCameraLocation, centerLocation) >= FMath::Square(distanceThreshold))
+	{
+		return false;
+	}
+
+	FCollisionQueryParams queryParams(SCENE_QUERY_STAT(DeathCamCornerCollision), false, this);
+	queryParams.AddIgnoredActor(this);
+	queryParams.AddIgnoredActor(otherActor);
+	if (IsValid(deadActorToIgnore))
+	{
+		queryParams.AddIgnoredActor(deadActorToIgnore);
+	}
+
+	const FCollisionShape probeShape = FCollisionShape::MakeSphere(cameraProbeRadius + cameraCollisionSkin);
+	if (GetWorld()->OverlapBlockingTestByChannel(
+		deathLocation, FQuat::Identity, ECC_Camera, probeShape, queryParams))
+	{
+		// 실제 사망 위치가 지형에 겹쳐 있으면 카메라를 강제로 넣지 않습니다.
+		return false;
+	}
+
+	TArray<FVector, TInlineAllocator<8>> wallNormals;
+	for (int32 directionIndex = 0; directionIndex < 8; ++directionIndex)
+	{
+		const float angle = directionIndex * (PI / 4.0f);
+		const FVector direction(FMath::Cos(angle), FMath::Sin(angle), 0.0);
+		FHitResult hitResult;
+		if (!GetWorld()->SweepSingleByChannel(hitResult, centerLocation,
+			centerLocation + direction * cornerCameraDistance, FQuat::Identity,
+			ECC_Camera, probeShape, queryParams))
+		{
+			continue;
+		}
+
+		// 바닥/천장이나 급한 경사를 모서리의 벽으로 세지 않습니다.
+		if (FMath::Abs(hitResult.ImpactNormal.Z) > 0.5f)
+		{
+			continue;
+		}
+		const FVector wallNormal = FVector(hitResult.ImpactNormal.X, hitResult.ImpactNormal.Y, 0.0).GetSafeNormal();
+		if (wallNormal.IsNearlyZero())
+		{
+			continue;
+		}
+
+		for (const FVector& previousNormal : wallNormals)
+		{
+			// 한 벽을 여러 번 맞히거나 평행한 복도 벽을 만난 경우는 제외합니다.
+			if (FMath::Abs(FVector::DotProduct(previousNormal, wallNormal)) < 0.7)
+			{
+				return true;
+			}
+		}
+		wallNormals.Add(wallNormal);
+	}
+
+	return false;
+}
+
+FRotator ADeathCamActor::CalculateLookAtKillerRotation(const FVector& cameraLocation) const
+{
+	if (IsValid(otherActor))
+	{
+		const FVector toKiller = otherActor->GetActorLocation() - cameraLocation;
+		if (!toKiller.IsNearlyZero())
+		{
+			return toKiller.Rotation();
+		}
+	}
+	return GetActorRotation();
 }
 
 FVector ADeathCamActor::MoveCameraWithCollision(
@@ -266,7 +371,7 @@ FVector ADeathCamActor::MoveCameraWithCollision(
 {
 	if (cameraMove.IsNearlyZero() || !GetWorld())
 	{
-		return ClampCameraLocation(GetActorLocation(), killerDirection);
+		return GetActorLocation();
 	}
 
 	FCollisionQueryParams queryParams(SCENE_QUERY_STAT(DeathCamSlideCollision), false, this);
@@ -284,6 +389,7 @@ FVector ADeathCamActor::MoveCameraWithCollision(
 
 	FVector resolvedLocation = GetActorLocation();
 	FVector remainingMove = cameraMove;
+	const FCollisionShape probeShape = FCollisionShape::MakeSphere(cameraProbeRadius + cameraCollisionSkin);
 
 	// 한 번만 Slide하면 모서리에서 두 번째 면에 걸린 순간 정지하기 쉽습니다.
 	// 제한된 횟수만 반복하면서 매 충돌마다 남은 이동량의 벽 안쪽 성분을 제거합니다.
@@ -294,7 +400,14 @@ FVector ADeathCamActor::MoveCameraWithCollision(
 			break;
 		}
 
-		const FVector desiredLocation = resolvedLocation + remainingMove;
+		// Slide 후에도 이동 제한을 먼저 적용한 위치까지 Sweep합니다.
+		// 충돌 해결 후 Clamp하면 카메라가 다시 벽 안으로 들어갈 수 있습니다.
+		const FVector desiredLocation = ClampCameraLocation(resolvedLocation + remainingMove, killerDirection);
+		remainingMove = desiredLocation - resolvedLocation;
+		if (remainingMove.IsNearlyZero(0.01f))
+		{
+			break;
+		}
 
 		FHitResult hitResult;
 		const bool bHit = GetWorld()->SweepSingleByChannel(
@@ -303,7 +416,7 @@ FVector ADeathCamActor::MoveCameraWithCollision(
 			desiredLocation,
 			FQuat::Identity,
 			ECC_Camera,
-			FCollisionShape::MakeSphere(cameraProbeRadius),
+			probeShape,
 			queryParams);
 
 		if (!bHit)
@@ -313,24 +426,31 @@ FVector ADeathCamActor::MoveCameraWithCollision(
 			break;
 		}
 
-		const FVector hitNormal = hitResult.ImpactNormal.GetSafeNormal();
-
-		// 먼저 실제 충돌 지점까지 이동한 뒤, 다음 Sweep이 같은 면에서 Time=0으로
-		// 다시 막히지 않도록 표면에서 아주 조금 떨어뜨립니다.
-		resolvedLocation = hitResult.Location;
-
-		if (!hitNormal.IsNearlyZero())
+		// 모서리에서는 표면의 ImpactNormal과 다를 수 있는 Sphere의 접촉 법선을 사용합니다.
+		const FVector hitNormal = hitResult.Normal.GetSafeNormal();
+		if (hitResult.bStartPenetrating)
 		{
-			const float pushOutDistance = hitResult.bStartPenetrating
-				? hitResult.PenetrationDepth + cameraCollisionSkin
-				: cameraCollisionSkin;
+			const FVector safeLocation = ClampCameraLocation(
+				resolvedLocation + hitNormal * (hitResult.PenetrationDepth + cameraSweepPullback), killerDirection);
 
-			resolvedLocation += hitNormal * pushOutDistance;
+			// 다른 벽에 겹치거나 이동 제한 때문에 원위치가 되면 무리하게 밀지 않습니다.
+			if (hitNormal.IsNearlyZero() || safeLocation.Equals(resolvedLocation, 0.01f)
+				|| GetWorld()->OverlapBlockingTestByChannel(
+					safeLocation, FQuat::Identity, ECC_Camera, probeShape, queryParams))
+			{
+				break;
+			}
+
+			resolvedLocation = safeLocation;
+			remainingMove = desiredLocation - resolvedLocation;
+			continue;
 		}
 
-		// 충돌하기 전 원래 이동량 중 실제로 남은 비율만 계산합니다.
-		// hitResult.Location에서 desiredLocation을 다시 빼는 방식은 위 Skin 보정량까지
-		// 이동량에 섞일 수 있으므로 Hit.Time을 기준으로 남은 양을 구합니다.
+		const double safeTime = FMath::Max(0.0,
+			static_cast<double>(hitResult.Time) - cameraSweepPullback / remainingMove.Size());
+		resolvedLocation += remainingMove * safeTime;
+
+		// 접촉 전 남은 이동 비율을 구하고, 벽 안쪽으로 향하는 성분을 제거합니다.
 		const float remainingFraction = 1.0f - FMath::Clamp(hitResult.Time, 0.0f, 1.0f);
 		const FVector moveAfterImpact = remainingMove * remainingFraction;
 
@@ -342,7 +462,8 @@ FVector ADeathCamActor::MoveCameraWithCollision(
 			: FVector::VectorPlaneProject(moveAfterImpact, hitNormal);
 	}
 
-	return ClampCameraLocation(resolvedLocation, killerDirection);
+	// 모든 이동은 Sweep을 거쳤으므로 여기서 충돌 검사 없는 위치 보정을 추가하지 않습니다.
+	return resolvedLocation;
 }
 
 FVector ADeathCamActor::ClampCameraLocation(
