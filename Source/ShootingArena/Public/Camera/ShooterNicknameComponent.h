@@ -6,7 +6,6 @@
 #include "ShooterNicknameComponent.generated.h"
 
 class UShooterNicknameWidget;
-struct FCollisionResponseParams;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FShooterAimTargetChanged, APawn*, Target);
 
@@ -63,7 +62,6 @@ protected:
 private:
 #if WITH_DEV_AUTOMATION_TESTS
 	friend class FCharacterDisplayRegressionTest;
-	friend class FCharacterNicknameWeaponTraceTest;
 	friend class FCharacterNicknameSphereTraceTest;
 #endif
 	UPROPERTY(Transient)
@@ -81,7 +79,6 @@ private:
 	FVector2D CrosshairUV = FVector2D(0.5, 0.5);
 	FVector2D CrosshairViewportPosition = FVector2D::ZeroVector;
 	ECollisionChannel TraceChannel = ECC_GameTraceChannel2;
-	bool bUseEquippedWeaponTraceChannel = true;
 	float MaxDistance = 20000.0f;
 	bool bUseSphereTraceFallback = true;
 	float SphereTraceRadius = 15.0f;
@@ -89,8 +86,6 @@ private:
 	bool bEndingPlay = false;
 	bool ResolveAimRay(FVector& Origin, FVector& Direction);
 	APawn* FindAimTarget(const FVector& Origin, const FVector& Direction);
-	ECollisionChannel ResolveDamageTraceChannel(float& Distance, FCollisionResponseParams& Responses) const;
-	ECollisionChannel ResolveWeaponDamageTraceChannel(UObject* Data, float& Distance, FCollisionResponseParams& Responses) const;
 	void UpdateTarget(APawn* Target);
 	void ClearDisplay();
 };
