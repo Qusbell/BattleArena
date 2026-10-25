@@ -128,6 +128,10 @@ bool FCompetitiveRankingPIETest::RunTest(const FString& Parameters)
 				TestEqual(TEXT("Displayed actual rank"), HUD->RankLabels[Index]->GetText().ToString(), FString::FromInt(Expected[Index].Rank));
 				TestEqual(TEXT("Displayed kill score"), HUD->ScoreLabels[Index]->GetText().ToString(), FString::FromInt(Expected[Index].Kills));
 				TestTrue(TEXT("Uses the existing Blueprint name resolver"), HUD->NameLabels[Index]->GetText().EqualTo(UShooterDisplayLibrary::GetPlayerStateDisplayName(Expected[Index].Player)));
+				TestTrue(TEXT("Leader is highlighted; other rows retain player colors"),
+					HUD->NameLabels[Index]->GetColorAndOpacity().GetSpecifiedColor().Equals(Expected[Index].Rank == 1
+						? FLinearColor(1.0f, 0.92f, 0.60f) : Expected[Index].Player == PC->PlayerState
+						? FLinearColor(0.50f, 0.83f, 0.92f) : FLinearColor(1.0f, 0.64f, 0.30f)));
 			}
 			if (HUD->GetCachedGeometry().GetLocalSize().X > 0)
 			{
