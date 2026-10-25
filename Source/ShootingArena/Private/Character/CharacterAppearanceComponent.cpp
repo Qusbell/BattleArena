@@ -342,6 +342,10 @@ void UCharacterAppearanceComponent::ApplyLiveMesh(const FCharacterModelingRow& m
 	if (USkeletalMesh* mesh = modelingRow.characterMesh.LoadSynchronous())
 	{
 		meshComponent->SetSkeletalMesh(mesh);
+
+		// SetSkeletalMesh는 컴포넌트의 Override Material을 유지합니다.
+		// 이전 캐릭터용 머티리얼이 슬롯 번호 기준으로 새 메시에 덮어씌워지는 것을 막기 위해 비웁니다.
+		meshComponent->EmptyOverrideMaterials();
 	}
 
 	if (!modelingRow.animationInstanceClass.IsNull())
