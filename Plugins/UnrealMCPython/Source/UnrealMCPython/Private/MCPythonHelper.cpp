@@ -52,6 +52,14 @@
 #include "K2Node_DynamicCast.h"
 #include "K2Node_InputKey.h"
 #include "K2Node_SpawnActorFromClass.h"
+#include "K2Node_BreakStruct.h"
+#include "K2Node_GetDataTableRow.h"
+#include "K2Node_ConstructObjectFromClass.h"
+#include "K2Node_AddDelegate.h"
+#include "K2Node_CallArrayFunction.h"
+#include "Blueprint/UserWidget.h"
+#include "Engine/DataTable.h"
+#include "K2Node_MakeStruct.h"
 #include "EdGraphSchema_K2.h"
 #include "Kismet2/BlueprintEditorUtils.h"
 #include "Kismet2/KismetEditorUtilities.h"
@@ -396,13 +404,27 @@ static UEdGraphNode* CreateBPNodeFromJson(UEdGraph* Graph, UBlueprint* Blueprint
             return nullptr;
         }
 
-        FGraphNodeCreator<UK2Node_CallFunction> Creator(*Graph);
-        UK2Node_CallFunction* FuncNode = Creator.CreateNode(false);
-        FuncNode->SetFromFunction(TargetFunc);
-        FuncNode->NodePosX = PosX;
-        FuncNode->NodePosY = PosY;
-        Creator.Finalize();
-        NewNode = FuncNode;
+        if (TargetFunc->HasMetaData(TEXT("ArrayParm")))
+        {
+            // Array library functions need the array-aware node so their wildcard pins resolve to the array's element type.
+            FGraphNodeCreator<UK2Node_CallArrayFunction> ArrayCreator(*Graph);
+            UK2Node_CallArrayFunction* ArrayNode = ArrayCreator.CreateNode(false);
+            ArrayNode->SetFromFunction(TargetFunc);
+            ArrayNode->NodePosX = PosX;
+            ArrayNode->NodePosY = PosY;
+            ArrayCreator.Finalize();
+            NewNode = ArrayNode;
+        }
+        else
+        {
+            FGraphNodeCreator<UK2Node_CallFunction> Creator(*Graph);
+            UK2Node_CallFunction* FuncNode = Creator.CreateNode(false);
+            FuncNode->SetFromFunction(TargetFunc);
+            FuncNode->NodePosX = PosX;
+            FuncNode->NodePosY = PosY;
+            Creator.Finalize();
+            NewNode = FuncNode;
+        }
     }
     else if (NodeType == TEXT("Event"))
     {
@@ -451,6 +473,43 @@ static UEdGraphNode* CreateBPNodeFromJson(UEdGraph* Graph, UBlueprint* Blueprint
         CustomNode->NodePosX = PosX;
         CustomNode->NodePosY = PosY;
         Creator.Finalize();
+
+        // Optional "params": [{"name":"X","type":"int|bool|real|string|name|text|struct|enum|object","path":"/Script/..."}]
+        const TArray<TSharedPtr<FJsonValue>>* ParamsArr = nullptr;
+        if (NodeJson->TryGetArrayField(TEXT("params"), ParamsArr) && ParamsArr)
+        {
+            for (const TSharedPtr<FJsonValue>& ParamVal : *ParamsArr)
+            {
+                const TSharedPtr<FJsonObject> ParamObj = ParamVal->AsObject();
+                if (!ParamObj.IsValid()) continue;
+                FString PName, PType, PPath;
+                ParamObj->TryGetStringField(TEXT("name"), PName);
+                ParamObj->TryGetStringField(TEXT("type"), PType);
+                ParamObj->TryGetStringField(TEXT("path"), PPath);
+
+                FEdGraphPinType PinType;
+                if (PType == TEXT("int")) PinType.PinCategory = UEdGraphSchema_K2::PC_Int;
+                else if (PType == TEXT("bool")) PinType.PinCategory = UEdGraphSchema_K2::PC_Boolean;
+                else if (PType == TEXT("real")) { PinType.PinCategory = UEdGraphSchema_K2::PC_Real; PinType.PinSubCategory = UEdGraphSchema_K2::PC_Double; }
+                else if (PType == TEXT("string")) PinType.PinCategory = UEdGraphSchema_K2::PC_String;
+                else if (PType == TEXT("name")) PinType.PinCategory = UEdGraphSchema_K2::PC_Name;
+                else if (PType == TEXT("text")) PinType.PinCategory = UEdGraphSchema_K2::PC_Text;
+                else if (PType == TEXT("struct")) { PinType.PinCategory = UEdGraphSchema_K2::PC_Struct; PinType.PinSubCategoryObject = LoadObject<UScriptStruct>(nullptr, *PPath); }
+                else if (PType == TEXT("enum")) { PinType.PinCategory = UEdGraphSchema_K2::PC_Byte; PinType.PinSubCategoryObject = LoadObject<UEnum>(nullptr, *PPath); }
+                else if (PType == TEXT("object")) { PinType.PinCategory = UEdGraphSchema_K2::PC_Object; PinType.PinSubCategoryObject = LoadObject<UClass>(nullptr, *PPath); }
+                else { OutError = FString::Printf(TEXT("CustomEvent param '%s': unknown type '%s'."), *PName, *PType); return nullptr; }
+                if ((PType == TEXT("struct") || PType == TEXT("enum") || PType == TEXT("object")) && !PinType.PinSubCategoryObject.IsValid())
+                {
+                    OutError = FString::Printf(TEXT("CustomEvent param '%s': '%s' not found."), *PName, *PPath);
+                    return nullptr;
+                }
+                // Delegates pass structs as const references; the custom event must match to be bindable.
+                bool bAsRef = false;
+                ParamObj->TryGetBoolField(TEXT("ref"), bAsRef);
+                if (bAsRef) { PinType.bIsReference = true; PinType.bIsConst = true; }
+                CustomNode->CreateUserDefinedPin(FName(*PName), PinType, EGPD_Output);
+            }
+        }
         NewNode = CustomNode;
     }
     else if (NodeType == TEXT("CastTo"))
@@ -649,6 +708,124 @@ static UEdGraphNode* CreateBPNodeFromJson(UEdGraph* Graph, UBlueprint* Blueprint
         Creator.Finalize();
         NewNode = KeyNode;
     }
+    else if (NodeType == TEXT("AddDelegate"))
+    {
+        FString OwnerClassPath, DelegateName;
+        if (!NodeJson->TryGetStringField(TEXT("owner_class"), OwnerClassPath) || !NodeJson->TryGetStringField(TEXT("delegate"), DelegateName))
+        {
+            OutError = TEXT("AddDelegate node needs 'owner_class' (e.g. /Script/ShootingArena.LobbyGameState) and 'delegate' (property name).");
+            return nullptr;
+        }
+        UClass* OwnerClass = LoadClass<UObject>(nullptr, *OwnerClassPath);
+        FMulticastDelegateProperty* DelegateProp = OwnerClass ? FindFProperty<FMulticastDelegateProperty>(OwnerClass, FName(*DelegateName)) : nullptr;
+        if (!DelegateProp)
+        {
+            OutError = FString::Printf(TEXT("Multicast delegate '%s' not found on '%s'."), *DelegateName, *OwnerClassPath);
+            return nullptr;
+        }
+        FGraphNodeCreator<UK2Node_AddDelegate> Creator(*Graph);
+        UK2Node_AddDelegate* AddNode = Creator.CreateNode(false);
+        AddNode->SetFromProperty(DelegateProp, false, OwnerClass);
+        AddNode->NodePosX = PosX;
+        AddNode->NodePosY = PosY;
+        Creator.Finalize();
+        NewNode = AddNode;
+    }
+    else if (NodeType == TEXT("CreateWidget"))
+    {
+        FString WidgetClassPath;
+        if (!NodeJson->TryGetStringField(TEXT("widget_class"), WidgetClassPath))
+        {
+            OutError = TEXT("CreateWidget node missing 'widget_class' (e.g. /Game/.../WBP_X.WBP_X_C).");
+            return nullptr;
+        }
+        UClass* WidgetClass = LoadClass<UUserWidget>(nullptr, *WidgetClassPath);
+        if (!WidgetClass)
+        {
+            OutError = FString::Printf(TEXT("Widget class '%s' not found."), *WidgetClassPath);
+            return nullptr;
+        }
+        // UK2Node_CreateWidget lives in UMGEditor's private headers, so create it by class and use its public base.
+        UClass* CreateNodeClass = FindObject<UClass>(nullptr, TEXT("/Script/UMGEditor.K2Node_CreateWidget"));
+        if (!CreateNodeClass)
+        {
+            OutError = TEXT("K2Node_CreateWidget class not found.");
+            return nullptr;
+        }
+        UK2Node_ConstructObjectFromClass* CreateNode = NewObject<UK2Node_ConstructObjectFromClass>(Graph, CreateNodeClass);
+        CreateNode->CreateNewGuid();
+        Graph->AddNode(CreateNode, false, false);
+        CreateNode->PostPlacedNewNode();
+        CreateNode->AllocateDefaultPins();
+        CreateNode->NodePosX = PosX;
+        CreateNode->NodePosY = PosY;
+        if (UEdGraphPin* ClassPin = CreateNode->GetClassPin())
+        {
+            Graph->GetSchema()->TrySetDefaultObject(*ClassPin, WidgetClass);
+        }
+        NewNode = CreateNode;
+    }
+    else if (NodeType == TEXT("GetDataTableRow"))
+    {
+        FString TablePath;
+        if (!NodeJson->TryGetStringField(TEXT("table"), TablePath))
+        {
+            OutError = TEXT("GetDataTableRow node missing 'table' (DataTable asset path).");
+            return nullptr;
+        }
+        UDataTable* Table = LoadObject<UDataTable>(nullptr, *TablePath);
+        if (!Table)
+        {
+            OutError = FString::Printf(TEXT("DataTable '%s' not found."), *TablePath);
+            return nullptr;
+        }
+        FGraphNodeCreator<UK2Node_GetDataTableRow> Creator(*Graph);
+        UK2Node_GetDataTableRow* RowNode = Creator.CreateNode(false);
+        RowNode->NodePosX = PosX;
+        RowNode->NodePosY = PosY;
+        Creator.Finalize();
+        if (UEdGraphPin* TablePin = RowNode->GetDataTablePin())
+        {
+            // Goes through the schema so the node re-types its output struct pins from the table's row struct.
+            Graph->GetSchema()->TrySetDefaultObject(*TablePin, Table);
+        }
+        NewNode = RowNode;
+    }
+    else if (NodeType == TEXT("BreakStruct") || NodeType == TEXT("MakeStruct"))
+    {
+        FString StructPath;
+        if (!NodeJson->TryGetStringField(TEXT("struct"), StructPath))
+        {
+            OutError = FString::Printf(TEXT("%s node missing 'struct' (e.g. /Script/ShootingArena.LobbyRosterEntry)."), *NodeType);
+            return nullptr;
+        }
+        UScriptStruct* StructType = LoadObject<UScriptStruct>(nullptr, *StructPath);
+        if (!StructType)
+        {
+            OutError = FString::Printf(TEXT("Struct '%s' not found."), *StructPath);
+            return nullptr;
+        }
+        if (NodeType == TEXT("BreakStruct"))
+        {
+            FGraphNodeCreator<UK2Node_BreakStruct> Creator(*Graph);
+            UK2Node_BreakStruct* StructNode = Creator.CreateNode(false);
+            StructNode->StructType = StructType;
+            StructNode->NodePosX = PosX;
+            StructNode->NodePosY = PosY;
+            Creator.Finalize();
+            NewNode = StructNode;
+        }
+        else
+        {
+            FGraphNodeCreator<UK2Node_MakeStruct> Creator(*Graph);
+            UK2Node_MakeStruct* StructNode = Creator.CreateNode(false);
+            StructNode->StructType = StructType;
+            StructNode->NodePosX = PosX;
+            StructNode->NodePosY = PosY;
+            Creator.Finalize();
+            NewNode = StructNode;
+        }
+    }
     else if (NodeType == TEXT("SpawnActor"))
     {
         FGraphNodeCreator<UK2Node_SpawnActorFromClass> Creator(*Graph);
@@ -791,7 +968,17 @@ FString UMCPythonHelper::ConnectBlueprintPins(UBlueprint* Blueprint, const FStri
             TargetPin->BreakAllPinLinks();
     }
 
-    SourcePin->MakeLinkTo(TargetPin);
+    // TryCreateConnection (not a bare MakeLinkTo) so wildcard pins such as the Object pin of a Cast node
+    // get their type resolved through PinConnectionListChanged, like a connection made in the editor.
+    if (Schema)
+    {
+        if (!Schema->TryCreateConnection(SourcePin, TargetPin))
+            return MakeJsonError(TEXT("Schema refused the connection."));
+    }
+    else
+    {
+        SourcePin->MakeLinkTo(TargetPin);
+    }
 
     FBlueprintEditorUtils::MarkBlueprintAsModified(Blueprint);
     return MakeJsonSuccess(FString::Printf(TEXT("Connected %s.%s -> %s.%s"),
