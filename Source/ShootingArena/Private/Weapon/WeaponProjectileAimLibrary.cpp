@@ -11,6 +11,8 @@
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Weapon/ProjectileConvergenceComponent.h"
 #include "Weapon/ProjectileWorldCollisionComponent.h"
+#include "Weapon/ProjectilePoolComponent.h"
+#include "Weapon/ProjectilePoolSubsystem.h"
 #include "UObject/UnrealType.h"
 #include "UObject/UObjectIterator.h"
 
@@ -19,6 +21,8 @@ int32 UWeaponProjectileAimLibrary::DestroyProjectileVisualsById(AActor* Weapon, 
 	if (!IsValid(Weapon) || Weapon->IsActorBeingDestroyed()) return 0;
 	UWorld* World = Weapon->GetWorld();
 	if (!IsValid(World) || World->bIsTearingDown) return 0;
+	if (auto* Pool = World->GetSubsystem<UProjectilePoolSubsystem>(); Pool && Pool->TracksWeapon(Weapon))
+		return Pool->RetireVisuals(Weapon, ProjectileId);
 	TArray<TWeakObjectPtr<AActor>> Copies;
 	// The current weapon path and legacy fire component keep separate BP arrays.
 	// Inspect the live split-collision projectiles rather than either stale list.
@@ -26,7 +30,8 @@ int32 UWeaponProjectileAimLibrary::DestroyProjectileVisualsById(AActor* Weapon, 
 	{
 		if (!It->IsRegistered() || It->IsBeingDestroyed() || It->GetWorld() != World) continue;
 		AActor* Copy = It->GetOwner();
-		if (!IsValid(Copy) || Copy->IsActorBeingDestroyed() || Copy->GetOwner() != Weapon) continue;
+		if (!IsValid(Copy) || Copy->IsActorBeingDestroyed() || Copy->GetOwner() != Weapon
+			|| Copy->FindComponentByClass<UProjectilePoolComponent>()) continue;
 		const auto* Id = FindFProperty<FIntProperty>(Copy->GetClass(), TEXT("projectileId"));
 		const auto* Damage = FindFProperty<FBoolProperty>(Copy->GetClass(), TEXT("canDealDamage"));
 		if (Id && Damage && Id->GetPropertyValue_InContainer(Copy) == ProjectileId
@@ -321,12 +326,20 @@ void UWeaponProjectileAimLibrary::ResolveProjectileConvergence(UProjectileConver
 bool UWeaponProjectileAimLibrary::ConfigureProjectileConvergence(AActor* Projectile,
 	FVector JoinPoint, FVector FlightForward, bool bConverge)
 {
-	if (!bConverge || !IsValid(Projectile)) return false;
-	if (Projectile->FindComponentByClass<UProjectileConvergenceComponent>()) return false;
+	if (!IsValid(Projectile)) return false;
+	UProjectileConvergenceComponent* Driver = Projectile->FindComponentByClass<UProjectileConvergenceComponent>();
+	const auto* PoolComponent = Projectile->FindComponentByClass<UProjectilePoolComponent>();
+	if (PoolComponent && !PoolComponent->IsShotActive()) return false;
+	if (Driver && PoolComponent) Driver->ResetForPool();
+	if (!bConverge || (Driver && !PoolComponent)) return false;
 	UProjectileMovementComponent* Movement = Projectile->FindComponentByClass<UProjectileMovementComponent>();
-	UProjectileConvergenceComponent* Driver = NewObject<UProjectileConvergenceComponent>(Projectile);
+	const bool bNewDriver = Driver == nullptr;
+	if (bNewDriver) Driver = NewObject<UProjectileConvergenceComponent>(Projectile);
 	if (!Driver->Initialize(Movement, JoinPoint, FlightForward)) return false;
-	Projectile->AddInstanceComponent(Driver);
-	Driver->RegisterComponent();
+	if (bNewDriver)
+	{
+		Projectile->AddInstanceComponent(Driver);
+		Driver->RegisterComponent();
+	}
 	return true;
 }
