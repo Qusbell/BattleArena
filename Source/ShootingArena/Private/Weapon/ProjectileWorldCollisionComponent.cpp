@@ -65,6 +65,24 @@ void UProjectileWorldCollisionComponent::BeginPlay()
 	BindPlayerCollision();
 }
 
+void UProjectileWorldCollisionComponent::ResetForPooledShot()
+{
+	Unbind();
+	bResolved = false;
+	bResolving = false;
+	Activate(true);
+	SetComponentTickEnabled(true);
+	BindPlayerCollision();
+}
+
+void UProjectileWorldCollisionComponent::EndPooledShot()
+{
+	bResolved = true;
+	Unbind();
+	Deactivate();
+	SetComponentTickEnabled(false);
+}
+
 bool UProjectileWorldCollisionComponent::HasLiveContext() const
 {
 	const AActor* Projectile = GetOwner();
