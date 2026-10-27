@@ -16,6 +16,7 @@
 #if WITH_EDITOR
 #include "Editor.h"
 #include "Engine/Blueprint.h"
+#include "UObject/ObjectSaveContext.h"
 #endif
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
@@ -24,7 +25,7 @@
 #include "Styling/SlateColor.h"
 #include "UObject/UObjectIterator.h"
 #include "UObject/GarbageCollection.h"
-#include "UObject/ObjectSaveContext.h"
+#include "UObject/UObjectGlobals.h"
 #include "UObject/Package.h"
 #include "UObject/UObjectHash.h"
 #include "UObject/UObjectThreadContext.h"
@@ -539,20 +540,23 @@ void UUIThemePaletteEngineSubsystem::Initialize(FSubsystemCollectionBase& Collec
 {
     Super::Initialize(Collection);
     if (IsRunningDedicatedServer() || IsRunningCommandlet()) return;
-    AssetLoadedHandle = FCoreUObjectDelegates::OnAssetLoaded.AddUObject(this, &UUIThemePaletteEngineSubsystem::OnAssetLoaded);
 #if WITH_EDITOR
+    AssetLoadedHandle = FCoreUObjectDelegates::OnAssetLoaded.AddUObject(this, &UUIThemePaletteEngineSubsystem::OnAssetLoaded);
     RegisterBlueprintCompileHooks();
     ObjectPreSaveHandle = FCoreUObjectDelegates::OnObjectPreSave.AddUObject(this, &UUIThemePaletteEngineSubsystem::OnObjectPreSave);
     PackagePreSaveHandle = UPackage::PreSavePackageWithContextEvent.AddUObject(this, &UUIThemePaletteEngineSubsystem::OnPackagePreSave);
     PackageSavedHandle = UPackage::PackageSavedWithContextEvent.AddUObject(this, &UUIThemePaletteEngineSubsystem::OnPackageSaved);
 #endif
+    // Runtime initialization is independent of the editor-only asset callback.
+    // ApplyPalette loads bound assets synchronously before patching their defaults.
     UUIThemePaletteLibrary::RequestRefresh();
 }
 
 void UUIThemePaletteEngineSubsystem::Deinitialize()
 {
-    FCoreUObjectDelegates::OnAssetLoaded.Remove(AssetLoadedHandle);
 #if WITH_EDITOR
+    FCoreUObjectDelegates::OnAssetLoaded.Remove(AssetLoadedHandle);
+    AssetLoadedHandle.Reset();
     if (GEditor)
     {
         GEditor->OnBlueprintPreCompile().Remove(BlueprintPreCompileHandle);
@@ -575,18 +579,16 @@ void UUIThemePaletteEngineSubsystem::Deinitialize()
     Super::Deinitialize();
 }
 
+#if WITH_EDITOR
 void UUIThemePaletteEngineSubsystem::OnAssetLoaded(UObject* Object)
 {
-#if WITH_EDITOR
     // Engine subsystems can initialize before the editor instance is available.
     RegisterBlueprintCompileHooks();
-#endif
     if (bApplyingPalette || bLoadingPalette || !Object) return;
     if (Object->GetPathName().StartsWith(TEXT("/Game/QuakeLike_1_0/GameFlow/UI/")))
         UUIThemePaletteLibrary::RequestRefresh();
 }
 
-#if WITH_EDITOR
 void UUIThemePaletteEngineSubsystem::RegisterBlueprintCompileHooks()
 {
     if (!GEditor || BlueprintPreCompileHandle.IsValid()) return;

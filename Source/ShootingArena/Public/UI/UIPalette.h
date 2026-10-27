@@ -10,9 +10,11 @@
 class UMaterialInterface;
 class UMaterialInstanceDynamic;
 class UUserWidget;
+#if WITH_EDITOR
 class UBlueprint;
 class FObjectPreSaveContext;
 class FObjectPostSaveContext;
+#endif
 
 /** A color property on a style CDO, data asset, or named widget template. */
 USTRUCT(BlueprintType)
@@ -92,7 +94,7 @@ public:
     UFUNCTION(BlueprintCallable, Category="UI|Palette") void RefreshPalette();
 };
 
-/** Initializes editor previews without loading assets from a PostLoad callback. */
+/** Initializes the runtime palette and keeps editor previews synchronized. */
 UCLASS()
 class SHOOTINGARENA_API UUIThemePaletteEngineSubsystem : public UEngineSubsystem
 {
@@ -103,9 +105,9 @@ public:
 private:
     friend class UUIThemePaletteLibrary;
     UPROPERTY(Transient) TObjectPtr<UUIThemePalette> ActivePalette;
+#if WITH_EDITOR
     void OnAssetLoaded(UObject* Object);
     FDelegateHandle AssetLoadedHandle;
-#if WITH_EDITOR
     void RegisterBlueprintCompileHooks();
     void OnBlueprintPreCompile(UBlueprint* Blueprint);
     void OnBlueprintCompiled();
