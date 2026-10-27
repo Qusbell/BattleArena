@@ -1,6 +1,7 @@
 #include "SeamlessPortalTraversalSubsystem.h"
 
 #include "SeamlessPortalActor.h"
+#include "SeamlessPortalSyncComponent.h"
 #include "PortalTraversalGuard.h"
 #include "Components/CapsuleComponent.h"
 #include "Engine/World.h"
@@ -156,6 +157,8 @@ void USeamlessPortalTraversalSubsystem::Tick(float deltaTime)
 	{
 		ACharacter* character = *it;
 		if (!IsValid(character) || (!character->HasAuthority() && !character->IsLocallyControlled())) continue;
+		// Prepare the owner endpoint before the first accepted crossing.
+		if (character->HasAuthority()) USeamlessPortalSyncComponent::FindOrCreate(character);
 		const FVector current = character->GetActorLocation();
 		if (current.ContainsNaN()) continue;
 		const FTraveller* existing = travellers.Find(character);

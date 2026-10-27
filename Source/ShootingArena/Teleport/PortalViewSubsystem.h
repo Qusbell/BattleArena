@@ -25,6 +25,13 @@ struct FPortalViewInstance
 	UPROPERTY(Transient)
 	int32 currentResolution = 0;
 
+	// Coverage hysteresis must track the ordinary tier, not the temporary moving tier.
+	UPROPERTY(Transient)
+	int32 normalResolution = 0;
+
+	UPROPERTY(Transient)
+	float smoothCaptureRemaining = 0.0f;
+
 	UPROPERTY(Transient)
 	FTransform lastCaptureTransform = FTransform::Identity;
 
@@ -49,8 +56,19 @@ public:
 
 	/** Spatial surfaces feed linear scene light into the player's own exposure/tonemapper exactly once. */
 	static void ConfigureCaptureAppearance(USceneCaptureComponent2D& capture, bool bSpatialView, bool bHighQuality);
+	/** Preserve fractional capture time without queuing catch-up captures after a hitch. */
+	static float CalculateCaptureRemainder(float accumulatedSeconds, float intervalSeconds, bool bForced);
+	/** Main-view camera motion, independent of portal-eye clamping and capture intervals. */
+	static bool IsObserverMoving(const FTransform& previous, const FTransform& current, float deltaTime,
+		float speedThreshold, float angularSpeedThreshold);
+	static float ApplyMovementCaptureLimit(float normalRate, float movingRate, bool bEnabled, bool bMoving);
+	/** Short hold avoids capture-rate/texture-size oscillation during brief pauses in motion. */
+	static bool UpdateSmoothCaptureState(FPortalViewInstance& view, const class UTeleportDataAsset& settings,
+		bool bSpatialView, bool bObserverMoving, float deltaTime);
 
 private:
+	friend class FSpatialPortalSmoothCaptureTest;
+	static int32 ResolveSmoothRenderTargetSize(int32 normalResolution, const class UTeleportDataAsset& settings);
 	FPortalViewInstance& FindOrCreateView(AOneWayTeleportActor* portal);
 	int32 ResolvePortalRenderTargetSize(
 		const FPortalViewInstance& view,
@@ -59,11 +77,13 @@ private:
 	float ResolvePortalUpdateRate(
 		const FPortalViewInstance& view,
 		const class UTeleportDataAsset& settings,
-		const FTransform& captureTransform,
+		bool bObserverMoving,
 		float screenCoverage) const;
 	bool EnsureRenderTarget(FPortalViewInstance& view, int32 size, bool bUseHDRCapture);
 	void ClearPortalView(AOneWayTeleportActor* portal, FPortalViewInstance& view);
 	void ClearAllPortalViews();
+	FTransform lastObserverTransform = FTransform::Identity;
+	bool bHasObserverTransform = false;
 
 	UPROPERTY(Transient)
 	TMap<TWeakObjectPtr<AOneWayTeleportActor>, FPortalViewInstance> portalViews;

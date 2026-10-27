@@ -3,7 +3,10 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
+#include "UI/KillMedalTypes.h"
 #include "MyPlayerController.generated.h"
+
+class UUserWidget;
 
 /**
  * 
@@ -15,6 +18,30 @@ class SHOOTINGARENA_API AMyPlayerController : public APlayerController
 	
 public:
 	AMyPlayerController();
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "HUD|Kill Medal", meta = (ClampMin = "0.01"))
+	double KillMedalDisplayTime = 1.2;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "HUD|Kill Medal")
+	TMap<EKillMedalType, FKillMedalStyle> KillMedalStyles;
+
+	/** Maps the existing voice settings' RequiredKillCount to a medal, without changing those settings. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "HUD|Kill Medal")
+	TMap<int32, EKillMedalType> KillMedalTierTypes;
+
+	/** Called by the existing server kill judgment; does not count or judge kills. */
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "HUD|Kill Medal")
+	void AwardKillMedal(EKillMedalType MedalType);
+
+	/** Call on the acquiring player's controller to deliver a medal to that owning client. */
+	UFUNCTION(Client, Reliable, BlueprintCallable, Category = "HUD|Kill Medal", meta = (AdvancedDisplay = "Value,TextColor,HighlightColor"))
+	void ClientShowKillMedal(TSubclassOf<UUserWidget> MedalWidget, const FText& Text, const FText& Value,
+		double DisplayTime = 1.2, FLinearColor TextColor = FLinearColor::White, FLinearColor HighlightColor = FLinearColor::White);
+
+	/** Queues one medal on this local controller; true means accepted into its FIFO. */
+	UFUNCTION(BlueprintCallable, BlueprintCosmetic, Category = "HUD|Kill Medal", meta = (AdvancedDisplay = "Value,TextColor,HighlightColor"))
+	bool ShowKillMedalLocally(TSubclassOf<UUserWidget> MedalWidget, const FText& Text, const FText& Value,
+		double DisplayTime = 1.2, FLinearColor TextColor = FLinearColor::White, FLinearColor HighlightColor = FLinearColor::White);
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Shooter Outline")
 	TObjectPtr<class UShooterOutlineComponent> ShooterOutline;
@@ -57,4 +84,32 @@ public:
 	// 호출하는 쪽(Blueprint)에서 멀티플레이 세션일 때만 부르면 됩니다.
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Match")
 	void ServerShutdownMatchServer();
+
+protected:
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
+private:
+	friend class FKillMedalBridgeTest;
+	friend class FKillMedalAutomaticAwardsTest;
+
+	UFUNCTION(Client, Reliable)
+	void ClientAwardKillMedal(EKillMedalType MedalType);
+
+	void ShowConfiguredKillMedal(EKillMedalType MedalType);
+	bool QueueKillMedal(const FKillMedalStyle& Style, double DisplayTime);
+	void UpdateKillMedalQueue();
+	bool DisplayKillMedalNow(const FKillMedalRequest& Request);
+	UUserWidget* FindKillMedalContainer() const;
+
+	UPROPERTY(Transient)
+	TArray<FKillMedalRequest> PendingKillMedals;
+
+	UPROPERTY(Transient)
+	FKillMedalRequest ActiveKillMedal;
+
+	TWeakObjectPtr<UUserWidget> ActiveMedalContainer;
+	TWeakObjectPtr<AHUD> ActiveMedalHUD;
+	FTimerHandle KillMedalQueueTimer;
+	bool bHasActiveKillMedal = false;
+	bool bKillMedalFinishedLastPoll = false;
 };
