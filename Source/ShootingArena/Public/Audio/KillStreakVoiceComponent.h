@@ -7,6 +7,7 @@
 class UAudioComponent;
 class UKillStreakSettingsDataAsset;
 class USoundBase;
+struct FKillStreakVoiceTier;
 
 /** Batches credited kill events, tracks the current streak, and plays its voice for the owning player. */
 UCLASS(ClassGroup = (Audio), meta = (BlueprintSpawnableComponent))
@@ -38,6 +39,7 @@ protected:
 
 private:
 	void ProcessKillBatch();
+	const FKillStreakVoiceTier* FindTierForKillCount(int32 KillCount) const;
 	USoundBase* SelectVoiceForCurrentStreak() const;
 	void DispatchVoiceToOwner(USoundBase* Sound);
 	void PlayVoiceLocally(USoundBase* Sound);
