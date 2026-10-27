@@ -15,6 +15,9 @@ class SHOOTINGARENA_API UProjectileWorldCollisionComponent : public USphereCompo
 	GENERATED_BODY()
 public:
 	UProjectileWorldCollisionComponent();
+	/** Reset only between flight callbacks, when taking an idle pooled projectile. */
+	void ResetForPooledShot();
+	void EndPooledShot();
 	/** Connect the projectile's existing hit/damage/explosion graph to this event. */
 	UPROPERTY(BlueprintAssignable, Category="Projectile|Collision")
 	FProjectileResolvedImpact OnResolvedImpact;
