@@ -57,6 +57,8 @@
 #include "K2Node_ConstructObjectFromClass.h"
 #include "K2Node_AddDelegate.h"
 #include "K2Node_CallArrayFunction.h"
+#include "K2Node_FunctionEntry.h"
+#include "EdGraphNode_Comment.h"
 #include "Blueprint/UserWidget.h"
 #include "Engine/DataTable.h"
 #include "K2Node_MakeStruct.h"
@@ -557,6 +559,31 @@ static UEdGraphNode* CreateBPNodeFromJson(UEdGraph* Graph, UBlueprint* Blueprint
         Creator.Finalize();
         NewNode = SeqNode;
     }
+    else if (NodeType == TEXT("Comment"))
+    {
+        FString Text;
+        NodeJson->TryGetStringField(TEXT("text"), Text);
+        double W = 400, Hh = 200, FontSz = 18, R = 0.1, G = 0.35, B = 0.6, Al = 0.5;
+        NodeJson->TryGetNumberField(TEXT("width"), W);
+        NodeJson->TryGetNumberField(TEXT("height"), Hh);
+        NodeJson->TryGetNumberField(TEXT("font_size"), FontSz);
+        NodeJson->TryGetNumberField(TEXT("r"), R);
+        NodeJson->TryGetNumberField(TEXT("g"), G);
+        NodeJson->TryGetNumberField(TEXT("b"), B);
+        NodeJson->TryGetNumberField(TEXT("a"), Al);
+        FGraphNodeCreator<UEdGraphNode_Comment> Creator(*Graph);
+        UEdGraphNode_Comment* CommentNode = Creator.CreateNode(false);
+        CommentNode->NodePosX = PosX;
+        CommentNode->NodePosY = PosY;
+        Creator.Finalize();
+        // PostPlacedNewNode resets the text / size to defaults, so apply them afterwards
+        CommentNode->NodeComment = Text;
+        CommentNode->NodeWidth = (int32)W;
+        CommentNode->NodeHeight = (int32)Hh;
+        CommentNode->FontSize = (int32)FontSz;
+        CommentNode->CommentColor = FLinearColor(R, G, B, Al);
+        NewNode = CommentNode;
+    }
     else if (NodeType == TEXT("Self"))
     {
         FGraphNodeCreator<UK2Node_Self> Creator(*Graph);
@@ -707,6 +734,52 @@ static UEdGraphNode* CreateBPNodeFromJson(UEdGraph* Graph, UBlueprint* Blueprint
         KeyNode->NodePosY = PosY;
         Creator.Finalize();
         NewNode = KeyNode;
+    }
+    else if (NodeType == TEXT("FunctionParams"))
+    {
+        // Adds input parameters to the FunctionEntry node of a function graph (graph_name = the function's name).
+        UK2Node_FunctionEntry* EntryNode = nullptr;
+        for (UEdGraphNode* N : Graph->Nodes)
+        {
+            EntryNode = Cast<UK2Node_FunctionEntry>(N);
+            if (EntryNode) break;
+        }
+        if (!EntryNode)
+        {
+            OutError = TEXT("FunctionParams: graph has no FunctionEntry node (is it a function graph?).");
+            return nullptr;
+        }
+        const TArray<TSharedPtr<FJsonValue>>* ParamsArr = nullptr;
+        if (NodeJson->TryGetArrayField(TEXT("params"), ParamsArr) && ParamsArr)
+        {
+            for (const TSharedPtr<FJsonValue>& ParamVal : *ParamsArr)
+            {
+                const TSharedPtr<FJsonObject> ParamObj = ParamVal->AsObject();
+                if (!ParamObj.IsValid()) continue;
+                FString PName, PType, PPath;
+                ParamObj->TryGetStringField(TEXT("name"), PName);
+                ParamObj->TryGetStringField(TEXT("type"), PType);
+                ParamObj->TryGetStringField(TEXT("path"), PPath);
+                FEdGraphPinType PinType;
+                if (PType == TEXT("int")) PinType.PinCategory = UEdGraphSchema_K2::PC_Int;
+                else if (PType == TEXT("bool")) PinType.PinCategory = UEdGraphSchema_K2::PC_Boolean;
+                else if (PType == TEXT("real")) { PinType.PinCategory = UEdGraphSchema_K2::PC_Real; PinType.PinSubCategory = UEdGraphSchema_K2::PC_Double; }
+                else if (PType == TEXT("string")) PinType.PinCategory = UEdGraphSchema_K2::PC_String;
+                else if (PType == TEXT("name")) PinType.PinCategory = UEdGraphSchema_K2::PC_Name;
+                else if (PType == TEXT("text")) PinType.PinCategory = UEdGraphSchema_K2::PC_Text;
+                else if (PType == TEXT("struct")) { PinType.PinCategory = UEdGraphSchema_K2::PC_Struct; PinType.PinSubCategoryObject = LoadObject<UScriptStruct>(nullptr, *PPath); }
+                else if (PType == TEXT("enum")) { PinType.PinCategory = UEdGraphSchema_K2::PC_Byte; PinType.PinSubCategoryObject = LoadObject<UEnum>(nullptr, *PPath); }
+                else if (PType == TEXT("object")) { PinType.PinCategory = UEdGraphSchema_K2::PC_Object; PinType.PinSubCategoryObject = LoadObject<UClass>(nullptr, *PPath); }
+                else { OutError = FString::Printf(TEXT("FunctionParams '%s': unknown type '%s'."), *PName, *PType); return nullptr; }
+                if ((PType == TEXT("struct") || PType == TEXT("enum") || PType == TEXT("object")) && !PinType.PinSubCategoryObject.IsValid())
+                {
+                    OutError = FString::Printf(TEXT("FunctionParams '%s': '%s' not found."), *PName, *PPath);
+                    return nullptr;
+                }
+                EntryNode->CreateUserDefinedPin(FName(*PName), PinType, EGPD_Output);
+            }
+        }
+        NewNode = EntryNode;
     }
     else if (NodeType == TEXT("AddDelegate"))
     {
