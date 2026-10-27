@@ -130,23 +130,31 @@ public:
 		meta = (ClampMin = "0.0", UIMin = "0.0", EditCondition = "bUseDynamicPortalResolution"))
 	float portalViewMediumUpdateRate = 20.0f;
 
-	/** 출구 캡처 카메라가 거의 움직이지 않을 때 갱신 빈도를 낮춥니다. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View|Update")
+	/** 신규 공간형 포탈은 카메라 이동/회전 중 매 게임 프레임 캡처합니다. 동적 해상도 사용 시 DA의 다음 낮은 해상도로 비용을 줄입니다.
+	 * 정지 후 0.25초 뒤 일반 갱신/해상도로 돌아갑니다. 프레임당 캡처 예산은 유지하며, 이동 중 감속 옵션이 우선합니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View|Update",
+		meta = (DisplayName = "Prioritize Spatial Portal Smoothness", EditCondition = "!bReducePortalUpdateRateWhenStill"))
+	bool bPrioritizeSpatialPortalSmoothness = true;
+
+	// Serialized member names are retained so existing DA/BP values do not need a migration.
+	/** 실제 플레이어 카메라가 이동 또는 회전 중일 때만 포탈 갱신 빈도를 낮춥니다. 멈추면 일반 갱신 주기로 돌아갑니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View|Update",
+		meta = (DisplayName = "Reduce Portal Update Rate When Moving"))
 	bool bReducePortalUpdateRateWhenStill = true;
 
-	/** 정지 상태의 갱신 빈도입니다. 0이면 움직임이 생길 때까지 캡처를 완전히 멈춥니다. */
+	/** 이동 중 갱신 빈도 상한입니다. 0이면 이동 중 캡처를 멈춥니다. 멈추면 일반 주기로 즉시 복귀합니다. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View|Update",
-		meta = (ClampMin = "0.0", UIMin = "0.0", EditCondition = "bReducePortalUpdateRateWhenStill"))
+		meta = (DisplayName = "Portal View Moving Update Rate", ClampMin = "0.0", UIMin = "0.0", EditCondition = "bReducePortalUpdateRateWhenStill"))
 	float portalViewStillUpdateRate = 5.0f;
 
-	/** 이 거리 이하의 캡처 카메라 이동은 정지 상태로 판단합니다. 단위는 uu입니다. */
+	/** 이 속도를 넘으면 이동 중으로 판단합니다. 실제 플레이어 카메라 기준이며 단위는 cm/s입니다. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View|Update",
-		meta = (ClampMin = "0.0", UIMin = "0.0", EditCondition = "bReducePortalUpdateRateWhenStill"))
+		meta = (DisplayName = "Portal View Moving Speed Threshold", ClampMin = "0.0", UIMin = "0.0", Units = "cm/s", EditCondition = "bReducePortalUpdateRateWhenStill || bPrioritizeSpatialPortalSmoothness"))
 	float portalViewStillLocationTolerance = 2.0f;
 
-	/** 이 각도 이하의 캡처 카메라 회전은 정지 상태로 판단합니다. 단위는 도입니다. */
+	/** 이 회전 속도를 넘으면 이동 중으로 판단합니다. 단위는 도/초입니다. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Teleport|Portal View|Update",
-		meta = (ClampMin = "0.0", UIMin = "0.0", EditCondition = "bReducePortalUpdateRateWhenStill"))
+		meta = (DisplayName = "Portal View Moving Angular Speed Threshold", ClampMin = "0.0", UIMin = "0.0", Units = "deg/s", EditCondition = "bReducePortalUpdateRateWhenStill || bPrioritizeSpatialPortalSmoothness"))
 	float portalViewStillRotationTolerance = 0.1f;
 
 	/**

@@ -1,17 +1,208 @@
 #include "MyPlayerController.h"
+#include "Blueprint/UserWidget.h"
+#include "Animation/WidgetAnimation.h"
 #include "Camera/ShooterOutlineComponent.h"
 #include "Camera/ShooterNicknameComponent.h"
 #include "Camera/ShooterRevengeComponent.h"
 #include "HAL/PlatformMisc.h"
 #include "Engine/World.h"
+#include "GameFramework/HUD.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
+#include "UObject/StructOnScope.h"
+#include "UObject/UnrealType.h"
+#include "UObject/ConstructorHelpers.h"
+#include "TimerManager.h"
 
 AMyPlayerController::AMyPlayerController()
 {
 	ShooterOutline = CreateDefaultSubobject<UShooterOutlineComponent>(TEXT("ShooterOutline"));
 	ShooterNickname = CreateDefaultSubobject<UShooterNicknameComponent>(TEXT("ShooterNickname"));
 	ShooterRevenge = CreateDefaultSubobject<UShooterRevengeComponent>(TEXT("ShooterRevenge"));
+
+	// Existing artwork is a replaceable starting point until the five medal designs are assigned.
+	static ConstructorHelpers::FClassFinder<UUserWidget> Medal01(TEXT("/Game/CompShooterHUD/UI/Content/Medals/Medals/WB_Medal01"));
+	static ConstructorHelpers::FClassFinder<UUserWidget> Medal02(TEXT("/Game/CompShooterHUD/UI/Content/Medals/Medals/WB_Medal02"));
+	static ConstructorHelpers::FClassFinder<UUserWidget> Medal03(TEXT("/Game/CompShooterHUD/UI/Content/Medals/Medals/WB_Medal03"));
+	static ConstructorHelpers::FClassFinder<UUserWidget> Medal04(TEXT("/Game/CompShooterHUD/UI/Content/Medals/Medals/WB_Medal04"));
+	static ConstructorHelpers::FClassFinder<UUserWidget> Medal05(TEXT("/Game/CompShooterHUD/UI/Content/Medals/Medals/WB_Medal05"));
+	auto AddStyle = [this](EKillMedalType Type, UClass* Widget, const FText& Label)
+	{
+		FKillMedalStyle& Style = KillMedalStyles.FindOrAdd(Type);
+		Style.MedalWidget = Widget;
+		Style.PositionOffset = FVector2D(0.0f, -260.0f);
+		Style.Text = Label;
+	};
+	AddStyle(EKillMedalType::FirstBlood, Medal01.Class, NSLOCTEXT("KillMedal", "FirstBlood", "First Blood"));
+	AddStyle(EKillMedalType::DoubleKill, Medal02.Class, NSLOCTEXT("KillMedal", "DoubleKill", "Double Kill"));
+	AddStyle(EKillMedalType::TripleKill, Medal03.Class, NSLOCTEXT("KillMedal", "TripleKill", "Triple Kill"));
+	AddStyle(EKillMedalType::Rampage, Medal04.Class, NSLOCTEXT("KillMedal", "Rampage", "Rampage"));
+	AddStyle(EKillMedalType::RevengeShot, Medal05.Class, NSLOCTEXT("KillMedal", "RevengeShot", "Revenge Shot"));
+	KillMedalTierTypes.Add(2, EKillMedalType::DoubleKill);
+	KillMedalTierTypes.Add(3, EKillMedalType::TripleKill);
+	KillMedalTierTypes.Add(4, EKillMedalType::Rampage);
+}
+
+void AMyPlayerController::AwardKillMedal(EKillMedalType MedalType)
+{
+	if (!HasAuthority() || !GetWorld() || GetWorld()->bIsTearingDown || MedalType == EKillMedalType::None) return;
+	if (IsLocalController()) ShowConfiguredKillMedal(MedalType);
+	else ClientAwardKillMedal(MedalType);
+}
+
+void AMyPlayerController::ClientAwardKillMedal_Implementation(EKillMedalType MedalType)
+{
+	ShowConfiguredKillMedal(MedalType);
+}
+
+void AMyPlayerController::ShowConfiguredKillMedal(EKillMedalType MedalType)
+{
+	if (const FKillMedalStyle* Style = KillMedalStyles.Find(MedalType))
+	{
+		QueueKillMedal(*Style, KillMedalDisplayTime);
+	}
+}
+
+void AMyPlayerController::ClientShowKillMedal_Implementation(TSubclassOf<UUserWidget> MedalWidget,
+	const FText& Text, const FText& Value, double DisplayTime, FLinearColor TextColor, FLinearColor HighlightColor)
+{
+	ShowKillMedalLocally(MedalWidget, Text, Value, DisplayTime, TextColor, HighlightColor);
+}
+
+bool AMyPlayerController::ShowKillMedalLocally(TSubclassOf<UUserWidget> MedalWidget,
+	const FText& Text, const FText& Value, double DisplayTime, FLinearColor TextColor, FLinearColor HighlightColor)
+{
+	FKillMedalStyle Style;
+	Style.MedalWidget = MedalWidget;
+	Style.Text = Text;
+	Style.Value = Value;
+	Style.TextColor = TextColor;
+	Style.HighlightColor = HighlightColor;
+	return QueueKillMedal(Style, DisplayTime);
+}
+
+bool AMyPlayerController::QueueKillMedal(const FKillMedalStyle& Style, double DisplayTime)
+{
+	const UWorld* World = GetWorld();
+	if (!World || World->bIsTearingDown || World->GetNetMode() == NM_DedicatedServer || !IsLocalController()
+		|| !Style.MedalWidget || Style.MedalWidget->HasAnyClassFlags(CLASS_Abstract) || !FMath::IsFinite(DisplayTime) || DisplayTime <= 0.0)
+	{
+		return false;
+	}
+
+	AHUD* HUD = GetHUD();
+	if (IsValid(HUD) && !HUD->FindFunction(TEXT("AddMedal"))) return false;
+	FKillMedalRequest Request;
+	Request.Style = Style;
+	Request.DisplayTime = DisplayTime;
+	PendingKillMedals.Add(MoveTemp(Request));
+	if (!bHasActiveKillMedal) UpdateKillMedalQueue();
+	return true;
+}
+
+UUserWidget* AMyPlayerController::FindKillMedalContainer() const
+{
+	AHUD* HUD = GetHUD();
+	const FObjectPropertyBase* RootProperty = IsValid(HUD)
+		? FindFProperty<FObjectPropertyBase>(HUD->GetClass(), TEXT("WB_ShooterHUD")) : nullptr;
+	UUserWidget* Root = RootProperty ? Cast<UUserWidget>(RootProperty->GetObjectPropertyValue_InContainer(HUD)) : nullptr;
+	return IsValid(Root) ? Cast<UUserWidget>(Root->GetWidgetFromName(TEXT("WB_Medals_Base"))) : nullptr;
+}
+
+bool AMyPlayerController::DisplayKillMedalNow(const FKillMedalRequest& Request)
+{
+	AHUD* HUD = GetHUD();
+	UFunction* AddMedal = IsValid(HUD) ? HUD->FindFunction(TEXT("AddMedal")) : nullptr;
+	UUserWidget* Medals = FindKillMedalContainer();
+	if (!AddMedal || !IsValid(Medals)) return false;
+	const FStructProperty* TimerProperty = FindFProperty<FStructProperty>(Medals->GetClass(), TEXT("Timer"));
+	if (!TimerProperty || TimerProperty->Struct != FTimerHandle::StaticStruct()) return false;
+
+	// The purchased HUD interface is Blueprint-only; use its named parameters without duplicating its layout.
+	FNumericProperty* TimeProperty = FindFProperty<FNumericProperty>(AddMedal, TEXT("DisplayTime"));
+	FClassProperty* WidgetProperty = FindFProperty<FClassProperty>(AddMedal, TEXT("MedalWidget"));
+	FTextProperty* TextProperty = FindFProperty<FTextProperty>(AddMedal, TEXT("Text"));
+	FTextProperty* ValueProperty = FindFProperty<FTextProperty>(AddMedal, TEXT("Value"));
+	FStructProperty* TextColorProperty = FindFProperty<FStructProperty>(AddMedal, TEXT("TextColor"));
+	FStructProperty* HighlightProperty = FindFProperty<FStructProperty>(AddMedal, TEXT("HighlightColor"));
+	if (!TimeProperty || !TimeProperty->IsFloatingPoint() || !WidgetProperty
+		|| !Request.Style.MedalWidget->IsChildOf(WidgetProperty->MetaClass) || !TextProperty || !ValueProperty
+		|| !TextColorProperty || TextColorProperty->Struct != TBaseStructure<FLinearColor>::Get()
+		|| !HighlightProperty || HighlightProperty->Struct != TBaseStructure<FLinearColor>::Get())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[KillMedal] HUD AddMedal signature is incompatible: %s"), *GetNameSafe(HUD));
+		return false;
+	}
+
+	FStructOnScope Parameters(AddMedal);
+	void* Data = Parameters.GetStructMemory();
+	TimeProperty->SetFloatingPointPropertyValue(TimeProperty->ContainerPtrToValuePtr<void>(Data), Request.DisplayTime);
+	WidgetProperty->SetObjectPropertyValue_InContainer(Data, Request.Style.MedalWidget.Get());
+	TextProperty->SetPropertyValue_InContainer(Data, Request.Style.Text);
+	ValueProperty->SetPropertyValue_InContainer(Data, Request.Style.Value);
+	*TextColorProperty->ContainerPtrToValuePtr<FLinearColor>(Data) = Request.Style.TextColor;
+	*HighlightProperty->ContainerPtrToValuePtr<FLinearColor>(Data) = Request.Style.HighlightColor;
+	HUD->ProcessEvent(AddMedal, Data);
+	Medals->SetRenderTranslation(Request.Style.PositionOffset);
+	Medals->SetRenderScale(Request.Style.SizeScale);
+	ActiveMedalContainer = Medals;
+	ActiveMedalHUD = HUD;
+	return true;
+}
+
+void AMyPlayerController::UpdateKillMedalQueue()
+{
+	UWorld* World = GetWorld();
+	if (!World || World->bIsTearingDown || !IsLocalController()) return;
+	if (bHasActiveKillMedal)
+	{
+		UUserWidget* Medals = ActiveMedalContainer.Get();
+		if (!IsValid(Medals) || ActiveMedalHUD.Get() != GetHUD())
+		{
+			PendingKillMedals.Insert(ActiveKillMedal, 0);
+			bHasActiveKillMedal = false;
+		}
+		else
+		{
+			const FStructProperty* TimerProperty = FindFProperty<FStructProperty>(Medals->GetClass(), TEXT("Timer"));
+			const FObjectPropertyBase* FadeProperty = FindFProperty<FObjectPropertyBase>(Medals->GetClass(), TEXT("Fade"));
+			const UWidgetAnimation* Fade = FadeProperty ? Cast<UWidgetAnimation>(FadeProperty->GetObjectPropertyValue_InContainer(Medals)) : nullptr;
+			const bool bHolding = TimerProperty && World->GetTimerManager().TimerExists(*TimerProperty->ContainerPtrToValuePtr<FTimerHandle>(Medals));
+			const bool bFinished = !bHolding && !Medals->IsAnimationPlaying(Fade);
+			// Leave a frame for queued UMG animation work and the HUD's own hide callback.
+			if (bFinished && bKillMedalFinishedLastPoll) bHasActiveKillMedal = false;
+			bKillMedalFinishedLastPoll = bFinished;
+		}
+	}
+	if (!bHasActiveKillMedal)
+	{
+		ActiveKillMedal = FKillMedalRequest();
+		ActiveMedalContainer.Reset();
+		ActiveMedalHUD.Reset();
+		bKillMedalFinishedLastPoll = false;
+		if (!PendingKillMedals.IsEmpty() && DisplayKillMedalNow(PendingKillMedals[0]))
+		{
+			ActiveKillMedal = MoveTemp(PendingKillMedals[0]);
+			PendingKillMedals.RemoveAt(0);
+			bHasActiveKillMedal = true;
+		}
+	}
+	if (bHasActiveKillMedal || !PendingKillMedals.IsEmpty())
+	{
+		World->GetTimerManager().SetTimer(KillMedalQueueTimer, this, &ThisClass::UpdateKillMedalQueue, 0.05f, false);
+	}
+	else World->GetTimerManager().ClearTimer(KillMedalQueueTimer);
+}
+
+void AMyPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (UWorld* World = GetWorld()) World->GetTimerManager().ClearTimer(KillMedalQueueTimer);
+	PendingKillMedals.Reset();
+	ActiveKillMedal = FKillMedalRequest();
+	ActiveMedalContainer.Reset();
+	ActiveMedalHUD.Reset();
+	bHasActiveKillMedal = false;
+	Super::EndPlay(EndPlayReason);
 }
 
 void AMyPlayerController::PawnLeavingGame()

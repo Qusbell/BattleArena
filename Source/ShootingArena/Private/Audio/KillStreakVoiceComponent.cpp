@@ -1,6 +1,7 @@
 #include "Audio/KillStreakVoiceComponent.h"
 
 #include "Audio/KillStreakSettingsDataAsset.h"
+#include "MyPlayerController.h"
 #include "Components/AudioComponent.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
@@ -62,6 +63,21 @@ void UKillStreakVoiceComponent::QueueKillEvent(bool bIsRevenge)
 	}
 	bPendingRevengeKill |= bIsRevenge;
 
+	if (const APlayerState* State = Cast<APlayerState>(Owner))
+	{
+		if (AMyPlayerController* PC = Cast<AMyPlayerController>(State->GetPlayerController()))
+		{
+			// Reuse the existing committed and batched counts; medal delivery never gates audio.
+			const int32 CreditedCount = static_cast<int32>(FMath::Min<int64>(
+				static_cast<int64>(CurrentStreakCount) + PendingKillEventCount, MAX_int32));
+			if (const FKillStreakVoiceTier* Tier = FindTierForKillCount(CreditedCount))
+			{
+				if (const EKillMedalType* Type = PC->KillMedalTierTypes.Find(Tier->RequiredKillCount)) PC->AwardKillMedal(*Type);
+			}
+			if (bIsRevenge) PC->AwardKillMedal(EKillMedalType::RevengeShot);
+		}
+	}
+
 	// The first event starts the fixed window. Further events are collected without extending it.
 	if (PendingKillEventCount > 1)
 	{
@@ -90,10 +106,15 @@ void UKillStreakVoiceComponent::QueueKillEvent(bool bIsRevenge)
 void UKillStreakVoiceComponent::PlayFirstBloodVoice()
 {
 	const AActor* Owner = GetOwner();
-	if (!IsValid(Owner) || !Owner->HasAuthority() || !IsValid(Settings))
+	if (!IsValid(Owner) || !Owner->HasAuthority())
 	{
 		return;
 	}
+	if (const APlayerState* State = Cast<APlayerState>(Owner))
+	{
+		if (AMyPlayerController* PC = Cast<AMyPlayerController>(State->GetPlayerController())) PC->AwardKillMedal(EKillMedalType::FirstBlood);
+	}
+	if (!IsValid(Settings)) return;
 
 	TArray<USoundBase*> ValidSounds;
 	for (USoundBase* Sound : Settings->FirstBloodSounds)
@@ -198,9 +219,9 @@ void UKillStreakVoiceComponent::ProcessKillBatch()
 	DispatchVoiceToOwner(SelectedSound);
 }
 
-USoundBase* UKillStreakVoiceComponent::SelectVoiceForCurrentStreak() const
+const FKillStreakVoiceTier* UKillStreakVoiceComponent::FindTierForKillCount(int32 KillCount) const
 {
-	if (!IsValid(Settings) || Settings->KillStreakTiers.IsEmpty() || CurrentStreakCount <= 0)
+	if (!IsValid(Settings) || Settings->KillStreakTiers.IsEmpty() || KillCount <= 0)
 	{
 		return nullptr;
 	}
@@ -214,7 +235,7 @@ USoundBase* UKillStreakVoiceComponent::SelectVoiceForCurrentStreak() const
 			continue;
 		}
 
-		if (Tier.RequiredKillCount == CurrentStreakCount && !ExactTier)
+		if (Tier.RequiredKillCount == KillCount && !ExactTier)
 		{
 			ExactTier = &Tier;
 		}
@@ -226,11 +247,17 @@ USoundBase* UKillStreakVoiceComponent::SelectVoiceForCurrentStreak() const
 	}
 
 	const FKillStreakVoiceTier* SelectedTier = ExactTier;
-	if (!SelectedTier && HighestTier && CurrentStreakCount > HighestTier->RequiredKillCount)
+	if (!SelectedTier && HighestTier && KillCount > HighestTier->RequiredKillCount)
 	{
 		SelectedTier = HighestTier;
 	}
 
+	return SelectedTier;
+}
+
+USoundBase* UKillStreakVoiceComponent::SelectVoiceForCurrentStreak() const
+{
+	const FKillStreakVoiceTier* SelectedTier = FindTierForKillCount(CurrentStreakCount);
 	if (!SelectedTier)
 	{
 		return nullptr;
