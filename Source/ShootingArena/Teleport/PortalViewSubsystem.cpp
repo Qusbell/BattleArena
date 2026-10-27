@@ -26,6 +26,8 @@ namespace PortalViewPrivate
 		float score = 0.0f;
 		float accumulatedWaitTime = 0.0f;
 		FPortalCaptureView captureView;
+		float captureInterval = 0.0f;
+		bool bForced = false;
 	};
 }
 
@@ -73,6 +75,11 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 		return;
 	}
 	const FVector aimDirection = cameraRotation.Vector();
+	const FTransform observerTransform(cameraRotation, cameraLocation);
+	const FTransform previousObserverTransform = lastObserverTransform;
+	const bool bCanCompareObserver = bHasObserverTransform;
+	lastObserverTransform = observerTransform;
+	bHasObserverTransform = true;
 
 	TArray<PortalViewPrivate::FPortalCandidate> candidates;
 	TArray<AOneWayTeleportActor*> allPortals;
@@ -145,10 +152,17 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 			continue;
 		}
 		FPortalViewInstance& view = FindOrCreateView(portal);
-		const int32 desiredRenderTargetSize = ResolvePortalRenderTargetSize(
+		const bool bObserverMoving = bCanCompareObserver
+			&& IsObserverMoving(previousObserverTransform, observerTransform, deltaTime,
+				settings->portalViewStillLocationTolerance, settings->portalViewStillRotationTolerance);
+		const bool bSmoothCapture = UpdateSmoothCaptureState(view, *settings,
+			captureView.bSpatialView, bObserverMoving, deltaTime);
+		view.normalResolution = ResolvePortalRenderTargetSize(
 			view,
 			*settings,
 			candidate.screenCoverage);
+		const int32 desiredRenderTargetSize = bSmoothCapture
+			? ResolveSmoothRenderTargetSize(view.normalResolution, *settings) : view.normalResolution;
 		const bool bRenderTargetRecreated = EnsureRenderTarget(
 			view,
 			desiredRenderTargetSize,
@@ -162,8 +176,6 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 			// 새 Render Target의 검은 화면이 남지 않도록 이번 프레임 캡처 대상으로 올립니다.
 			view.captureAccumulator = 60.0f;
 		}
-		const FTransform& captureTransform = captureView.transform;
-
 		// View Distance 바깥은 CanDisplayPortalView에서 이미 제외됩니다. 이 안에서도
 		// Clarity Start Distance보다 멀면 Far Blur를 유지하고, 그 거리부터 입구까지
 		// 점차 Near Blur로 바꿉니다.
@@ -185,9 +197,9 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 		const float updateRate = portal->NeedsFullRatePortalView(candidate.distance) ? 0.0f : ResolvePortalUpdateRate(
 			view,
 			*settings,
-			captureTransform,
+			bObserverMoving,
 			candidate.screenCoverage);
-		// 음수는 정지 상태에서 완전 중단을 의미합니다. 첫 캡처와 해상도 변경은 항상 우선합니다.
+		// 음수는 이동 중 캡처 중단을 의미합니다. 첫 캡처와 해상도 변경은 항상 우선합니다.
 		if (updateRate < 0.0f && !bRenderTargetRecreated)
 		{
 			continue;
@@ -200,7 +212,8 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 			continue;
 		}
 
-		readyCaptures.Add({ portal, candidate.score, view.captureAccumulator, captureView });
+		readyCaptures.Add({ portal, candidate.score, view.captureAccumulator, captureView,
+			captureInterval, bRenderTargetRecreated || !view.bHasCaptured });
 	}
 
 	// 예산에서 밀린 포탈은 누적 대기 시간이 계속 증가합니다. 다음 프레임에는 가장 오래
@@ -240,7 +253,6 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 			continue;
 		}
 
-		view->captureAccumulator = 0.0f;
 		const UTeleportDataAsset* settings = portal->GetTeleportDataAsset();
 		if (!IsValid(settings))
 		{
@@ -248,18 +260,20 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 		}
 
 		const FPortalCaptureView& captureView = readyCaptures[captureIndex].captureView;
+		view->captureAccumulator = CalculateCaptureRemainder(view->captureAccumulator,
+			readyCaptures[captureIndex].captureInterval, readyCaptures[captureIndex].bForced);
 		ConfigureCaptureAppearance(*view->sceneCapture, captureView.bSpatialView, settings->bUseHighQualityPortalCapture);
 
 		// SceneCapture는 메인 카메라와 별도의 View이므로 출구 시점에서 Occlusion을 다시 계산합니다.
 		// Disable 플래그를 명시적으로 반대로 설정해 에디터 ShowFlag 상태에 영향받지 않게 합니다.
 		view->sceneCapture->ShowFlags.SetDisableOcclusionQueries(
 			!settings->bEnablePortalCaptureOcclusionCulling);
-		view->sceneCapture->MaxViewDistanceOverride = settings->portalCaptureMaxViewDistance > 0.0f
+		view->sceneCapture->MaxViewDistanceOverride = FMath::IsFinite(settings->portalCaptureMaxViewDistance)
+			&& settings->portalCaptureMaxViewDistance > 0.0f
 			? settings->portalCaptureMaxViewDistance
 			: -1.0f;
-		view->sceneCapture->LODDistanceFactor = FMath::Max(
-			settings->portalCaptureLODDistanceFactor,
-			0.01f);
+		view->sceneCapture->LODDistanceFactor = FMath::IsFinite(settings->portalCaptureLODDistanceFactor)
+			? FMath::Max(settings->portalCaptureLODDistanceFactor, 0.01f) : 1.0f;
 
 		view->sceneCapture->SetWorldTransform(captureView.transform);
 		view->sceneCapture->bUseCustomProjectionMatrix = captureView.bCustomProjection;
@@ -301,6 +315,63 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 			iterator.RemoveCurrent();
 		}
 	}
+}
+
+bool UPortalViewSubsystem::IsObserverMoving(const FTransform& previous, const FTransform& current, float deltaTime,
+	float speedThreshold, float angularSpeedThreshold)
+{
+	if (previous.ContainsNaN() || current.ContainsNaN() || !FMath::IsFinite(deltaTime) || deltaTime <= SMALL_NUMBER
+		|| !FMath::IsFinite(speedThreshold) || !FMath::IsFinite(angularSpeedThreshold)) return false;
+	const double distance = FMath::Max(0.0f,speedThreshold)*double(deltaTime);
+	const double angle = FMath::DegreesToRadians(FMath::Max(0.0f,angularSpeedThreshold))*double(deltaTime);
+	return FVector::DistSquared(previous.GetLocation(),current.GetLocation()) > distance*distance
+		|| previous.GetRotation().AngularDistance(current.GetRotation()) > angle;
+}
+
+float UPortalViewSubsystem::ApplyMovementCaptureLimit(float normalRate, float movingRate, bool bEnabled, bool bMoving)
+{
+	if (!FMath::IsFinite(normalRate)) return -1.0f;
+	normalRate = FMath::Max(0.0f,normalRate);
+	if (!bEnabled || !bMoving) return normalRate;
+	if (!FMath::IsFinite(movingRate)) return -1.0f;
+	if (movingRate <= 0.0f) return -1.0f;
+	// An optimization cap may only reduce the chosen high/medium/low rate, never raise it.
+	return normalRate > 0.0f ? FMath::Min(normalRate,movingRate) : movingRate;
+}
+
+float UPortalViewSubsystem::CalculateCaptureRemainder(float accumulatedSeconds, float intervalSeconds, bool bForced)
+{
+	if (bForced || !FMath::IsFinite(accumulatedSeconds) || !FMath::IsFinite(intervalSeconds)
+		|| accumulatedSeconds <= 0.0f || intervalSeconds <= 0.0f) return 0.0f;
+	// Resetting to zero rounds every interval up to a whole number of game frames:
+	// e.g. 30fps captures become 20fps at 40fps gameplay. Keep the fractional time instead.
+	// Drop whole missed intervals so a budget delay/hitch never causes a capture burst.
+	return FMath::Max(0.0f, FMath::Fmod(accumulatedSeconds, intervalSeconds));
+}
+
+bool UPortalViewSubsystem::UpdateSmoothCaptureState(FPortalViewInstance& view, const UTeleportDataAsset& settings,
+	bool bSpatialView, bool bObserverMoving, float deltaTime)
+{
+	if (!bSpatialView || !settings.bPrioritizeSpatialPortalSmoothness || settings.bReducePortalUpdateRateWhenStill
+		|| !FMath::IsFinite(deltaTime) || deltaTime <= 0.0f)
+	{
+		view.smoothCaptureRemaining = 0.0f;
+		return false;
+	}
+	view.smoothCaptureRemaining = bObserverMoving ? 0.25f
+		: FMath::Max(0.0f, view.smoothCaptureRemaining - deltaTime);
+	return view.smoothCaptureRemaining > 0.0f;
+}
+
+int32 UPortalViewSubsystem::ResolveSmoothRenderTargetSize(int32 normalResolution, const UTeleportDataAsset& settings)
+{
+	if (!settings.bUseDynamicPortalResolution) return normalResolution;
+	const int32 maximumResolution = FMath::Max(128, settings.portalViewRenderTargetSize);
+	const int32 lowResolution = FMath::Clamp(settings.portalViewLowResolution, 128, maximumResolution);
+	const int32 mediumResolution = FMath::Clamp(settings.portalViewMediumResolution, lowResolution, maximumResolution);
+	// Skip duplicate tiers (e.g. Max=Medium=1024), without inventing a new resolution or lowering Low.
+	if (normalResolution > mediumResolution) return mediumResolution;
+	return FMath::Min(normalResolution, lowResolution);
 }
 
 void UPortalViewSubsystem::ConfigureCaptureAppearance(USceneCaptureComponent2D& capture, bool bSpatialView, bool bHighQuality)
@@ -401,18 +472,30 @@ int32 UPortalViewSubsystem::ResolvePortalRenderTargetSize(
 		1.0f);
 	const float hysteresis = FMath::Max(0.0f, settings.portalViewResolutionHysteresis);
 
+	// Equal configured sizes collapse to two (or one) tiers; do not get stuck at Max=Medium.
+	if (lowResolution == maximumResolution) return maximumResolution;
+	if (mediumResolution == maximumResolution || mediumResolution == lowResolution)
+	{
+		const float threshold = mediumResolution == maximumResolution ? lowThreshold : highThreshold;
+		if (view.normalResolution <= 0)
+			return screenCoverage < threshold ? lowResolution : maximumResolution;
+		return view.normalResolution <= lowResolution
+			? (screenCoverage >= threshold + hysteresis ? maximumResolution : lowResolution)
+			: (screenCoverage < threshold - hysteresis ? lowResolution : maximumResolution);
+	}
+
 	// 현재 단계에 따라 서로 다른 진입/이탈 경계를 사용해 경계 근처의 리소스 재생성을 막습니다.
-	if (view.currentResolution <= 0)
+	if (view.normalResolution <= 0)
 	{
 		return screenCoverage < lowThreshold
 			? lowResolution
 			: (screenCoverage < highThreshold ? mediumResolution : maximumResolution);
 	}
-	if (view.currentResolution <= lowResolution)
+	if (view.normalResolution <= lowResolution)
 	{
 		return screenCoverage >= lowThreshold + hysteresis ? mediumResolution : lowResolution;
 	}
-	if (view.currentResolution < maximumResolution)
+	if (view.normalResolution < maximumResolution)
 	{
 		if (screenCoverage < lowThreshold - hysteresis)
 		{
@@ -427,9 +510,11 @@ int32 UPortalViewSubsystem::ResolvePortalRenderTargetSize(
 float UPortalViewSubsystem::ResolvePortalUpdateRate(
 	const FPortalViewInstance& view,
 	const UTeleportDataAsset& settings,
-	const FTransform& captureTransform,
+	bool bObserverMoving,
 	float screenCoverage) const
 {
+	if (view.smoothCaptureRemaining > 0.0f && settings.bPrioritizeSpatialPortalSmoothness
+		&& !settings.bReducePortalUpdateRateWhenStill) return 0.0f;
 	float updateRate = settings.portalViewUpdateRate;
 	if (settings.bUseDynamicPortalResolution)
 	{
@@ -448,28 +533,12 @@ float UPortalViewSubsystem::ResolvePortalUpdateRate(
 		}
 	}
 
-	if (!settings.bReducePortalUpdateRateWhenStill || !view.bHasCaptured)
+	if (!view.bHasCaptured)
 	{
 		return FMath::Max(updateRate, 0.0f);
 	}
-
-	const float locationTolerance = FMath::Max(settings.portalViewStillLocationTolerance, 0.0f);
-	const float rotationToleranceRadians = FMath::DegreesToRadians(
-		FMath::Max(settings.portalViewStillRotationTolerance, 0.0f));
-	const bool bLocationStill = FVector::DistSquared(
-		view.lastCaptureTransform.GetLocation(),
-		captureTransform.GetLocation()) <= FMath::Square(locationTolerance);
-	const bool bRotationStill = view.lastCaptureTransform.GetRotation().AngularDistance(
-		captureTransform.GetRotation()) <= rotationToleranceRadians;
-	if (!bLocationStill || !bRotationStill)
-	{
-		return FMath::Max(updateRate, 0.0f);
-	}
-
-	// 0은 의도적인 완전 중단입니다. 일반 Update Rate의 0(매 프레임)과 구분하기 위해 -1을 반환합니다.
-	return settings.portalViewStillUpdateRate > 0.0f
-		? settings.portalViewStillUpdateRate
-		: -1.0f;
+	return ApplyMovementCaptureLimit(updateRate, settings.portalViewStillUpdateRate,
+		settings.bReducePortalUpdateRateWhenStill, bObserverMoving);
 }
 
 bool UPortalViewSubsystem::EnsureRenderTarget(
@@ -534,25 +603,35 @@ bool UPortalViewSubsystem::EnsureRenderTarget(
 
 void UPortalViewSubsystem::ClearPortalView(AOneWayTeleportActor* portal, FPortalViewInstance& view)
 {
-	if (IsValid(portal))
+	// GC owns unreachable/destroying objects. Calling component/render setters on them asserts.
+	const EObjectFlags destroyingFlags = RF_BeginDestroyed | RF_FinishDestroyed;
+	if (IsValid(portal) && !portal->IsUnreachable() && !portal->HasAnyFlags(destroyingFlags))
 	{
 		portal->ClearPortalView();
 	}
-	if (IsValid(view.sceneCapture))
+	if (IsValid(view.sceneCapture) && !view.sceneCapture->IsUnreachable()
+		&& !view.sceneCapture->HasAnyFlags(destroyingFlags))
 	{
-		view.sceneCapture->TextureTarget = nullptr;
-		view.sceneCapture->HiddenActors.Empty();
-		view.sceneCapture->DestroyComponent();
+		AActor* owner = view.sceneCapture->GetOwner();
+		if (!owner || (IsValid(owner) && !owner->IsUnreachable() && !owner->HasAnyFlags(destroyingFlags)))
+		{
+			view.sceneCapture->TextureTarget = nullptr;
+			view.sceneCapture->HiddenActors.Empty();
+			view.sceneCapture->DestroyComponent();
+		}
 	}
 	view.sceneCapture = nullptr;
 	view.renderTarget = nullptr;
 	view.currentResolution = 0;
+	view.normalResolution = 0;
+	view.smoothCaptureRemaining = 0.0f;
 	view.captureAccumulator = 0.0f;
 	view.bHasCaptured = false;
 }
 
 void UPortalViewSubsystem::ClearAllPortalViews()
 {
+	bHasObserverTransform = false;
 	for (auto& [portal, view] : portalViews)
 	{
 		ClearPortalView(portal.Get(), view);
