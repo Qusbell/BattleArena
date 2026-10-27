@@ -96,6 +96,7 @@ private:
 	void ClientAwardKillMedal(EKillMedalType MedalType);
 
 	void ShowConfiguredKillMedal(EKillMedalType MedalType);
+	bool QueueKillMedal(const FKillMedalStyle& Style, double DisplayTime);
 	void UpdateKillMedalQueue();
 	bool DisplayKillMedalNow(const FKillMedalRequest& Request);
 	UUserWidget* FindKillMedalContainer() const;
