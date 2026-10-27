@@ -1,5 +1,6 @@
 #include "UI/CompetitiveRankingHUD.h"
 #include "UI/CompetitiveRankingOrder.h"
+#include "UI/UIPalette.h"
 #include "Camera/ShooterDisplayLibrary.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
@@ -28,8 +29,6 @@ namespace
 	constexpr float PanelHeight = 56.0f;
 	constexpr float TimerReferenceHeight = 48.0f;
 	constexpr float TimerGap = 5.0f;
-	const FLinearColor OpponentColor(0.95f, 0.32f, 0.055f, 0.85f);
-	const FLinearColor LocalColor(0.025f, 0.68f, 0.90f, 0.85f);
 
 	int32 ReadInt(const UObject* Object, FName Name)
 	{
@@ -40,6 +39,7 @@ namespace
 
 void UCompetitiveRankingHUD::NativeConstruct()
 {
+	UUIThemePaletteLibrary::PreparePalette();
 	Super::NativeConstruct();
 	UCanvasPanel* Canvas = Cast<UCanvasPanel>(GetRootWidget());
 	if (!Canvas || !WidgetTree || RankingPanel) return;
@@ -50,12 +50,12 @@ void UCompetitiveRankingHUD::NativeConstruct()
 	RankingSlot->SetZOrder(10);
 	LeaderProgress = WidgetTree->ConstructWidget<UProgressBar>(UProgressBar::StaticClass(), TEXT("RankingProgress"));
 	FProgressBarStyle ProgressStyle = LeaderProgress->GetWidgetStyle();
-	ProgressStyle.BackgroundImage.TintColor = FSlateColor(FLinearColor::Transparent);
+	ProgressStyle.BackgroundImage.TintColor = FSlateColor(UUIThemePaletteLibrary::GetColor(TEXT("Transparent")));
 	ProgressStyle.FillImage = FSlateBrush();
 	ProgressStyle.FillImage.DrawAs = ESlateBrushDrawType::Image;
-	ProgressStyle.FillImage.TintColor = FSlateColor(FLinearColor::White);
+	ProgressStyle.FillImage.TintColor = FSlateColor(UUIThemePaletteLibrary::GetColor(TEXT("PureWhite")));
 	LeaderProgress->SetWidgetStyle(ProgressStyle);
-	LeaderProgress->SetFillColorAndOpacity(OpponentColor);
+	LeaderProgress->SetFillColorAndOpacity(UUIThemePaletteLibrary::GetColor(TEXT("RankingOpponent")));
 	USizeBox* ProgressHeight = WidgetTree->ConstructWidget<USizeBox>();
 	ProgressHeight->SetHeightOverride(4.0f);
 	ProgressHeight->SetContent(LeaderProgress);
@@ -93,7 +93,7 @@ void UCompetitiveRankingHUD::NativeConstruct()
 		RankingPanel->AddChildToVerticalBox(Outline);
 		RowBorders.Add(Outline);
 		UBorder* Background = WidgetTree->ConstructWidget<UBorder>();
-		Background->SetBrushColor(FLinearColor(0.008f, 0.012f, 0.018f, 0.78f));
+		Background->SetBrushColor(UUIThemePaletteLibrary::GetColor(TEXT("RankingBackground")));
 		Background->SetPadding(FMargin(4.0f, 0.0f));
 		Outline->SetContent(Background);
 		USizeBox* Height = WidgetTree->ConstructWidget<USizeBox>();
@@ -107,8 +107,8 @@ void UCompetitiveRankingHUD::NativeConstruct()
 			UTextBlock* Text = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(),
 				*FString::Printf(TEXT("Ranking%s%d"), Prefix, Index));
 			Text->SetFont(Font);
-			Text->SetColorAndOpacity(FSlateColor(FLinearColor::White));
-			Text->SetShadowColorAndOpacity(FLinearColor(0, 0, 0, 0.7f));
+			Text->SetColorAndOpacity(FSlateColor(UUIThemePaletteLibrary::GetColor(TEXT("PureWhite"))));
+			Text->SetShadowColorAndOpacity(UUIThemePaletteLibrary::GetColor(TEXT("RankingShadow")));
 			Text->SetShadowOffset(FVector2D(1, 1));
 			if (Column == 1)
 			{
@@ -171,13 +171,16 @@ void UCompetitiveRankingHUD::RefreshRanking()
 		const auto& Entry = Entries[Index];
 		const bool IsLocal = Entry.Player == Local;
 		const bool IsLeader = Entry.Rank == 1;
-		const FLinearColor RowColor = IsLocal ? LocalColor : OpponentColor;
-		RowBorders[Index]->SetBrushColor(RowColor * (IsLeader ? 1.0f : 0.55f));
-		FLinearColor Background = RowColor * (IsLeader ? 0.22f : 0.06f);
-		Background.A = IsLeader ? 0.95f : 0.78f;
-		CastChecked<UBorder>(RowBorders[Index]->GetContent())->SetBrushColor(Background);
-		const FSlateColor TextColor(IsLeader ? FLinearColor(1.0f, 0.92f, 0.60f)
-			: IsLocal ? FLinearColor(0.50f, 0.83f, 0.92f) : FLinearColor(1.0f, 0.64f, 0.30f));
+		const FName OutlineRole = IsLocal
+			? (IsLeader ? TEXT("RankingLocal") : TEXT("RankingLocalOutlineMuted"))
+			: (IsLeader ? TEXT("RankingOpponent") : TEXT("RankingOpponentOutlineMuted"));
+		const FName BackgroundRole = IsLocal
+			? (IsLeader ? TEXT("RankingLocalBackgroundLeader") : TEXT("RankingLocalBackground"))
+			: (IsLeader ? TEXT("RankingOpponentBackgroundLeader") : TEXT("RankingOpponentBackground"));
+		RowBorders[Index]->SetBrushColor(UUIThemePaletteLibrary::GetColor(OutlineRole));
+		CastChecked<UBorder>(RowBorders[Index]->GetContent())->SetBrushColor(UUIThemePaletteLibrary::GetColor(BackgroundRole));
+		const FSlateColor TextColor(UUIThemePaletteLibrary::GetColor(IsLeader ? TEXT("RankingLeaderText")
+			: IsLocal ? TEXT("RankingLocalText") : TEXT("RankingOpponentText")));
 		RankLabels[Index]->SetColorAndOpacity(TextColor);
 		NameLabels[Index]->SetColorAndOpacity(TextColor);
 		ScoreLabels[Index]->SetColorAndOpacity(TextColor);
@@ -190,7 +193,8 @@ void UCompetitiveRankingHUD::RefreshRanking()
 		if (const auto* Config = FindFProperty<FObjectPropertyBase>(State->GetClass(), TEXT("GameConfig")))
 			Limit = ReadInt(Config->GetObjectPropertyValue_InContainer(State), TEXT("MaxScore"));
 	LeaderProgress->SetPercent(Limit > 0 && !Entries.IsEmpty() ? FMath::Clamp(float(Entries[0].Kills) / Limit, 0.0f, 1.0f) : 0.0f);
-	LeaderProgress->SetFillColorAndOpacity(!Entries.IsEmpty() && Entries[0].Player == Local ? LocalColor : OpponentColor);
+	LeaderProgress->SetFillColorAndOpacity(UUIThemePaletteLibrary::GetColor(
+		!Entries.IsEmpty() && Entries[0].Player == Local ? TEXT("RankingLocal") : TEXT("RankingOpponent")));
 	RankingPanel->SetRenderOpacity(Entries.IsEmpty() ? 0.0f : 1.0f);
 }
 

@@ -24,6 +24,8 @@ public class ShootingArenaEditorTools : ModuleRules
                 "ContentBrowser",
                 "ToolMenus",
                 "BlueprintGraph",
+                "UMG",
+                "UMGEditor",
                 "ShootingArena",
                 "AnimGraph",
                 "Json"
