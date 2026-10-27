@@ -36,16 +36,15 @@ public:
 	// ---------------------------------------------------------------------
 
 	/**
-	 * 최종 기획의 Offset.
-	 * 기획서 자료형이 Float이므로 사망 위치에 World Z 방향으로 더하는 높이 값으로 사용합니다.
-	 * Center = DeathLocation + UpVector * centerOffset
+	 * 후보 카메라 위치의 높이 기준입니다.
+	 * 사망 위치에 World Z 방향으로 더하며, 카메라의 시선은 이 위치로 고정되지 않습니다.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DeathCam|Camera")
 	float centerOffset = 70.0f;
 
 	/**
-	 * DeathCam 진입 시 Center 반대편에 만드는 초기 카메라 거리입니다.
-	 * 이 초기 위치와 Center 사이 거리가 런타임 MaxDistance가 됩니다.
+	 * 카메라가 시체와 킬러를 담기 위해 선호하는 거리입니다.
+	 * 실제 위치는 이동 반경과 지형 충돌에 따라 더 가까워질 수 있습니다.
 	 *
 	 * 기존 DataAsset이 이미 0으로 저장되어 있는 경우를 대비해,
 	 * 런타임에서는 0 이하일 때 안전 기본값 600을 사용합니다.
@@ -53,9 +52,41 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DeathCam|Camera", meta = (ClampMin = "0.0"))
 	float initialCameraDistance = 600.0f;
 
+	/** 사망 위치에서 카메라가 이동할 수 있는 최대 거리(cm)입니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DeathCam|Camera", meta = (ClampMin = "50.0"))
+	float cameraMovementRadius = 600.0f;
+
 	/** Killer 이동으로 기본 위치가 바뀔 때 카메라가 해당 위치로 보간되는 속도입니다. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DeathCam|Camera", meta = (ClampMin = "0.0"))
 	float cameraMoveInterpSpeed = 5.0f;
+
+	// ---------------------------------------------------------------------
+	// Optimization
+	// ---------------------------------------------------------------------
+
+	/** 후보 탐색을 다시 시작할 수 있는 최소 간격(초)입니다. 값을 높이면 탐색 빈도가 줄어듭니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DeathCam|Optimization", meta = (ClampMin = "0.05", ClampMax = "5.0", Units = "s"))
+	float cameraSearchInterval = 0.35f;
+
+	/** 한 번의 탐색에서 확인할 방향 수입니다. 프레임당 검사량과 별도로 적용됩니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DeathCam|Optimization", meta = (ClampMin = "4", ClampMax = "32"))
+	int32 cameraSearchDirectionCount = 12;
+
+	/** 한 프레임에 수행할 탐색 작업 수입니다. 기본값 1은 후보 검사를 여러 프레임에 분산합니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DeathCam|Optimization", meta = (ClampMin = "1", ClampMax = "4"))
+	int32 cameraSearchCandidatesPerFrame = 1;
+
+	/** 마지막 탐색 이후 Killer가 이 거리(cm) 이상 움직이면 새 탐색을 요청합니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DeathCam|Optimization", meta = (ClampMin = "0.0", Units = "cm"))
+	float cameraSearchKillerMoveThreshold = 50.0f;
+
+	/** Killer가 정지해 있어도 움직이는 문/장애물을 다시 확인할 최대 대기 시간(초)입니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DeathCam|Optimization", meta = (ClampMin = "0.05", ClampMax = "10.0", Units = "s"))
+	float cameraSearchForceRefreshInterval = 1.0f;
+
+	/** 새 후보가 현재 목표보다 이 점수 이상 좋을 때만 교체합니다. 높을수록 잦은 목표 변경이 줄어듭니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "DeathCam|Optimization", meta = (ClampMin = "0.0"))
+	float cameraTargetSwitchMargin = 40.0f;
 
 	// ---------------------------------------------------------------------
 	// Killer Highlight
