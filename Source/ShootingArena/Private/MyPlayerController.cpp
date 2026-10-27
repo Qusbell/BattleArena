@@ -136,6 +136,8 @@ bool AMyPlayerController::DisplayKillMedalNow(const FKillMedalRequest& Request)
 	*TextColorProperty->ContainerPtrToValuePtr<FLinearColor>(Data) = Request.Style.TextColor;
 	*HighlightProperty->ContainerPtrToValuePtr<FLinearColor>(Data) = Request.Style.HighlightColor;
 	HUD->ProcessEvent(AddMedal, Data);
+	Medals->SetRenderTranslation(Request.Style.PositionOffset);
+	Medals->SetRenderScale(Request.Style.SizeScale);
 	ActiveMedalContainer = Medals;
 	ActiveMedalHUD = HUD;
 	return true;

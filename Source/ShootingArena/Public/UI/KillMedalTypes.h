@@ -24,6 +24,12 @@ struct SHOOTINGARENA_API FKillMedalStyle
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Kill Medal")
 	TSubclassOf<UUserWidget> MedalWidget;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Kill Medal|Layout")
+	FVector2D PositionOffset = FVector2D::ZeroVector;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Kill Medal|Layout", meta = (ClampMin = "0.1", UIMin = "0.1"))
+	FVector2D SizeScale = FVector2D::UnitVector;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Kill Medal")
 	FText Text;
 
