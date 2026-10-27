@@ -292,7 +292,9 @@ protected:
 	// Core
 	// ---------------------------------------------------------------------
 
-	void TeleportCharacter(ACharacter* character);
+	virtual bool TeleportCharacter(ACharacter* character);
+	/** Spatial portals synchronize rotation together with the accepted arrival position. */
+	virtual bool UsesAtomicTeleportArrival() const { return false; }
 	FRotator GetExitFacingRotation() const;
 	FVector GetLaunchVelocity() const;
 

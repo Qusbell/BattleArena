@@ -255,7 +255,7 @@ void AOneWayTeleportActor::UpdateTeleportActivation()
 	const bool bCanTeleport = bTeleportEnabled
 		&& IsValid(exitTarget)
 		&& exitTarget.Get() != this
-		&& IsValid(teleportDA);
+		&& IsValid(GetTeleportDataAsset());
 	entryCollision->SetGenerateOverlapEvents(bCanTeleport);
 	entryCollision->SetCollisionEnabled(
 		bCanTeleport ? ECollisionEnabled::QueryOnly : ECollisionEnabled::NoCollision);
@@ -823,7 +823,7 @@ void AOneWayTeleportActor::OnEntryBeginOverlap(
 		return;
 	}
 
-	if (!IsValid(teleportDA))
+	if (!IsValid(GetTeleportDataAsset()))
 	{
 		UE_LOG(
 			LogTemp,
@@ -837,29 +837,30 @@ void AOneWayTeleportActor::OnEntryBeginOverlap(
 	TeleportCharacter(character);
 }
 
-void AOneWayTeleportActor::TeleportCharacter(ACharacter* character)
+bool AOneWayTeleportActor::TeleportCharacter(ACharacter* character)
 {
+	const UTeleportDataAsset* settings = GetTeleportDataAsset();
 	if (!IsValid(character)
 		|| !IsValid(this) || !HasAuthority()
 		|| !IsValid(exitTarget)
 		|| exitTarget.Get() == this
-		|| !IsValid(teleportDA))
+		|| !IsValid(settings))
 	{
-		return;
+		return false;
 	}
 
 	UWorld* world = GetWorld();
 	if (!IsValid(world) || world->bIsTearingDown || character->GetWorld() != world || exitTarget->GetWorld() != world)
 	{
-		return;
+		return false;
 	}
 
 	const FVector exitLocation = exitTarget->GetActorLocation();
 	const FRotator exitRotation = GetExitFacingRotation();
 	const FVector launchVelocity = GetLaunchVelocity();
-	const float moveLockTime = teleportDA->moveLockTime;
+	const float moveLockTime = settings->moveLockTime;
 	if (exitLocation.ContainsNaN() || exitRotation.ContainsNaN() || launchVelocity.ContainsNaN()
-		|| !FMath::IsFinite(reentryLockDuration)) return;
+		|| !FMath::IsFinite(moveLockTime) || !FMath::IsFinite(reentryLockDuration)) return false;
 	const double currentTime = world->GetTimeSeconds();
 	PortalTraversalGuard::Lock(
 		character,
@@ -875,39 +876,43 @@ void AOneWayTeleportActor::TeleportCharacter(ACharacter* character)
 	if (!bTeleported)
 	{
 		PortalTraversalGuard::Unlock(character);
-		return;
+		return false;
 	}
 	// Moving updates overlaps synchronously; Blueprint callbacks can delete the portal/player/settings.
-	if (!IsValid(this) || !IsValid(character) || !IsValid(teleportDA) || world->bIsTearingDown) return;
+	if (!IsValid(this) || !IsValid(character) || !IsValid(settings) || world->bIsTearingDown) return true;
 
 	if (AController* controller = character->GetController())
 	{
 		controller->SetControlRotation(exitRotation);
+		if (!IsValid(this) || !IsValid(character) || !IsValid(settings) || world->bIsTearingDown) return true;
 
 		if (APlayerController* playerController =
-			Cast<APlayerController>(controller))
+			Cast<APlayerController>(IsValid(controller) ? controller : nullptr))
 		{
-			playerController->ClientSetRotation(exitRotation, false);
+			if (!UsesAtomicTeleportArrival()) playerController->ClientSetRotation(exitRotation, false);
+			if (!IsValid(this) || !IsValid(character) || !IsValid(settings) || world->bIsTearingDown) return true;
 
 			// PlayerController의 Client RPC이므로 포탈을 실제 이용한 플레이어의
 			// 클라이언트에서만 재생됩니다. 다른 플레이어와 서버에는 들리지 않습니다.
-			if (IsValid(teleportDA->teleportSound) && FMath::IsFinite(teleportDA->soundVolumeMultiplier))
+			if (IsValid(playerController) && IsValid(settings->teleportSound) && FMath::IsFinite(settings->soundVolumeMultiplier))
 			{
 				playerController->ClientPlaySound(
-					teleportDA->teleportSound,
-					teleportDA->soundVolumeMultiplier);
+					settings->teleportSound,
+					settings->soundVolumeMultiplier);
 			}
 		}
 	}
 
+	if (!IsValid(this) || !IsValid(character) || world->bIsTearingDown) return true;
 	character->LaunchCharacter(
 		launchVelocity,
 		true,
 		true);
 
-	if (!IsValid(this) || !IsValid(character) || world->bIsTearingDown) return;
+	if (!IsValid(this) || !IsValid(character) || world->bIsTearingDown) return true;
 	ApplyMoveLock(character, moveLockTime);
 	if (IsValid(character)) character->ForceNetUpdate();
+	return true;
 }
 
 FRotator AOneWayTeleportActor::GetExitFacingRotation() const
@@ -925,17 +930,18 @@ FRotator AOneWayTeleportActor::GetExitFacingRotation() const
 
 FVector AOneWayTeleportActor::GetLaunchVelocity() const
 {
-	if (!IsValid(exitTarget) || !IsValid(teleportDA))
+	const UTeleportDataAsset* settings = GetTeleportDataAsset();
+	if (!IsValid(exitTarget) || !IsValid(settings))
 	{
 		return FVector::ZeroVector;
 	}
 
 	const FRotator launchRotation(
-		static_cast<float>(teleportDA->launchAngle),
+		static_cast<float>(settings->launchAngle),
 		exitTarget->GetActorRotation().Yaw,
 		0.0f);
 
-	return launchRotation.Vector() * teleportDA->launchPower;
+	return launchRotation.Vector() * settings->launchPower;
 }
 
 void AOneWayTeleportActor::ApplyMoveLock_Implementation(

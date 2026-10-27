@@ -30,6 +30,7 @@ AMyPlayerController::AMyPlayerController()
 	{
 		FKillMedalStyle& Style = KillMedalStyles.FindOrAdd(Type);
 		Style.MedalWidget = Widget;
+		Style.PositionOffset = FVector2D(0.0f, -260.0f);
 		Style.Text = Label;
 	};
 	AddStyle(EKillMedalType::FirstBlood, Medal01.Class, NSLOCTEXT("KillMedal", "FirstBlood", "First Blood"));
@@ -58,8 +59,7 @@ void AMyPlayerController::ShowConfiguredKillMedal(EKillMedalType MedalType)
 {
 	if (const FKillMedalStyle* Style = KillMedalStyles.Find(MedalType))
 	{
-		ShowKillMedalLocally(Style->MedalWidget, Style->Text, Style->Value, KillMedalDisplayTime,
-			Style->TextColor, Style->HighlightColor);
+		QueueKillMedal(*Style, KillMedalDisplayTime);
 	}
 }
 
@@ -72,9 +72,20 @@ void AMyPlayerController::ClientShowKillMedal_Implementation(TSubclassOf<UUserWi
 bool AMyPlayerController::ShowKillMedalLocally(TSubclassOf<UUserWidget> MedalWidget,
 	const FText& Text, const FText& Value, double DisplayTime, FLinearColor TextColor, FLinearColor HighlightColor)
 {
+	FKillMedalStyle Style;
+	Style.MedalWidget = MedalWidget;
+	Style.Text = Text;
+	Style.Value = Value;
+	Style.TextColor = TextColor;
+	Style.HighlightColor = HighlightColor;
+	return QueueKillMedal(Style, DisplayTime);
+}
+
+bool AMyPlayerController::QueueKillMedal(const FKillMedalStyle& Style, double DisplayTime)
+{
 	const UWorld* World = GetWorld();
 	if (!World || World->bIsTearingDown || World->GetNetMode() == NM_DedicatedServer || !IsLocalController()
-		|| !MedalWidget || MedalWidget->HasAnyClassFlags(CLASS_Abstract) || !FMath::IsFinite(DisplayTime) || DisplayTime <= 0.0)
+		|| !Style.MedalWidget || Style.MedalWidget->HasAnyClassFlags(CLASS_Abstract) || !FMath::IsFinite(DisplayTime) || DisplayTime <= 0.0)
 	{
 		return false;
 	}
@@ -82,11 +93,7 @@ bool AMyPlayerController::ShowKillMedalLocally(TSubclassOf<UUserWidget> MedalWid
 	AHUD* HUD = GetHUD();
 	if (IsValid(HUD) && !HUD->FindFunction(TEXT("AddMedal"))) return false;
 	FKillMedalRequest Request;
-	Request.Style.MedalWidget = MedalWidget;
-	Request.Style.Text = Text;
-	Request.Style.Value = Value;
-	Request.Style.TextColor = TextColor;
-	Request.Style.HighlightColor = HighlightColor;
+	Request.Style = Style;
 	Request.DisplayTime = DisplayTime;
 	PendingKillMedals.Add(MoveTemp(Request));
 	if (!bHasActiveKillMedal) UpdateKillMedalQueue();
