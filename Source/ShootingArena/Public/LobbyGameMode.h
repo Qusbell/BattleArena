@@ -74,8 +74,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Lobby")
 	void TravelToMatch(const FString& MatchTravelURL);
 
-	// 매치로 넘길 URL 옵션 문자열: "?AIEasy=N?AINormal=N?AIHard=N?Bots=C01:1,C03:0?TimeIdx=N?KillIdx=N"
-	// (Bots 는 CharacterId:난이도 쌍을 추가 순서대로 나열)
+	// 매치로 넘길 URL 옵션 문자열: "?AIEasy=N?AINormal=N?AIHard=N?Bots=C01-1,C03-0?TimeIdx=N?KillIdx=N"
+	// (Bots 는 CharacterId-난이도 쌍을 추가 순서대로 나열)
 	UFUNCTION(BlueprintPure, Category = "Lobby")
 	FString BuildMatchOptionsString() const;
 

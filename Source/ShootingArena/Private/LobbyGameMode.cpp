@@ -97,7 +97,7 @@ FString ALobbyGameMode::BuildMatchOptionsString() const
 	TArray<FString> BotPairs;
 	for (const FLobbyBot& Bot : LobbyGameState->GetServerBots())
 	{
-		BotPairs.Add(FString::Printf(TEXT("%s:%d"), *Bot.CharacterId.ToString(), static_cast<int32>(Bot.Difficulty)));
+		BotPairs.Add(FString::Printf(TEXT("%s-%d"), *Bot.CharacterId.ToString(), static_cast<int32>(Bot.Difficulty)));
 	}
 
 	return FString::Printf(TEXT("?AIEasy=%d?AINormal=%d?AIHard=%d?Bots=%s?TimeIdx=%d?KillIdx=%d"),
