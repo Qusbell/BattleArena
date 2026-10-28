@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "UObject/ObjectKey.h"
+#include "Weapon/ProjectilePoolSettings.h"
 #include "ProjectilePoolSubsystem.generated.h"
 
 class UProjectilePoolComponent;
@@ -56,6 +57,9 @@ public:
 	void DetachInstigatorForLife(APawn* Instigator);
 	UFUNCTION(BlueprintPure, Category="Weapon|Projectile Pool")
 	FProjectilePoolStats GetPoolStats(TSubclassOf<AActor> Class) const;
+	/** Project defaults are captured at world initialization; explicit console overrides remain live. */
+	FProjectilePoolConfiguration GetConfiguration() const;
+	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void OnWorldBeginPlay(UWorld& InWorld) override;
 	virtual void Tick(float DeltaTime) override;
 	virtual bool IsTickable() const override;
@@ -70,6 +74,7 @@ private:
 	TMap<FProjectilePoolShotKey, TArray<TWeakObjectPtr<UProjectilePoolComponent>>> Shots;
 	TSet<TWeakObjectPtr<AActor>> TrackedWeapons;
 	bool bShuttingDown = false;
+	FProjectilePoolConfiguration WorldConfiguration;
 	AActor* Create(UClass* Class, const FTransform& Transform, bool bRetained);
 	void Untrack(UProjectilePoolComponent* Component);
 };
