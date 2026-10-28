@@ -15,6 +15,7 @@ public:
 	/** Call immediately before applying NewHealth to LifeInfo. Alive/client calls are ignored. */
 	UFUNCTION(BlueprintCallable, Category="Items|Death Drop")
 	static void HandleFatalDamage(AActor* Character, double NewHealth, FDataTableRowHandle Settings);
+	void ResetForNextLife(AActor* Character) { ProcessedDeaths.Remove(Character); }
 
 private:
 	TSet<TWeakObjectPtr<AActor>> ProcessedDeaths;

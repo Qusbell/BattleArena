@@ -1,5 +1,6 @@
 #include "Camera/ShooterDisplayLibrary.h"
 #include "GameFramework/Pawn.h"
+#include "Character/CharacterPoolComponent.h"
 #include "GameFramework/PlayerState.h"
 #include "Components/ActorComponent.h"
 #include "UObject/StructOnScope.h"
@@ -7,7 +8,7 @@
 
 bool UShooterDisplayLibrary::IsShooterAlive(APawn* Shooter)
 {
-	if (!IsValid(Shooter) || Shooter->IsActorBeingDestroyed()) return false;
+	if (!IsValid(Shooter) || Shooter->IsActorBeingDestroyed() || UCharacterPoolComponent::IsInactive(Shooter)) return false;
 	TInlineComponentArray<UActorComponent*> Components(Shooter);
 	for (UActorComponent* Component : Components)
 	{

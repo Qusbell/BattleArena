@@ -1,4 +1,7 @@
 #include "Weapon/ProjectilePoolSubsystem.h"
+#include "Components/CapsuleComponent.h"
+#include "Components/PrimitiveComponent.h"
+#include "GameFramework/Character.h"
 
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
@@ -6,19 +9,44 @@
 
 namespace ProjectilePoolSubsystemHelpers
 {
-static TAutoConsoleVariable<int32> Enabled(TEXT("sa.ProjectilePool.Enabled"), 1,
-	TEXT("Reuse Plasma/Rocket actors. 0 uses the same activation contract but destroys actors on return."));
-static TAutoConsoleVariable<int32> PlasmaPrewarm(TEXT("sa.ProjectilePool.PlasmaPrewarm"), 32, TEXT("Plasma actors to prewarm per game world."));
-static TAutoConsoleVariable<int32> RocketPrewarm(TEXT("sa.ProjectilePool.RocketPrewarm"), 16, TEXT("Rocket actors to prewarm per game world."));
-static TAutoConsoleVariable<int32> PlasmaCapacity(TEXT("sa.ProjectilePool.PlasmaCapacity"), 128, TEXT("Maximum retained Plasma actors per world; excess shots use temporary actors."));
-static TAutoConsoleVariable<int32> RocketCapacity(TEXT("sa.ProjectilePool.RocketCapacity"), 256, TEXT("Maximum retained Rocket actors per world; excess shots use temporary actors."));
-static TAutoConsoleVariable<int32> PrewarmBudget(TEXT("sa.ProjectilePool.PrewarmPerTick"), 4, TEXT("Maximum actors to prewarm in one world tick."));
+static TAutoConsoleVariable<int32> Enabled(TEXT("sa.ProjectilePool.Enabled"), -1,
+	TEXT("-1: Project Settings. 0: destroy shots on return. 1: reuse shots."));
+static TAutoConsoleVariable<int32> PlasmaPrewarm(TEXT("sa.ProjectilePool.PlasmaPrewarm"), -1, TEXT("-1: Project Settings. Otherwise overrides initial Plasma actors per world."));
+static TAutoConsoleVariable<int32> RocketPrewarm(TEXT("sa.ProjectilePool.RocketPrewarm"), -1, TEXT("-1: Project Settings. Otherwise overrides initial Rocket actors per world."));
+static TAutoConsoleVariable<int32> PlasmaCapacity(TEXT("sa.ProjectilePool.PlasmaCapacity"), -1, TEXT("-1: Project Settings. Otherwise overrides maximum retained Plasma actors."));
+static TAutoConsoleVariable<int32> RocketCapacity(TEXT("sa.ProjectilePool.RocketCapacity"), -1, TEXT("-1: Project Settings. Otherwise overrides maximum retained Rocket actors."));
+static TAutoConsoleVariable<int32> PrewarmBudget(TEXT("sa.ProjectilePool.PrewarmPerTick"), -1, TEXT("-1: Project Settings. Otherwise overrides actors pre-created per world tick. 0 pauses prewarming."));
 
 bool IsRocket(const UClass* Class) { return Class->GetFName() == TEXT("BP_RocketLauncherProjectile_C"); }
-int32 Capacity(const UClass* Class)
+int32 Capacity(const UClass* Class, const FProjectilePoolConfiguration& Configuration)
 {
-	return FMath::Max(0, IsRocket(Class) ? RocketCapacity.GetValueOnGameThread() : PlasmaCapacity.GetValueOnGameThread());
+	return IsRocket(Class) ? Configuration.RocketCapacity : Configuration.PlasmaCapacity;
 }
+}
+
+void UProjectilePoolSubsystem::Initialize(FSubsystemCollectionBase& Collection)
+{
+	Super::Initialize(Collection);
+	WorldConfiguration = GetDefault<UProjectilePoolSettings>()->GetConfiguration();
+}
+
+FProjectilePoolConfiguration UProjectilePoolSubsystem::GetConfiguration() const
+{
+	using namespace ProjectilePoolSubsystemHelpers;
+	FProjectilePoolConfiguration Result = WorldConfiguration;
+	const int32 EnabledOverride = Enabled.GetValueOnGameThread();
+	if (EnabledOverride >= 0) Result.bEnabled = EnabledOverride != 0;
+	auto Override = [](const TAutoConsoleVariable<int32>& Variable, int32& Value)
+	{
+		const int32 Console = Variable.GetValueOnGameThread();
+		if (Console >= 0) Value = Console;
+	};
+	Override(PlasmaCapacity, Result.PlasmaCapacity); Override(RocketCapacity, Result.RocketCapacity);
+	Override(PlasmaPrewarm, Result.PlasmaPrewarm); Override(RocketPrewarm, Result.RocketPrewarm);
+	Override(PrewarmBudget, Result.PrewarmPerTick);
+	Result.PlasmaPrewarm = FMath::Clamp(Result.PlasmaPrewarm, 0, Result.PlasmaCapacity);
+	Result.RocketPrewarm = FMath::Clamp(Result.RocketPrewarm, 0, Result.RocketCapacity);
+	return Result;
 }
 
 bool UProjectilePoolSubsystem::SupportsClass(const UClass* Class)
@@ -29,6 +57,18 @@ bool UProjectilePoolSubsystem::SupportsClass(const UClass* Class)
 		&& Package == TEXT("/Game/QuakeLike_1_0/HeldItem/Projectile/BP_PlasmaProjectile"))
 		|| (Class->GetFName() == TEXT("BP_RocketLauncherProjectile_C")
 		&& Package == TEXT("/Game/QuakeLike_1_0/HeldItem/Projectile/BP_RocketLauncherProjectile"));
+}
+
+void UProjectilePoolSubsystem::DetachInstigatorForLife(APawn* Instigator)
+{
+	if (!IsValid(Instigator)) return;
+	for (AActor* Projectile : Owned)
+	{
+		if (!IsValid(Projectile) || Projectile->GetInstigator() != Instigator) continue;
+		if (auto* Body = Cast<UPrimitiveComponent>(Projectile->GetRootComponent())) Body->IgnoreActorWhenMoving(Instigator, false);
+		if (auto* Character = Cast<ACharacter>(Instigator)) Character->GetCapsuleComponent()->IgnoreActorWhenMoving(Projectile, false);
+		Projectile->SetInstigator(nullptr);
+	}
 }
 
 bool UProjectilePoolSubsystem::DoesSupportWorldType(EWorldType::Type WorldType) const
@@ -76,7 +116,8 @@ AActor* UProjectilePoolSubsystem::Acquire(TSubclassOf<AActor> Class, const FTran
 		|| Transform.ContainsNaN() || GetWorld()->bIsTearingDown) return nullptr;
 	FProjectilePoolBucket& Bucket = Pools.FindOrAdd(Class.Get());
 	AActor* Actor = nullptr;
-	if (ProjectilePoolSubsystemHelpers::Enabled.GetValueOnGameThread() != 0)
+	const FProjectilePoolConfiguration Configuration = GetConfiguration();
+	if (Configuration.bEnabled)
 	{
 		while (!Bucket.Free.IsEmpty() && !Actor)
 		{
@@ -91,8 +132,8 @@ AActor* UProjectilePoolSubsystem::Acquire(TSubclassOf<AActor> Class, const FTran
 	}
 	else
 	{
-		const bool bRetained = ProjectilePoolSubsystemHelpers::Enabled.GetValueOnGameThread() != 0
-			&& Bucket.Retained < ProjectilePoolSubsystemHelpers::Capacity(Class);
+		const bool bRetained = Configuration.bEnabled
+			&& Bucket.Retained < ProjectilePoolSubsystemHelpers::Capacity(Class, Configuration);
 		Actor = Create(Class, Transform, bRetained);
 	}
 	if (!Actor) return nullptr;
@@ -171,15 +212,16 @@ FProjectilePoolStats UProjectilePoolSubsystem::GetPoolStats(TSubclassOf<AActor> 
 void UProjectilePoolSubsystem::OnWorldBeginPlay(UWorld& InWorld)
 {
 	Super::OnWorldBeginPlay(InWorld);
-	if (ProjectilePoolSubsystemHelpers::Enabled.GetValueOnGameThread() == 0) return;
+	const FProjectilePoolConfiguration Configuration = GetConfiguration();
+	if (!Configuration.bEnabled) return;
 	for (const TCHAR* Path : {TEXT("/Game/QuakeLike_1_0/HeldItem/Projectile/BP_PlasmaProjectile.BP_PlasmaProjectile_C"),
 		TEXT("/Game/QuakeLike_1_0/HeldItem/Projectile/BP_RocketLauncherProjectile.BP_RocketLauncherProjectile_C")})
 	{
 		if (UClass* Class = LoadClass<AActor>(nullptr, Path); SupportsClass(Class))
 		{
 			const int32 Count = ProjectilePoolSubsystemHelpers::IsRocket(Class)
-				? ProjectilePoolSubsystemHelpers::RocketPrewarm.GetValueOnGameThread() : ProjectilePoolSubsystemHelpers::PlasmaPrewarm.GetValueOnGameThread();
-			Pools.FindOrAdd(Class).PrewarmRemaining = FMath::Clamp(Count, 0, ProjectilePoolSubsystemHelpers::Capacity(Class));
+				? Configuration.RocketPrewarm : Configuration.PlasmaPrewarm;
+			Pools.FindOrAdd(Class).PrewarmRemaining = Count;
 		}
 	}
 }
@@ -200,6 +242,7 @@ TStatId UProjectilePoolSubsystem::GetStatId() const
 void UProjectilePoolSubsystem::Tick(float DeltaTime)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(ProjectilePool_Maintenance);
+	const FProjectilePoolConfiguration Configuration = GetConfiguration();
 	// Take returns off the queue first: new callbacks can enqueue more during destruction.
 	TArray<TWeakObjectPtr<UProjectilePoolComponent>> Returns;
 	Swap(Returns, PendingReturns);
@@ -210,8 +253,8 @@ void UProjectilePoolSubsystem::Tick(float DeltaTime)
 		AActor* Actor = Component->GetOwner();
 		if (!IsValid(Actor) || Actor->IsActorBeingDestroyed()) continue;
 		FProjectilePoolBucket& Bucket = Pools.FindChecked(Actor->GetClass());
-		if (!Component->bRetained || ProjectilePoolSubsystemHelpers::Enabled.GetValueOnGameThread() == 0
-			|| Bucket.Retained > ProjectilePoolSubsystemHelpers::Capacity(Actor->GetClass()))
+		if (!Component->bRetained || !Configuration.bEnabled
+			|| Bucket.Retained > ProjectilePoolSubsystemHelpers::Capacity(Actor->GetClass(), Configuration))
 		{
 			Actor->Destroy();
 			continue;
@@ -221,16 +264,16 @@ void UProjectilePoolSubsystem::Tick(float DeltaTime)
 		Component->State = EProjectilePoolState::Idle;
 		Bucket.Free.Add(Actor);
 	}
-	int32 Budget = FMath::Max(0, ProjectilePoolSubsystemHelpers::PrewarmBudget.GetValueOnGameThread());
+	int32 Budget = Configuration.PrewarmPerTick;
 	for (auto& Pair : Pools)
 	{
 		FProjectilePoolBucket& Bucket = Pair.Value;
-		if (ProjectilePoolSubsystemHelpers::Enabled.GetValueOnGameThread() == 0) Bucket.PrewarmRemaining = 0;
+		if (!Configuration.bEnabled) Bucket.PrewarmRemaining = 0;
 		while (Budget > 0 && Bucket.PrewarmRemaining > 0)
 		{
 			--Bucket.PrewarmRemaining;
 			--Budget;
-			if (Bucket.Retained >= ProjectilePoolSubsystemHelpers::Capacity(Pair.Key)) { Bucket.PrewarmRemaining = 0; break; }
+			if (Bucket.Retained >= ProjectilePoolSubsystemHelpers::Capacity(Pair.Key, Configuration)) { Bucket.PrewarmRemaining = 0; break; }
 			if (AActor* Actor = Create(Pair.Key, FTransform::Identity, true))
 			{
 				Bucket.Free.Add(Actor);
