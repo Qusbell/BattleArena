@@ -1,4 +1,4 @@
-﻿#include "Analyzer/ArenaAnalyzeLibrary.h"
+#include "Analyzer/ArenaAnalyzeLibrary.h"
 
 #include "JsonObjectConverter.h"
 #include "Misc/FileHelper.h"
@@ -17,10 +17,35 @@ bool UArenaAnalyzeLibrary::LoadAnalyzeFile(const FString& FilePath, FArenaAnalyz
         return false;
     }
 
-    return FJsonObjectConverter::JsonObjectStringToUStruct(
-        JsonString,
-        &OutSession
-    );
+    FArenaAnalyzeSession Loaded;
+    if (!FJsonObjectConverter::JsonObjectStringToUStruct(JsonString, &Loaded) || Loaded.SchemaVersion > 2) return false;
+    if (!Loaded.SessionId.IsEmpty() && Loaded.SchemaVersion == 2)
+    {
+        TArray<FString> Chunks;
+        IFileManager::Get().FindFiles(Chunks, *(FPaths::GetPath(FilePath) / (TEXT("ArenaAnalyze_") + Loaded.SessionId + TEXT("_*.json"))), true, false);
+        Chunks.Sort();
+        if (!Chunks.IsEmpty())
+        {
+            FArenaAnalyzeSession Merged;
+            Merged.SchemaVersion = 2; Merged.SessionId = Loaded.SessionId;
+            int32 ExpectedChunk = 0;
+            for (const FString& Chunk : Chunks)
+            {
+                FString Text; FArenaAnalyzeSession Part;
+                if (!FFileHelper::LoadFileToString(Text, *(FPaths::GetPath(FilePath) / Chunk))
+                    || !FJsonObjectConverter::JsonObjectStringToUStruct(Text, &Part)
+                    || Part.SchemaVersion != 2 || Part.SessionId != Loaded.SessionId || Part.ChunkIndex != ExpectedChunk++) return false;
+                Merged.MapName = Part.MapName; Merged.SampleInterval = Part.SampleInterval;
+                Merged.SessionDuration = FMath::Max(Merged.SessionDuration, Part.SessionDuration);
+                Merged.Participants = Part.Participants;
+                Merged.MovementSamples.Append(Part.MovementSamples); Merged.DamageSamples.Append(Part.DamageSamples);
+                Merged.ShotSamples.Append(Part.ShotSamples); Merged.HitSamples.Append(Part.HitSamples); Merged.DeathSamples.Append(Part.DeathSamples);
+            }
+            Loaded = MoveTemp(Merged);
+        }
+    }
+    OutSession = MoveTemp(Loaded);
+    return true;
 }
 
 
@@ -134,4 +159,32 @@ TArray<FArenaDamageSample> UArenaAnalyzeLibrary::FilterDamageSamples(
         }
     }
     return Result;
+}
+
+
+FArenaAnalyzeSession UArenaAnalyzeLibrary::FilterSession(const FArenaAnalyzeSession& S, const FString& Weapon,
+    int32 Kind, int32 ControllerId, int32 TrackId, double Start, double End)
+{
+    FArenaAnalyzeSession R;
+    R.SchemaVersion = S.SchemaVersion; R.SessionId = S.SessionId; R.ChunkIndex = S.ChunkIndex;
+    R.MapName = S.MapName; R.SampleInterval = S.SampleInterval; R.SessionDuration = S.SessionDuration;
+    R.Participants = S.Participants;
+    TSet<int32> Actors;
+    for (const auto& P : S.Participants) if (Kind == 0 || (Kind == 1 && P.bPlayer) || (Kind == 2 && !P.bPlayer)) Actors.Add(P.ControllerId);
+    auto Actor = [&](int32 C, int32 T) { return (Kind == 0 || Actors.Contains(C)) && (ControllerId < 0 || C == ControllerId) && (TrackId < 0 || T == TrackId); };
+    auto Time = [&](double T) { return T >= Start && (End < 0 || T <= End); };
+    TSet<int32> Shots;
+    for (const auto& Shot : S.ShotSamples)
+        if ((Weapon.IsEmpty() || Shot.WeaponId == Weapon) && Actor(Shot.ControllerId, Shot.TrackId))
+        { Shots.Add(Shot.ShotId); if (Time(Shot.TimeSeconds)) R.ShotSamples.Add(Shot); }
+    // Movement has no weapon identity; the weapon filter affects combat records.
+    for (const auto& M : S.MovementSamples) if (Actor(M.ControllerId, M.TrackId) && Time(M.TimeSeconds)) R.MovementSamples.Add(M);
+    for (const auto& H : S.HitSamples) if (Shots.Contains(H.ShotId) && Time(H.TimeSeconds)) R.HitSamples.Add(H);
+    for (const auto& D : S.DamageSamples)
+        if (Time(D.TimeSeconds) && (Weapon.IsEmpty() || D.WeaponId == Weapon)
+            && (Actor(D.DamagedControllerId, D.DamagedTrackId) || Actor(D.InstigatorControllerId, D.InstigatorTrackId))) R.DamageSamples.Add(D);
+    for (const auto& D : S.DeathSamples)
+        if (Time(D.TimeSeconds) && (Weapon.IsEmpty() || D.WeaponId == Weapon)
+            && (Actor(D.VictimControllerId, D.VictimTrackId) || Actor(D.KillerControllerId, D.KillerTrackId))) R.DeathSamples.Add(D);
+    return R;
 }

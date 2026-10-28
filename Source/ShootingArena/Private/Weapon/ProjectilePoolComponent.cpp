@@ -1,4 +1,5 @@
 #include "Weapon/ProjectilePoolComponent.h"
+#include "Analyzer/ArenaAnalyzeSubsystem.h"
 
 #include "Components/AudioComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -127,6 +128,7 @@ bool UProjectilePoolComponent::StartShot(const FTransform& Transform, AActor* We
 	Actor->SetOwner(Weapon);
 	Actor->SetInstigator(Instigator);
 	Actor->SetActorTransform(Transform, false, nullptr, ETeleportType::TeleportPhysics);
+	if (bDamaging) if (auto* Recorder = GetWorld()->GetSubsystem<UArenaAnalyzeSubsystem>()) Recorder->BindProjectile(Actor, Weapon);
 	Movement->SetUpdatedComponent(Actor->GetRootComponent());
 	Movement->ClearPendingForce(true);
 	Movement->ResetInterpolation();
@@ -184,6 +186,7 @@ bool UProjectilePoolComponent::StartShot(const FTransform& Transform, AActor* We
 
 void UProjectilePoolComponent::StopShot()
 {
+	if (GetWorld()) if (auto* Recorder = GetWorld()->GetSubsystem<UArenaAnalyzeSubsystem>()) Recorder->ForgetProjectile(GetOwner());
 	AActor* Actor = GetOwner();
 	UWorld* World = GetWorld();
 	if (World)
