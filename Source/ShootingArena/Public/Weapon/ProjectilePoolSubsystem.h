@@ -52,6 +52,8 @@ public:
 	void Forget(UProjectilePoolComponent* Component);
 	bool TracksWeapon(const AActor* Weapon) const;
 	int32 RetireVisuals(AActor* Weapon, int32 ShotId);
+	/** Old shots continue flying, but must not alias the shooter's next life. */
+	void DetachInstigatorForLife(APawn* Instigator);
 	UFUNCTION(BlueprintPure, Category="Weapon|Projectile Pool")
 	FProjectilePoolStats GetPoolStats(TSubclassOf<AActor> Class) const;
 	virtual void OnWorldBeginPlay(UWorld& InWorld) override;

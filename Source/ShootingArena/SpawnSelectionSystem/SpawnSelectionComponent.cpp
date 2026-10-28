@@ -1,5 +1,8 @@
 #include "SpawnSelectionComponent.h"
 #include "Audio/CharacterSpawnSoundComponent.h"
+#include "Character/CharacterPoolComponent.h"
+#include "Character/CharacterPoolSubsystem.h"
+#include "Character/CharacterPoolSettings.h"
 
 #include "Components/SceneComponent.h"
 #include "EngineUtils.h"
@@ -726,11 +729,12 @@ bool USpawnSelectionComponent::SpawnPawnAtTransform(
 	SpawnParameters.SpawnCollisionHandlingOverride =
 		ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 
-	APawn* SpawnedPawn = World->SpawnActor<APawn>(
-		PawnClass,
-		SpawnTransform.GetLocation(),
-		SpawnTransform.Rotator(),
-		SpawnParameters);
+	if (World->bIsTearingDown) return false;
+	auto* Pool = World->GetSubsystem<UCharacterPoolSubsystem>();
+	const bool bDedicated = Pool && Pool->Supports(PawnClass)
+		&& (GetDefault<UCharacterPoolSettings>()->bEnabled || Pool->FindOwnedPawn(Controller));
+	APawn* SpawnedPawn = bDedicated ? Pool->Acquire(Controller, PawnClass, SpawnTransform)
+		: World->SpawnActor<APawn>(PawnClass, SpawnTransform.GetLocation(), SpawnTransform.Rotator(), SpawnParameters);
 
 	if (!IsValid(SpawnedPawn))
 	{
@@ -748,7 +752,13 @@ bool USpawnSelectionComponent::SpawnPawnAtTransform(
 
 		if (IsValid(SpawnedPawn))
 		{
-			SpawnedPawn->Destroy();
+			if (auto* Life = SpawnedPawn->FindComponentByClass<UCharacterPoolComponent>(); Life && Life->IsManaged() && Life->HasBeenPossessed())
+				Life->Life.bDead = true;
+			else
+			{
+				if (Pool) Pool->ForgetPawn(SpawnedPawn);
+				SpawnedPawn->Destroy();
+			}
 		}
 		return false;
 	}
@@ -764,6 +774,7 @@ bool USpawnSelectionComponent::SpawnPawnAtTransform(
 	ApplySpawnRotation(Controller, SpawnTransform.Rotator());
 
 	OutSpawnedPawn = SpawnedPawn;
+	if (auto* Life = SpawnedPawn->FindComponentByClass<UCharacterPoolComponent>()) Life->CapturePresentation();
 	if (UCharacterSpawnSoundComponent* SpawnSounds = SpawnedPawn->FindComponentByClass<UCharacterSpawnSoundComponent>())
 	{
 		SpawnSounds->PlaySpawnSounds(SoundPhase);

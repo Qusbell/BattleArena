@@ -19,9 +19,11 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Initial Weapons")
 	TObjectPtr<UInitialWeaponLoadoutDataAsset> LoadoutData = nullptr;
 
-	/** Call from BP_ShooterBase's authority BeginPlay after its inventory is ready. */
+	/** Authority BeginPlay and dedicated-pawn respawn call this after the inventory is ready. */
 	UFUNCTION(BlueprintCallable, Category="Initial Weapons")
 	void GrantLoadout();
+	/** Inventory has been cleared; allow exactly one grant for the next life. */
+	void ResetForNextLife() { bGrantedThisSpawn = false; }
 
 	bool IsDefaultWeapon(const AActor* Weapon) const;
 

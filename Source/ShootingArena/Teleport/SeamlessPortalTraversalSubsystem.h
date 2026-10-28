@@ -16,6 +16,7 @@ class SHOOTINGARENA_API USeamlessPortalTraversalSubsystem : public UTickableWorl
 public:
 	void RegisterPortal(ASeamlessPortalActor* portal);
 	void UnregisterPortal(ASeamlessPortalActor* portal);
+	void ForgetCharacter(ACharacter* character);
 	virtual void Tick(float deltaTime) override;
 	virtual TStatId GetStatId() const override;
 	virtual void Deinitialize() override;

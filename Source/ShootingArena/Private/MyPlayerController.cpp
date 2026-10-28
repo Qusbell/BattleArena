@@ -1,5 +1,6 @@
 #include "MyPlayerController.h"
 #include "Blueprint/UserWidget.h"
+#include "Character/CharacterPoolComponent.h"
 #include "Animation/WidgetAnimation.h"
 #include "Camera/ShooterOutlineComponent.h"
 #include "Camera/ShooterNicknameComponent.h"
@@ -203,6 +204,14 @@ void AMyPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	ActiveMedalHUD.Reset();
 	bHasActiveKillMedal = false;
 	Super::EndPlay(EndPlayReason);
+}
+
+void AMyPlayerController::OnUnPossess()
+{
+	if (APawn* PreviousPawn = GetPawn())
+		if (const auto* Pool = PreviousPawn->FindComponentByClass<UCharacterPoolComponent>(); Pool && Pool->IsManaged())
+			UCharacterPoolComponent::DetachControllerLife(this, PreviousPawn);
+	Super::OnUnPossess();
 }
 
 void AMyPlayerController::PawnLeavingGame()

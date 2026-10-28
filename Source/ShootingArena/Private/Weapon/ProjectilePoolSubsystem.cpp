@@ -1,4 +1,7 @@
 #include "Weapon/ProjectilePoolSubsystem.h"
+#include "Components/CapsuleComponent.h"
+#include "Components/PrimitiveComponent.h"
+#include "GameFramework/Character.h"
 
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
@@ -29,6 +32,18 @@ bool UProjectilePoolSubsystem::SupportsClass(const UClass* Class)
 		&& Package == TEXT("/Game/QuakeLike_1_0/HeldItem/Projectile/BP_PlasmaProjectile"))
 		|| (Class->GetFName() == TEXT("BP_RocketLauncherProjectile_C")
 		&& Package == TEXT("/Game/QuakeLike_1_0/HeldItem/Projectile/BP_RocketLauncherProjectile"));
+}
+
+void UProjectilePoolSubsystem::DetachInstigatorForLife(APawn* Instigator)
+{
+	if (!IsValid(Instigator)) return;
+	for (AActor* Projectile : Owned)
+	{
+		if (!IsValid(Projectile) || Projectile->GetInstigator() != Instigator) continue;
+		if (auto* Body = Cast<UPrimitiveComponent>(Projectile->GetRootComponent())) Body->IgnoreActorWhenMoving(Instigator, false);
+		if (auto* Character = Cast<ACharacter>(Instigator)) Character->GetCapsuleComponent()->IgnoreActorWhenMoving(Projectile, false);
+		Projectile->SetInstigator(nullptr);
+	}
 }
 
 bool UProjectilePoolSubsystem::DoesSupportWorldType(EWorldType::Type WorldType) const
