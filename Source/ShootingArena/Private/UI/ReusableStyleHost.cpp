@@ -34,20 +34,31 @@ bool ApplyFirstTextStyle(UWidget* Widget, UCommonTextStyle* TextStyle)
     return false;
 }
 
-void VisitStyleWidgets(UWidget* Widget, TSet<UWidget*>& Seen)
+UWidget* GetStyleContent(UReusableStyleHost* Host)
+{
+    if (UWidget* Content = Host->GetContentForSlot(TEXT("Content"))) return Content;
+    if (UNamedSlot* Slot = Cast<UNamedSlot>(Host->GetWidgetFromName(TEXT("Content")))) return Slot->GetContent();
+    return nullptr;
+}
+
+void VisitStyleWidgets(UWidget* Widget, TSet<UWidget*>& Seen, bool bVisibilityOnly = false)
 {
     if (!Widget || Seen.Contains(Widget)) return;
     Seen.Add(Widget);
-    if (UReusableStyleHost* Host = Cast<UReusableStyleHost>(Widget)) Host->ApplyStyle();
+    if (UReusableStyleHost* Host = Cast<UReusableStyleHost>(Widget))
+    {
+        if (bVisibilityOnly) Host->SyncContentVisibility();
+        else Host->ApplyStyle();
+    }
     if (UUserWidget* UserWidget = Cast<UUserWidget>(Widget))
     {
         TArray<FName> Slots;
         UserWidget->GetSlotNames(Slots);
-        for (FName Name : Slots) VisitStyleWidgets(UserWidget->GetContentForSlot(Name), Seen);
-        if (UserWidget->WidgetTree) VisitStyleWidgets(UserWidget->WidgetTree->RootWidget, Seen);
+        for (FName Name : Slots) VisitStyleWidgets(UserWidget->GetContentForSlot(Name), Seen, bVisibilityOnly);
+        if (UserWidget->WidgetTree) VisitStyleWidgets(UserWidget->WidgetTree->RootWidget, Seen, bVisibilityOnly);
     }
     if (UPanelWidget* Panel = Cast<UPanelWidget>(Widget))
-        for (UWidget* Child : Panel->GetAllChildren()) VisitStyleWidgets(Child, Seen);
+        for (UWidget* Child : Panel->GetAllChildren()) VisitStyleWidgets(Child, Seen, bVisibilityOnly);
 }
 }
 
@@ -86,23 +97,29 @@ void UReusableStyleHost::NativePreConstruct()
 
 void UReusableStyleHost::SetSelected(bool bInSelected)
 {
+    if (bSelected == bInSelected) return;
     bSelected = bInSelected;
     ApplyStyle();
+}
+
+void UReusableStyleHost::SyncContentVisibility()
+{
+    UWidget* Content = GetStyleContent(this);
+    if (!Content) return;
+    // The existing controller still owns visibility of its native controls.
+    // Mirror collapsed/hidden state so a wrapper never leaves an empty row.
+    const ESlateVisibility ContentVisibility = Content->GetVisibility();
+    const ESlateVisibility DesiredVisibility = ContentVisibility == ESlateVisibility::Collapsed || ContentVisibility == ESlateVisibility::Hidden
+        ? ContentVisibility : ESlateVisibility::SelfHitTestInvisible;
+    if (GetVisibility() != DesiredVisibility) SetVisibility(DesiredVisibility);
 }
 
 void UReusableStyleHost::ApplyStyle()
 {
     UUIThemePaletteLibrary::PreparePalette();
-    UWidget* Content = GetContentForSlot(TEXT("Content"));
-    if (!Content)
-        if (UNamedSlot* ContentSlotWidget = Cast<UNamedSlot>(GetWidgetFromName(TEXT("Content"))))
-            Content = ContentSlotWidget->GetContent();
+    UWidget* Content = GetStyleContent(this);
     if (!Content) return;
-    // The existing controller still owns visibility of its native controls.
-    // Mirror collapsed/hidden state so a wrapper never leaves an empty row.
-    const ESlateVisibility ContentVisibility = Content->GetVisibility();
-    SetVisibility(ContentVisibility == ESlateVisibility::Collapsed || ContentVisibility == ESlateVisibility::Hidden
-        ? ContentVisibility : ESlateVisibility::SelfHitTestInvisible);
+    SyncContentVisibility();
     USizeBox* Bounds = Cast<USizeBox>(GetWidgetFromName(TEXT("StyleBounds")));
     if (UButton* Button = Cast<UButton>(Content); Button && ButtonStyle)
     {
@@ -229,6 +246,12 @@ void UReusableStyleLibrary::ApplyWidgetStyleTree(UUserWidget* Screen)
     TSet<UWidget*> Seen;
     VisitStyleWidgets(Screen, Seen);
     UUIThemePaletteLibrary::ApplyWidgetTree(Screen);
+}
+
+void UReusableStyleLibrary::SyncWidgetStyleVisibility(UUserWidget* Screen)
+{
+    TSet<UWidget*> Seen;
+    VisitStyleWidgets(Screen, Seen, true);
 }
 
 void UReusableStyleLibrary::SetStyledButtonSelected(UButton* Button, bool bSelected)

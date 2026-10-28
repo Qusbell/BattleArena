@@ -8,6 +8,7 @@
 #include "Engine/Engine.h"
 #include "Engine/Texture2D.h"
 #include "Engine/World.h"
+#include "TimerManager.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "MediaPlayer.h"
 #include "MediaSource.h"
@@ -146,7 +147,7 @@ void UMapPreviewPlayback::Shutdown()
 }
 
 void UMapPreviewBinding::Initialize(UUserWidget* InScreen, UImage* InImage, UButton* InButton,
-    UMapPreviewPlayback* InPlayback, bool bInAlwaysPlay)
+    UMapPreviewPlayback* InPlayback, bool bInAlwaysPlay, float InHoverDelaySeconds)
 {
     Screen = InScreen;
     Image = InImage;
@@ -154,16 +155,38 @@ void UMapPreviewBinding::Initialize(UUserWidget* InScreen, UImage* InImage, UBut
     Playback = InPlayback;
     StillBrush = InImage->GetBrush();
     bAlwaysPlay = bInAlwaysPlay;
+    HoverDelaySeconds = FMath::Max(0.0f, InHoverDelaySeconds);
     if (InButton && !bAlwaysPlay)
     {
         InButton->OnHovered.AddUniqueDynamic(this, &ThisClass::HandleHovered);
         InButton->OnUnhovered.AddUniqueDynamic(this, &ThisClass::HandleUnhovered);
     }
-    SetPreviewActive(bAlwaysPlay || (InButton && InButton->IsHovered()));
+    if (bAlwaysPlay)
+    {
+        SetPreviewActive(true);
+    }
+    else if (InButton && InButton->IsHovered())
+    {
+        HandleHovered();
+    }
 }
 
 void UMapPreviewBinding::SetPreviewActive(bool bInActive)
 {
+    if (!bInActive)
+    {
+        bHoverPending = false;
+        if (UWorld* World = Screen.IsValid() ? Screen->GetWorld() : nullptr)
+        {
+            World->GetTimerManager().ClearTimer(HoverDelayTimer);
+        }
+    }
+    else if (UWorld* World = Screen.IsValid() ? Screen->GetWorld() : nullptr)
+    {
+        World->GetTimerManager().ClearTimer(HoverDelayTimer);
+        bHoverPending = false;
+    }
+
     bActive = bAlwaysPlay || bInActive;
     if (Playback)
     {
@@ -192,12 +215,41 @@ void UMapPreviewBinding::RefreshBrush()
 
 void UMapPreviewBinding::HandleHovered()
 {
-    SetPreviewActive(true);
+    if (bAlwaysPlay || HoverDelaySeconds <= 0.0f)
+    {
+        SetPreviewActive(true);
+        return;
+    }
+
+    UWorld* World = Screen.IsValid() ? Screen->GetWorld() : nullptr;
+    if (!World)
+    {
+        SetPreviewActive(true);
+        return;
+    }
+
+    bHoverPending = true;
+    World->GetTimerManager().SetTimer(HoverDelayTimer, this,
+        &ThisClass::ActivatePreviewAfterDelay, HoverDelaySeconds, false);
 }
 
 void UMapPreviewBinding::HandleUnhovered()
 {
     SetPreviewActive(false);
+}
+
+void UMapPreviewBinding::ActivatePreviewAfterDelay()
+{
+    if (!bHoverPending)
+    {
+        return;
+    }
+
+    bHoverPending = false;
+    if (UButton* Target = Button.Get(); Target && Target->IsHovered())
+    {
+        SetPreviewActive(true);
+    }
 }
 
 UMediaPlayer* UMapPreviewBinding::GetMediaPlayer() const
@@ -212,13 +264,13 @@ bool UMapPreviewBinding::Matches(UUserWidget* InScreen, UImage* InImage) const
 
 void UMapPreviewBinding::Release()
 {
+    bAlwaysPlay = false;
+    SetPreviewActive(false);
     if (UButton* Target = Button.Get())
     {
         Target->OnHovered.RemoveAll(this);
         Target->OnUnhovered.RemoveAll(this);
     }
-    bAlwaysPlay = false;
-    SetPreviewActive(false);
     Playback = nullptr;
     Screen.Reset();
     Image.Reset();
@@ -314,7 +366,8 @@ UMapPreviewBinding* UMapPreviewSubsystem::Configure(UUserWidget* Screen, UImage*
 
     UMapPreviewBinding* Binding = NewObject<UMapPreviewBinding>(this);
     Bindings.Add(Binding);
-    Binding->Initialize(Screen, Image, HoverButton, Playback, bAlwaysPlay);
+    Binding->Initialize(Screen, Image, HoverButton, Playback, bAlwaysPlay,
+        Row->HoverDelaySeconds);
     return Binding;
 }
 
