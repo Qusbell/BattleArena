@@ -1,4 +1,5 @@
 #include "SeamlessPortalTraversalSubsystem.h"
+#include "Character/CharacterPoolComponent.h"
 
 #include "SeamlessPortalActor.h"
 #include "SeamlessPortalSyncComponent.h"
@@ -133,6 +134,12 @@ void USeamlessPortalTraversalSubsystem::UpdatePassageIgnores(ACharacter* charact
 	}
 }
 
+void USeamlessPortalTraversalSubsystem::ForgetCharacter(ACharacter* character)
+{
+	if (FTraveller* State = travellers.Find(character)) RestoreIgnores(character, *State);
+	travellers.Remove(character);
+}
+
 void USeamlessPortalTraversalSubsystem::Tick(float deltaTime)
 {
 	UWorld* world = GetWorld();
@@ -150,13 +157,13 @@ void USeamlessPortalTraversalSubsystem::Tick(float deltaTime)
 	for (auto it = travellers.CreateIterator(); it; ++it)
 	{
 		ACharacter* character = it.Key().Get();
-		if (!IsValid(character) || (!character->HasAuthority() && !character->IsLocallyControlled()))
+		if (!IsValid(character) || UCharacterPoolComponent::IsInactive(character) || (!character->HasAuthority() && !character->IsLocallyControlled()))
 		{ RestoreIgnores(character, it.Value()); it.RemoveCurrent(); }
 	}
 	for (TActorIterator<ACharacter> it(world); it; ++it)
 	{
 		ACharacter* character = *it;
-		if (!IsValid(character) || (!character->HasAuthority() && !character->IsLocallyControlled())) continue;
+		if (!IsValid(character) || UCharacterPoolComponent::IsInactive(character) || (!character->HasAuthority() && !character->IsLocallyControlled())) continue;
 		// Prepare the owner endpoint before the first accepted crossing.
 		if (character->HasAuthority()) USeamlessPortalSyncComponent::FindOrCreate(character);
 		const FVector current = character->GetActorLocation();

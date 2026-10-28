@@ -64,9 +64,10 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Kill Credit")
 	FOnKillCreditResolved OnKillCreditResolved;
 
-	/** Resolve this owner's death. The result event is broadcast once per component lifetime. */
+	/** Resolve once per life; dedicated pawns explicitly reset the credit latch at respawn. */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Kill Credit")
 	FKillCreditResolution ResolveDeathCredit(AController* InstigatedBy, AActor* DamageCauser);
+	void ResetForNextLife();
 
 protected:
 	virtual void BeginPlay() override;

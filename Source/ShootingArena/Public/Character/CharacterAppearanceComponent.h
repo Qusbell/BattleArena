@@ -149,6 +149,8 @@ protected:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& outLifetimeProps) const override;
 
 private:
+	FString appliedModelingId;
+	TWeakObjectPtr<UDataTable> appliedModelingTable;
 	UFUNCTION()
 	void OnRep_ActiveModelingId();
 

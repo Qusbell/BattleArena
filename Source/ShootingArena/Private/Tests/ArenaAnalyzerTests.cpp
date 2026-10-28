@@ -68,6 +68,16 @@ bool FArenaAnalyzerIdentityTest::RunTest(const FString& Parameters)
     Snapshot = S->Snapshot();
     TestEqual(TEXT("Confirmed death is idempotent"), Snapshot.DeathSamples.Num(), 1);
     TestEqual(TEXT("Unknown death cannot inherit latest weapon shot"), Snapshot.DeathSamples[0].ShotId, INDEX_NONE);
+    S->RecordCredit(Target, nullptr, TEXT("RecentAttacker"));
+    const int32 PreviousLife = Snapshot.DeathSamples[0].VictimTrackId;
+    AI->UnPossess(); AI->Possess(Target);
+    S->RecordDeath(Target, nullptr, nullptr);
+    const auto ReusedLife = S->Snapshot();
+    TestEqual(TEXT("Repossessed pooled pawn can record another confirmed death"), ReusedLife.DeathSamples.Num(), 2);
+    TestTrue(TEXT("Pooled pawn receives a fresh life track"), ReusedLife.DeathSamples.Last().VictimTrackId > PreviousLife);
+    TestTrue(TEXT("Pooled pawn does not inherit prior-life kill credit"), ReusedLife.DeathSamples.Last().CreditSource.IsEmpty());
+    S->RecordCredit(Target, nullptr, TEXT("None"));
+    TestEqual(TEXT("Credit updates cannot rewrite the previous pooled life"), S->Snapshot().DeathSamples[0].CreditSource, FString(TEXT("RecentAttacker")));
     S->ForgetProjectile(Projectile); S->PushProjectile(Projectile);
     S->ApplyShotDamage(Respawn, 1, PC, Weapon, nullptr); S->PopProjectile();
     const auto Reused = S->Snapshot();

@@ -201,6 +201,12 @@ void UProjectileFirstPersonRenderingComponent::Restore()
 	PreparedGunTypes.Reset(); PreparedMeshes.Reset(); NextTextureRefreshTime = 0.f;
 }
 
+void UProjectileFirstPersonRenderingComponent::ResetForPooledLife()
+{
+	Restore();
+	ViewExtension.Reset();
+}
+
 void UProjectileFirstPersonRenderingComponent::PrepareWeapons(USkeletalMeshComponent* Arms)
 {
 	UWorld* World = GetWorld();

@@ -39,6 +39,8 @@ public:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void OnUnregister() override;
 	virtual void Deactivate() override;
+	/** Release the old camera/arm overrides before a pawn starts another life. */
+	void ResetForPooledLife();
 	/** Game-thread view hook: apply current-frame scale and near clip to this local FP view only. */
 	bool ApplyFirstPersonView(const APlayerController* Controller, FMinimalViewInfo& View) const;
 	/** Only when world geometry occludes the real muzzle, convert its cosmetic

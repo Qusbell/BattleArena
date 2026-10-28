@@ -231,6 +231,11 @@ void UArenaAnalyzeSubsystem::SetTrackedPawn(
     if (IsValid(NewPawn))
     {
         State.CurrentTrackId = State.NextTrackId++;
+        // main's character pool can possess the same Pawn object for another life.
+        const FObjectKey PawnKey(NewPawn);
+        DeadPawns.Remove(PawnKey);
+        DeathIndices.Remove(PawnKey);
+        PendingCredits.Remove(PawnKey);
         PawnHistory.Add(NewPawn, {State.ControllerId, State.CurrentTrackId});
         NewPawn->OnTakeAnyDamage.AddUniqueDynamic(
             this, &UArenaAnalyzeSubsystem::OnPawnTakeAnyDamage);

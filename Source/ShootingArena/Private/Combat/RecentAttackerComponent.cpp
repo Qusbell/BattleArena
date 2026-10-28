@@ -15,6 +15,14 @@ URecentAttackerComponent::URecentAttackerComponent()
 	SetIsReplicatedByDefault(false);
 }
 
+void URecentAttackerComponent::ResetForNextLife()
+{
+	LastAttackerPlayerState.Reset();
+	LastAttackerTime = 0.f;
+	bHasLastAttackerTime = false;
+	bDeathCreditResolved = false;
+}
+
 void URecentAttackerComponent::BeginPlay()
 {
 	Super::BeginPlay();

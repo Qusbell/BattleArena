@@ -1,6 +1,7 @@
 ﻿#include "AI/QuakeTargetSelectionAIController.h"
 
 #include "BehaviorTree/BlackboardComponent.h"
+#include "Character/CharacterPoolComponent.h"
 #include "Components/ActorComponent.h"
 #include "GameFramework/Character.h"
 #include "Perception/AIPerceptionComponent.h"
@@ -44,6 +45,9 @@ void AQuakeTargetSelectionAIController::OnPossess(APawn* InPawn)
 
 void AQuakeTargetSelectionAIController::OnUnPossess()
 {
+	if (APawn* PreviousPawn = GetPawn())
+		if (const auto* Pool = PreviousPawn->FindComponentByClass<UCharacterPoolComponent>(); Pool && Pool->IsManaged())
+			UCharacterPoolComponent::ResetAIForLife(this, PreviousPawn);
 	if (APawn* PossessedPawn = GetPawn())
 	{
 		PossessedPawn->OnTakeAnyDamage.RemoveDynamic(
@@ -158,7 +162,7 @@ ACharacter* AQuakeTargetSelectionAIController::ResolveAttacker(
 
 bool AQuakeTargetSelectionAIController::IsCharacterDead(const ACharacter* Character)
 {
-	if (!IsValid(Character))
+	if (!IsValid(Character) || UCharacterPoolComponent::IsInactive(Character))
 	{
 		return true;
 	}
