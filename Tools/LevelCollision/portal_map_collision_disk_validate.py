@@ -66,6 +66,9 @@ def main(report):
             failures.append({"kind": "source_collision", "component": path})
         if c and state.get('expected_profile') and str(c.get_collision_profile_name()) != state['expected_profile']:
             failures.append({"kind":"source_profile","component":path})
+        if c and 'expected_navigation_relevant' in state and \
+                c.get_editor_property('can_ever_affect_navigation')!=state['expected_navigation_relevant']:
+            failures.append({'kind':'source_navigation_relevance','component':path})
         if c and state.get('expected_no_character_base') and (
                 c.get_walkable_slope_override().walkable_slope_behavior != unreal.WalkableSlopeBehavior.WALKABLE_SLOPE_UNWALKABLE
                 or c.get_editor_property('can_character_step_up_on') != unreal.CanBeCharacterBase.ECB_NO):
@@ -111,6 +114,22 @@ def main(report):
         if not path or not path.is_valid() or path.is_partial():
             nav_failures.append(case.get("name",str(case.get('lane'))))
     failures.extend({"kind":"navigation_path","name":name} for name in nav_failures)
+    walking_links=report['validation'].get('walking_nav_links',[])
+    for state in walking_links:
+        actor=actors.get(state['actor'])
+        if not isinstance(actor,unreal.NavLinkProxy):
+            failures.append({'kind':'walking_link_actor','actor':state['actor']});continue
+        actual=list(actor.get_editor_property('point_links'))
+        if actor.get_editor_property('smart_link_is_relevant') or actor.is_smart_link_enabled() \
+                or len(actual)!=len(state['links']):
+            failures.append({'kind':'walking_link_mode','actor':state['actor']})
+        for link,expected in zip(actual,state['links']):
+            if (link.get_editor_property('left')-vector(expected['left'])).length()>.01 \
+                    or (link.get_editor_property('right')-vector(expected['right'])).length()>.01 \
+                    or link.get_editor_property('direction')!=unreal.NavLinkDirection.BOTH_WAYS \
+                    or link.get_editor_property('area_class')!=unreal.NavArea_Default.static_class() \
+                    or link.get_editor_property('max_fall_down_length')!=0.:
+                failures.append({'kind':'walking_link_settings','actor':state['actor']})
     dense = report['validation'].get('dense_stair_navigation',{})
     for sample in dense.get('samples',[]):
         point=vector(sample['collision'])
@@ -133,6 +152,7 @@ def main(report):
             "instances_tested":len(report["proxies"]),"gameplay_components":len(gameplay)-len(skipped_editor_only),
             "preserved_sources_tested":len(report.get('preserved_sources',[])),
             "dense_navigation_samples":len(dense.get('samples',[])),
+            "walking_navigation_links":sum(len(s['links']) for s in walking_links),
             "omitted_editor_only_billboards":skipped_editor_only,
             "wall_rays":ray_count,"navigation_paths":len(report["validation"]["navigation_paths"]),
             "failures":failures,"passed":not failures}
