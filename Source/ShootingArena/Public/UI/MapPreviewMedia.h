@@ -5,6 +5,7 @@
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "Styling/SlateBrush.h"
 #include "Subsystems/GameInstanceSubsystem.h"
+#include "TimerManager.h"
 #include "MapPreviewMedia.generated.h"
 
 class UButton;
@@ -32,6 +33,10 @@ struct SHOOTINGARENA_API FMapPreviewMediaRow : public FTableRowBase
     /** FileMediaSource (normally under Content/Movies), or another MediaSource. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Map Preview")
     TObjectPtr<UMediaSource> PreviewVideo;
+
+    /** Seconds the pointer must remain over a map card before its preview starts. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Map Preview", meta=(ClampMin="0.0", UIMin="0.0"))
+    float HoverDelaySeconds = 0.25f;
 };
 
 /** One live decoder per map, shared by selection and difficulty screens. */
@@ -70,7 +75,7 @@ class SHOOTINGARENA_API UMapPreviewBinding : public UObject
     GENERATED_BODY()
 public:
     void Initialize(UUserWidget* InScreen, UImage* InImage, UButton* InButton,
-        UMapPreviewPlayback* InPlayback, bool bInAlwaysPlay);
+        UMapPreviewPlayback* InPlayback, bool bInAlwaysPlay, float InHoverDelaySeconds = 0.25f);
     void Release();
     void RefreshBrush();
     bool Matches(UUserWidget* InScreen, UImage* InImage = nullptr) const;
@@ -85,13 +90,17 @@ public:
 private:
     UFUNCTION() void HandleHovered();
     UFUNCTION() void HandleUnhovered();
+    UFUNCTION() void ActivatePreviewAfterDelay();
 
     TWeakObjectPtr<UUserWidget> Screen;
     TWeakObjectPtr<UImage> Image;
     TWeakObjectPtr<UButton> Button;
     UPROPERTY(Transient) TObjectPtr<UMapPreviewPlayback> Playback;
     UPROPERTY(Transient) FSlateBrush StillBrush;
+    FTimerHandle HoverDelayTimer;
+    float HoverDelaySeconds = 0.25f;
     bool bActive = false;
+    bool bHoverPending = false;
     bool bAlwaysPlay = false;
 };
 
