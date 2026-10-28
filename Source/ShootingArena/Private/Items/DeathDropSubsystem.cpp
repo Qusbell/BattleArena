@@ -93,7 +93,13 @@ namespace
 			return {};
 		}
 		// Multiple granted weapons will be discussed separately; use index 0 for now.
-		const FInitialWeaponEntry& Entry = Data->GrantedWeapons[0];
+		FInitialWeaponEntry Entry;
+		if (!Data->ResolveWeaponEntry(Data->GrantedWeapons[0], Entry))
+		{
+			UE_LOG(LogDeathDrop, Warning, TEXT("Skipping base weapon death drop for %s: GrantedWeapons[0] cannot be resolved."),
+				*GetNameSafe(Character));
+			return {};
+		}
 		const FDataTableRowHandle Row = FindWeaponRow(Table,
 			Entry.WeaponClass.LoadSynchronous(), Entry.WeaponData.LoadSynchronous());
 		if (!ValidItem(Row))
