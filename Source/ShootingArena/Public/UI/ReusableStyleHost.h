@@ -84,6 +84,7 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Appearance|Blueprint Styles") TSubclassOf<UBlueprintBrushStyle> BrushStyle;
 
     UFUNCTION(BlueprintCallable, Category="Appearance") void ApplyStyle();
+    void SyncContentVisibility();
     void SetSelected(bool bInSelected);
 protected:
     virtual void NativePreConstruct() override;
@@ -100,6 +101,10 @@ public:
 
     UFUNCTION(BlueprintCallable, Category="UI|Blueprint Styles")
     static void ApplyWidgetStyleTree(UUserWidget* Screen);
+
+    /** Mirrors content visibility without reapplying styles or the palette. */
+    UFUNCTION(BlueprintCallable, Category="UI|Blueprint Styles")
+    static void SyncWidgetStyleVisibility(UUserWidget* Screen);
 
     UFUNCTION(BlueprintCallable, Category="UI|Blueprint Styles")
     static void SetStyledButtonSelected(UButton* Button, bool bSelected);

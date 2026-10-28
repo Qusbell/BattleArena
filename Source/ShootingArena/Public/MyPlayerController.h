@@ -92,11 +92,12 @@ protected:
 private:
 	friend class FKillMedalBridgeTest;
 	friend class FKillMedalAutomaticAwardsTest;
+	friend class UKillStreakVoiceComponent;
 
 	UFUNCTION(Client, Reliable)
 	void ClientAwardKillMedal(EKillMedalType MedalType);
 
-	void ShowConfiguredKillMedal(EKillMedalType MedalType);
+	void ShowConfiguredKillMedal(EKillMedalType MedalType, bool bReplaceActive = false);
 	bool QueueKillMedal(const FKillMedalStyle& Style, double DisplayTime);
 	void UpdateKillMedalQueue();
 	bool DisplayKillMedalNow(const FKillMedalRequest& Request);

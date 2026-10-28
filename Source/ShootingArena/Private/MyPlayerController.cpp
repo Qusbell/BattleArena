@@ -56,10 +56,17 @@ void AMyPlayerController::ClientAwardKillMedal_Implementation(EKillMedalType Med
 	ShowConfiguredKillMedal(MedalType);
 }
 
-void AMyPlayerController::ShowConfiguredKillMedal(EKillMedalType MedalType)
+void AMyPlayerController::ShowConfiguredKillMedal(EKillMedalType MedalType, bool bReplaceActive)
 {
 	if (const FKillMedalStyle* Style = KillMedalStyles.Find(MedalType))
 	{
+		if (bReplaceActive)
+		{
+			// A newly started voice must not wait behind an older medal's display timer.
+			PendingKillMedals.Reset();
+			bHasActiveKillMedal = false;
+			if (UUserWidget* Medals = FindKillMedalContainer()) Medals->StopAllAnimations();
+		}
 		QueueKillMedal(*Style, KillMedalDisplayTime);
 	}
 }
