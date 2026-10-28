@@ -73,6 +73,11 @@ void ADeathDropCarrier::Initialize(const FDeathDropSettings& Settings, UClass* P
 void ADeathDropCarrier::BeginPlay()
 {
 	Super::BeginPlay();
+	// Keep the pickup upright when the physical sphere hits slopes or walls.
+	// The pickup Blueprint can still animate its mesh around the vertical axis.
+	PhysicsBody->BodyInstance.bLockXRotation = true;
+	PhysicsBody->BodyInstance.bLockYRotation = true;
+	PhysicsBody->SetConstraintMode(EDOFMode::SixDOF);
 	PhysicsBody->OnComponentHit.AddDynamic(this, &ADeathDropCarrier::OnBodyHit);
 	if (HasAuthority()) SpawnPickup();
 }
@@ -148,7 +153,8 @@ void ADeathDropCarrier::OnRep_Settled()
 	PhysicsBody->SetPhysicsLinearVelocity(FVector::ZeroVector);
 	PhysicsBody->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
 	PhysicsBody->SetSimulatePhysics(false);
-	SetActorLocation(SettledLocation, false, nullptr, ETeleportType::TeleportPhysics);
+	const FRotator UprightRotation(0.0f, GetActorRotation().Yaw, 0.0f);
+	SetActorLocationAndRotation(SettledLocation, UprightRotation, false, nullptr, ETeleportType::TeleportPhysics);
 }
 
 void ADeathDropCarrier::OnBodyHit(UPrimitiveComponent* HitComponent, AActor* OtherActor,
