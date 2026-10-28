@@ -60,6 +60,7 @@ UProjectileWorldCollisionComponent::UProjectileWorldCollisionComponent()
 void UProjectileWorldCollisionComponent::BeginPlay()
 {
 	Super::BeginPlay();
+	bLastImpactWasCharacter = false;
 	bResolved = false;
 	bResolving = false;
 	BindPlayerCollision();
@@ -68,6 +69,7 @@ void UProjectileWorldCollisionComponent::BeginPlay()
 void UProjectileWorldCollisionComponent::ResetForPooledShot()
 {
 	Unbind();
+	bLastImpactWasCharacter = false;
 	bResolved = false;
 	bResolving = false;
 	Activate(true);
@@ -77,6 +79,8 @@ void UProjectileWorldCollisionComponent::ResetForPooledShot()
 
 void UProjectileWorldCollisionComponent::EndPooledShot()
 {
+	// Keep the impact snapshot until the next shot: the existing multicast can
+	// retire the pooled projectile before the effect multicast consumes it.
 	bResolved = true;
 	Unbind();
 	Deactivate();
@@ -211,6 +215,8 @@ void UProjectileWorldCollisionComponent::ResolveImpact(const FHitResult& Hit)
 	AActor* Projectile = GetOwner();
 	USphereComponent* Player = PlayerCollision.Get();
 	if (bResolved || bResolving || !HasLiveContext() || !ProjectileCollisionHelpers::ValidHit(Hit)) return;
+	const AActor* ImpactActor = Hit.GetActor();
+	bLastImpactWasCharacter = IsValid(ImpactActor) && ImpactActor->IsA<ACharacter>();
 	bResolved = true;
 	bResolving = true;
 	Travel.Reset();

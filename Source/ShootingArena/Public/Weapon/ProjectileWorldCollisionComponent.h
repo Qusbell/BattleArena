@@ -21,6 +21,9 @@ public:
 	/** Connect the projectile's existing hit/damage/explosion graph to this event. */
 	UPROPERTY(BlueprintAssignable, Category="Projectile|Collision")
 	FProjectileResolvedImpact OnResolvedImpact;
+	/** Snapshot before damage/stop callbacks can destroy the character. Reset for each pooled shot. */
+	UPROPERTY(Transient, BlueprintReadOnly, Category="Projectile|Collision")
+	bool bLastImpactWasCharacter = false;
 	virtual void BeginPlay() override;
 	virtual void OnRegister() override;
 	virtual void Activate(bool bReset = false) override;
