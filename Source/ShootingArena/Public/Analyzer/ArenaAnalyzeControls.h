@@ -4,7 +4,7 @@
 #include "Analyzer/ArenaAnalyzeSubsystem.h"
 #include "ArenaAnalyzeControls.generated.h"
 
-/** Compact editor analyzer controls, using the containing utility's existing Files selection. */
+/** Unified analyzer UI: file selection, filters and instanced visualization. */
 UCLASS()
 class SHOOTINGARENA_API UArenaAnalyzeControls : public UUserWidget
 {
@@ -14,6 +14,7 @@ public:
 protected:
     virtual bool Initialize() override;
 private:
+    UPROPERTY(Transient) TObjectPtr<class UComboBoxString> Files;
     UPROPERTY(Transient) TObjectPtr<class UComboBoxString> Weapons;
     UPROPERTY(Transient) TObjectPtr<class UComboBoxString> Actors;
     UPROPERTY(Transient) TObjectPtr<class UComboBoxString> Events;
@@ -24,6 +25,7 @@ private:
     FString SelectedFile() const;
     AActor* GetVisualizer() const;
     UFUNCTION() UWidget* GenerateOption(FString Option);
+    UFUNCTION() void RefreshFiles();
     UFUNCTION() void LoadSession();
     UFUNCTION() void DrawRecords();
     UFUNCTION() void ClearRecords();

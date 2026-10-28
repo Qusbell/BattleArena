@@ -23,7 +23,8 @@ bool UArenaAnalyzeControls::Initialize()
     auto* Label = WidgetTree->ConstructWidget<UTextBlock>();
     auto Font = Label->GetFont(); Font.Size = 13; Label->SetFont(Font);
     Label->SetColorAndOpacity(FSlateColor(FLinearColor::White));
-    Label->SetText(FText::FromString(TEXT("Combat records — selected file above"))); Root->AddChild(Label);
+    Label->SetText(FText::FromString(TEXT("Arena Analyzer"))); Root->AddChild(Label);
+    Files = WidgetTree->ConstructWidget<UComboBoxString>(UComboBoxString::StaticClass(), TEXT("SessionFiles")); Root->AddChild(Files);
     auto* Row = WidgetTree->ConstructWidget<UHorizontalBox>(); Root->AddChild(Row);
     auto Button = [&](const TCHAR* Caption)
     {
@@ -31,40 +32,51 @@ bool UArenaAnalyzeControls::Initialize()
         T->SetFont(Font); T->SetColorAndOpacity(FSlateColor(FLinearColor::White));
         T->SetText(FText::FromString(Caption)); B->AddChild(T); Row->AddChild(B); return B;
     };
-    Button(TEXT("Load combat"))->OnClicked.AddDynamic(this, &ThisClass::LoadSession);
-    Actors = WidgetTree->ConstructWidget<UComboBoxString>(); Row->AddChild(Actors);
+    Button(TEXT("Refresh files"))->OnClicked.AddDynamic(this, &ThisClass::RefreshFiles);
+    Button(TEXT("Load"))->OnClicked.AddDynamic(this, &ThisClass::LoadSession);
+    Actors = WidgetTree->ConstructWidget<UComboBoxString>(UComboBoxString::StaticClass(), TEXT("ActorFilter")); Row->AddChild(Actors);
     for (const TCHAR* Option : {TEXT("All actors"), TEXT("Players"), TEXT("AI")}) Actors->AddOption(Option);
     Actors->SetSelectedIndex(0);
-    Weapons = WidgetTree->ConstructWidget<UComboBoxString>(); Root->AddChild(Weapons);
+    Weapons = WidgetTree->ConstructWidget<UComboBoxString>(UComboBoxString::StaticClass(), TEXT("WeaponFilter")); Root->AddChild(Weapons);
     Weapons->AddOption(TEXT("All weapons")); Weapons->SetSelectedIndex(0);
     Row = WidgetTree->ConstructWidget<UHorizontalBox>(); Root->AddChild(Row);
-    Events = WidgetTree->ConstructWidget<UComboBoxString>(); Row->AddChild(Events);
+    Events = WidgetTree->ConstructWidget<UComboBoxString>(UComboBoxString::StaticClass(), TEXT("EventFilter")); Row->AddChild(Events);
     for (const TCHAR* Option : {TEXT("All events"), TEXT("Shots"), TEXT("Hits"), TEXT("Deaths"), TEXT("Movement"), TEXT("Damage")}) Events->AddOption(Option);
     Events->SetSelectedIndex(0);
-    Button(TEXT("Draw combat"))->OnClicked.AddDynamic(this, &ThisClass::DrawRecords);
-    Button(TEXT("Clear combat"))->OnClicked.AddDynamic(this, &ThisClass::ClearRecords);
+    Button(TEXT("Draw"))->OnClicked.AddDynamic(this, &ThisClass::DrawRecords);
+    Button(TEXT("Clear"))->OnClicked.AddDynamic(this, &ThisClass::ClearRecords);
     Summary = WidgetTree->ConstructWidget<UTextBlock>(); Summary->SetFont(Font);
     Summary->SetColorAndOpacity(FSlateColor(FLinearColor::White));
     Summary->SetAutoWrapText(true); Summary->SetWrapTextAt(300); Root->AddChild(Summary);
-    for (auto* Combo : {Actors.Get(), Weapons.Get(), Events.Get()})
+    for (auto* Combo : {Files.Get(), Actors.Get(), Weapons.Get(), Events.Get()})
     {
         ConfigureCombo(Combo);
         Combo->OnGenerateWidgetEvent.BindDynamic(this, &ThisClass::GenerateOption);
     }
+    RefreshFiles();
     return Result;
 }
 FString UArenaAnalyzeControls::SelectedFile() const
 {
-    if (const UUserWidget* Owner = GetTypedOuter<UUserWidget>())
-        if (const auto* Files = Cast<UComboBoxString>(Owner->GetWidgetFromName(TEXT("Files")))) return Files->GetSelectedOption();
-    return FString();
+    return Files ? Files->GetSelectedOption() : FString();
 }
+void UArenaAnalyzeControls::RefreshFiles()
+{
+    const FString Previous = SelectedFile();
+    const TArray<FString> Names = UArenaAnalyzeLibrary::GetAnalyzeFiles();
+    Files->ClearOptions();
+    for (const auto& Name : Names) Files->AddOption(Name);
+    if (Names.Contains(Previous)) Files->SetSelectedOption(Previous);
+    else if (!Names.IsEmpty()) Files->SetSelectedIndex(0);
+    Summary->SetText(FText::FromString(Names.IsEmpty() ? TEXT("No recordings found.") : TEXT("Select a recording, then Load or Draw.")));
+}
+
 void UArenaAnalyzeControls::LoadSession()
 {
     const FString File = SelectedFile();
     FArenaAnalyzeSession Loaded;
     if (File.IsEmpty() || !UArenaAnalyzeLibrary::LoadAnalyzeFileByName(File, Loaded))
-    { Summary->SetText(FText::FromString(TEXT("Select a valid analyzer file above."))); return; }
+    { Session = FArenaAnalyzeSession(); LoadedFile.Reset(); Summary->SetText(FText::FromString(TEXT("Select a valid recording."))); return; }
     Session = MoveTemp(Loaded); LoadedFile = File;
     Weapons->ClearOptions(); Weapons->AddOption(TEXT("All weapons"));
     TSet<FString> Ids; for (const auto& Shot : Session.ShotSamples) Ids.Add(Shot.WeaponId);

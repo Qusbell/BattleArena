@@ -143,11 +143,11 @@ bool FArenaAnalyzerISMTest::RunTest(const FString& Parameters)
     FArenaDeathSample Death; Death.VictimLocation = FVector(90,0,0); S.DeathSamples.Add(Death);
     TestEqual(TEXT("Expected point/link instances, with no cross-respawn segment or unknown killer line"), UArenaAnalyzeRenderLibrary::RenderSession(Actor,S), 13);
     TestEqual(TEXT("Repeat draw replaces instances"), UArenaAnalyzeRenderLibrary::RenderSession(Actor,S), 13);
-    auto* PlayerPoints = Find(TEXT("PlayerMovementISM"));
-    if (!TestNotNull(TEXT("Player layer uses original instigator mesh"), PlayerPoints)) return false;
+    auto* PlayerPoints = Find(TEXT("MovementISM"));
+    if (!TestNotNull(TEXT("Shared movement layer exists"), PlayerPoints)) return false;
     TestTrue(TEXT("Player point template reused"), PlayerPoints->GetStaticMesh() == Sphere);
-    TestEqual(TEXT("AI point uses original component"), Find(TEXT("MovementISM"))->GetInstanceCount(), 1);
-    FTransform T; Find(TEXT("PlayerMovementLinkISM"))->GetInstanceTransform(0,T,true);
+    TestEqual(TEXT("Player and AI share the movement component"), Find(TEXT("MovementISM"))->GetInstanceCount(), 4);
+    FTransform T; Find(TEXT("MovementLinkISM"))->GetInstanceTransform(0,T,true);
     TestTrue(TEXT("Link midpoint is world-space despite actor offset"), T.GetLocation().Equals(FVector(160,0,0)));
     TestTrue(TEXT("Link uses original length/100 and .02 thickness"), T.GetScale3D().Equals(FVector(1,.02,.02),0.0001));
     TestEqual(TEXT("Event switch replaces other categories"), UArenaAnalyzeRenderLibrary::RenderSession(Actor,S,1), 2);

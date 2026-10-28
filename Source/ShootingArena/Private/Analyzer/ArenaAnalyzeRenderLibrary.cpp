@@ -65,24 +65,19 @@ int32 UArenaAnalyzeRenderLibrary::RenderSession(AActor* Actor, const FArenaAnaly
         }
         return Result;
     };
-    TSet<int32> Players;
-    for (const auto& P : S.Participants) if (P.bPlayer) Players.Add(P.ControllerId);
     if (Event == 0 || Event == 4)
     {
         for (const auto& M : S.MovementSamples)
-            Layer(Players.Contains(M.ControllerId) ? TEXT("PlayerMovementISM") : TEXT("MovementISM"),
-                Players.Contains(M.ControllerId) ? TEXT("InstigatorISM") : TEXT("MovementISM")).Transforms.Add(Point(M.Location, 0.15f));
+            Layer(TEXT("MovementISM"), TEXT("MovementISM")).Transforms.Add(Point(M.Location, 0.15f));
         for (const auto& Segment : UArenaAnalyzeLibrary::BuildMovementLineSegments(S.MovementSamples))
-            Line(Layer(Players.Contains(Segment.ControllerId) ? TEXT("PlayerMovementLinkISM") : TEXT("MovementLinkISM"),
-                Players.Contains(Segment.ControllerId) ? TEXT("DamageLinkISM") : TEXT("MovementLinkISM")), Segment.StartLocation, Segment.EndLocation);
+            Line(Layer(TEXT("MovementLinkISM"), TEXT("MovementLinkISM")), Segment.StartLocation, Segment.EndLocation);
     }
     TMap<int32, const FArenaShotSample*> Shots;
     for (const auto& Shot : S.ShotSamples) Shots.Add(Shot.ShotId, &Shot);
     if (Event == 0 || Event == 1) for (const auto& Shot : S.ShotSamples)
     {
-        const bool Player = Players.Contains(Shot.ControllerId);
-        Layer(Player ? TEXT("PlayerShotISM") : TEXT("AIShotISM"), Player ? TEXT("InstigatorISM") : TEXT("MovementISM")).Transforms.Add(Point(Shot.Location, 0.1f));
-        Line(Layer(Player ? TEXT("PlayerShotLinkISM") : TEXT("AIShotLinkISM"), Player ? TEXT("DamageLinkISM") : TEXT("MovementLinkISM")), Shot.Location, Shot.Location + Shot.Direction * 150);
+        Layer(TEXT("ShotISM"), TEXT("InstigatorISM")).Transforms.Add(Point(Shot.Location, 0.1f));
+        Line(Layer(TEXT("ShotLinkISM"), TEXT("DamageLinkISM")), Shot.Location, Shot.Location + Shot.Direction * 150);
     }
     if (Event == 0 || Event == 2) for (const auto& H : S.HitSamples)
     {

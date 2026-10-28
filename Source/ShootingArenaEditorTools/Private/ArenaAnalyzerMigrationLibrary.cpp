@@ -103,7 +103,6 @@ FString UArenaAnalyzerMigrationLibrary::ConnectAnalyzer(UBlueprint* BP)
             Widget->WidgetTree->RootWidget = Scroll; Scroll->AddChild(Content);
             Widget->OnVariableAdded(TEXT("AnalyzerScroll"));
         }
-        UArenaAnalyzeControls::ConfigureCombo(Cast<UComboBoxString>(Widget->WidgetTree->FindWidget(TEXT("Files"))));
         if (!Widget->WidgetTree->FindWidget(TEXT("CombatRecords")))
         {
             auto* Controls = Widget->WidgetTree->ConstructWidget<UArenaAnalyzeControls>(UArenaAnalyzeControls::StaticClass(), TEXT("CombatRecords"));
@@ -111,8 +110,36 @@ FString UArenaAnalyzerMigrationLibrary::ConnectAnalyzer(UBlueprint* BP)
             Widget->OnVariableAdded(TEXT("CombatRecords"));
         }
         if (!Widget->WidgetVariableNameToGuidMap.Contains(TEXT("CombatRecords"))) Widget->OnVariableAdded(TEXT("CombatRecords"));
+        // The native controls now own file selection, refresh, draw and clear.
+        // Retain only the scroll container, layout root and the unified panel.
+        UWidget* Controls = Widget->WidgetTree->FindWidget(TEXT("CombatRecords"));
+        UWidget* Scroll = Widget->WidgetTree->RootWidget;
+        TArray<UWidget*> LegacyWidgets;
+        Widget->WidgetTree->ForEachWidget([&](UWidget* W)
+        { if (W != Root && W != Scroll && W != Controls) LegacyWidgets.Add(W); });
+        for (int32 I = LegacyWidgets.Num() - 1; I >= 0; --I)
+        {
+            UWidget* W = LegacyWidgets[I];
+            Widget->WidgetTree->RemoveWidget(W);
+            if (Widget->WidgetVariableNameToGuidMap.Contains(W->GetFName())) Widget->OnVariableRemoved(W->GetFName());
+        }
+        const TSet<FName> LegacyNodes = {
+            TEXT("K2Node_VariableGet_2"), TEXT("K2Node_CallFunction_3"), TEXT("K2Node_ComponentBoundEvent_1"), TEXT("K2Node_CallFunction_4"),
+            TEXT("K2Node_MacroInstance_0"), TEXT("K2Node_VariableGet_7"), TEXT("K2Node_CallFunction_5"), TEXT("K2Node_Knot_0"),
+            TEXT("K2Node_VariableGet_0"), TEXT("K2Node_CallFunction_10"), TEXT("K2Node_CallFunction_11"), TEXT("K2Node_IfThenElse_1"),
+            TEXT("K2Node_Knot_1"), TEXT("K2Node_CallArrayFunction_0"), TEXT("K2Node_IfThenElse_2"), TEXT("K2Node_Knot_2"),
+            TEXT("K2Node_GetArrayItem_0"), TEXT("K2Node_VariableGet_6"), TEXT("K2Node_CallFunction_9"), TEXT("K2Node_Knot_4"),
+            TEXT("K2Node_ComponentBoundEvent_0"), TEXT("K2Node_CallFunction_2"), TEXT("K2Node_ComponentBoundEvent_5"), TEXT("K2Node_CallFunction_12"),
+            TEXT("K2Node_CallFunction_13"), TEXT("K2Node_ComponentBoundEvent_4"), TEXT("K2Node_VariableGet_5"), TEXT("K2Node_CallFunction_6"),
+            TEXT("K2Node_CallFunction_8"), TEXT("K2Node_IfThenElse_0"), TEXT("K2Node_CallFunction_0"), TEXT("K2Node_CallFunction_14")
+        };
+        for (UEdGraph* G : BP->UbergraphPages) if (G->GetFName() == TEXT("EventGraph"))
+        {
+            const auto Nodes = G->Nodes;
+            for (UEdGraphNode* Node : Nodes) if (LegacyNodes.Contains(Node->GetFName())) FBlueprintEditorUtils::RemoveNode(BP, Node, true);
+        }
         FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(BP);
-        return TEXT("OK: combat controls");
+        return TEXT("OK: unified analyzer controls");
     }
     TArray<UEdGraph*> Graphs; BP->GetAllGraphs(Graphs);
     int32 Changes = 0;
