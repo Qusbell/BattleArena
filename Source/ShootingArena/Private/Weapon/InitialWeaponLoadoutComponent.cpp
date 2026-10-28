@@ -226,28 +226,27 @@ void UInitialWeaponLoadoutComponent::GrantLoadout()
 
 	bGrantedThisSpawn = true;
 	TSet<FSoftObjectPath> GrantedClasses;
-	for (const FInitialWeaponEntry& Entry : Data->DefaultWeapons)
+	auto GrantEntry = [&](const FInitialWeaponEntry& Selection, bool bDefault)
 	{
+		FInitialWeaponEntry Entry;
+		if (!Data->ResolveWeaponEntry(Selection, Entry))
+		{
+			if (!Selection.WeaponName.IsNone() || !Selection.WeaponClass.IsNull() || !Selection.WeaponData.IsNull())
+				UE_LOG(LogTemp, Warning, TEXT("Initial weapon selection %s on %s cannot be resolved from %s."),
+					*Selection.WeaponName.ToString(), *Owner->GetName(), *Data->WeaponTable.ToString());
+			return;
+		}
 		if (GrantedClasses.Contains(Entry.WeaponClass.ToSoftObjectPath()))
 		{
-			continue;
+			return;
 		}
-		if (GrantOne(Owner, Inventory, Entry, true))
+		if (GrantOne(Owner, Inventory, Entry, bDefault))
 		{
 			GrantedClasses.Add(Entry.WeaponClass.ToSoftObjectPath());
 		}
-	}
-	for (const FInitialWeaponEntry& Entry : Data->GrantedWeapons)
-	{
-		if (GrantedClasses.Contains(Entry.WeaponClass.ToSoftObjectPath()))
-		{
-			continue;
-		}
-		if (GrantOne(Owner, Inventory, Entry, false))
-		{
-			GrantedClasses.Add(Entry.WeaponClass.ToSoftObjectPath());
-		}
-	}
+	};
+	for (const FInitialWeaponEntry& Entry : Data->DefaultWeapons) GrantEntry(Entry, true);
+	for (const FInitialWeaponEntry& Entry : Data->GrantedWeapons) GrantEntry(Entry, false);
 }
 
 bool UInitialWeaponLoadoutComponent::IsDefaultWeapon(const AActor* Weapon) const
@@ -266,8 +265,10 @@ bool UInitialWeaponLoadoutComponent::IsDefaultWeapon(const AActor* Weapon) const
 	const UObject* Data = WeaponDataProperty
 		? WeaponDataProperty->GetObjectPropertyValue_InContainer(Weapon)
 		: nullptr;
-	for (const FInitialWeaponEntry& Entry : Loadout->DefaultWeapons)
+	for (const FInitialWeaponEntry& Selection : Loadout->DefaultWeapons)
 	{
+		FInitialWeaponEntry Entry;
+		if (!Loadout->ResolveWeaponEntry(Selection, Entry)) continue;
 		if ((Data && Entry.WeaponData.Get() == Data)
 			|| Entry.WeaponClass.Get() == Weapon->GetClass())
 		{
