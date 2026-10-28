@@ -102,7 +102,14 @@ namespace
             {TEXT("Slider"),           TEXT("/Script/UMG.Slider")},
         };
         const FString* Path = TypeMap.Find(TypeName);
-        if (!Path) return nullptr;
+        if (!Path)
+        {
+            // Any other UMG class by name (UniformGridPanel, Spacer, WrapBox, ...) or a full class path
+            // (e.g. /Game/.../WBP_Card.WBP_Card_C for a nested user widget).
+            if (TypeName.StartsWith(TEXT("/")))
+                return LoadObject<UClass>(nullptr, *TypeName);
+            return LoadObject<UClass>(nullptr, *FString::Printf(TEXT("/Script/UMG.%s"), *TypeName));
+        }
         return LoadObject<UClass>(nullptr, **Path);
     }
 
