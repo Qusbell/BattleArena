@@ -6,7 +6,10 @@
 #include "Components/Button.h"
 #include "Components/ComboBoxString.h"
 #include "Components/TextBlock.h"
-#include "DrawDebugHelpers.h"
+#include "Analyzer/ArenaAnalyzeRenderLibrary.h"
+#include "Brushes/SlateColorBrush.h"
+#include "UObject/StructOnScope.h"
+#include "UObject/UnrealType.h"
 #include "Misc/Paths.h"
 #if WITH_EDITOR
 #include "Editor.h"
@@ -18,11 +21,14 @@ bool UArenaAnalyzeControls::Initialize()
     if (!Result || !WidgetTree || Summary) return Result;
     auto* Root = WidgetTree->ConstructWidget<UVerticalBox>(); WidgetTree->RootWidget = Root;
     auto* Label = WidgetTree->ConstructWidget<UTextBlock>();
+    auto Font = Label->GetFont(); Font.Size = 13; Label->SetFont(Font);
+    Label->SetColorAndOpacity(FSlateColor(FLinearColor::White));
     Label->SetText(FText::FromString(TEXT("Combat records — selected file above"))); Root->AddChild(Label);
     auto* Row = WidgetTree->ConstructWidget<UHorizontalBox>(); Root->AddChild(Row);
     auto Button = [&](const TCHAR* Caption)
     {
         auto* B = WidgetTree->ConstructWidget<UButton>(); auto* T = WidgetTree->ConstructWidget<UTextBlock>();
+        T->SetFont(Font); T->SetColorAndOpacity(FSlateColor(FLinearColor::White));
         T->SetText(FText::FromString(Caption)); B->AddChild(T); Row->AddChild(B); return B;
     };
     Button(TEXT("Load combat"))->OnClicked.AddDynamic(this, &ThisClass::LoadSession);
@@ -37,7 +43,14 @@ bool UArenaAnalyzeControls::Initialize()
     Events->SetSelectedIndex(0);
     Button(TEXT("Draw combat"))->OnClicked.AddDynamic(this, &ThisClass::DrawRecords);
     Button(TEXT("Clear combat"))->OnClicked.AddDynamic(this, &ThisClass::ClearRecords);
-    Summary = WidgetTree->ConstructWidget<UTextBlock>(); Summary->SetAutoWrapText(true); Summary->SetWrapTextAt(400); Root->AddChild(Summary);
+    Summary = WidgetTree->ConstructWidget<UTextBlock>(); Summary->SetFont(Font);
+    Summary->SetColorAndOpacity(FSlateColor(FLinearColor::White));
+    Summary->SetAutoWrapText(true); Summary->SetWrapTextAt(300); Root->AddChild(Summary);
+    for (auto* Combo : {Actors.Get(), Weapons.Get(), Events.Get()})
+    {
+        ConfigureCombo(Combo);
+        Combo->OnGenerateWidgetEvent.BindDynamic(this, &ThisClass::GenerateOption);
+    }
     return Result;
 }
 FString UArenaAnalyzeControls::SelectedFile() const
@@ -63,43 +76,65 @@ void UArenaAnalyzeControls::LoadSession()
         Session.SchemaVersion, Session.ShotSamples.Num(), Session.HitSamples.Num(), Session.DamageSamples.Num(), Session.DeathSamples.Num(),
         Session.SchemaVersion == 1 ? TEXT(" | legacy: actor type / combat identity unavailable") : TEXT(""))));
 }
+
+void UArenaAnalyzeControls::ConfigureCombo(UComboBoxString* Combo)
+{
+    if (!Combo) return;
+    const FSlateColorBrush Dark(FLinearColor(0.035f, 0.045f, 0.065f, 1));
+    const FSlateColorBrush Hover(FLinearColor(0.08f, 0.20f, 0.34f, 1));
+    const FSlateColorBrush Selected(FLinearColor(0.03f, 0.30f, 0.55f, 1));
+    auto Style = Combo->GetWidgetStyle();
+    Style.ComboButtonStyle.ButtonStyle.SetNormal(Dark).SetHovered(Hover).SetPressed(Selected);
+    Style.ComboButtonStyle.DownArrowImage.TintColor = FSlateColor(FLinearColor::White);
+    Style.ComboButtonStyle.MenuBorderBrush = Dark;
+    Style.ComboButtonStyle.ContentPadding = FMargin(10,6);
+    Combo->SetWidgetStyle(Style);
+    auto Row = Combo->GetItemStyle();
+    Row.TextColor = FSlateColor(FLinearColor::White); Row.SelectedTextColor = FSlateColor(FLinearColor::White);
+    Row.EvenRowBackgroundBrush = Dark; Row.OddRowBackgroundBrush = Dark;
+    Row.EvenRowBackgroundHoveredBrush = Hover; Row.OddRowBackgroundHoveredBrush = Hover;
+    Row.ActiveBrush = Selected; Row.ActiveHoveredBrush = Selected;
+    Row.InactiveBrush = Selected; Row.InactiveHoveredBrush = Hover;
+    Combo->SetItemStyle(Row); Combo->SetContentPadding(FMargin(10,6)); Combo->SetMaxListHeight(240);
+    // UComboBoxString exposes these construction-only settings without runtime setters.
+    PRAGMA_DISABLE_DEPRECATION_WARNINGS
+    Combo->ForegroundColor = FSlateColor(FLinearColor::White); Combo->Font.Size = 13;
+    PRAGMA_ENABLE_DEPRECATION_WARNINGS
+}
+UWidget* UArenaAnalyzeControls::GenerateOption(FString Option)
+{
+    auto* Text = WidgetTree->ConstructWidget<UTextBlock>();
+    auto Font = Text->GetFont(); Font.Size = 13; Text->SetFont(Font);
+    Text->SetColorAndOpacity(FSlateColor(FLinearColor::White)); Text->SetText(FText::FromString(Option));
+    return Text;
+}
+AActor* UArenaAnalyzeControls::GetVisualizer() const
+{
+    UUserWidget* Owner = GetTypedOuter<UUserWidget>();
+    UFunction* Function = Owner ? Owner->FindFunction(TEXT("Get Visualizer")) : nullptr;
+    if (!Function) return nullptr;
+    FStructOnScope Params(Function); Owner->ProcessEvent(Function, Params.GetStructMemory());
+    for (TFieldIterator<FObjectPropertyBase> It(Function); It; ++It)
+        if (It->HasAnyPropertyFlags(CPF_OutParm))
+            if (auto* Actor = Cast<AActor>(It->GetObjectPropertyValue_InContainer(Params.GetStructMemory()))) return Actor;
+    return nullptr;
+}
 void UArenaAnalyzeControls::ClearRecords()
 {
-#if WITH_EDITOR
-    if (GEditor) FlushPersistentDebugLines(GEditor->GetEditorWorldContext().World());
-#endif
+    UUserWidget* Owner = GetTypedOuter<UUserWidget>();
+    if (UFunction* Function = Owner ? Owner->FindFunction(TEXT("Clear")) : nullptr) Owner->ProcessEvent(Function, nullptr);
+    Summary->SetText(FText::FromString(TEXT("Visualizer cleared.")));
 }
 void UArenaAnalyzeControls::DrawRecords()
 {
     if (LoadedFile != SelectedFile() || LoadedFile.IsEmpty()) LoadSession();
     if (LoadedFile.IsEmpty() || LoadedFile != SelectedFile()) return;
-#if WITH_EDITOR
-    UWorld* World = GEditor ? GEditor->GetEditorWorldContext().World() : nullptr; if (!World) return;
-    const auto S = UArenaAnalyzeLibrary::FilterSession(Session, WeaponIds.IsValidIndex(Weapons->GetSelectedIndex() - 1) ? WeaponIds[Weapons->GetSelectedIndex() - 1] : FString(), Actors->GetSelectedIndex());
-    const int32 Event = Events->GetSelectedIndex();
-    TSet<int32> Players; for (const auto& P : S.Participants) if (P.bPlayer) Players.Add(P.ControllerId);
-    auto Color = [&](int32 Id) { return Players.Contains(Id) ? FColor::Cyan : FColor::Orange; };
-    TMap<int32, FArenaShotSample> Shots; for (const auto& Shot : Session.ShotSamples) Shots.Add(Shot.ShotId, Shot);
-    if (Event == 0 || Event == 1) for (const auto& Shot : S.ShotSamples)
-        DrawDebugDirectionalArrow(World, Shot.Location, Shot.Location + Shot.Direction * 150, 20, Color(Shot.ControllerId), true, -1, 0, 2);
-    if (Event == 0 || Event == 2) for (const auto& Hit : S.HitSamples)
-    {
-        DrawDebugSphere(World, Hit.Location, Hit.bDamageContact ? 7 : 12, 8, FColor::Green, true);
-        if (const auto* Shot = Shots.Find(Hit.ShotId)) DrawDebugLine(World, Shot->Location, Hit.Location, FColor::Green, true, -1, 0, 0.5);
-    }
-    if (Event == 0 || Event == 3) for (const auto& Death : S.DeathSamples)
-    {
-        DrawDebugBox(World, Death.VictimLocation, FVector(20), FColor::Red, true);
-        if (Death.bHasKillerLocation) DrawDebugLine(World, Death.KillerLocation, Death.VictimLocation, FColor::Red, true, -1, 0, 2);
-    }
-    if (Event == 0 || Event == 4) for (const auto& Segment : UArenaAnalyzeLibrary::BuildMovementLineSegments(S.MovementSamples))
-        DrawDebugLine(World, Segment.StartLocation, Segment.EndLocation, Color(Segment.ControllerId), true, -1, 0, 2);
-    if (Event == 0 || Event == 5) for (const auto& Damage : S.DamageSamples)
-    {
-        DrawDebugPoint(World, Damage.DamagedLocation, 12, FColor::Yellow, true);
-        if (Damage.bHasInstigatorLocation) DrawDebugLine(World, Damage.InstigatorLocation, Damage.DamagedLocation, FColor::Yellow, true);
-    }
-    Summary->SetText(FText::FromString(FString::Printf(TEXT("Filtered: %d shots | %d contacts | %d damage | %d deaths. Player=cyan, AI=orange, hit=green, death=red."),
-        S.ShotSamples.Num(), S.HitSamples.Num(), S.DamageSamples.Num(), S.DeathSamples.Num())));
-#endif
+    AActor* Visualizer = GetVisualizer();
+    if (!Visualizer) { Summary->SetText(FText::FromString(TEXT("Visualizer unavailable."))); return; }
+    const double Start = FPlatformTime::Seconds();
+    const auto S = UArenaAnalyzeLibrary::FilterSession(Session, WeaponIds.IsValidIndex(Weapons->GetSelectedIndex() - 1)
+        ? WeaponIds[Weapons->GetSelectedIndex() - 1] : FString(), Actors->GetSelectedIndex());
+    const int32 Count = UArenaAnalyzeRenderLibrary::RenderSession(Visualizer, S, Events->GetSelectedIndex());
+    Summary->SetText(FText::FromString(FString::Printf(TEXT("%d shots | %d contacts | %d damage | %d deaths\nISM: %d instances, %.1f ms. Previous draw replaced."),
+        S.ShotSamples.Num(), S.HitSamples.Num(), S.DamageSamples.Num(), S.DeathSamples.Num(), Count, (FPlatformTime::Seconds() - Start) * 1000)));
 }

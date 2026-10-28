@@ -3,6 +3,8 @@
 #include "Analyzer/ArenaAnalyzeControls.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/PanelWidget.h"
+#include "Components/ScrollBox.h"
+#include "Components/ComboBoxString.h"
 #include "Components/ActorComponent.h"
 #include "EdGraphSchema_K2.h"
 #include "Engine/Blueprint.h"
@@ -90,8 +92,18 @@ FString UArenaAnalyzerMigrationLibrary::ConnectAnalyzer(UBlueprint* BP)
     if (BP->GetName() == TEXT("EUW_ArenaAnalyzer"))
     {
         auto* Widget = Cast<UWidgetBlueprint>(BP);
-        auto* Root = Widget && Widget->WidgetTree ? Cast<UPanelWidget>(Widget->WidgetTree->RootWidget) : nullptr;
+        auto* Root = Widget && Widget->WidgetTree ? Cast<UPanelWidget>(Widget->WidgetTree->FindWidget(TEXT("StackBox_0"))) : nullptr;
         if (!Root) return TEXT("ERROR: missing utility root");
+        if (!Widget->WidgetTree->FindWidget(TEXT("AnalyzerScroll")))
+        {
+            UWidget* Content = Widget->WidgetTree->RootWidget;
+            auto* Scroll = Widget->WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass(), TEXT("AnalyzerScroll"));
+            Scroll->SetAlwaysShowScrollbar(true); Scroll->SetAlwaysShowScrollbarTrack(true);
+            Scroll->SetScrollbarThickness(FVector2D(12,12)); Scroll->SetConsumeMouseWheel(EConsumeMouseWheel::Always);
+            Widget->WidgetTree->RootWidget = Scroll; Scroll->AddChild(Content);
+            Widget->OnVariableAdded(TEXT("AnalyzerScroll"));
+        }
+        UArenaAnalyzeControls::ConfigureCombo(Cast<UComboBoxString>(Widget->WidgetTree->FindWidget(TEXT("Files"))));
         if (!Widget->WidgetTree->FindWidget(TEXT("CombatRecords")))
         {
             auto* Controls = Widget->WidgetTree->ConstructWidget<UArenaAnalyzeControls>(UArenaAnalyzeControls::StaticClass(), TEXT("CombatRecords"));

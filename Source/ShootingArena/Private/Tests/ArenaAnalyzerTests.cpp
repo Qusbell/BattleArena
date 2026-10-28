@@ -1,6 +1,10 @@
 #if WITH_DEV_AUTOMATION_TESTS
 #include "Analyzer/ArenaAnalyzeLibrary.h"
 #include "Analyzer/ArenaCombatLibrary.h"
+#include "Analyzer/ArenaAnalyzeRenderLibrary.h"
+#include "Components/InstancedStaticMeshComponent.h"
+#include "Components/SceneComponent.h"
+#include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
 #include "AIController.h"
@@ -100,6 +104,65 @@ bool FArenaAnalyzerJsonTest::RunTest(const FString& Parameters)
     TestEqual(TEXT("Shot before time range excluded from displayed shots"), Filtered.ShotSamples.Num(), 0);
     TestEqual(TEXT("Later hit still joins original shot"), Filtered.HitSamples.Num(), 1);
     TestEqual(TEXT("Wrong weapon excluded"), UArenaAnalyzeLibrary::FilterSession(S, TEXT("WeaponB")).HitSamples.Num(), 0);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FArenaAnalyzerISMTest, "ShootingArena.Analyzer.InstancedRendering",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FArenaAnalyzerISMTest::RunTest(const FString& Parameters)
+{
+    FTestWorldWrapper Context;
+    if (!Context.CreateTestWorld(EWorldType::Game)) return false;
+    AActor* Actor = Context.GetTestWorld()->SpawnActor<AActor>();
+    auto* Root = NewObject<USceneComponent>(Actor); Actor->AddInstanceComponent(Root); Actor->SetRootComponent(Root); Root->RegisterComponent();
+    Actor->SetActorLocation(FVector(1000,2000,3000));
+    UStaticMesh* Sphere = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Sphere.Sphere"));
+    UStaticMesh* Cube = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"));
+    auto Find = [&](FName Name) -> UInstancedStaticMeshComponent*
+    {
+        TInlineComponentArray<UInstancedStaticMeshComponent*> Cs(Actor);
+        for (auto* C : Cs) if (C->GetFName() == Name) return C;
+        return nullptr;
+    };
+    for (const TCHAR* Name : {TEXT("MovementISM"), TEXT("MovementLinkISM"), TEXT("DamagedISM"), TEXT("InstigatorISM"), TEXT("DamageLinkISM")})
+    {
+        auto* C = NewObject<UInstancedStaticMeshComponent>(Actor, FName(Name));
+        C->SetStaticMesh(FString(Name).Contains(TEXT("Link")) ? Cube : Sphere);
+        C->SetupAttachment(Root); Actor->AddInstanceComponent(C); C->RegisterComponent();
+    }
+    FArenaAnalyzeSession S; S.SchemaVersion = 2;
+    FArenaParticipant Player; Player.ControllerId = 0; Player.bPlayer = true; S.Participants.Add(Player);
+    for (int32 I = 0; I < 4; ++I)
+    {
+        FArenaMovementSample M; M.ControllerId = I == 3 ? 1 : 0; M.TrackId = I == 2 ? 1 : 0;
+        M.TimeSeconds = I; M.Location = FVector(110 + I * 100,0,0); S.MovementSamples.Add(M);
+    }
+    FArenaShotSample Shot; Shot.ControllerId = 0; Shot.ShotId = 5; Shot.Location = FVector(10,0,0); Shot.Direction = FVector::ForwardVector; S.ShotSamples.Add(Shot);
+    FArenaHitSample Hit; Hit.ShotId = 5; Hit.Location = FVector(80,0,0); S.HitSamples.Add(Hit);
+    FArenaDamageSample Damage; Damage.DamagedLocation = FVector(90,0,0); Damage.InstigatorLocation = FVector(70,0,0); Damage.bHasInstigatorLocation = true; S.DamageSamples.Add(Damage);
+    FArenaDeathSample Death; Death.VictimLocation = FVector(90,0,0); S.DeathSamples.Add(Death);
+    TestEqual(TEXT("Expected point/link instances, with no cross-respawn segment or unknown killer line"), UArenaAnalyzeRenderLibrary::RenderSession(Actor,S), 13);
+    TestEqual(TEXT("Repeat draw replaces instances"), UArenaAnalyzeRenderLibrary::RenderSession(Actor,S), 13);
+    auto* PlayerPoints = Find(TEXT("PlayerMovementISM"));
+    if (!TestNotNull(TEXT("Player layer uses original instigator mesh"), PlayerPoints)) return false;
+    TestTrue(TEXT("Player point template reused"), PlayerPoints->GetStaticMesh() == Sphere);
+    TestEqual(TEXT("AI point uses original component"), Find(TEXT("MovementISM"))->GetInstanceCount(), 1);
+    FTransform T; Find(TEXT("PlayerMovementLinkISM"))->GetInstanceTransform(0,T,true);
+    TestTrue(TEXT("Link midpoint is world-space despite actor offset"), T.GetLocation().Equals(FVector(160,0,0)));
+    TestTrue(TEXT("Link uses original length/100 and .02 thickness"), T.GetScale3D().Equals(FVector(1,.02,.02),0.0001));
+    TestEqual(TEXT("Event switch replaces other categories"), UArenaAnalyzeRenderLibrary::RenderSession(Actor,S,1), 2);
+    TestEqual(TEXT("Movement removed after switching to shots"), PlayerPoints->GetInstanceCount(), 0);
+    UArenaAnalyzeRenderLibrary::ClearVisualizer(Actor);
+    TInlineComponentArray<UInstancedStaticMeshComponent*> Cs(Actor);
+    for (auto* C : Cs) TestEqual(TEXT("Clear covers original and added layers"), C->GetInstanceCount(), 0);
+    S.MovementSamples.Reset(); S.ShotSamples.Reset(); S.HitSamples.Reset(); S.DamageSamples.Reset(); S.DeathSamples.Reset();
+    for (int32 I = 0; I < 10000; ++I)
+    {
+        FArenaMovementSample M; M.ControllerId = 0; M.TrackId = 0; M.TimeSeconds = I; M.Location = FVector(I*10,0,0); S.MovementSamples.Add(M);
+    }
+    const double Start = FPlatformTime::Seconds();
+    TestEqual(TEXT("Large movement batch has one point per sample and one link per adjacent pair"), UArenaAnalyzeRenderLibrary::RenderSession(Actor,S,4), 19999);
+    AddInfo(FString::Printf(TEXT("10,000 movement samples -> 19,999 ISM instances in %.2f ms (CPU fixture, not viewport FPS)."), (FPlatformTime::Seconds()-Start)*1000));
     return true;
 }
 #endif

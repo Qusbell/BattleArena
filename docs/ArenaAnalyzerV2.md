@@ -36,7 +36,11 @@ MCP invokes the narrow editor migration library; ordinary file tools do not insp
 
 `FilterSession` filters combat by exact WeaponId, human/AI kind, controller/track and time. Hits join shots independently of the selected time range, so delayed hits can refer to earlier shots. Movement has no weapon identity and is not weapon-filtered.
 
-EUW_ArenaAnalyzer retains its existing file and drawing controls. The additional Combat records panel reads that same file selection; Load combat populates weapon options. Draw combat supports shots, contacts, deaths, movement and damage. Human movement/firing is cyan; AI is orange; contacts green; deaths red. Clear combat clears persistent debug primitives in the editor world. Existing mesh-based visualizer remains available through the original controls.
+EUW_ArenaAnalyzer retains its existing file and drawing controls. The entire utility is wrapped in a vertical ScrollBox with a visible scrollbar, including the original file selector and buttons. Combo buttons and menus use explicit light text, dark backgrounds and distinct hover/selection colors. The added controls use 13px text and compact rows.
+
+The Combat records panel reads the same file selection; Load combat populates weapon options. Draw combat supports shots, contacts, deaths, movement and damage. It resolves the **same BP_ArenaAnalyzeVisualizer actor through the existing Get Visualizer function** and uses its sphere/cube meshes and material templates. Movement and damage reuse the original named ISM components. Extra event/player layers are transient ISM components on that actor. Link transforms match Set Link ISM: midpoint, X-axis look rotation, length/100, Y/Z scale .02.
+
+Each Draw replaces the actor's previous instances and calls AddInstances once per layer, with collision/navigation disabled. It does not emit persistent Debug Draw primitives. Clear combat invokes the utility's original Clear function, so the same actor and all its layers are removed by either clear route. The status reports CPU draw time and instance count; it is not a viewport FPS measurement. The former Debug Draw implementation was removed after user feedback about draw stalls and poor visibility.
 
 ## Storage and cost
 
@@ -93,3 +97,22 @@ Blueprint assets under `/Game/QuakeLike_1_0`:
 - `Life/BPC_Life`
 
 The original visualizer asset is unchanged. `Content/QuakeLike_Base/Lvl_PortalMap.umap` also appears in the working changes because dirty editor packages were saved before restarting; no intentional analyzer edits were made to that level, and its saved contents were preserved.
+
+
+## Follow-up: UI and Draw correction
+
+- The first combat renderer used separate persistent Debug Draw primitives and accumulated them on repeated draws. This was different from the original visualizer and increased sustained viewport work, particularly the per-contact wire spheres.
+- It has been replaced by the original visualizer's ISM approach with batched uploads. This also avoids one Blueprint/AddInstance/render update per record.
+- FilterSession no longer copies all event arrays before clearing them; it constructs only the selected result arrays.
+- No weapon or projectile Blueprint assets are changed by this follow-up. Only the utility Blueprint receives the scroll wrapper and file-selector styling. The existing visualizer asset remains the template and is not rewritten.
+- Weapon instrumentation from the original task remains: WeaponBase BeginWeaponShot / ApplyAnalyzedDamage; pistol/machinegun/shotgun RecordTrace; railgun RecordTraces; plasma/rocket projectile impact and damage-context hooks. PlasmaGun and RocketLauncher weapon Blueprints themselves were not changed. BPC_Life contains the confirmed-death hook.
+
+
+Follow-up validation:
+
+- Development Editor build succeeded without Live Coding. All three Analyzer automation tests passed, including InstancedRendering.
+- The ISM fixture checks world-space transforms with an offset actor, the original link scale/midpoint, separate Player/AI layers, no cross-life segment, no unknown-killer origin line, event replacement and clear. 10,000 movement samples produced 19,999 instances in 6.10 ms of CPU fixture time.
+- Actual recording `64B2D4B24BA8672E33B04D8B23309917` (1,133 shots, 2,731 contacts, 1,369 damage events, 31 deaths) produced 15,724 ISM instances. Consecutive Draw calls took 8.7 and 5.6 ms of CPU filter/render preparation time, with the same instance count on both calls. A shots-only draw produced exactly 2,266 instances and removed the movement instances; the original Clear removed the entire visualizer actor. A fresh All-events draw took 6.4 ms.
+- Root ScrollBox overflow and scroll-to-end were verified with temporary runtime overflow content: maximum/current offset both 1934.26. The test spacer was removed. File selector foreground is explicit white, background linear RGB .035/.045/.065, font 13; menus also use explicit row and selected text colors.
+- These are CPU timings, not an FPS/GPU benchmark. The live editor remains open with the selected real recording and the improved ISM visualization. The two temporary Analyze recordings made by native test worlds were removed; the user's real recording was preserved.
+- Follow-up changed sources: ArenaAnalyzeControls.h/.cpp, ArenaAnalyzeLibrary.cpp, new ArenaAnalyzeRenderLibrary.h/.cpp, ArenaAnalyzerTests.cpp and the UI branch of ArenaAnalyzerMigrationLibrary.cpp. The only changed Blueprint asset in this follow-up is EUW_ArenaAnalyzer.

@@ -165,8 +165,10 @@ TArray<FArenaDamageSample> UArenaAnalyzeLibrary::FilterDamageSamples(
 FArenaAnalyzeSession UArenaAnalyzeLibrary::FilterSession(const FArenaAnalyzeSession& S, const FString& Weapon,
     int32 Kind, int32 ControllerId, int32 TrackId, double Start, double End)
 {
-    FArenaAnalyzeSession R = S;
-    R.MovementSamples.Reset(); R.DamageSamples.Reset(); R.ShotSamples.Reset(); R.HitSamples.Reset(); R.DeathSamples.Reset();
+    FArenaAnalyzeSession R;
+    R.SchemaVersion = S.SchemaVersion; R.SessionId = S.SessionId; R.ChunkIndex = S.ChunkIndex;
+    R.MapName = S.MapName; R.SampleInterval = S.SampleInterval; R.SessionDuration = S.SessionDuration;
+    R.Participants = S.Participants;
     TSet<int32> Actors;
     for (const auto& P : S.Participants) if (Kind == 0 || (Kind == 1 && P.bPlayer) || (Kind == 2 && !P.bPlayer)) Actors.Add(P.ControllerId);
     auto Actor = [&](int32 C, int32 T) { return (Kind == 0 || Actors.Contains(C)) && (ControllerId < 0 || C == ControllerId) && (TrackId < 0 || T == TrackId); };

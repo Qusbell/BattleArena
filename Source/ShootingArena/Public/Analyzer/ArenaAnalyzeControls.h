@@ -9,6 +9,8 @@ UCLASS()
 class SHOOTINGARENA_API UArenaAnalyzeControls : public UUserWidget
 {
     GENERATED_BODY()
+public:
+    static void ConfigureCombo(class UComboBoxString* Combo);
 protected:
     virtual bool Initialize() override;
 private:
@@ -20,6 +22,8 @@ private:
     FString LoadedFile;
     TArray<FString> WeaponIds;
     FString SelectedFile() const;
+    AActor* GetVisualizer() const;
+    UFUNCTION() UWidget* GenerateOption(FString Option);
     UFUNCTION() void LoadSession();
     UFUNCTION() void DrawRecords();
     UFUNCTION() void ClearRecords();
