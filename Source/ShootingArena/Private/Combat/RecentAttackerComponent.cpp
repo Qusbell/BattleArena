@@ -1,4 +1,5 @@
 #include "Combat/RecentAttackerComponent.h"
+#include "Analyzer/ArenaAnalyzeSubsystem.h"
 
 #include "Audio/KillStreakSettingsDataAsset.h"
 #include "Engine/World.h"
@@ -131,6 +132,12 @@ FKillCreditResolution URecentAttackerComponent::ResolveDeathCredit(
 		}
 	}
 
+	if (auto* Recorder = GetWorld()->GetSubsystem<UArenaAnalyzeSubsystem>())
+    {
+        const FString Source = Resolution.CreditSource == EKillCreditSource::DirectPlayerKill ? TEXT("DirectPlayerKill")
+            : Resolution.CreditSource == EKillCreditSource::RecentAttacker ? TEXT("RecentAttacker") : TEXT("None");
+        Recorder->RecordCredit(Cast<APawn>(Owner), Resolution.CreditedPlayerState, Source);
+    }
 	OnKillCreditResolved.Broadcast(Resolution);
 	return Resolution;
 }
