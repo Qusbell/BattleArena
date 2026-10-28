@@ -54,6 +54,10 @@
 		{
 			"Name": "CommonUI",
 			"Enabled": true
+		},
+		{
+			"Name": "SlateInsights",
+			"Enabled": true
 		}
 	]
 }
