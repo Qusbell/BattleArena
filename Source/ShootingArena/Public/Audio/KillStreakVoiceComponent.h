@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "UI/KillMedalTypes.h"
 #include "KillStreakVoiceComponent.generated.h"
 
 class UAudioComponent;
@@ -38,15 +39,17 @@ protected:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 private:
+	friend class FKillMedalAutomaticAwardsTest;
+
 	void ProcessKillBatch();
 	const FKillStreakVoiceTier* FindTierForKillCount(int32 KillCount) const;
 	USoundBase* SelectVoiceForCurrentStreak() const;
-	void DispatchVoiceToOwner(USoundBase* Sound);
-	void PlayVoiceLocally(USoundBase* Sound);
+	void DispatchVoiceToOwner(USoundBase* Sound, EKillMedalType MedalType);
+	void PlayVoiceLocally(USoundBase* Sound, EKillMedalType MedalType);
 	void ClearPendingVoiceLocally();
 
 	UFUNCTION(Client, Reliable)
-	void ClientPlayKillStreakVoice(USoundBase* Sound);
+	void ClientPlayKillStreakVoice(USoundBase* Sound, EKillMedalType MedalType);
 
 	UFUNCTION(Client, Reliable)
 	void ClientClearPendingKillStreakVoice();
@@ -66,4 +69,5 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<USoundBase> PendingKillVoice = nullptr;
+	EKillMedalType PendingKillMedal = EKillMedalType::None;
 };
