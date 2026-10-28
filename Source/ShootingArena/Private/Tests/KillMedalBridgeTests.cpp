@@ -124,6 +124,10 @@ bool FKillMedalBridgeTest::RunTest(const FString& Parameters)
 	CompleteCurrent();
 	TestFalse(TEXT("Queue becomes idle after the final medal"), PC->bHasActiveKillMedal);
 	TestFalse(TEXT("Idle queue stops polling"), World->GetTimerManager().TimerExists(PC->KillMedalQueueTimer));
+	PC->ShowConfiguredKillMedal(EKillMedalType::DoubleKill, true);
+	PC->ShowConfiguredKillMedal(EKillMedalType::TripleKill, true);
+	TestTrue(TEXT("A new voice replaces the visible medal without a second UI delay"), LabelWidget->GetText().EqualTo(PC->KillMedalStyles[EKillMedalType::TripleKill].Text));
+	TestTrue(TEXT("A superseded medal cannot remain queued"), PC->PendingKillMedals.IsEmpty());
 	TestFalse(TEXT("Missing widget is rejected"), PC->ShowKillMedalLocally(nullptr, Label, Value));
 	TestFalse(TEXT("Zero duration is rejected"), PC->ShowKillMedalLocally(MedalClass, Label, Value, 0.0));
 	TestFalse(TEXT("Nonfinite duration is rejected"), PC->ShowKillMedalLocally(MedalClass, Label, Value, std::numeric_limits<double>::infinity()));
@@ -168,20 +172,23 @@ bool FKillMedalAutomaticAwardsTest::RunTest(const FString& Parameters)
 	Voice->QueueKillEvent();
 	Voice->QueueKillEvent(true);
 	Voice->QueueKillEvent();
-	const TArray<EKillMedalType> Expected{EKillMedalType::FirstBlood, EKillMedalType::DoubleKill,
-		EKillMedalType::TripleKill, EKillMedalType::RevengeShot, EKillMedalType::Rampage};
-	if (!TestEqual(TEXT("All awards survive even when all sounds are disabled"), PC->PendingKillMedals.Num(), Expected.Num())) return false;
-	for (int32 Index = 0; Index < Expected.Num(); ++Index)
-	{
-		const FKillMedalStyle* Style = PC->KillMedalStyles.Find(Expected[Index]);
-		if (!TestNotNull(TEXT("Default style exists for each medal"), Style)) return false;
-		TestTrue(TEXT("Automatic awards retain event order"), PC->PendingKillMedals[Index].Style.Text.EqualTo(Style->Text));
-		TestNotNull(TEXT("Every award has an existing widget class"), PC->PendingKillMedals[Index].Style.MedalWidget.Get());
-		TestEqual(TEXT("Common editor duration is used"), PC->PendingKillMedals[Index].DisplayTime, 0.8);
-	}
+	if (!TestEqual(TEXT("Kills wait for the existing voice batch decision"), PC->PendingKillMedals.Num(), 1)) return false;
+	TestTrue(TEXT("First blood remains until the batch is processed"), PC->PendingKillMedals[0].Style.Text.EqualTo(PC->KillMedalStyles[EKillMedalType::FirstBlood].Text));
+	Voice->ProcessKillBatch();
+	if (!TestEqual(TEXT("A silent batch still shows only its selected medal"), PC->PendingKillMedals.Num(), 1)) return false;
+	TestTrue(TEXT("The highest selected tier replaces intermediate medals"), PC->PendingKillMedals[0].Style.Text.EqualTo(PC->KillMedalStyles[EKillMedalType::Rampage].Text));
+	TestEqual(TEXT("Common editor duration is used"), PC->PendingKillMedals[0].DisplayTime, 0.8);
+	TestEqual(TEXT("Selected medal retains its editor position"), PC->PendingKillMedals[0].Style.PositionOffset, PC->KillMedalStyles[EKillMedalType::Rampage].PositionOffset);
+	Voice->Settings->RevengeSound = Existing->RevengeSound;
+	if (!TestNotNull(TEXT("Existing revenge sound is configured"), Existing->RevengeSound.Get())) return false;
+	Voice->QueueKillEvent(true);
+	Voice->ProcessKillBatch();
+	if (!TestEqual(TEXT("Revenge selects one medal instead of also showing the streak"), PC->PendingKillMedals.Num(), 1)) return false;
+	TestTrue(TEXT("Medal uses the existing voice's revenge priority"), PC->PendingKillMedals[0].Style.Text.EqualTo(PC->KillMedalStyles[EKillMedalType::RevengeShot].Text));
 	Voice->NotifyOwnerDeath();
 	Voice->QueueKillEvent();
-	TestEqual(TEXT("Existing death reset prevents the next kill from continuing the old streak"), PC->PendingKillMedals.Num(), 5);
+	Voice->ProcessKillBatch();
+	TestEqual(TEXT("Existing death reset prevents an additional streak medal"), PC->PendingKillMedals.Num(), 1);
 	return !HasAnyErrors();
 }
 
@@ -199,8 +206,8 @@ bool FKillMedalNetworkTest::RunTest(const FString& Parameters)
 	const FString OriginalMap = EditorWorld->GetOutermost()->GetName();
 	const FString Fixture = TEXT("/Game/QuakeLike_Base/Lvl_QuakeMap_00");
 	AddExpectedError(TEXT("저장된 Area Graph가 없습니다"), EAutomationExpectedErrorFlags::Contains, 0);
-	// Known missing assets in this legacy fixture are unrelated to medal delivery.
-	AddExpectedError(TEXT("프로퍼티 WB_Crosshair_Base"), EAutomationExpectedErrorFlags::Contains, 0);
+	// The legacy HUD can report this unrelated initialization error, but need not report it.
+	AddExpectedError(TEXT("프로퍼티 WB_Crosshair_Base"), EAutomationExpectedErrorFlags::Contains, -1);
 	if (OriginalMap != Fixture) ADD_LATENT_AUTOMATION_COMMAND(FEditorLoadMap(Fixture));
 	ADD_LATENT_AUTOMATION_COMMAND(FStartPIECommand(false));
 	const double ReadyDeadline = FPlatformTime::Seconds() + 30.0;
@@ -279,11 +286,12 @@ bool FKillMedalNetworkTest::RunTest(const FString& Parameters)
 			bool bLastFading = false;
 			bool bSawFade = false;
 			bool bObserverChanged = false;
+			bool bCheckedFIFO = false;
 		};
 		const auto Observation = MakeShared<FObservation>();
 		const FString ObserverLabel = Label(MedalUI(Observer));
 		const double Start = FPlatformTime::Seconds();
-		const TWeakObjectPtr<AMyPlayerController> OwnerWeak(Owner), ObserverWeak(Observer);
+		const TWeakObjectPtr<AMyPlayerController> OwnerWeak(Owner), ObserverWeak(Observer), SenderWeak(Sender);
 		const TArray<FString> Expected{TEXT("First Blood"), TEXT("Double Kill"), TEXT("Triple Kill"), TEXT("Revenge Shot")};
 		{
 			// Python's editor script guard forces RPCs to local callspace; exercise real network routing here.
@@ -291,7 +299,7 @@ bool FKillMedalNetworkTest::RunTest(const FString& Parameters)
 			for (EKillMedalType Type : {EKillMedalType::FirstBlood, EKillMedalType::DoubleKill, EKillMedalType::TripleKill, EKillMedalType::RevengeShot})
 				Sender->AwardKillMedal(Type);
 		}
-		ADD_LATENT_AUTOMATION_COMMAND(FPollKillMedalNetwork([this, Observation, OwnerWeak, ObserverWeak, ObserverLabel, Start, Expected, MedalUI, Label]()
+		ADD_LATENT_AUTOMATION_COMMAND(FPollKillMedalNetwork([this, Observation, OwnerWeak, ObserverWeak, SenderWeak, ObserverLabel, Start, Expected, MedalUI, Label]()
 		{
 			if (!OwnerWeak.IsValid() || !ObserverWeak.IsValid()) { AddError(TEXT("PIE clients disappeared during the test")); return true; }
 			UUserWidget* Medals = MedalUI(OwnerWeak.Get());
@@ -310,6 +318,14 @@ bool FKillMedalNetworkTest::RunTest(const FString& Parameters)
 			}
 			Observation->bLastFading = bFading;
 			if (Elapsed < 8.0) return false;
+			if (Observation->bCheckedFIFO)
+			{
+				if (Elapsed < 9.0) return false;
+				TestEqual(TEXT("The voice RPC delivers only its selected revenge medal"), Current, FString(TEXT("Revenge Shot")));
+				TestFalse(TEXT("The unified voice and medal cue remains owner-only"), Observation->bObserverChanged);
+				return true;
+			}
+			Observation->bCheckedFIFO = true;
 			TestEqual(TEXT("All remote awards reached the owner"), Observation->Seen.Num(), Expected.Num());
 			for (int32 Index = 0; Index < FMath::Min(Observation->Seen.Num(), Expected.Num()); ++Index)
 			{
@@ -320,7 +336,12 @@ bool FKillMedalNetworkTest::RunTest(const FString& Parameters)
 			TestTrue(TEXT("Existing fade actually played in PIE"), Observation->bSawFade);
 			TestFalse(TEXT("Other client never received these awards"), Observation->bObserverChanged);
 			AddInfo(FString::Printf(TEXT("Owner-only FIFO: %s"), *FString::Join(Observation->Seen, TEXT(" -> "))));
-			return true;
+			UKillStreakVoiceComponent* Voice = SenderWeak.IsValid() && SenderWeak->PlayerState
+				? SenderWeak->PlayerState->FindComponentByClass<UKillStreakVoiceComponent>() : nullptr;
+			if (!TestNotNull(TEXT("Existing server voice component"), Voice)) return true;
+			Voice->NotifyOwnerDeath();
+			for (int32 Index = 0; Index < 4; ++Index) Voice->QueueKillEvent(Index == 3);
+			return false;
 		}));
 		return true;
 	}));

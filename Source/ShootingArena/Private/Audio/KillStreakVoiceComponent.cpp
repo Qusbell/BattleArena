@@ -45,6 +45,7 @@ void UKillStreakVoiceComponent::EndPlay(const EEndPlayReason::Type EndPlayReason
 	}
 
 	PendingKillVoice = nullptr;
+	PendingKillMedal = EKillMedalType::None;
 	Super::EndPlay(EndPlayReason);
 }
 
@@ -62,21 +63,6 @@ void UKillStreakVoiceComponent::QueueKillEvent(bool bIsRevenge)
 		++PendingKillEventCount;
 	}
 	bPendingRevengeKill |= bIsRevenge;
-
-	if (const APlayerState* State = Cast<APlayerState>(Owner))
-	{
-		if (AMyPlayerController* PC = Cast<AMyPlayerController>(State->GetPlayerController()))
-		{
-			// Reuse the existing committed and batched counts; medal delivery never gates audio.
-			const int32 CreditedCount = static_cast<int32>(FMath::Min<int64>(
-				static_cast<int64>(CurrentStreakCount) + PendingKillEventCount, MAX_int32));
-			if (const FKillStreakVoiceTier* Tier = FindTierForKillCount(CreditedCount))
-			{
-				if (const EKillMedalType* Type = PC->KillMedalTierTypes.Find(Tier->RequiredKillCount)) PC->AwardKillMedal(*Type);
-			}
-			if (bIsRevenge) PC->AwardKillMedal(EKillMedalType::RevengeShot);
-		}
-	}
 
 	// The first event starts the fixed window. Further events are collected without extending it.
 	if (PendingKillEventCount > 1)
@@ -110,24 +96,15 @@ void UKillStreakVoiceComponent::PlayFirstBloodVoice()
 	{
 		return;
 	}
-	if (const APlayerState* State = Cast<APlayerState>(Owner))
-	{
-		if (AMyPlayerController* PC = Cast<AMyPlayerController>(State->GetPlayerController())) PC->AwardKillMedal(EKillMedalType::FirstBlood);
-	}
-	if (!IsValid(Settings)) return;
-
 	TArray<USoundBase*> ValidSounds;
-	for (USoundBase* Sound : Settings->FirstBloodSounds)
+	if (IsValid(Settings))
 	{
-		if (IsValid(Sound) && Sound->IsOneShot())
+		for (USoundBase* Sound : Settings->FirstBloodSounds)
 		{
-			ValidSounds.Add(Sound);
+			if (IsValid(Sound) && Sound->IsOneShot()) ValidSounds.Add(Sound);
 		}
 	}
-	if (!ValidSounds.IsEmpty())
-	{
-		DispatchVoiceToOwner(ValidSounds[FMath::RandHelper(ValidSounds.Num())]);
-	}
+	DispatchVoiceToOwner(ValidSounds.IsEmpty() ? nullptr : ValidSounds[FMath::RandHelper(ValidSounds.Num())], EKillMedalType::FirstBlood);
 }
 
 void UKillStreakVoiceComponent::NotifyOwnerDeath()
@@ -178,11 +155,13 @@ void UKillStreakVoiceComponent::ProcessKillBatch()
 		MAX_int32));
 
 	USoundBase* SelectedSound = nullptr;
+	EKillMedalType SelectedMedal = EKillMedalType::None;
 	if (bBatchContainsRevengeKill && IsValid(Settings) && IsValid(Settings->RevengeSound))
 	{
 		if (Settings->RevengeSound->IsOneShot())
 		{
 			SelectedSound = Settings->RevengeSound;
+			SelectedMedal = EKillMedalType::RevengeShot;
 		}
 		else
 		{
@@ -194,8 +173,15 @@ void UKillStreakVoiceComponent::ProcessKillBatch()
 	if (!IsValid(SelectedSound))
 	{
 		SelectedSound = SelectVoiceForCurrentStreak();
+		const APlayerState* State = Cast<APlayerState>(GetOwner());
+		const AMyPlayerController* PC = State ? Cast<AMyPlayerController>(State->GetPlayerController()) : nullptr;
+		const FKillStreakVoiceTier* Tier = FindTierForKillCount(CurrentStreakCount);
+		if (PC && Tier)
+		{
+			if (const EKillMedalType* Type = PC->KillMedalTierTypes.Find(Tier->RequiredKillCount)) SelectedMedal = *Type;
+		}
 	}
-	if (!IsValid(SelectedSound))
+	if (!IsValid(SelectedSound) && SelectedMedal == EKillMedalType::None)
 	{
 		return;
 	}
@@ -216,7 +202,7 @@ void UKillStreakVoiceComponent::ProcessKillBatch()
 		? FMath::Max(0.0f, Settings->KillVoiceOverlapTime)
 		: 0.0f;
 	NextVoiceAllowedTime = CurrentTime + OverlapTime;
-	DispatchVoiceToOwner(SelectedSound);
+	DispatchVoiceToOwner(SelectedSound, SelectedMedal);
 }
 
 const FKillStreakVoiceTier* UKillStreakVoiceComponent::FindTierForKillCount(int32 KillCount) const
@@ -290,9 +276,9 @@ USoundBase* UKillStreakVoiceComponent::SelectVoiceForCurrentStreak() const
 	return ValidSounds[FMath::RandHelper(ValidSounds.Num())];
 }
 
-void UKillStreakVoiceComponent::DispatchVoiceToOwner(USoundBase* Sound)
+void UKillStreakVoiceComponent::DispatchVoiceToOwner(USoundBase* Sound, EKillMedalType MedalType)
 {
-	if (!IsValid(Sound))
+	if (!IsValid(Sound) && MedalType == EKillMedalType::None)
 	{
 		return;
 	}
@@ -314,17 +300,17 @@ void UKillStreakVoiceComponent::DispatchVoiceToOwner(USoundBase* Sound)
 
 	if (PlayerController->IsLocalController())
 	{
-		PlayVoiceLocally(Sound);
+		PlayVoiceLocally(Sound, MedalType);
 	}
 	else if (GetOwner()->HasAuthority())
 	{
-		ClientPlayKillStreakVoice(Sound);
+		ClientPlayKillStreakVoice(Sound, MedalType);
 	}
 }
 
-void UKillStreakVoiceComponent::ClientPlayKillStreakVoice_Implementation(USoundBase* Sound)
+void UKillStreakVoiceComponent::ClientPlayKillStreakVoice_Implementation(USoundBase* Sound, EKillMedalType MedalType)
 {
-	PlayVoiceLocally(Sound);
+	PlayVoiceLocally(Sound, MedalType);
 }
 
 void UKillStreakVoiceComponent::ClientClearPendingKillStreakVoice_Implementation()
@@ -332,11 +318,11 @@ void UKillStreakVoiceComponent::ClientClearPendingKillStreakVoice_Implementation
 	ClearPendingVoiceLocally();
 }
 
-void UKillStreakVoiceComponent::PlayVoiceLocally(USoundBase* Sound)
+void UKillStreakVoiceComponent::PlayVoiceLocally(USoundBase* Sound, EKillMedalType MedalType)
 {
 	UWorld* World = GetWorld();
 	if (!IsValid(World) || World->bIsTearingDown || World->GetNetMode() == NM_DedicatedServer
-		|| !IsValid(Sound) || !Sound->IsOneShot())
+		|| (!IsValid(Sound) && MedalType == EKillMedalType::None) || (IsValid(Sound) && !Sound->IsOneShot()))
 	{
 		return;
 	}
@@ -345,6 +331,7 @@ void UKillStreakVoiceComponent::PlayVoiceLocally(USoundBase* Sound)
 	{
 		// Only one pending voice is retained; the newest eligible cue replaces the prior one.
 		PendingKillVoice = Sound;
+		PendingKillMedal = MedalType;
 		return;
 	}
 
@@ -354,7 +341,12 @@ void UKillStreakVoiceComponent::PlayVoiceLocally(USoundBase* Sound)
 		ActiveVoiceComponent = nullptr;
 	}
 
-	ActiveVoiceComponent = UGameplayStatics::SpawnSound2D(World, Sound);
+	const APlayerState* State = Cast<APlayerState>(GetOwner());
+	if (AMyPlayerController* PC = State ? Cast<AMyPlayerController>(State->GetPlayerController()) : nullptr)
+	{
+		PC->ShowConfiguredKillMedal(MedalType, true);
+	}
+	ActiveVoiceComponent = IsValid(Sound) ? UGameplayStatics::SpawnSound2D(World, Sound) : nullptr;
 	if (IsValid(ActiveVoiceComponent))
 	{
 		ActiveVoiceComponent->OnAudioFinished.AddUniqueDynamic(this, &ThisClass::HandleActiveVoiceFinished);
@@ -364,6 +356,7 @@ void UKillStreakVoiceComponent::PlayVoiceLocally(USoundBase* Sound)
 void UKillStreakVoiceComponent::ClearPendingVoiceLocally()
 {
 	PendingKillVoice = nullptr;
+	PendingKillMedal = EKillMedalType::None;
 }
 
 void UKillStreakVoiceComponent::HandleActiveVoiceFinished()
@@ -375,9 +368,11 @@ void UKillStreakVoiceComponent::HandleActiveVoiceFinished()
 	}
 
 	USoundBase* VoiceToPlay = PendingKillVoice;
+	const EKillMedalType MedalToShow = PendingKillMedal;
 	PendingKillVoice = nullptr;
-	if (IsValid(VoiceToPlay))
+	PendingKillMedal = EKillMedalType::None;
+	if (IsValid(VoiceToPlay) || MedalToShow != EKillMedalType::None)
 	{
-		PlayVoiceLocally(VoiceToPlay);
+		PlayVoiceLocally(VoiceToPlay, MedalToShow);
 	}
 }
