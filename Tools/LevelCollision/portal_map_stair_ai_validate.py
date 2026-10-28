@@ -69,8 +69,11 @@ class StairAIValidation:
         source=self.repair.source;lo,hi=source.static_mesh_component.get_local_bounds();t=source.get_actor_transform()
         a=unreal.MathLibrary.transform_location(t,unreal.Vector(lo.x,(lo.y+hi.y)/2,0))
         b=unreal.MathLibrary.transform_location(t,unreal.Vector(hi.x,(lo.y+hi.y)/2,0))
-        progress=(s-a.dot(d))/(b-a).dot(d)
-        if not .2<progress<.8 or abs((position-a).dot(l))>self.repair.plan_data['width']/2-self.radius/2:return False
+        spans=[(unreal.Vector(*p['evidence']['upper']).dot(d),
+                unreal.Vector(*p['evidence']['lower']).dot(d)) for p in self.repair.plans]
+        first=min(min(span) for span in spans);last=max(max(span) for span in spans)
+        progress=(s-first)/(last-first)
+        if not .05<progress<.95 or abs((position-a).dot(l))>self.repair.plan_data['width']/2-self.radius/2:return False
         heights=[]
         for plan in self.repair.plans:
             aa,bb=(unreal.Vector(*plan['evidence'][k]) for k in ('upper','lower'))
@@ -78,7 +81,15 @@ class StairAIValidation:
             if min(sa,sb)-1<=s<=max(sa,sb)+1:
                 f=(s-sa)/(sb-sa)
                 heights.append(aa.z+(bb.z-aa.z)*f)
-        return bool(heights and abs(position.z-self.height-max(heights))<65)
+        if not heights or abs(position.z-self.height-max(heights))>=65:return False
+        # Short ramps can be crossed in one low-frame-rate tick. Use the
+        # fitted collision footprint and verify its actual support actor,
+        # rather than miss it with a window based on the visual source bounds.
+        support=unreal.SystemLibrary.line_trace_single_by_profile(self.world,position,
+            position-unreal.Vector(0,0,self.height+90),'Pawn',False,self.pawns,unreal.DrawDebugTrace.NONE)
+        if not support:return False
+        proxy_names={p['proxy_actor'].rsplit('.',1)[-1] for p in self.repair.plans}
+        return support.to_tuple()[9].get_name() in proxy_names
 
     def finish(self,passed,reason,now):
         c=self.current;p=self.pawn.get_actor_location()
