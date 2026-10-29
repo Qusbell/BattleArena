@@ -159,6 +159,34 @@ namespace
 		return Property && Container && Property->GetPropertyValue_InContainer(Container);
 	}
 
+	/** DT_Character row (C01...) whose Characteristic_ID list holds the given characteristic row, empty when none does. */
+	FString FindCharacterRowByCharacteristic(const FString& CharacteristicRow)
+	{
+		const UDataTable* Table = LoadObject<UDataTable>(nullptr, TEXT("/Game/QuakeLike_1_0/GameFlow/Table/DT/DT_Character.DT_Character"));
+		if (!Table || !Table->GetRowStruct() || CharacteristicRow.IsEmpty())
+		{
+			return FString();
+		}
+		const FArrayProperty* List = CastField<FArrayProperty>(FindLoose(Table->GetRowStruct(), TEXT("Characteristic_ID")));
+		const FNameProperty* Item = List ? CastField<FNameProperty>(List->Inner) : nullptr;
+		if (!Item)
+		{
+			return FString();
+		}
+		for (const TPair<FName, uint8*>& Row : Table->GetRowMap())
+		{
+			FScriptArrayHelper Helper(List, List->ContainerPtrToValuePtr<void>(Row.Value));
+			for (int32 Index = 0; Index < Helper.Num(); ++Index)
+			{
+				if (Item->GetPropertyValue(Helper.GetElementPtr(Index)).ToString() == CharacteristicRow)
+				{
+					return Row.Key.ToString();
+				}
+			}
+		}
+		return FString();
+	}
+
 	FString WeaponNameFromPath(const FString& Path)
 	{
 		// "/Game/.../DA_Pistol.DA_Pistol" -> "DA_Pistol", "/Game/.../BP_Weapon_Pistol.BP_Weapon_Pistol_C" -> "BP_Weapon_Pistol_C"
@@ -570,22 +598,35 @@ bool UArenaMatchLogSubsystem::TryWriteParticipant(int32 ParticipantId, FParticip
 	{
 		ReadString(PlayerState->GetClass(), PlayerState, TEXT("SelectedCharacterRow"), CharacterId);
 	}
-	if (CharacterId.IsEmpty())
-	{
-		CharacterId = Controller->GetPawn() ? Controller->GetPawn()->GetClass()->GetName() : Controller->GetClass()->GetName();
-		UE_LOG(LogArenaMatchLog, Warning, TEXT("Participant %d has no SelectedCharacterRow; using class name %s"), ParticipantId, *CharacterId);
-	}
 
 	FString DifficultyId, CharacteristicId, Hash;
 	if (bBot)
 	{
-		if (const AGameModeBase* GameMode = GetWorld()->GetAuthGameMode())
-		{
-			ReadString(GameMode->GetClass(), GameMode, TEXT("Selected_Difficulty"), DifficultyId);
-		}
-		if (PlayerState)
+		// AI spawned by the game modes get their characteristic row on the controller (e.g. "PJH_Normal"); the suffix is the difficulty.
+		ReadString(Controller->GetClass(), Controller, TEXT("CharacteristicRowNameOverride"), CharacteristicId);
+		if (CharacteristicId.IsEmpty() && PlayerState)
 		{
 			ReadString(PlayerState->GetClass(), PlayerState, TEXT("Characteristic_ID"), CharacteristicId);
+		}
+		int32 Underscore = INDEX_NONE;
+		if (CharacteristicId.FindLastChar(TEXT('_'), Underscore))
+		{
+			const FString Suffix = CharacteristicId.Mid(Underscore + 1);
+			if (Suffix == TEXT("Easy") || Suffix == TEXT("Normal") || Suffix == TEXT("Hard"))
+			{
+				DifficultyId = Suffix;
+			}
+		}
+		if (DifficultyId.IsEmpty())
+		{
+			if (const AGameModeBase* GameMode = GetWorld()->GetAuthGameMode())
+			{
+				ReadString(GameMode->GetClass(), GameMode, TEXT("Selected_Difficulty"), DifficultyId);
+			}
+		}
+		if (CharacterId.IsEmpty())
+		{
+			CharacterId = FindCharacterRowByCharacteristic(CharacteristicId);
 		}
 		UFunction* Function = Controller->FindFunction(TEXT("GetCharacteristic"));
 		if (!Function)
@@ -632,6 +673,12 @@ bool UArenaMatchLogSubsystem::TryWriteParticipant(int32 ParticipantId, FParticip
 		}
 		if (DifficultyId.IsEmpty()) DifficultyId = TEXT("Unknown");
 		if (CharacteristicId.IsEmpty()) CharacteristicId = TEXT("Unknown");
+	}
+
+	if (CharacterId.IsEmpty())
+	{
+		CharacterId = Controller->GetPawn() ? Controller->GetPawn()->GetClass()->GetName() : Controller->GetClass()->GetName();
+		UE_LOG(LogArenaMatchLog, Warning, TEXT("Participant %d has no character row; using class name %s"), ParticipantId, *CharacterId);
 	}
 
 	Enqueue(FString::Printf(TEXT("INSERT INTO participant (MatchId,ParticipantId,bIsBot,CharacterId,DifficultyId,CharacteristicId,BotSettingsHash) VALUES (%s,%d,%s,%s,%s,%s,%s)"),
