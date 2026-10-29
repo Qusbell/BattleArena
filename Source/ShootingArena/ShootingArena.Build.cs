@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 using UnrealBuildTool;
 
@@ -28,10 +28,11 @@ public class ShootingArena : ModuleRules
             "Json",
             "JsonUtilities",
             "AnimGraphRuntime",
-            "AnimationCore"
+            "AnimationCore",
+            "SQLiteCore"
         } );
 
-        PrivateDependencyModuleNames.AddRange(new string[] { "NetCore", "RHI", "RenderCore", "MovieScene", "MeshDescription", "StaticMeshDescription", "Navmesh" });
+        PrivateDependencyModuleNames.AddRange(new string[] { "CoreOnline", "NetCore", "RHI", "RenderCore", "MovieScene", "MeshDescription", "StaticMeshDescription", "Navmesh", "MediaAssets", "AssetRegistry" });
 
         // Editor 전용 기능입니다.
         // 패키징/Shipping 빌드에는 UnrealEd와 GameplayValidatorEditor가 포함되지 않습니다.

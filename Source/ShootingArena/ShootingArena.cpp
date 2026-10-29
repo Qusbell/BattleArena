@@ -73,6 +73,14 @@ public:
             return IsValid(PathLink) ? PathLink->IsEnabled() : false;
         };
 
+        Callbacks.AttachToGround = [](AActor* Actor)
+        {
+            if (APathLink* PathLink = Cast<APathLink>(Actor); IsValid(PathLink))
+            {
+                PathLink->AttachToGround();
+            }
+        };
+
         FGameplayValidatorPathLinkBridge::Register(MoveTemp(Callbacks));
 #endif
     }

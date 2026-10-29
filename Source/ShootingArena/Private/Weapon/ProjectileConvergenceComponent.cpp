@@ -31,7 +31,17 @@ bool UProjectileConvergenceComponent::Initialize(UProjectileMovementComponent* I
 	Movement->UpdatedComponent->SetWorldRotation(Movement->Velocity.Rotation());
 	Movement->UpdateComponentVelocity();
 	Movement->SetComponentTickEnabled(false);
+	SetComponentTickEnabled(true);
 	return true;
+}
+
+void UProjectileConvergenceComponent::ResetForPool()
+{
+	SetComponentTickEnabled(false);
+	Movement = nullptr;
+	Join = FVector::ZeroVector;
+	Forward = FVector::ForwardVector;
+	bJoined = false;
 }
 
 void UProjectileConvergenceComponent::TickComponent(float DeltaTime, ELevelTick TickType,
@@ -50,7 +60,7 @@ void UProjectileConvergenceComponent::TickComponent(float DeltaTime, ELevelTick 
 	const float FirstTime = FMath::Min(DeltaTime, static_cast<float>(TimeToJoin));
 	if (FirstTime > 0.f) Movement->TickComponent(FirstTime, TickType, &Movement->PrimaryComponentTick);
 	// A blocking hit may have stopped movement or destroyed the actor. Never resume through that hit.
-	if (!IsValid(GetOwner()) || !Movement->IsActive() || !Movement->UpdatedComponent) return;
+	if (!IsValid(GetOwner()) || !IsValid(Movement) || !Movement->IsActive() || !Movement->UpdatedComponent) return;
 	if (TimeToJoin <= DeltaTime && Movement->UpdatedComponent->GetComponentLocation().Equals(Join, 0.1))
 	{
 		bJoined = true;

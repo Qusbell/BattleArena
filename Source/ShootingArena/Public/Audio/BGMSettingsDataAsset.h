@@ -42,16 +42,9 @@ class SHOOTINGARENA_API UBGMSettingsDataAsset : public UDataAsset
 	GENERATED_BODY()
 
 public:
-	UBGMSettingsDataAsset();
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "BGM|Tracks")
+	/** 메인/로비/맵 선택 등 모든 비 Gameplay 화면의 공용 곡. 기존 에셋 값을 유지합니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "BGM|Tracks", meta = (DisplayName = "Menu BGM"))
 	FBGMTrack MainMenuBGM;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "BGM|Tracks")
-	FBGMTrack LobbyBGM;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "BGM|Tracks")
-	FBGMTrack ResultBGM;
 
 	/** 키는 GetCurrentLevelName의 PIE 접두사 제거 후 맵 이름 또는 별도의 MapID입니다. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "BGM|Tracks")
@@ -63,13 +56,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "BGM|Transition", meta = (ClampMin = "0.0"))
 	float DefaultFadeOutTime = 1.0f;
 
-	/** 이 이름의 맵 진입 시 Main Menu BGM을 자동 재생합니다. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "BGM|Automatic Maps")
-	TSet<FName> MainMenuMapNames;
+	/** 옵션 볼륨과 별개로 로딩 중에만 적용하는 배율입니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "BGM|Transition", meta = (ClampMin = "0.01", ClampMax = "1.0"))
+	float LoadingVolumeMultiplier = 0.5f;
 
-	/** 이 이름의 맵 진입 시 Lobby BGM을 자동 재생합니다. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "BGM|Automatic Maps")
-	TSet<FName> LobbyMapNames;
+	/** 로딩 화면 제거 후 정상 볼륨으로 복구하는 시간입니다. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "BGM|Transition", meta = (ClampMin = "0.0"))
+	float LoadingVolumeRestoreTime = 0.5f;
 
 	/** 옵션의 BGM 볼륨 override에 사용할 SoundMix입니다. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "BGM|Volume")

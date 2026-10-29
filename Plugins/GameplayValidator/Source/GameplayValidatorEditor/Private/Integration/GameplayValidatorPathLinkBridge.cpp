@@ -1,6 +1,7 @@
 #include "Integration/GameplayValidatorPathLinkBridge.h"
 
 #include "GameFramework/Actor.h"
+#include "Engine/World.h"
 
 namespace
 {
@@ -73,5 +74,25 @@ bool FGameplayValidatorPathLinkBridge::TryIsEnabled(AActor* Actor, bool& OutEnab
     }
 
     OutEnabled = GPathLinkCallbacks->IsEnabled(Actor);
+    return true;
+}
+
+bool FGameplayValidatorPathLinkBridge::CanAttachToGround(AActor* Actor)
+{
+    return IsValid(Actor)
+        && IsValid(Actor->GetWorld())
+        && Actor->GetWorld()->WorldType == EWorldType::Editor
+        && CanHandleClass(Actor->GetClass())
+        && static_cast<bool>(GPathLinkCallbacks->AttachToGround);
+}
+
+bool FGameplayValidatorPathLinkBridge::TryAttachToGround(AActor* Actor)
+{
+    if (!CanAttachToGround(Actor))
+    {
+        return false;
+    }
+
+    GPathLinkCallbacks->AttachToGround(Actor);
     return true;
 }

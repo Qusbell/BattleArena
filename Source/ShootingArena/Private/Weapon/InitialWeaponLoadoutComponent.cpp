@@ -1,5 +1,6 @@
 #include "Weapon/InitialWeaponLoadoutComponent.h"
 #include "Weapon/InitialWeaponLoadoutDataAsset.h"
+#include "Analyzer/ArenaMatchLogSubsystem.h"
 
 #include "Engine/World.h"
 #include "GameFramework/Pawn.h"
@@ -226,27 +227,36 @@ void UInitialWeaponLoadoutComponent::GrantLoadout()
 
 	bGrantedThisSpawn = true;
 	TSet<FSoftObjectPath> GrantedClasses;
-	for (const FInitialWeaponEntry& Entry : Data->DefaultWeapons)
+	TArray<FString> GrantedIds;
+	TArray<bool> GrantedDefaults;
+	auto GrantEntry = [&](const FInitialWeaponEntry& Selection, bool bDefault)
 	{
+		FInitialWeaponEntry Entry;
+		if (!Data->ResolveWeaponEntry(Selection, Entry))
+		{
+			if (!Selection.WeaponName.IsNone() || !Selection.WeaponClass.IsNull() || !Selection.WeaponData.IsNull())
+				UE_LOG(LogTemp, Warning, TEXT("Initial weapon selection %s on %s cannot be resolved from %s."),
+					*Selection.WeaponName.ToString(), *Owner->GetName(), *Data->WeaponTable.ToString());
+			return;
+		}
 		if (GrantedClasses.Contains(Entry.WeaponClass.ToSoftObjectPath()))
 		{
-			continue;
+			return;
 		}
-		if (GrantOne(Owner, Inventory, Entry, true))
+		if (GrantOne(Owner, Inventory, Entry, bDefault))
 		{
 			GrantedClasses.Add(Entry.WeaponClass.ToSoftObjectPath());
+			GrantedIds.Add(Entry.WeaponData.IsNull() ? Entry.WeaponClass.GetAssetName() : Entry.WeaponData.GetAssetName());
+			GrantedDefaults.Add(bDefault);
 		}
-	}
-	for (const FInitialWeaponEntry& Entry : Data->GrantedWeapons)
+	};
+	for (const FInitialWeaponEntry& Entry : Data->DefaultWeapons) GrantEntry(Entry, true);
+	for (const FInitialWeaponEntry& Entry : Data->GrantedWeapons) GrantEntry(Entry, false);
+
+	// Loadout is complete: this is the point the spawn row (with its initial weapons) is recorded.
+	if (UArenaMatchLogSubsystem* MatchLog = UArenaMatchLogSubsystem::Get(Owner))
 	{
-		if (GrantedClasses.Contains(Entry.WeaponClass.ToSoftObjectPath()))
-		{
-			continue;
-		}
-		if (GrantOne(Owner, Inventory, Entry, false))
-		{
-			GrantedClasses.Add(Entry.WeaponClass.ToSoftObjectPath());
-		}
+		MatchLog->CompleteSpawn(Cast<APawn>(Owner), GrantedIds, GrantedDefaults, FString());
 	}
 }
 
@@ -266,8 +276,10 @@ bool UInitialWeaponLoadoutComponent::IsDefaultWeapon(const AActor* Weapon) const
 	const UObject* Data = WeaponDataProperty
 		? WeaponDataProperty->GetObjectPropertyValue_InContainer(Weapon)
 		: nullptr;
-	for (const FInitialWeaponEntry& Entry : Loadout->DefaultWeapons)
+	for (const FInitialWeaponEntry& Selection : Loadout->DefaultWeapons)
 	{
+		FInitialWeaponEntry Entry;
+		if (!Loadout->ResolveWeaponEntry(Selection, Entry)) continue;
 		if ((Data && Entry.WeaponData.Get() == Data)
 			|| Entry.WeaponClass.Get() == Weapon->GetClass())
 		{

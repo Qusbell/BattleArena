@@ -1,4 +1,5 @@
 #include "Combat/RecentAttackerComponent.h"
+#include "Analyzer/ArenaAnalyzeSubsystem.h"
 
 #include "Audio/KillStreakSettingsDataAsset.h"
 #include "Engine/World.h"
@@ -12,6 +13,14 @@ URecentAttackerComponent::URecentAttackerComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
 	SetIsReplicatedByDefault(false);
+}
+
+void URecentAttackerComponent::ResetForNextLife()
+{
+	LastAttackerPlayerState.Reset();
+	LastAttackerTime = 0.f;
+	bHasLastAttackerTime = false;
+	bDeathCreditResolved = false;
 }
 
 void URecentAttackerComponent::BeginPlay()
@@ -131,6 +140,14 @@ FKillCreditResolution URecentAttackerComponent::ResolveDeathCredit(
 		}
 	}
 
+	if (auto* Recorder = GetWorld()->GetSubsystem<UArenaAnalyzeSubsystem>())
+    {
+        const FString Source = Resolution.CreditSource == EKillCreditSource::DirectPlayerKill ? TEXT("DirectPlayerKill")
+            : Resolution.CreditSource == EKillCreditSource::RecentAttacker ? TEXT("RecentAttacker") : TEXT("None");
+        const FString Cause = Resolution.DeathCause == EKillDeathCause::Player ? TEXT("Player")
+            : Resolution.DeathCause == EKillDeathCause::Suicide ? TEXT("Suicide") : TEXT("Environment");
+        Recorder->RecordCredit(Cast<APawn>(Owner), Resolution.CreditedPlayerState, Source, Cause);
+    }
 	OnKillCreditResolved.Broadcast(Resolution);
 	return Resolution;
 }

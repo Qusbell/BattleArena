@@ -21,6 +21,8 @@ public:
 
 private:
     FReply HandleFocusClicked();
+    FReply HandleAttachClicked();
+    bool CanAttach() const;
     FText GetActorText() const;
 
     TSharedPtr<FGameplayValidationIssue> Issue;

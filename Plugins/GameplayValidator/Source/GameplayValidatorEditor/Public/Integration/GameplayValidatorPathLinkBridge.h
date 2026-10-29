@@ -30,6 +30,9 @@ public:
 
         /** 실제 APathLink::IsEnabled를 호출합니다. */
         TFunction<bool(AActor*)> IsEnabled;
+
+        /** Details의 Attach To Ground와 동일한 APathLink API를 호출합니다. */
+        TFunction<void(AActor*)> AttachToGround;
     };
 
     static void Register(FCallbacks&& InCallbacks);
@@ -46,4 +49,8 @@ public:
 
     /** Callback 호출 자체에 성공하면 true. */
     static bool TryIsEnabled(AActor* Actor, bool& OutEnabled);
+
+    static bool CanAttachToGround(AActor* Actor);
+    /** 호출 가능 여부를 반환합니다. 지면 Trace 결과는 원래 Actor 함수가 처리합니다. */
+    static bool TryAttachToGround(AActor* Actor);
 };

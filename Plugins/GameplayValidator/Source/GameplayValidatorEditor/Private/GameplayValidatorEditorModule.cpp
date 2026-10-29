@@ -1,6 +1,8 @@
 #include "Modules/ModuleManager.h"
 
 #include "LevelEditor.h"
+#include "Editor.h"
+#include "GameplayValidationSubsystem.h"
 #include "Styling/AppStyle.h"
 #include "ToolMenus.h"
 #include "UI/SGameplayValidatorPanel.h"
@@ -57,11 +59,24 @@ private:
 
     TSharedRef<SDockTab> SpawnValidatorTab(const FSpawnTabArgs& Args)
     {
-        return SNew(SDockTab)
+        TSharedRef<SDockTab> Tab = SNew(SDockTab)
             .TabRole(ETabRole::NomadTab)
             [
                 SNew(SGameplayValidatorPanel)
             ];
+
+        if (UGameplayValidationSubsystem* Subsystem = GEditor ? GEditor->GetEditorSubsystem<UGameplayValidationSubsystem>() : nullptr)
+        {
+            Subsystem->SetValidatorTabOpen(true);
+            Tab->SetOnTabClosed(SDockTab::FOnTabClosedCallback::CreateWeakLambda(
+                Subsystem,
+                [Subsystem](TSharedRef<SDockTab>)
+                {
+                    Subsystem->SetValidatorTabOpen(false);
+                }));
+        }
+
+        return Tab;
     }
 };
 

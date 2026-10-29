@@ -58,7 +58,7 @@ inline float SafeNearClip(float Requested, float Existing, float Global)
 /** Fit a camera-centred bound inside the pawn's capsule; no extra collision queries. */
 inline float FitScaleToCapsule(float RequestedScale, const FVector& Eye, double BoundDistance,
 	const FVector& Centre, const FVector& Axis, double Radius, double HalfHeight,
-	double Margin, double FOVExpansion = 1.0)
+	double Margin, double FOVExpansion = 1.0, float MinimumScale = 0.1f)
 {
 	const float Maximum = SafeScale(RequestedScale);
 	if (Eye.ContainsNaN() || Centre.ContainsNaN() || Axis.ContainsNaN()
@@ -78,6 +78,10 @@ inline float FitScaleToCapsule(float RequestedScale, const FVector& Eye, double 
 	if (!FMath::IsFinite(Clearance) || Clearance <= 0.0) return Maximum;
 	const double Extent = BoundDistance * FMath::Max(FOVExpansion, 1.0);
 	if (!FMath::IsFinite(Extent) || Extent <= UE_SMALL_NUMBER) return Maximum;
-	return FMath::Min(Maximum, static_cast<float>(FMath::Clamp(Clearance / Extent, 0.001, 1.0)));
+	// A strict spherical fit can put the viewmodel inside the near plane when
+	// the eye is close to the capsule's upper cap. Preserve a usable depth even
+	// when that means the rendered bound can extend outside the capsule.
+	const float Floor = FMath::Min(Maximum, SafeScale(MinimumScale, 0.1f));
+	return FMath::Clamp(static_cast<float>(Clearance / Extent), Floor, Maximum);
 }
 }

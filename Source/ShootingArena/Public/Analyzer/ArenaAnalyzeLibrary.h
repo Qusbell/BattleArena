@@ -14,6 +14,10 @@ class SHOOTINGARENA_API UArenaAnalyzeLibrary : public UBlueprintFunctionLibrary
 	
 
 public:
+    /** ParticipantKind: 0 all, 1 human Players, 2 AI. Empty weapon matches all. */
+    UFUNCTION(BlueprintCallable, Category = "Arena Analyze")
+    static FArenaAnalyzeSession FilterSession(const FArenaAnalyzeSession& Session, const FString& WeaponId,
+        int32 ParticipantKind = 0, int32 ControllerId = -1, int32 TrackId = -1, double StartTime = 0, double EndTime = -1);
 	UFUNCTION(BlueprintCallable, Category = "Arena Analyze")
 	static bool LoadAnalyzeFile(
 		const FString& FilePath,

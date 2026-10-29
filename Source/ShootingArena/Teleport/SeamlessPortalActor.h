@@ -18,7 +18,6 @@ public:
 		const FVector& aim, float& distance, float& score, float& coverage) const override;
 	virtual bool BuildPortalCaptureView(const FTransform& camera, FPortalCaptureView& outView) const override;
 	virtual FTransform GetPortalViewCameraTransform(const FTransform& camera) const override;
-	virtual bool NeedsFullRatePortalView(float distance) const override;
 	virtual void ApplyPortalView(UTextureRenderTarget2D* target, float blur, float opacity) override;
 	virtual const UTeleportDataAsset* GetTeleportDataAsset() const override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& outProps) const override;
@@ -56,7 +55,7 @@ public:
 	bool bAllowPartialCapsuleEntry = true;
 
 	/** Arrival only: discard the entrance's sideways offset, so both edges use the same exit centre.
-	 * Keep height, momentum and view transformation. Disabling restores relative sideways mapping. */
+	 * Keep height and momentum; arrival faces the exit yaw. Disabling restores relative sideways mapping. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Spatial Portal|Traversal", meta = (DisplayName = "Center Exit Horizontally"))
 	bool bCenterExitHorizontally = true;
 
@@ -79,9 +78,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Spatial Portal|Traversal", meta = (ClampMin = "1.0"))
 	float maximumTraversalStep = 5000.0f;
 
-	/** Near views bypass the DA's update interval, but still obey the shared per-frame capture budget. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Spatial Portal|Rendering", meta = (ClampMin = "0.0"))
-	float fullRateDistance = 500.0f;
+	/** Minimum camera-to-portal-plane distance used only for the spatial capture, in cm.
+	 * Inside this distance, stop advancing the capture eye while retaining lateral/vertical parallax.
+	 * 0 restores unrestricted perspective. Never changes entry collision or the player's camera. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Spatial Portal|Rendering",
+		meta = (DisplayName = "Near View Lock Distance", ClampMin = "0.0", UIMin = "0.0", UIMax = "500.0", Units = "cm"))
+	float nearViewLockDistance = 100.0f;
 
 	bool CanTraverse() const;
 	bool GetDestinationFrame(FTransform& frame) const;
@@ -101,7 +103,15 @@ protected:
 		bool, const FHitResult&) override;
 
 private:
+	/** Shared project settings when this portal has no explicitly assigned data asset. */
+	UPROPERTY()
+	TObjectPtr<UTeleportDataAsset> defaultPortalInfo;
+
 	void AlignSpatialScreen();
+	void UpdateVFXFrontOffset();
+	/** Applies a small screen separation without overwriting the designer's VFX local transform. */
+	UPROPERTY(VisibleAnywhere, Category = "Teleport|Components")
+	TObjectPtr<USceneComponent> vfxFrontOffsetRoot;
 	void UpdateSpatialOpening();
 	UPROPERTY(Transient, DuplicateTransient)
 	TObjectPtr<UStaticMesh> generatedEllipseMesh;

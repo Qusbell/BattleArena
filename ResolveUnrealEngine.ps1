@@ -1,74 +1,58 @@
-param(
-    [Parameter(Mandatory = $true)]
-    [string]$ProjectPath
-)
-
+param([Parameter(Mandatory = $true)][string]$Project)
 $ErrorActionPreference = 'Stop'
-
-function Test-UnrealEngineRoot([string]$Path) {
-    return $Path -and (Test-Path -LiteralPath (Join-Path $Path 'Engine\Binaries\Win64\UnrealEditor-Cmd.exe'))
-}
-
 try {
-    $project = Get-Content -LiteralPath $ProjectPath -Raw | ConvertFrom-Json
-    $association = [string]$project.EngineAssociation
-    $engineRoot = $null
-
-    if ($association) {
-        # Custom/source builds registered by UnrealVersionSelector.
-        $registryPaths = @(
-            'Registry::HKEY_CURRENT_USER\Software\Epic Games\Unreal Engine\Builds',
-            'Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Epic Games\Unreal Engine\Builds',
-            'Registry::HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Epic Games\Unreal Engine\Builds'
-        )
-
-        foreach ($registryPath in $registryPaths) {
-            if (Test-Path -LiteralPath $registryPath) {
-                $key = Get-Item -LiteralPath $registryPath
-                $registeredPath = $key.GetValue($association, $null)
-                if (Test-UnrealEngineRoot $registeredPath) {
-                    $engineRoot = $registeredPath
-                    break
+    $projectDirectory = Split-Path -Parent $Project
+    $association = (Get-Content -LiteralPath $Project -Raw | ConvertFrom-Json).EngineAssociation
+    $candidates = @()
+    if ($env:SHOOTINGARENA_ENGINE_ROOT) {
+        $override = $env:SHOOTINGARENA_ENGINE_ROOT
+        if (-not [IO.Path]::IsPathRooted($override)) {
+            $override = Join-Path $projectDirectory $override
+        }
+        $candidates = @($override)
+    } else {
+        # Source builds registered by UnrealVersionSelector use per-user GUIDs.
+        $userBuilds = Get-ItemProperty 'HKCU:\Software\Epic Games\Unreal Engine\Builds' -ErrorAction SilentlyContinue
+        if ($userBuilds -and $association) {
+            $property = $userBuilds.PSObject.Properties[$association]
+            if ($property) { $candidates += $property.Value }
+        }
+        # Launcher installs can live on any drive.
+        if ($association) {
+            foreach ($registryRoot in @('HKLM:\SOFTWARE\EpicGames\Unreal Engine', 'HKLM:\SOFTWARE\WOW6432Node\EpicGames\Unreal Engine')) {
+                $installation = Get-ItemProperty "$registryRoot\$association" -ErrorAction SilentlyContinue
+                if ($installation -and $installation.InstalledDirectory) {
+                    $candidates += $installation.InstalledDirectory
                 }
             }
         }
-
-        # Launcher builds are listed in LauncherInstalled.dat. Their AppName
-        # is UE_<version>, while EngineAssociation stores only <version>.
-        if (-not $engineRoot) {
+        if ($env:ProgramData -and $association) {
             $manifest = Join-Path $env:ProgramData 'Epic\UnrealEngineLauncher\LauncherInstalled.dat'
             if (Test-Path -LiteralPath $manifest) {
-                $installations = (Get-Content -LiteralPath $manifest -Raw | ConvertFrom-Json).InstallationList
-                $installation = $installations |
-                    Where-Object { $_.AppName -eq "UE_$association" -or $_.AppName -eq $association } |
-                    Select-Object -First 1
-                if ($installation -and (Test-UnrealEngineRoot $installation.InstallLocation)) {
-                    $engineRoot = $installation.InstallLocation
-                }
+                $installs = (Get-Content -LiteralPath $manifest -Raw | ConvertFrom-Json).InstallationList
+                $candidates += @($installs | Where-Object { $_.AppName -eq "UE_$association" } | ForEach-Object { $_.InstallLocation })
+            }
+        }
+        if ($association -and $env:ProgramFiles) {
+            $candidates += Join-Path $env:ProgramFiles "Epic Games\UE_$association"
+        }
+        # Projects inside a source engine tree may have no EngineAssociation.
+        if (-not $association) {
+            $directory = Get-Item -LiteralPath $projectDirectory
+            while ($directory) {
+                $candidates += $directory.FullName
+                $directory = $directory.Parent
             }
         }
     }
-    else {
-        # Native/source projects can use an Engine folder above the project.
-        $directory = Get-Item -LiteralPath (Split-Path -Parent (Resolve-Path -LiteralPath $ProjectPath))
-        while ($directory) {
-            if (Test-UnrealEngineRoot $directory.FullName) {
-                $engineRoot = $directory.FullName
-                break
-            }
-            $directory = $directory.Parent
+    foreach ($candidate in $candidates) {
+        if ($candidate -and (Test-Path -LiteralPath (Join-Path $candidate 'Engine\Build\BatchFiles\Build.bat'))) {
+            [Console]::WriteLine([IO.Path]::GetFullPath($candidate))
+            exit 0
         }
     }
-
-    if (-not (Test-UnrealEngineRoot $engineRoot)) {
-        [Console]::Error.WriteLine("No installed Unreal Engine matches EngineAssociation '$association'.")
-        exit 1
-    }
-
-    [Console]::Out.WriteLine((Resolve-Path -LiteralPath $engineRoot).Path)
-    exit 0
-}
-catch {
-    [Console]::Error.WriteLine("Engine detection failed: $($_.Exception.Message)")
+    throw "Cannot find Unreal Engine '$association'. Install/register that engine, or set SHOOTINGARENA_ENGINE_ROOT to its root (relative paths are resolved beside the project)."
+} catch {
+    [Console]::Error.WriteLine('[ERROR] ' + $_.Exception.Message)
     exit 1
 }

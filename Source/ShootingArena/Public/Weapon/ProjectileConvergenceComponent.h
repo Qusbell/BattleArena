@@ -56,6 +56,7 @@ class SHOOTINGARENA_API UProjectileConvergenceComponent : public UActorComponent
 public:
 	UProjectileConvergenceComponent();
 	bool Initialize(UProjectileMovementComponent* InMovement, FVector InJoin, FVector InForward);
+	void ResetForPool();
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 private:
 	UPROPERTY(Transient)

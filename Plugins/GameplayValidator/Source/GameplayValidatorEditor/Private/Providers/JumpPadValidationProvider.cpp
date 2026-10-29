@@ -6,6 +6,7 @@
 const FName FJumpPadValidationProvider::ProviderId(TEXT("JumpPad"));
 const FName FJumpPadValidationProvider::ApexTimeSlotId(TEXT("ApexTime"));
 const FName FJumpPadValidationProvider::LaunchAngleSlotId(TEXT("LaunchAngle"));
+const FName FJumpPadValidationProvider::DirectionSlotId(TEXT("Direction"));
 
 namespace JumpPadBindings
 {
@@ -28,6 +29,10 @@ void FJumpPadValidationProvider::GetTargetSlots(TArray<FGameplayValidationTarget
     FGameplayValidationTargetSlot& LaunchAngle = OutSlots.AddDefaulted_GetRef();
     LaunchAngle.SlotId = LaunchAngleSlotId;
     LaunchAngle.DisplayName = NSLOCTEXT("GameplayValidator", "LaunchAngleJumpPadClass", "LaunchAngle JumpPad");
+
+    FGameplayValidationTargetSlot& Direction = OutSlots.AddDefaulted_GetRef();
+    Direction.SlotId = DirectionSlotId;
+    Direction.DisplayName = NSLOCTEXT("GameplayValidator", "DirectionJumpPadClass", "Direction JumpPad");
 }
 
 bool FJumpPadValidationProvider::ValidateTargetClass(
@@ -61,6 +66,7 @@ void FJumpPadValidationProvider::Validate(
 {
     ValidateJumpPadTargetPoint(Context, ApexTimeSlotId, OutIssues);
     ValidateJumpPadTargetPoint(Context, LaunchAngleSlotId, OutIssues);
+    ValidateJumpPadTargetPoint(Context, DirectionSlotId, OutIssues);
 }
 
 void FJumpPadValidationProvider::ValidateJumpPadTargetPoint(

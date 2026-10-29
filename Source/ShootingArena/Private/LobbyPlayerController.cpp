@@ -1,11 +1,12 @@
 #include "LobbyPlayerController.h"
 #include "LobbyGameState.h"
 #include "LobbyGameMode.h"
+#include "LobbyPlayerState.h"
 #include "ShootingArenaGameInstance.h"
 #include "LocalDedicatedServerLibrary.h"
-#include "Loading/LoadingBlueprintLibrary.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerState.h"
+#include "UObject/UnrealType.h"
 
 ALobbyGameState* ALobbyPlayerController::GetLobbyGameState() const
 {
@@ -15,108 +16,217 @@ ALobbyGameState* ALobbyPlayerController::GetLobbyGameState() const
 bool ALobbyPlayerController::IsHost() const
 {
 	const ALobbyGameState* LobbyGameState = GetLobbyGameState();
-	return LobbyGameState && LobbyGameState->HostPlayerState == PlayerState;
+	return LobbyGameState && PlayerState && LobbyGameState->HostPlayerState == PlayerState;
 }
 
-void ALobbyPlayerController::Server_SetSlotType_Implementation(int32 SlotIndex, ELobbySlotType NewType)
+void ALobbyPlayerController::BeginPlay()
+{
+	Super::BeginPlay();
+
+	if (IsLocalController() && GetNetMode() == NM_Client)
+	{
+		// 접속에 성공했습니다: 접속 시도 상태를 풀고 마지막 서버 주소를 확정합니다.
+		if (UShootingArenaGameInstance* SAGameInstance = GetGameInstance<UShootingArenaGameInstance>())
+		{
+			SAGameInstance->NotifyLobbyJoined();
+		}
+
+		// 서버가 Multicast 를 보낼 때 아직 접속 중이라 놓친 값을 스스로 채웁니다.
+		Server_RequestLobbySync();
+	}
+}
+
+// ===================== 방장 전용 =====================
+
+void ALobbyPlayerController::Server_SetMap_Implementation(const FString& NewMapId, int32 NewMaxPlayers)
 {
 	if (!IsHost())
 	{
 		return;
 	}
 
-	ALobbyGameState* LobbyGameState = GetLobbyGameState();
-	if (!LobbyGameState || !LobbyGameState->Slots.IsValidIndex(SlotIndex))
+	ALobbyGameMode* LobbyGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<ALobbyGameMode>() : nullptr;
+	if (!LobbyGameMode || LobbyGameMode->IsLaunching())
 	{
 		return;
 	}
 
-	FLobbySlot& Slot = LobbyGameState->Slots[SlotIndex];
-
-	// 이미 접속해있는 플레이어 슬롯은 이 함수로 건드리지 않습니다 (강퇴 기능이 아닙니다).
-	if (Slot.SlotType == ELobbySlotType::Player || NewType == ELobbySlotType::Player)
+	if (ALobbyGameState* LobbyGameState = GetLobbyGameState())
 	{
-		return;
+		LobbyGameState->ChangeMap(NewMapId, NewMaxPlayers);
 	}
-
-	Slot.SlotType = NewType;
-	Slot.OwningPlayerState = nullptr;
-	Slot.bReady = false;
-
-	if (NewType != ELobbySlotType::AI)
-	{
-		Slot.DisplayName.Empty();
-	}
-
-	LobbyGameState->SaveAISlotsToGameInstance();
-	LobbyGameState->OnLobbyStateChanged();
 }
 
-void ALobbyPlayerController::Server_SetAIConfig_Implementation(int32 SlotIndex, const FString& AIName, ELobbyDifficulty Difficulty)
+void ALobbyPlayerController::Server_SetRule_Implementation(ELobbyRuleId RuleId, int32 NewIndex)
 {
 	if (!IsHost())
 	{
 		return;
 	}
 
-	ALobbyGameState* LobbyGameState = GetLobbyGameState();
-	if (!LobbyGameState || !LobbyGameState->Slots.IsValidIndex(SlotIndex))
+	ALobbyGameMode* LobbyGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<ALobbyGameMode>() : nullptr;
+	if (!LobbyGameMode || LobbyGameMode->IsLaunching())
 	{
 		return;
 	}
 
-	FLobbySlot& Slot = LobbyGameState->Slots[SlotIndex];
-
-	// Player가 이미 차지한 슬롯은 AI로 덮어쓰지 않습니다.
-	if (Slot.SlotType == ELobbySlotType::Player)
+	if (ALobbyGameState* LobbyGameState = GetLobbyGameState())
 	{
-		return;
+		LobbyGameState->SetRuleIndex(RuleId, NewIndex, LobbyGameMode->GetRuleOptionCount(RuleId));
 	}
-
-	Slot.SlotType = ELobbySlotType::AI;
-	Slot.OwningPlayerState = nullptr;
-	Slot.DisplayName = AIName;
-	Slot.Difficulty = Difficulty;
-	Slot.bReady = true; // 기획서: AI는 이름과 난이도 설정 시 자동으로 준비 완료
-
-	LobbyGameState->SaveAISlotsToGameInstance();
-	LobbyGameState->OnLobbyStateChanged();
 }
+
+void ALobbyPlayerController::Server_AddBot_Implementation()
+{
+	if (!IsHost())
+	{
+		return;
+	}
+
+	ALobbyGameMode* LobbyGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<ALobbyGameMode>() : nullptr;
+	if (!LobbyGameMode || LobbyGameMode->IsLaunching())
+	{
+		return;
+	}
+
+	if (ALobbyGameState* LobbyGameState = GetLobbyGameState())
+	{
+		LobbyGameState->AddBot(LobbyGameMode->BotCharacterPool, LobbyGameMode->DefaultBotDifficulty);
+	}
+}
+
+void ALobbyPlayerController::Server_SetBotCharacter_Implementation(int32 BotId, FName CharacterId)
+{
+	if (!IsHost())
+	{
+		return;
+	}
+
+	ALobbyGameMode* LobbyGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<ALobbyGameMode>() : nullptr;
+	if (!LobbyGameMode || LobbyGameMode->IsLaunching())
+	{
+		return;
+	}
+
+	// 봇 종류는 풀에 있는 것만 허용합니다.
+	if (!LobbyGameMode->BotCharacterPool.Contains(CharacterId))
+	{
+		return;
+	}
+
+	if (ALobbyGameState* LobbyGameState = GetLobbyGameState())
+	{
+		LobbyGameState->SetBotCharacter(BotId, CharacterId);
+	}
+}
+
+void ALobbyPlayerController::Server_SetBotDifficulty_Implementation(int32 BotId, ELobbyDifficulty Difficulty)
+{
+	if (!IsHost())
+	{
+		return;
+	}
+
+	ALobbyGameMode* LobbyGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<ALobbyGameMode>() : nullptr;
+	if (!LobbyGameMode || LobbyGameMode->IsLaunching())
+	{
+		return;
+	}
+
+	if (ALobbyGameState* LobbyGameState = GetLobbyGameState())
+	{
+		LobbyGameState->SetBotDifficulty(BotId, Difficulty);
+	}
+}
+
+void ALobbyPlayerController::Server_RemoveBot_Implementation(int32 BotId)
+{
+	if (!IsHost())
+	{
+		return;
+	}
+
+	ALobbyGameMode* LobbyGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<ALobbyGameMode>() : nullptr;
+	if (!LobbyGameMode || LobbyGameMode->IsLaunching())
+	{
+		return;
+	}
+
+	if (ALobbyGameState* LobbyGameState = GetLobbyGameState())
+	{
+		LobbyGameState->RemoveBot(BotId);
+	}
+}
+
+void ALobbyPlayerController::Server_Kick_Implementation(int32 TargetPlayerId)
+{
+	if (!IsHost())
+	{
+		return;
+	}
+
+	ALobbyGameMode* LobbyGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<ALobbyGameMode>() : nullptr;
+	ALobbyGameState* LobbyGameState = GetLobbyGameState();
+	if (!LobbyGameMode || !LobbyGameState || LobbyGameMode->IsLaunching())
+	{
+		return;
+	}
+
+	// 방장 자신은 내보낼 수 없습니다.
+	if (PlayerState && PlayerState->GetPlayerId() == TargetPlayerId)
+	{
+		return;
+	}
+
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		APlayerController* TargetPC = It->Get();
+		if (IsValid(TargetPC) && TargetPC->PlayerState && TargetPC->PlayerState->GetPlayerId() == TargetPlayerId)
+		{
+			LobbyGameMode->KickLobbyPlayer(TargetPC);
+			return;
+		}
+	}
+}
+
+void ALobbyPlayerController::Server_StartGame_Implementation()
+{
+	if (!IsHost())
+	{
+		return;
+	}
+
+	ALobbyGameMode* LobbyGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<ALobbyGameMode>() : nullptr;
+	ALobbyGameState* LobbyGameState = GetLobbyGameState();
+	if (!LobbyGameMode || !LobbyGameState)
+	{
+		return;
+	}
+
+	// 방장을 뺀 참가자 전원이 준비했을 때만 (참가자 0명이면 바로) 출격합니다.
+	if (!LobbyGameState->AreAllGuestsReady())
+	{
+		return;
+	}
+
+	LobbyGameMode->BeginLaunch();
+}
+
+// ===================== 공용 =====================
 
 void ALobbyPlayerController::Server_SetReady_Implementation(bool bReady)
 {
+	ALobbyGameMode* LobbyGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<ALobbyGameMode>() : nullptr;
+	if (LobbyGameMode && LobbyGameMode->IsLaunching())
+	{
+		return;
+	}
+
 	ALobbyGameState* LobbyGameState = GetLobbyGameState();
-	if (!LobbyGameState || !PlayerState)
+	if (LobbyGameState && PlayerState)
 	{
-		return;
+		LobbyGameState->SetPlayerReady(Cast<ALobbyPlayerState>(PlayerState), bReady);
 	}
-
-	const int32 SlotIndex = LobbyGameState->FindSlotIndexForPlayer(PlayerState);
-	if (!LobbyGameState->Slots.IsValidIndex(SlotIndex))
-	{
-		return;
-	}
-
-	LobbyGameState->Slots[SlotIndex].bReady = bReady;
-	LobbyGameState->OnLobbyStateChanged();
-}
-
-void ALobbyPlayerController::Server_ToggleReady_Implementation()
-{
-	ALobbyGameState* LobbyGameState = GetLobbyGameState();
-	if (!LobbyGameState || !PlayerState)
-	{
-		return;
-	}
-
-	const int32 SlotIndex = LobbyGameState->FindSlotIndexForPlayer(PlayerState);
-	if (!LobbyGameState->Slots.IsValidIndex(SlotIndex))
-	{
-		return;
-	}
-
-	LobbyGameState->Slots[SlotIndex].bReady = !LobbyGameState->Slots[SlotIndex].bReady;
-	LobbyGameState->OnLobbyStateChanged();
 }
 
 void ALobbyPlayerController::Server_SetPlayerName_Implementation(const FString& NewName)
@@ -136,85 +246,25 @@ void ALobbyPlayerController::Server_SetPlayerName_Implementation(const FString& 
 	PlayerState->SetPlayerName(TrimmedName);
 
 	// 다음 레벨(실제 게임)로 넘어간 뒤에도 이 이름을 계속 쓸 수 있도록, 접속 주소를 키로 GameInstance에 저장해둡니다.
-	// (AMyReconnectionGameMode::InitNewPlayer가 새 레벨에서 이 값을 다시 읽어 PlayerState에 적용합니다.)
+	// (AMyReconnectionGameMode::PostLogin이 새 레벨에서 이 값을 다시 읽어 PlayerState에 적용합니다.)
 	if (UShootingArenaGameInstance* SAGameInstance = Cast<UShootingArenaGameInstance>(GetWorld() ? GetWorld()->GetGameInstance() : nullptr))
 	{
 		SAGameInstance->SetSavedNickname(PlayerState->SavedNetworkAddress, TrimmedName);
 	}
 
-	ALobbyGameState* LobbyGameState = GetLobbyGameState();
-	if (!LobbyGameState)
+	// 이름이 바뀌었으니 모든 화면의 카드를 갱신합니다.
+	if (ALobbyGameState* LobbyGameState = GetLobbyGameState())
 	{
-		return;
-	}
-
-	const int32 SlotIndex = LobbyGameState->FindSlotIndexForPlayer(PlayerState);
-	if (LobbyGameState->Slots.IsValidIndex(SlotIndex))
-	{
-		LobbyGameState->Slots[SlotIndex].DisplayName = TrimmedName;
-		LobbyGameState->OnLobbyStateChanged();
+		LobbyGameState->RefreshSnapshot();
 	}
 }
 
-void ALobbyPlayerController::Server_ChangeMap_Implementation(const FString& NewMapID, int32 NewMaxPlayerCount)
+void ALobbyPlayerController::Server_RequestLobbySync_Implementation()
 {
-	if (!IsHost())
+	if (ALobbyGameState* LobbyGameState = GetLobbyGameState())
 	{
-		return;
+		LobbyGameState->SendSnapshotTo(this);
 	}
-
-	ALobbyGameState* LobbyGameState = GetLobbyGameState();
-	if (!LobbyGameState)
-	{
-		return;
-	}
-
-	// 기획서: 현재 인원이 새 맵의 최대 인원보다 많으면 맵 변경을 거부합니다.
-	if (LobbyGameState->GetFilledSlotCount() > NewMaxPlayerCount)
-	{
-		return;
-	}
-
-	LobbyGameState->RebuildSlots(NewMapID, NewMaxPlayerCount);
-}
-
-void ALobbyPlayerController::Server_StartGame_Implementation()
-{
-	if (!IsHost())
-	{
-		return;
-	}
-
-	ALobbyGameState* LobbyGameState = GetLobbyGameState();
-	if (!LobbyGameState || !LobbyGameState->AreAllNonHostPlayersReady())
-	{
-		return;
-	}
-
-	if (ALobbyGameMode* LobbyGameMode = GetWorld() ? GetWorld()->GetAuthGameMode<ALobbyGameMode>() : nullptr)
-	{
-		// 방장은 자기 UI(WBP_Lobby)에서 이미 로딩 화면을 띄우므로, 나머지 접속자에게만 서버가 로딩 화면을 띄웁니다.
-		// 이게 없으면 비-방장은 트래블이 나가는 동안에도 로비 UI(준비 해제/나가기 등)를 조작할 수 있습니다.
-		for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
-		{
-			ALobbyPlayerController* OtherPC = Cast<ALobbyPlayerController>(It->Get());
-			if (IsValid(OtherPC) && OtherPC != this)
-			{
-				OtherPC->Client_BeginMatchLoading(TEXT("게임을 시작하는 중..."));
-			}
-		}
-
-		// OnLobbyStartGameApproved(BP)가 현재 AI 슬롯을 세어 "?AIEasy=N" URL 옵션을 만들고
-		// 매치 서버를 스폰합니다. 그게 끝난 "직후" 매치 출발을 기록해서, 플레이어가 매치에서
-		// 로비로 돌아오면 지난 세션의 AI 슬롯이 비워지도록 합니다(누적 방지).
-		LobbyGameMode->OnLobbyStartGameApproved(LobbyGameState->SelectedMapID);
-		LobbyGameMode->MarkMatchLaunched();
-	}
-}
-
-void ALobbyPlayerController::Client_BeginMatchLoading_Implementation(const FString& StatusText)
-{
-	ULoadingBlueprintLibrary::BeginLoadingScreen(this, StatusText);
 }
 
 void ALobbyPlayerController::Server_CleanupMatchServer_Implementation()
@@ -225,4 +275,60 @@ void ALobbyPlayerController::Server_CleanupMatchServer_Implementation()
 	}
 
 	ULocalDedicatedServerLibrary::StopMatchServer();
+}
+
+// ===================== 서버 -> 이 클라이언트 =====================
+
+void ALobbyPlayerController::Client_SyncSnapshot_Implementation(const FLobbySnapshot& Snapshot)
+{
+	if (ALobbyGameState* LobbyGameState = GetLobbyGameState())
+	{
+		LobbyGameState->ApplySnapshot(Snapshot);
+	}
+}
+
+void ALobbyPlayerController::Client_AddFeed_Implementation(ELobbyFeedType FeedType, const FString& Name)
+{
+	FLobbyFeedItem Item;
+	Item.FeedType = FeedType;
+	Item.Name = Name;
+
+	FeedHistory.Add(Item);
+	if (FeedHistory.Num() > MaxFeedItems)
+	{
+		FeedHistory.RemoveAt(0, FeedHistory.Num() - MaxFeedItems);
+	}
+
+	OnFeedAdded.Broadcast(Item);
+}
+
+void ALobbyPlayerController::Client_ShowBanner_Implementation(ELobbyBannerType BannerType)
+{
+	OnBannerRequested.Broadcast(BannerType);
+}
+
+void ALobbyPlayerController::Client_LaunchStarted_Implementation(const FLobbyLaunchInfo& InLaunchInfo)
+{
+	bLaunching = true;
+	LaunchInfo = InLaunchInfo;
+	OnLaunchStarted.Broadcast(InLaunchInfo);
+}
+
+void ALobbyPlayerController::ClientWasKicked_Implementation(const FText& KickReason)
+{
+	Super::ClientWasKicked_Implementation(KickReason);
+
+	// 곧 연결이 끊기면서 엔진이 메인 메뉴로 돌려보냅니다. 접속 화면이 'kicked' 를 보여주도록 이유를 먼저 기록합니다.
+	// (뒤따르는 NetworkFailure 가 'lost' 로 덮어쓰지 않습니다 — SetPendingConnectMessage 참고.)
+	if (UShootingArenaGameInstance* SAGameInstance = GetGameInstance<UShootingArenaGameInstance>())
+	{
+		SAGameInstance->SetPendingConnectMessage(TEXT("kicked"));
+
+		// BP_QuakeGameInstance 의 NetworkError 는 bIntentionalDisconnect 가 false 인 ConnectionLost 를 "예상 못 한 끊김"으로 보고
+		// 1초 뒤 마지막 서버에 자동 재접속합니다. 강퇴도 의도된 끊김이므로 true 로 두어 재접속을 막습니다.
+		if (FBoolProperty* Intentional = CastField<FBoolProperty>(SAGameInstance->GetClass()->FindPropertyByName(TEXT("bIntentionalDisconnect"))))
+		{
+			Intentional->SetPropertyValue_InContainer(SAGameInstance, true);
+		}
+	}
 }

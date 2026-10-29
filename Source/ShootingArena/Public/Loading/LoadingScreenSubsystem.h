@@ -8,6 +8,7 @@
 class SWidget;
 class APlayerController;
 class UWorld;
+struct FWorldContext;
 
 /** 모든 로컬 맵 전환을 감지해 Slate 로딩 화면을 표시하는 클라이언트 전용 서브시스템입니다. */
 UCLASS()
@@ -19,18 +20,18 @@ public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
 	void BeginExternalLoading(const FString& StatusText);
-	/** Includes the fade-out, so deferred gameplay audio starts after the overlay is removed. */
+	/** Includes the fade-out; BGM restores full volume only after the overlay is removed. */
 	bool IsLoadingScreenActive() const { return bTransitionActive || bOverlayAddedToViewport || bFadingIn || bFadingOut; }
 	/** BeginExternalLoading 으로 띄운 로딩 화면을 호출자가 직접 닫습니다 (대기 실패/타임아웃용). */
 	void EndExternalLoading() { HideLoadingScreen(); }
 
 private:
-	void HandlePreLoadMap(const FString& MapName);
+	void HandlePreLoadMap(const FWorldContext& WorldContext, const FString& MapName);
 	void HandlePostLoadMap(UWorld* LoadedWorld);
 	bool Tick(float DeltaSeconds);
 	void ShowLoadingScreen(const FString& StatusText);
 	void HideLoadingScreen();
-	void RemoveLoadingScreen();
+	void RemoveLoadingScreen(bool bRestoreBGM = true);
 	void UpdateLoadingState();
 	void ApplyInputLock();
 	void ReleaseInputLock();

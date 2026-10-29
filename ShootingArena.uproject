@@ -48,6 +48,10 @@
 			]
 		},
 		{
+			"Name": "SQLiteCore",
+			"Enabled": true
+		},
+		{
 			"Name": "JsonBlueprintUtilities",
 			"Enabled": true
 		},
@@ -61,6 +65,8 @@
 			"TargetAllowList": [
 				"Editor"
 			]
+			"Name": "SlateInsights",
+			"Enabled": true
 		}
 	]
 }

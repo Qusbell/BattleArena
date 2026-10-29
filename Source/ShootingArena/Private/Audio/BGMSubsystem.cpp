@@ -24,32 +24,30 @@ void UBGMSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		Settings = GameInstance->BGMSettings.LoadSynchronous();
 	}
 
-	PreLoadMapHandle = FCoreUObjectDelegates::PreLoadMap.AddUObject(this, &UBGMSubsystem::HandlePreLoadMap);
+	PreLoadMapHandle = FCoreUObjectDelegates::PreLoadMapWithContext.AddUObject(this, &UBGMSubsystem::HandlePreLoadMap);
 	PostLoadMapHandle = FCoreUObjectDelegates::PostLoadMapWithWorld.AddUObject(this, &UBGMSubsystem::HandlePostLoadMap);
 	UE_LOG(LogTemp, Log, TEXT("[BGM] Subsystem initialized. Settings=%s"), *GetNameSafe(Settings));
 }
 
 void UBGMSubsystem::Deinitialize()
 {
+	bDeinitializing = true;
+	StopBGM(0.0f);
 	++PlayRequestId;
 	if (PreLoadMapHandle.IsValid())
 	{
-		FCoreUObjectDelegates::PreLoadMap.Remove(PreLoadMapHandle);
+		FCoreUObjectDelegates::PreLoadMapWithContext.Remove(PreLoadMapHandle);
 	}
 	if (PostLoadMapHandle.IsValid())
 	{
 		FCoreUObjectDelegates::PostLoadMapWithWorld.Remove(PostLoadMapHandle);
 	}
-	if (IsValid(ActiveComponent)) ActiveComponent->Stop();
-	if (IsValid(FadingComponent)) FadingComponent->Stop();
-	ActiveComponent = nullptr;
-	FadingComponent = nullptr;
-	CurrentSound = nullptr;
 	Super::Deinitialize();
 }
 
 void UBGMSubsystem::SetSettings(UBGMSettingsDataAsset* NewSettings)
 {
+	StopBGM(0.0f);
 	Settings = NewSettings;
 	ApplyVolumeOverride(0.0f);
 	HandlePostLoadMap(GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr);
@@ -62,13 +60,13 @@ void UBGMSubsystem::PlayMainMenuBGM()
 
 void UBGMSubsystem::PlayLobbyBGM()
 {
-	if (Settings) PlayConfiguredTrack(Settings->LobbyBGM, EBGMState::Lobby, TEXT("Lobby"));
+	PlayMainMenuBGM();
 }
 
 bool UBGMSubsystem::PlayGameplayBGM(FName MapID)
 {
 	if (!Settings) return false;
-	if (MapID.IsNone()) MapID = GetCurrentMapName();
+	MapID = MapID.IsNone() ? GetCurrentMapName() : NormalizeMapName(MapID.ToString());
 	const FBGMTrack* Track = Settings->GameplayBGMByMap.Find(MapID);
 	if (!Track)
 	{
@@ -81,7 +79,54 @@ bool UBGMSubsystem::PlayGameplayBGM(FName MapID)
 
 void UBGMSubsystem::PlayResultBGM()
 {
-	if (Settings) PlayConfiguredTrack(Settings->ResultBGM, EBGMState::Result, TEXT("Result"));
+	// Intentionally empty: old Blueprint nodes must not restart or replace Gameplay BGM.
+}
+
+void UBGMSubsystem::BeginLoadingBGM(const FString& DestinationMap)
+{
+	if (bDeinitializing || IsRunningDedicatedServer() || !GetGameInstance()) return;
+	if (const UWorld* World = GetGameInstance()->GetWorld(); World && World->GetNetMode() == NM_DedicatedServer) return;
+	const FName Destination = NormalizeMapName(DestinationMap);
+	if (!bLoadingTransition)
+	{
+		// The destination may use the SAME track. Do not stop it until we know.
+		++PlayRequestId;
+		if (PendingLoad) PendingLoad->CancelHandle();
+		PendingLoad.Reset();
+		PendingSoundPath.Reset();
+		bLoadingTransition = true;
+		if (IsValid(ActiveComponent) && ActiveComponent->IsPlaying())
+		{
+			ActiveComponent->AdjustVolume(0.15f, GetLoadingGain());
+		}
+	}
+	if (Destination.IsNone()) return; // Server/matchmaking has not supplied the destination yet.
+	if (Settings)
+	{
+		const FBGMTrack* GameplayTrack = Settings->GameplayBGMByMap.Find(Destination);
+		const FBGMTrack& NextTrack = GameplayTrack ? *GameplayTrack : Settings->MainMenuBGM;
+		if (CurrentSound != NextTrack.Sound.Get() || bCurrentTrackLoops != NextTrack.bLoop)
+		{
+			// Different destination track: stop the previous screen BEFORE loading it.
+			StopBGM(0.0f);
+			bLoadingTransition = true;
+		}
+	}
+	// PreLoadMap precedes a blocking map load. Async completion would only run AFTER
+	// that load, leaving the loading screen silent. Resolve this one track beforehand.
+	PlayMapBGM(Destination, true);
+}
+
+void UBGMSubsystem::EndLoadingBGM()
+{
+	if (!bLoadingTransition || !CanPlayAudio()) return;
+	bLoadingTransition = false;
+	// Also recovers from external-loading cancellation / connection failure.
+	PlayMapBGM(GetCurrentMapName());
+	if (IsValid(ActiveComponent) && ActiveComponent->IsPlaying())
+	{
+		ActiveComponent->AdjustVolume(Settings ? FMath::Max(0.0f, Settings->LoadingVolumeRestoreTime) : 0.5f, 1.0f);
+	}
 }
 
 bool UBGMSubsystem::IsGameplayMap(const FString& MapNameOrPath) const
@@ -92,23 +137,38 @@ bool UBGMSubsystem::IsGameplayMap(const FString& MapNameOrPath) const
 void UBGMSubsystem::StopBGM(float FadeOutTime)
 {
 	++PlayRequestId;
+	if (PendingLoad) PendingLoad->CancelHandle();
+	PendingLoad.Reset();
+	PendingSoundPath.Reset();
 	const float Fade = FadeOutTime >= 0.0f ? FadeOutTime : CurrentTrackFadeOut;
 	if (IsValid(FadingComponent))
 	{
+		FadingComponent->OnAudioFinishedNative.RemoveAll(this);
 		FadingComponent->Stop();
+		FadingComponent->DestroyComponent();
 		FadingComponent = nullptr;
 	}
 	if (IsValid(ActiveComponent))
 	{
-		if (Fade > 0.0f) ActiveComponent->FadeOut(Fade, 0.0f);
-		else ActiveComponent->Stop();
-		FadingComponent = ActiveComponent;
+		ActiveComponent->OnAudioFinishedNative.RemoveAll(this);
+		if (Fade > 0.0f)
+		{
+			ActiveComponent->bAutoDestroy = true;
+			ActiveComponent->FadeOut(Fade, 0.0f);
+			FadingComponent = ActiveComponent;
+		}
+		else
+		{
+			ActiveComponent->Stop();
+			ActiveComponent->DestroyComponent();
+		}
 		ActiveComponent = nullptr;
 	}
 	CurrentSound = nullptr;
 	CurrentState = EBGMState::None;
 	bCurrentTrackLoops = false;
 	bUseCompletionLoop = false;
+	bLoadingTransition = false;
 	UE_LOG(LogTemp, Log, TEXT("[BGM] Stop (FadeOut=%.2f)."), Fade);
 }
 
@@ -138,51 +198,64 @@ void UBGMSubsystem::PlayPreviewBGM(USoundBase* TestSound, bool bLoop, float Fade
 	PlayLoadedTrack(TestSound, Track, EBGMState::Preview, TEXT("Preview"), ++PlayRequestId);
 }
 
-void UBGMSubsystem::HandlePreLoadMap(const FString& MapName)
+void UBGMSubsystem::HandlePreLoadMap(const FWorldContext& WorldContext, const FString& MapName)
 {
-	// Loading BGM은 사용하지 않는다. 실제 플레이 맵으로 이동할 때 기존 메뉴/로비 음악만
-	// 자연스럽게 종료하고, Gameplay 시작 신호가 올 때까지 무음 상태를 유지한다.
-	if (IsGameplayMap(MapName))
-	{
-		UE_LOG(LogTemp, Log, TEXT("[BGM] Gameplay map travel detected; fading out current BGM: %s"), *MapName);
-		StopBGM();
-	}
+	if (WorldContext.OwningGameInstance == GetGameInstance()) BeginLoadingBGM(MapName);
 }
 
 void UBGMSubsystem::HandlePostLoadMap(UWorld* LoadedWorld)
 {
 	if (!Settings || !LoadedWorld || LoadedWorld != (GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr)) return;
 	ApplyVolumeOverride(0.0f);
-	const FName MapName = GetCurrentMapName();
-	if (Settings->MainMenuMapNames.Contains(MapName))
+	PlayMapBGM(GetCurrentMapName());
+}
+
+void UBGMSubsystem::PlayMapBGM(FName MapName, bool bLoadSynchronously)
+{
+	if (!Settings || MapName.IsNone()) return;
+	if (const FBGMTrack* Track = Settings->GameplayBGMByMap.Find(MapName))
 	{
-		PlayMainMenuBGM();
+		PlayConfiguredTrack(*Track, EBGMState::Gameplay, *FString::Printf(TEXT("Gameplay:%s"), *MapName.ToString()), bLoadSynchronously);
 	}
-	else if (Settings->LobbyMapNames.Contains(MapName))
+	else
 	{
-		PlayLobbyBGM();
+		PlayConfiguredTrack(Settings->MainMenuBGM, EBGMState::MainMenu, TEXT("Menu"), bLoadSynchronously);
 	}
 }
 
-void UBGMSubsystem::PlayConfiguredTrack(const FBGMTrack& Track, EBGMState NewState, const TCHAR* DebugName)
+void UBGMSubsystem::PlayConfiguredTrack(const FBGMTrack& Track, EBGMState NewState, const TCHAR* DebugName, bool bLoadSynchronously)
 {
 	if (!CanPlayAudio()) return;
 	if (!Track.IsConfigured())
 	{
+		// A missing destination asset must not leave the previous screen playing.
+		const bool bWasLoading = bLoadingTransition;
+		StopBGM(0.0f);
+		bLoadingTransition = bWasLoading;
 		UE_LOG(LogTemp, Warning, TEXT("[BGM] %s track is not configured."), DebugName);
 		return;
 	}
 
-	const uint32 RequestId = ++PlayRequestId;
 	const FSoftObjectPath SoundPath = Track.Sound.ToSoftObjectPath();
+	if (!bLoadSynchronously && PendingLoad && PendingLoad->IsActive() && PendingSoundPath == SoundPath) return;
+	const uint32 RequestId = ++PlayRequestId;
+	if (PendingLoad) PendingLoad->CancelHandle();
+	PendingLoad.Reset();
+	PendingSoundPath.Reset();
 	if (USoundBase* LoadedSound = Track.Sound.Get())
 	{
 		PlayLoadedTrack(LoadedSound, Track, NewState, DebugName, RequestId);
 		return;
 	}
+	if (bLoadSynchronously)
+	{
+		PlayLoadedTrack(Track.Sound.LoadSynchronous(), Track, NewState, DebugName, RequestId);
+		return;
+	}
 
 	TWeakObjectPtr<UBGMSubsystem> WeakThis(this);
-	UAssetManager::GetStreamableManager().RequestAsyncLoad(SoundPath, FStreamableDelegate::CreateLambda(
+	PendingSoundPath = SoundPath;
+	PendingLoad = UAssetManager::GetStreamableManager().RequestAsyncLoad(SoundPath, FStreamableDelegate::CreateLambda(
 		[WeakThis, Track, NewState, DebugName = FString(DebugName), RequestId]()
 		{
 			if (!WeakThis.IsValid()) return;
@@ -196,6 +269,8 @@ void UBGMSubsystem::PlayLoadedTrack(USoundBase* Sound, const FBGMTrack& Track, E
 	if (CurrentSound == Sound && bCurrentTrackLoops == Track.bLoop && IsValid(ActiveComponent) && ActiveComponent->IsPlaying())
 	{
 		CurrentState = NewState;
+		CurrentTrackFadeOut = ResolveFadeOut(Track);
+		ActiveComponent->SetVolumeMultiplier(Track.VolumeMultiplier);
 		UE_LOG(LogTemp, Log, TEXT("[BGM] %s already playing; keeping playback position."), *DebugName);
 		return;
 	}
@@ -204,15 +279,28 @@ void UBGMSubsystem::PlayLoadedTrack(USoundBase* Sound, const FBGMTrack& Track, E
 	const float FadeOut = CurrentTrackFadeOut;
 	if (IsValid(FadingComponent))
 	{
+		FadingComponent->OnAudioFinishedNative.RemoveAll(this);
 		FadingComponent->Stop();
+		FadingComponent->DestroyComponent();
 		FadingComponent = nullptr;
 	}
 	if (IsValid(ActiveComponent))
 	{
-		if (FadeOut > 0.0f) ActiveComponent->FadeOut(FadeOut, 0.0f);
-		else ActiveComponent->Stop();
-		FadingComponent = ActiveComponent;
+		ActiveComponent->OnAudioFinishedNative.RemoveAll(this);
+		if (!bLoadingTransition && FadeOut > 0.0f)
+		{
+			ActiveComponent->bAutoDestroy = true;
+			ActiveComponent->FadeOut(FadeOut, 0.0f);
+			FadingComponent = ActiveComponent;
+		}
+		else
+		{
+			ActiveComponent->Stop();
+			ActiveComponent->DestroyComponent();
+		}
 	}
+	CurrentSound = nullptr;
+	CurrentState = EBGMState::None;
 
 	UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
 	USoundBase* PlaybackSound = Track.bLoop ? BGMPlayback::CreateLoopingSound(this, Sound) : Sound;
@@ -231,8 +319,9 @@ void UBGMSubsystem::PlayLoadedTrack(USoundBase* Sound, const FBGMTrack& Track, E
 		UE_LOG(LogTemp, Warning, TEXT("[BGM] %s needs looping authored in its own sound graph for Pause-safe playback (%s)."), *DebugName, *GetNameSafe(Sound));
 		ActiveComponent->OnAudioFinishedNative.AddUObject(this, &UBGMSubsystem::HandleAudioFinished);
 	}
-	if (FadeIn > 0.0f) ActiveComponent->FadeIn(FadeIn, Track.VolumeMultiplier);
-	else ActiveComponent->Play();
+	// Component gain = per-track correction; the audio fader = loading attenuation.
+	// Do not multiply the track correction into BOTH (the old code squared it on FadeIn).
+	ActiveComponent->FadeIn(FadeIn, GetLoadingGain());
 
 	CurrentSound = Sound;
 	CurrentState = NewState;
@@ -247,7 +336,7 @@ void UBGMSubsystem::HandleAudioFinished(UAudioComponent* FinishedComponent)
 	// so standard BGM must use CreateLoopingSound instead of relying on this callback.
 	if (bUseCompletionLoop && bCurrentTrackLoops && IsValid(FinishedComponent) && FinishedComponent == ActiveComponent && CurrentState != EBGMState::None)
 	{
-		FinishedComponent->Play(0.0f);
+		FinishedComponent->FadeIn(0.0f, GetLoadingGain());
 		UE_LOG(LogTemp, Verbose, TEXT("[BGM] Loop restart: %s"), *GetNameSafe(CurrentSound));
 	}
 }
@@ -314,5 +403,11 @@ float UBGMSubsystem::ResolveFadeOut(const FBGMTrack& Track) const
 
 bool UBGMSubsystem::CanPlayAudio() const
 {
-	return !IsRunningDedicatedServer() && GetGameInstance() && GetGameInstance()->GetWorld();
+	const UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
+	return !bDeinitializing && !IsRunningDedicatedServer() && World && World->GetNetMode() != NM_DedicatedServer;
+}
+
+float UBGMSubsystem::GetLoadingGain() const
+{
+	return bLoadingTransition && Settings ? FMath::Clamp(Settings->LoadingVolumeMultiplier, 0.01f, 1.0f) : 1.0f;
 }
