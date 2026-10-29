@@ -1,5 +1,6 @@
 #include "Loading/LoadingScreenSubsystem.h"
 
+#include "Audio/BGMSubsystem.h"
 #include "Loading/LoadingCoordinator.h"
 #include "Containers/Ticker.h"
 #include "Engine/Engine.h"
@@ -21,24 +22,25 @@ void ULoadingScreenSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		UE_LOG(LogTemp, Log, TEXT("[Loading] Screen subsystem skipped on dedicated server."));
 		return;
 	}
+	Collection.InitializeDependency<UBGMSubsystem>();
 	UE_LOG(LogTemp, Log, TEXT("[Loading] Screen subsystem initialized."));
-	PreLoadMapHandle = FCoreUObjectDelegates::PreLoadMap.AddUObject(this, &ULoadingScreenSubsystem::HandlePreLoadMap);
+	PreLoadMapHandle = FCoreUObjectDelegates::PreLoadMapWithContext.AddUObject(this, &ULoadingScreenSubsystem::HandlePreLoadMap);
 	PostLoadMapHandle = FCoreUObjectDelegates::PostLoadMapWithWorld.AddUObject(this, &ULoadingScreenSubsystem::HandlePostLoadMap);
 	TickerHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateUObject(this, &ULoadingScreenSubsystem::Tick));
 }
 
 void ULoadingScreenSubsystem::Deinitialize()
 {
-	if (PreLoadMapHandle.IsValid()) FCoreUObjectDelegates::PreLoadMap.Remove(PreLoadMapHandle);
+	if (PreLoadMapHandle.IsValid()) FCoreUObjectDelegates::PreLoadMapWithContext.Remove(PreLoadMapHandle);
 	if (PostLoadMapHandle.IsValid()) FCoreUObjectDelegates::PostLoadMapWithWorld.Remove(PostLoadMapHandle);
 	if (TickerHandle.IsValid()) FTSTicker::GetCoreTicker().RemoveTicker(TickerHandle);
-	RemoveLoadingScreen();
+	RemoveLoadingScreen(false);
 	Super::Deinitialize();
 }
 
-void ULoadingScreenSubsystem::HandlePreLoadMap(const FString& MapName)
+void ULoadingScreenSubsystem::HandlePreLoadMap(const FWorldContext& WorldContext, const FString& MapName)
 {
-	if (IsRunningDedicatedServer()) return;
+	if (IsRunningDedicatedServer() || WorldContext.OwningGameInstance != GetGameInstance()) return;
 	UE_LOG(LogTemp, Log, TEXT("[Loading] PreLoadMap: %s"), *MapName);
 	bTransitionActive = true;
 	bSawCoordinator = false;
@@ -49,7 +51,7 @@ void ULoadingScreenSubsystem::HandlePreLoadMap(const FString& MapName)
 
 void ULoadingScreenSubsystem::HandlePostLoadMap(UWorld* LoadedWorld)
 {
-	if (!bTransitionActive || IsRunningDedicatedServer()) return;
+	if (!bTransitionActive || IsRunningDedicatedServer() || !LoadedWorld || LoadedWorld->GetGameInstance() != GetGameInstance()) return;
 	UE_LOG(LogTemp, Log, TEXT("[Loading] PostLoadMap: %s"), LoadedWorld ? *LoadedWorld->GetName() : TEXT("None"));
 	SecondsSincePostLoad = 0.0f;
 	ShowLoadingScreen(TEXT("게임 준비 중..."));
@@ -59,6 +61,10 @@ void ULoadingScreenSubsystem::HandlePostLoadMap(UWorld* LoadedWorld)
 void ULoadingScreenSubsystem::BeginExternalLoading(const FString& StatusText)
 {
 	if (IsRunningDedicatedServer()) return;
+	if (UGameInstance* GameInstance = GetGameInstance())
+	{
+		if (UBGMSubsystem* BGM = GameInstance->GetSubsystem<UBGMSubsystem>()) BGM->BeginLoadingBGM();
+	}
 	UE_LOG(LogTemp, Log, TEXT("[Loading] External loading requested."));
 	bTransitionActive = true;
 	bExternalLoadingRequested = true;
@@ -194,7 +200,7 @@ void ULoadingScreenSubsystem::HideLoadingScreen()
 	RemoveLoadingScreen();
 }
 
-void ULoadingScreenSubsystem::RemoveLoadingScreen()
+void ULoadingScreenSubsystem::RemoveLoadingScreen(bool bRestoreBGM)
 {
 	bTransitionActive = false;
 	bExternalLoadingRequested = false;
@@ -207,6 +213,13 @@ void ULoadingScreenSubsystem::RemoveLoadingScreen()
 	if (ViewportClient && LoadingOverlay.IsValid()) ViewportClient->RemoveViewportWidgetContent(LoadingOverlay.ToSharedRef());
 	bOverlayAddedToViewport = false;
 	ReleaseInputLock();
+	if (bRestoreBGM)
+	{
+		if (UGameInstance* GameInstance = GetGameInstance())
+		{
+			if (UBGMSubsystem* BGM = GameInstance->GetSubsystem<UBGMSubsystem>()) BGM->EndLoadingBGM();
+		}
+	}
 }
 
 // SetIgnoreMoveInput/SetIgnoreLookInput 은 호출 횟수를 누적하는 카운터입니다.

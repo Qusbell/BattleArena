@@ -26,6 +26,8 @@
 #include "UObject/ConstructorHelpers.h"
 #include "MeshDescription.h"
 #include "StaticMeshAttributes.h"
+#include "Misc/App.h"
+#include "HAL/PlatformProperties.h"
 #if WITH_EDITOR
 #include "ScopedTransaction.h"
 #endif
@@ -36,6 +38,9 @@ namespace SpatialPortalGeometry
 	static TWeakObjectPtr<UStaticMesh> EllipseMesh;
 	static UStaticMesh* GetEllipseMesh()
 	{
+		// InitResources is forbidden in headless cooked runs. This surface is visual only;
+		// traversal uses the opening dimensions and does not require generated render data.
+		if (!FApp::CanEverRender() && FPlatformProperties::RequiresCookedData()) return nullptr;
 		if (EllipseMesh.IsValid()) return EllipseMesh.Get();
 		FMeshDescription description;
 		FStaticMeshAttributes attributes(description);

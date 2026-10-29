@@ -1,5 +1,6 @@
 #include "Loading/LoadingBlueprintLibrary.h"
 
+#include "Audio/BGMSubsystem.h"
 #include "Loading/LoadingCoordinator.h"
 #include "Loading/LoadingScreenSubsystem.h"
 #include "LocalDedicatedServerLibrary.h"
@@ -42,6 +43,10 @@ void ULoadingBlueprintLibrary::BeginLoadingAndOpenLevel(const UObject* WorldCont
 	if (!World || LevelName.IsEmpty()) return;
 
 	BeginLoadingScreen(WorldContextObject, StatusText);
+	if (UGameInstance* GameInstance = World->GetGameInstance())
+	{
+		if (UBGMSubsystem* BGM = GameInstance->GetSubsystem<UBGMSubsystem>()) BGM->BeginLoadingBGM(LevelName);
+	}
 	TWeakObjectPtr<UGameInstance> WeakGameInstance = World->GetGameInstance();
 	FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([WeakGameInstance, LevelName](float)
 	{
@@ -60,6 +65,11 @@ void ULoadingBlueprintLibrary::BeginLoadingAndReturnToMainMenu(const UObject* Wo
 {
 	UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull) : nullptr;
 	if (!World) return;
+	BeginLoadingScreen(WorldContextObject, StatusText);
+	if (UGameInstance* GameInstance = World->GetGameInstance())
+	{
+		if (UBGMSubsystem* BGM = GameInstance->GetSubsystem<UBGMSubsystem>()) BGM->BeginLoadingBGM(TEXT("MainMenu_Level"));
+	}
 
 	// 원격 서버(통일 매치 서버 등)에 붙어 있는 경우, disconnect 를 지연 없이 즉시 실행합니다.
 	// 안 그러면 다른 플레이어가 결과창의 "로비로"(서버 전체 ServerTravel)를 누를 때
@@ -73,7 +83,6 @@ void ULoadingBlueprintLibrary::BeginLoadingAndReturnToMainMenu(const UObject* Wo
 		}
 	}
 
-	BeginLoadingScreen(WorldContextObject, StatusText);
 	TWeakObjectPtr<UGameInstance> WeakGameInstance = World->GetGameInstance();
 	FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([WeakGameInstance](float)
 	{
@@ -101,6 +110,11 @@ void ULoadingBlueprintLibrary::BeginLoadingAndLeaveMatchToMainMenu(const UObject
 {
 	UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull) : nullptr;
 	if (!World) return;
+	BeginLoadingScreen(WorldContextObject, StatusText);
+	if (UGameInstance* GameInstance = World->GetGameInstance())
+	{
+		if (UBGMSubsystem* BGM = GameInstance->GetSubsystem<UBGMSubsystem>()) BGM->BeginLoadingBGM(TEXT("MainMenu_Level"));
+	}
 
 	// disconnect 를 지연 없이 "즉시" 실행합니다. 통일 서버 모델에서는 다른 플레이어가 결과창의
 	// "로비로"(서버 전체 ServerTravel)를 누르면, 이 클라이언트가 disconnect 되기 전에 함께
@@ -111,7 +125,6 @@ void ULoadingBlueprintLibrary::BeginLoadingAndLeaveMatchToMainMenu(const UObject
 		PlayerController->ConsoleCommand(TEXT("disconnect"));
 	}
 
-	BeginLoadingScreen(WorldContextObject, StatusText);
 	TWeakObjectPtr<UGameInstance> WeakGameInstance = World->GetGameInstance();
 	FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([WeakGameInstance](float)
 	{
