@@ -11,11 +11,14 @@ void UGameplayValidationSubsystem::Initialize(FSubsystemCollectionBase& Collecti
 {
     Super::Initialize(Collection);
     FEditorDelegates::OnMapOpened.AddUObject(this, &UGameplayValidationSubsystem::HandleMapOpened);
+    FEditorDelegates::PostUndoRedo.AddUObject(this, &UGameplayValidationSubsystem::HandlePostUndoRedo);
 }
 
 void UGameplayValidationSubsystem::Deinitialize()
 {
+    bIsValidatorTabOpen = false;
     FEditorDelegates::OnMapOpened.RemoveAll(this);
+    FEditorDelegates::PostUndoRedo.RemoveAll(this);
     ClearReport();
     Super::Deinitialize();
 }
@@ -76,7 +79,7 @@ const FGameplayValidationReport& UGameplayValidationSubsystem::ValidateCurrentLe
         }
     }
 
-    // 어떤 Provider도 Tick하지 않습니다. 버튼 클릭 시 Prepare -> Validate -> Finalize 한 번만 실행합니다.
+    // 어떤 Provider도 Tick하지 않습니다. 수동 검사 또는 Undo/Redo 완료 시 한 번 실행합니다.
     for (const TSharedRef<IGameplayValidationProvider>& Provider : ProviderRegistry.GetProviders())
     {
         Provider->Prepare(Context);
@@ -142,4 +145,21 @@ void UGameplayValidationSubsystem::HandleMapOpened(const FString& Filename, cons
 {
     // 이전 레벨 결과가 새 레벨에 남지 않도록 지우기만 하고 자동 검사는 수행하지 않습니다.
     ClearReport();
+}
+
+void UGameplayValidationSubsystem::HandlePostUndoRedo()
+{
+    // 탭이 열려 있을 때만 복원 후 기존 결과를 갱신합니다.
+    if (!bIsValidatorTabOpen || !LastReport.bHasRun || !GEditor || GEditor->PlayWorld)
+    {
+        return;
+    }
+
+    UWorld* World = GetEditorWorld();
+    if (!IsValid(World) || World->WorldType != EWorldType::Editor)
+    {
+        return;
+    }
+
+    ValidateCurrentLevel();
 }

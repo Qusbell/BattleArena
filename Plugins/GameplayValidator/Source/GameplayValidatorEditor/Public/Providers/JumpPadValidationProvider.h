@@ -9,6 +9,7 @@ public:
     static const FName ProviderId;
     static const FName ApexTimeSlotId;
     static const FName LaunchAngleSlotId;
+    static const FName DirectionSlotId;
 
     virtual FName GetProviderId() const override { return ProviderId; }
     virtual FText GetDisplayName() const override;

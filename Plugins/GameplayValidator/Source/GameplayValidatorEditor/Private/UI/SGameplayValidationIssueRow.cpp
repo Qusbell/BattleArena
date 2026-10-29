@@ -1,10 +1,15 @@
 #include "UI/SGameplayValidationIssueRow.h"
 
 #include "GameFramework/Actor.h"
+#include "Editor.h"
+#include "GameplayValidationSubsystem.h"
+#include "Integration/GameplayValidatorPathLinkBridge.h"
+#include "ScopedTransaction.h"
 #include "Utils/GameplayValidationEditorUtils.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Text/STextBlock.h"
+#include "Widgets/SBoxPanel.h"
 
 void SGameplayValidationIssueRow::Construct(
     const FArguments& InArgs,
@@ -51,10 +56,26 @@ TSharedRef<SWidget> SGameplayValidationIssueRow::GenerateWidgetForColumn(const F
 
     if (ColumnName == TEXT("Focus"))
     {
-        return SNew(SButton)
-            .Text(NSLOCTEXT("GameplayValidator", "FocusButton", "Focus"))
-            .IsEnabled(Issue->TargetActor.IsValid())
-            .OnClicked(this, &SGameplayValidationIssueRow::HandleFocusClicked);
+        return SNew(SHorizontalBox)
+            + SHorizontalBox::Slot()
+            .FillWidth(1.0f)
+            [
+                SNew(SButton)
+                .Text(NSLOCTEXT("GameplayValidator", "FocusButton", "Focus"))
+                .IsEnabled_Lambda([this] { return Issue.IsValid() && Issue->TargetActor.IsValid(); })
+                .OnClicked(this, &SGameplayValidationIssueRow::HandleFocusClicked)
+            ]
+            + SHorizontalBox::Slot()
+            .AutoWidth()
+            .Padding(4.0f, 0.0f, 0.0f, 0.0f)
+            [
+                SNew(SButton)
+                .Text(NSLOCTEXT("GameplayValidator", "AttachButton", "Attach"))
+                .ToolTipText(NSLOCTEXT("GameplayValidator", "AttachButtonTooltip", "이 PathLink의 Attach To Ground를 실행하고 검사 결과를 갱신합니다."))
+                .Visibility(Issue->ProviderId == TEXT("PathLink") ? EVisibility::Visible : EVisibility::Collapsed)
+                .IsEnabled(this, &SGameplayValidationIssueRow::CanAttach)
+                .OnClicked(this, &SGameplayValidationIssueRow::HandleAttachClicked)
+            ];
     }
 
     return SNew(STextBlock).Text(FText::GetEmpty());
@@ -63,6 +84,34 @@ TSharedRef<SWidget> SGameplayValidationIssueRow::GenerateWidgetForColumn(const F
 FReply SGameplayValidationIssueRow::HandleFocusClicked()
 {
     FGameplayValidationEditorUtils::FocusActor(Issue.IsValid() ? Issue->TargetActor.Get() : nullptr);
+    return FReply::Handled();
+}
+
+bool SGameplayValidationIssueRow::CanAttach() const
+{
+    return GEditor && !GEditor->PlayWorld
+        && Issue.IsValid() && Issue->ProviderId == TEXT("PathLink")
+        && FGameplayValidatorPathLinkBridge::CanAttachToGround(Issue->TargetActor.Get());
+}
+
+FReply SGameplayValidationIssueRow::HandleAttachClicked()
+{
+    if (!CanAttach())
+    {
+        return FReply::Handled();
+    }
+
+    {
+        // AttachToGround 내부의 Modify()를 Undo/Redo 트랜잭션으로 묶습니다.
+        const FScopedTransaction Transaction(NSLOCTEXT("GameplayValidator", "AttachPathLinkTransaction", "Attach PathLink To Ground"));
+        FGameplayValidatorPathLinkBridge::TryAttachToGround(Issue->TargetActor.Get());
+    }
+
+    GEditor->RedrawLevelEditingViewports();
+    if (UGameplayValidationSubsystem* Subsystem = GEditor->GetEditorSubsystem<UGameplayValidationSubsystem>())
+    {
+        Subsystem->ValidateCurrentLevel();
+    }
     return FReply::Handled();
 }
 

@@ -25,14 +25,18 @@ public:
     const FGameplayValidationProviderRegistry& GetProviderRegistry() const { return ProviderRegistry; }
 
     void ClearReport();
+    /** 실제 탭의 열기/닫기 수명에 맞춰 자동 재검사를 허용합니다. */
+    void SetValidatorTabOpen(bool bIsOpen) { bIsValidatorTabOpen = bIsOpen; }
     FOnGameplayValidationReportChanged& OnReportChanged() { return ReportChanged; }
 
 private:
     UWorld* GetEditorWorld() const;
     void HandleMapOpened(const FString& Filename, bool bAsTemplate);
+    void HandlePostUndoRedo();
 
     FGameplayValidationProviderRegistry ProviderRegistry;
     FGameplayValidationReport LastReport;
     TArray<FGameplayValidationScanMessage> ConfigurationMessages;
     FOnGameplayValidationReportChanged ReportChanged;
+    bool bIsValidatorTabOpen = false;
 };
