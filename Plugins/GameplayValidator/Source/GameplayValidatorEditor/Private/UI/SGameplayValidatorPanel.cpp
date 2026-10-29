@@ -425,7 +425,7 @@ TSharedRef<SWidget> SGameplayValidatorPanel::BuildIssueSection(
             + SHeaderRow::Column(TEXT("Category")).DefaultLabel(LOCTEXT("CategoryColumn", "Category")).FillWidth(0.14f)
             + SHeaderRow::Column(TEXT("Actor")).DefaultLabel(LOCTEXT("ActorColumn", "Actor")).FillWidth(0.20f)
             + SHeaderRow::Column(TEXT("Message")).DefaultLabel(LOCTEXT("MessageColumn", "Message")).FillWidth(0.44f)
-            + SHeaderRow::Column(TEXT("Focus")).DefaultLabel(FText::GetEmpty()).FixedWidth(70.0f)
+            + SHeaderRow::Column(TEXT("Focus")).DefaultLabel(FText::GetEmpty()).FixedWidth(140.0f)
         );
 
     return SNew(SExpandableArea)
