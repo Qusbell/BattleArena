@@ -5,6 +5,7 @@
 
 #include "Components/SceneCaptureComponent2D.h"
 #include "Engine/TextureRenderTarget2D.h"
+#include "Engine/Engine.h"
 #include "EngineUtils.h"
 #include "Camera/PlayerCameraManager.h"
 #include "GameFramework/PlayerController.h"
@@ -28,6 +29,7 @@ namespace PortalViewPrivate
 		FPortalCaptureView captureView;
 		float captureInterval = 0.0f;
 		bool bForced = false;
+		FPortalCaptureHistory history;
 	};
 }
 
@@ -78,6 +80,18 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 	const FTransform observerTransform(cameraRotation, cameraLocation);
 	const FTransform previousObserverTransform = lastObserverTransform;
 	const bool bCanCompareObserver = bHasObserverTransform;
+	// Latch cuts even on frames where the DA interval or shared budget postpones the capture.
+	const float translationThreshold = GEngine ? GEngine->CameraTranslationThreshold : 10000.0f;
+	const float rotationThreshold = GEngine ? GEngine->CameraRotationThreshold : 45.0f;
+	const bool bObserverJump = bCanCompareObserver
+		&& (FVector::DistSquared(previousObserverTransform.GetLocation(), cameraLocation) > FMath::Square(translationThreshold)
+			|| previousObserverTransform.GetRotation().AngularDistance(observerTransform.GetRotation())
+				> FMath::DegreesToRadians(rotationThreshold));
+	if (playerController->PlayerCameraManager->bGameCameraCutThisFrame || bObserverJump
+		|| (bCanCompareObserver && (lastObserverPawn != playerController->GetPawn()
+			|| lastObserverViewTarget != playerController->GetViewTarget()))) ++observerCutRevision;
+	lastObserverPawn = playerController->GetPawn();
+	lastObserverViewTarget = playerController->GetViewTarget();
 	lastObserverTransform = observerTransform;
 	bHasObserverTransform = true;
 
@@ -212,8 +226,21 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 			continue;
 		}
 
+		FPortalCaptureHistory history;
+		AActor* exitTarget = portal->GetExitTarget();
+		if (!IsValid(exitTarget)) { visiblePortals.Remove(portal); continue; }
+		history.exitTarget = exitTarget;
+		history.entryFrame = portal->GetPortalFrameTransform();
+		if (const auto* exitPortal = Cast<AOneWayTeleportActor>(exitTarget))
+			history.exitFrame = exitPortal->GetPortalFrameTransform();
+		else history.exitFrame = exitTarget->GetActorTransform();
+		history.observerCutRevision = observerCutRevision;
+		history.bSpatialView = captureView.bSpatialView;
+		history.bOcclusionEnabled = settings->bEnablePortalCaptureOcclusionCulling;
+		history.bPersistentState = captureView.bSpatialView
+			&& (settings->bUseHighQualityPortalCapture || settings->bEnablePortalCaptureOcclusionCulling);
 		readyCaptures.Add({ portal, candidate.score, view.captureAccumulator, captureView,
-			captureInterval, bRenderTargetRecreated || !view.bHasCaptured });
+			captureInterval, bRenderTargetRecreated || !view.bHasCaptured, history });
 	}
 
 	// 예산에서 밀린 포탈은 누적 대기 시간이 계속 증가합니다. 다음 프레임에는 가장 오래
@@ -262,12 +289,10 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 		const FPortalCaptureView& captureView = readyCaptures[captureIndex].captureView;
 		view->captureAccumulator = CalculateCaptureRemainder(view->captureAccumulator,
 			readyCaptures[captureIndex].captureInterval, readyCaptures[captureIndex].bForced);
-		ConfigureCaptureAppearance(*view->sceneCapture, captureView.bSpatialView, settings->bUseHighQualityPortalCapture);
-
-		// SceneCapture는 메인 카메라와 별도의 View이므로 출구 시점에서 Occlusion을 다시 계산합니다.
-		// Disable 플래그를 명시적으로 반대로 설정해 에디터 ShowFlag 상태에 영향받지 않게 합니다.
-		view->sceneCapture->ShowFlags.SetDisableOcclusionQueries(
-			!settings->bEnablePortalCaptureOcclusionCulling);
+		ConfigureCaptureAppearance(*view->sceneCapture, captureView.bSpatialView, settings->bUseHighQualityPortalCapture,
+			settings->bEnablePortalCaptureOcclusionCulling);
+		view->sceneCapture->bCameraCutThisFrame |= readyCaptures[captureIndex].bForced
+			|| ShouldResetCaptureHistory(view->lastCaptureHistory, readyCaptures[captureIndex].history, view->bHasCaptured);
 		view->sceneCapture->MaxViewDistanceOverride = FMath::IsFinite(settings->portalCaptureMaxViewDistance)
 			&& settings->portalCaptureMaxViewDistance > 0.0f
 			? settings->portalCaptureMaxViewDistance
@@ -304,6 +329,7 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 		}
 		else view->sceneCapture->CaptureScene();
 		view->lastCaptureTransform = captureView.transform;
+		view->lastCaptureHistory = readyCaptures[captureIndex].history;
 		view->bHasCaptured = true;
 	}
 
@@ -374,7 +400,22 @@ int32 UPortalViewSubsystem::ResolveSmoothRenderTargetSize(int32 normalResolution
 	return FMath::Min(normalResolution, lowResolution);
 }
 
-void UPortalViewSubsystem::ConfigureCaptureAppearance(USceneCaptureComponent2D& capture, bool bSpatialView, bool bHighQuality)
+bool UPortalViewSubsystem::ShouldResetCaptureHistory(const FPortalCaptureHistory& previous,
+	const FPortalCaptureHistory& current, bool bHasCaptured)
+{
+	// Reference-frame edits are discontinuities even when swapping equal-position exits.
+	// Ordinary observer motion retains query history; UE also rejects history on large capture-camera movement.
+	return !bHasCaptured || previous.exitTarget != current.exitTarget
+		|| previous.observerCutRevision != current.observerCutRevision
+		|| previous.bSpatialView != current.bSpatialView
+		|| previous.bOcclusionEnabled != current.bOcclusionEnabled
+		|| previous.bPersistentState != current.bPersistentState
+		|| !previous.entryFrame.Equals(current.entryFrame, 0.01f)
+		|| !previous.exitFrame.Equals(current.exitFrame, 0.01f);
+}
+
+void UPortalViewSubsystem::ConfigureCaptureAppearance(USceneCaptureComponent2D& capture, bool bSpatialView, bool bHighQuality,
+	bool bEnableOcclusionCulling)
 {
 	// FinalColorLDR would bake exposure + filmic tone mapping, then the opaque portal's emissive
 	// would be exposed/tone mapped AGAIN by the player view. Keep spatial textures scene-linear.
@@ -386,7 +427,10 @@ void UPortalViewSubsystem::ConfigureCaptureAppearance(USceneCaptureComponent2D& 
 	// Main-view PP is inherited by the renderer only for deferred spatial captures. No second set of
 	// camera blendables/color grades/exposure is baked into the scene-color texture.
 	capture.PostProcessBlendWeight = bSpatialView ? 0.0f : 1.0f;
-	capture.bAlwaysPersistRenderingState = bSpatialView && bHighQuality;
+	// Manual GPU occlusion needs a ViewState even with all expensive lighting disabled.
+	// Keep the existing high-quality temporal state, independently of the occlusion switch.
+	capture.bAlwaysPersistRenderingState = bSpatialView && (bHighQuality || bEnableOcclusionCulling);
+	capture.ShowFlags.SetDisableOcclusionQueries(!bEnableOcclusionCulling);
 	// Preserve the existing lighting-cost switches, independently of the HDR texture format.
 	capture.ShowFlags.SetDynamicShadows(bHighQuality);
 	capture.ShowFlags.SetLumenGlobalIllumination(bHighQuality);
@@ -627,11 +671,14 @@ void UPortalViewSubsystem::ClearPortalView(AOneWayTeleportActor* portal, FPortal
 	view.smoothCaptureRemaining = 0.0f;
 	view.captureAccumulator = 0.0f;
 	view.bHasCaptured = false;
+	view.lastCaptureHistory = FPortalCaptureHistory();
 }
 
 void UPortalViewSubsystem::ClearAllPortalViews()
 {
 	bHasObserverTransform = false;
+	lastObserverPawn.Reset();
+	lastObserverViewTarget.Reset();
 	for (auto& [portal, view] : portalViews)
 	{
 		ClearPortalView(portal.Get(), view);
