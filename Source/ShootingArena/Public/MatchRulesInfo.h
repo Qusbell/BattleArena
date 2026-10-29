@@ -32,6 +32,13 @@ public:
 	UPROPERTY(Replicated)
 	int32 KillTarget = 0;
 
+	// true 면 시간 제한이 없습니다. (MatchDurationSeconds 는 사실상 끝나지 않는 큰 값) HUD 는 타이머를 만들지 않습니다.
+	UPROPERTY(Replicated)
+	bool bUnlimitedTime = false;
+
+	// 시간 제한 없음일 때 MatchDurationSeconds 에 넣는 값(1년).
+	static constexpr int32 UnlimitedDurationSeconds = 31536000;
+
 	// 서버 월드 시간(GameState::GetServerWorldTimeSeconds 기준)으로 본 매치 시작 시각. 0 이면 아직 시작 전입니다.
 	// 클라이언트 HUD 타이머가 서로 같은 남은 시간을 보여주는 데 씁니다.
 	UPROPERTY(Replicated)
@@ -87,6 +94,10 @@ public:
 	 */
 	UFUNCTION(BlueprintPure, Category = "MatchRules", meta = (WorldContext = "WorldContextObject"))
 	static float GetMatchRemainingSeconds(const UObject* WorldContextObject, float DefaultRemaining);
+
+	/** 시간 제한이 없는 매치(싱글플레이 맵의 GameTimer 가 음수)면 true. HUD 타이머를 만들지 말지 정할 때 씁니다. */
+	UFUNCTION(BlueprintPure, Category = "MatchRules", meta = (WorldContext = "WorldContextObject"))
+	static bool IsMatchTimeUnlimited(const UObject* WorldContextObject);
 };
 
 /** 멀티 매치(GameMode 이름에 "MultiplayerAIGameMode" 포함)가 시작될 때 AMatchRulesInfo 를 만듭니다. 서버 전용. */

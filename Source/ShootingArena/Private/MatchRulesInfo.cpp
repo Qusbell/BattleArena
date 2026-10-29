@@ -14,6 +14,8 @@
 #include "GameFramework/GameModeBase.h"
 #include "GameFramework/PlayerState.h"
 #include "UObject/UnrealType.h"
+#include "Engine/DataTable.h"
+#include "UObject/SoftObjectPtr.h"
 
 namespace
 {
@@ -65,6 +67,98 @@ namespace
 		}
 		return 0;
 	}
+
+	// DT_MapData(ST_MapData) 의 WinKillCount / GameTimer 컬럼. 유저 정의 구조체라 속성 이름 뒤에 GUID 가 붙어서 접두어로 찾습니다.
+	// 싱글플레이는 별도 로컬 서버가 맵을 열기 때문에 서버 쪽 GameInstance 에는 Selected_Map_ID 가 없습니다.
+	// 그래서 지금 열린 맵(Map_Asset)이 같은 행을 찾고, 같은 맵을 쓰는 행이 여러 개면 Selected_Map_ID 와 같은 행을 우선합니다.
+	void ReadSinglePlayRules(UWorld& World, int32& OutDurationSeconds, int32& OutKills, bool& bOutUnlimitedTime)
+	{
+		OutDurationSeconds = 0;
+		OutKills = 0;
+		bOutUnlimitedTime = false;
+
+		const UDataTable* Table = LoadObject<UDataTable>(nullptr, TEXT("/Game/QuakeLike_1_0/GameFlow/Table/DT/DT_MapData.DT_MapData"));
+		if (!Table)
+		{
+			return;
+		}
+		const UStruct* RowStruct = Table->GetRowStruct();
+
+		FName SelectedRow = NAME_None;
+		if (UGameInstance* GameInstance = World.GetGameInstance())
+		{
+			if (const FNameProperty* MapIdProperty = CastField<FNameProperty>(GameInstance->GetClass()->FindPropertyByName(TEXT("Selected_Map_ID"))))
+			{
+				SelectedRow = MapIdProperty->GetPropertyValue_InContainer(GameInstance);
+			}
+		}
+
+		const FString CurrentMap = UWorld::RemovePIEPrefix(World.GetOutermost()->GetName());
+		const uint8* FoundRow = nullptr;
+		for (const TPair<FName, uint8*>& Pair : Table->GetRowMap())
+		{
+			bool bSameMap = false;
+			for (TFieldIterator<FProperty> It(RowStruct); It; ++It)
+			{
+				if (It->GetName().StartsWith(TEXT("Map_Asset")))
+				{
+					// Map_Asset 은 FSoftWorldReference(구조체) 라서 안쪽의 WorldAsset(소프트 오브젝트)을 꺼냅니다.
+					if (const FStructProperty* Wrapper = CastField<FStructProperty>(*It))
+					{
+						const void* WrapperValue = Wrapper->ContainerPtrToValuePtr<void>(Pair.Value);
+						for (TFieldIterator<FSoftObjectProperty> Inner(Wrapper->Struct); Inner; ++Inner)
+						{
+							const FSoftObjectPtr* Ptr = Inner->ContainerPtrToValuePtr<FSoftObjectPtr>(WrapperValue);
+							bSameMap = Ptr && Ptr->ToSoftObjectPath().GetLongPackageName() == CurrentMap;
+							break;
+						}
+					}
+					else if (const FSoftObjectProperty* Asset = CastField<FSoftObjectProperty>(*It))
+					{
+						const FSoftObjectPtr* Ptr = Asset->ContainerPtrToValuePtr<FSoftObjectPtr>(Pair.Value);
+						bSameMap = Ptr && Ptr->ToSoftObjectPath().GetLongPackageName() == CurrentMap;
+					}
+					break;
+				}
+			}
+			if (bSameMap && (!FoundRow || Pair.Key == SelectedRow))
+			{
+				FoundRow = Pair.Value;
+			}
+		}
+		if (!FoundRow)
+		{
+			return;
+		}
+
+		for (TFieldIterator<FProperty> It(RowStruct); It; ++It)
+		{
+			const FString Name = It->GetName();
+			if (Name.StartsWith(TEXT("WinKillCount")))
+			{
+				if (const FNumericProperty* Number = CastField<FNumericProperty>(*It))
+				{
+					OutKills = FMath::Max(0, static_cast<int32>(Number->GetSignedIntPropertyValue(Number->ContainerPtrToValuePtr<void>(FoundRow))));
+				}
+			}
+			else if (Name.StartsWith(TEXT("GameTimer")))
+			{
+				const FStructProperty* Struct = CastField<FStructProperty>(*It);
+				if (Struct && Struct->Struct == TBaseStructure<FVector2D>::Get())
+				{
+					const FVector2D Timer = *Struct->ContainerPtrToValuePtr<FVector2D>(FoundRow);
+					if (Timer.X >= 0.0)
+					{
+						OutDurationSeconds = FMath::RoundToInt(Timer.X) * 60 + FMath::Max(0, FMath::RoundToInt(Timer.Y));
+					}
+					else
+					{
+						bOutUnlimitedTime = true; // 음수면 시간 제한 없음
+					}
+				}
+			}
+		}
+	}
 }
 
 AMatchRulesInfo::AMatchRulesInfo()
@@ -79,6 +173,7 @@ void AMatchRulesInfo::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(AMatchRulesInfo, MatchDurationSeconds);
 	DOREPLIFETIME(AMatchRulesInfo, KillTarget);
+	DOREPLIFETIME(AMatchRulesInfo, bUnlimitedTime);
 	DOREPLIFETIME(AMatchRulesInfo, MatchStartServerTime);
 	DOREPLIFETIME(AMatchRulesInfo, ServerRemainingSeconds);
 }
@@ -324,6 +419,20 @@ void AMatchRulesInfo::EndMatchOnServer()
 	GetWorldTimerManager().ClearTimer(KillCheckTimer);
 }
 
+bool UMatchRulesLibrary::IsMatchTimeUnlimited(const UObject* WorldContextObject)
+{
+	const UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull) : nullptr;
+	if (!World)
+	{
+		return false;
+	}
+	for (TActorIterator<AMatchRulesInfo> It(const_cast<UWorld*>(World)); It; ++It)
+	{
+		return It->bUnlimitedTime;
+	}
+	return false;
+}
+
 float UMatchRulesLibrary::GetMatchRemainingSeconds(const UObject* WorldContextObject, float DefaultRemaining)
 {
 	const UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull) : nullptr;
@@ -365,23 +474,34 @@ void UMatchRulesSubsystem::OnWorldBeginPlay(UWorld& InWorld)
 		return;
 	}
 
-	int32 Minutes = 0;
+	int32 DurationSeconds = 0;
 	int32 Kills = 0;
+	bool bUnlimitedTime = false;
 	if (GameMode->GetClass()->GetName().Contains(TEXT("MultiplayerAIGameMode")))
 	{
 		if (const UShootingArenaGameInstance* GameInstance = Cast<UShootingArenaGameInstance>(InWorld.GetGameInstance()))
 		{
-			Minutes = UMultiRulesLibrary::GetRuleValue(UMultiRulesLibrary::TimeLimitRowName, GameInstance->PendingTimeIdx);
+			DurationSeconds = UMultiRulesLibrary::GetRuleValue(UMultiRulesLibrary::TimeLimitRowName, GameInstance->PendingTimeIdx) * 60;
 			Kills = UMultiRulesLibrary::GetRuleValue(UMultiRulesLibrary::KillTargetRowName, GameInstance->PendingKillIdx);
+		}
+	}
+	else
+	{
+		// 싱글플레이: 선택한 맵(Selected_Map_ID)의 DT_MapData 행에서 GameTimer(분, 초) / WinKillCount 를 읽습니다. -1 은 "기본값 유지".
+		ReadSinglePlayRules(InWorld, DurationSeconds, Kills, bUnlimitedTime);
+		if (bUnlimitedTime)
+		{
+			DurationSeconds = AMatchRulesInfo::UnlimitedDurationSeconds;
 		}
 	}
 
 	AMatchRulesInfo* Info = InWorld.SpawnActorDeferred<AMatchRulesInfo>(AMatchRulesInfo::StaticClass(), FTransform::Identity, nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
 	if (Info)
 	{
-		Info->MatchDurationSeconds = Minutes * 60;
+		Info->MatchDurationSeconds = DurationSeconds;
 		Info->KillTarget = Kills;
+		Info->bUnlimitedTime = bUnlimitedTime;
 		Info->FinishSpawning(FTransform::Identity);
-		UE_LOG(LogTemp, Log, TEXT("[MatchRules] 매치 규칙 액터 생성: %d분 / %d킬 (0 = 규칙 없음)"), Minutes, Kills);
+		UE_LOG(LogTemp, Log, TEXT("[MatchRules] 매치 규칙 액터 생성: %d초 / %d킬 (0 = 규칙 없음)"), DurationSeconds, Kills);
 	}
 }
