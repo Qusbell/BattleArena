@@ -8,6 +8,18 @@ class AOneWayTeleportActor;
 class USceneCaptureComponent2D;
 class UTextureRenderTarget2D;
 
+/** Snapshot of the reference frames used by an actual submitted capture, not a skipped update. */
+struct FPortalCaptureHistory
+{
+	TWeakObjectPtr<AActor> exitTarget;
+	FTransform entryFrame = FTransform::Identity;
+	FTransform exitFrame = FTransform::Identity;
+	uint64 observerCutRevision = 0;
+	bool bSpatialView = false;
+	bool bOcclusionEnabled = false;
+	bool bPersistentState = false;
+};
+
 USTRUCT()
 struct FPortalViewInstance
 {
@@ -37,6 +49,8 @@ struct FPortalViewInstance
 
 	UPROPERTY(Transient)
 	bool bHasCaptured = false;
+
+	FPortalCaptureHistory lastCaptureHistory;
 };
 
 /**
@@ -55,7 +69,11 @@ public:
 	virtual TStatId GetStatId() const override;
 
 	/** Spatial surfaces feed linear scene light into the player's own exposure/tonemapper exactly once. */
-	static void ConfigureCaptureAppearance(USceneCaptureComponent2D& capture, bool bSpatialView, bool bHighQuality);
+	static void ConfigureCaptureAppearance(USceneCaptureComponent2D& capture, bool bSpatialView, bool bHighQuality,
+		bool bEnableOcclusionCulling = true);
+	/** A camera cut discards old visibility results without reallocating the ViewState or changing capture cadence. */
+	static bool ShouldResetCaptureHistory(const FPortalCaptureHistory& previous,
+		const FPortalCaptureHistory& current, bool bHasCaptured);
 	/** Preserve fractional capture time without queuing catch-up captures after a hitch. */
 	static float CalculateCaptureRemainder(float accumulatedSeconds, float intervalSeconds, bool bForced);
 	/** Main-view camera motion, independent of portal-eye clamping and capture intervals. */
@@ -84,6 +102,9 @@ private:
 	void ClearAllPortalViews();
 	FTransform lastObserverTransform = FTransform::Identity;
 	bool bHasObserverTransform = false;
+	TWeakObjectPtr<AActor> lastObserverPawn;
+	TWeakObjectPtr<AActor> lastObserverViewTarget;
+	uint64 observerCutRevision = 0;
 
 	UPROPERTY(Transient)
 	TMap<TWeakObjectPtr<AOneWayTeleportActor>, FPortalViewInstance> portalViews;
