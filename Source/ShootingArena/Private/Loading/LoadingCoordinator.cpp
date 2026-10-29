@@ -1,7 +1,5 @@
 #include "Loading/LoadingCoordinator.h"
 
-#include "Audio/BGMSubsystem.h"
-#include "Engine/GameInstance.h"
 #include "Engine/World.h"
 #include "GameFramework/GameStateBase.h"
 #include "GameFramework/PlayerState.h"
@@ -67,9 +65,6 @@ void ALoadingCoordinator::RefreshServerState()
 	{
 		Phase = NewPhase;
 		ForceNetUpdate();
-		// Standalone/Listen Server에서는 RepNotify가 실행되지 않으므로 서버 쪽에서도
-		// 동일한 로컬 상태 처리를 호출합니다. Dedicated Server의 BGMSubsystem은 no-op입니다.
-		HandlePhaseChanged();
 	}
 }
 
@@ -91,32 +86,6 @@ void ALoadingCoordinator::ApplyServerReadyFallback()
 	UE_LOG(LogTemp, Warning, TEXT("[Loading] MarkServerWorldReady was not called; using the 2-second fallback."));
 	bServerWorldReady = true;
 	RefreshServerState();
-}
-
-void ALoadingCoordinator::OnRep_Phase()
-{
-	HandlePhaseChanged();
-}
-
-void ALoadingCoordinator::HandlePhaseChanged()
-{
-	if (IsRunningDedicatedServer() || Phase != ELoadingCoordinatorPhase::ReadyToPlay)
-	{
-		return;
-	}
-
-	UGameInstance* GameInstance = GetWorld() ? GetWorld()->GetGameInstance() : nullptr;
-	if (!GameInstance)
-	{
-		return;
-	}
-
-	if (UBGMSubsystem* BGM = GameInstance->GetSubsystem<UBGMSubsystem>())
-	{
-		const bool bStarted = BGM->PlayGameplayBGM();
-		UE_LOG(LogTemp, Log, TEXT("[BGM] LoadingCoordinator ReadyToPlay: Gameplay BGM request %s."),
-			bStarted ? TEXT("accepted") : TEXT("failed (map is not configured)"));
-	}
 }
 
 void ALoadingCoordinator::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

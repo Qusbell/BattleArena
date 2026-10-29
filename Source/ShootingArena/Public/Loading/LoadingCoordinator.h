@@ -49,14 +49,10 @@ public:
 
 private:
 	void RefreshServerState();
-	void HandlePhaseChanged();
 	int32 CountConnectedHumanPlayers() const;
 	void ApplyServerReadyFallback();
 
-	UFUNCTION()
-	void OnRep_Phase();
-
-	UPROPERTY(ReplicatedUsing = OnRep_Phase, VisibleAnywhere, BlueprintReadOnly, Category = "Loading", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Loading", meta = (AllowPrivateAccess = "true"))
 	ELoadingCoordinatorPhase Phase = ELoadingCoordinatorPhase::Initializing;
 
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly, Category = "Loading", meta = (AllowPrivateAccess = "true"))
