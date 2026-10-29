@@ -144,7 +144,9 @@ FKillCreditResolution URecentAttackerComponent::ResolveDeathCredit(
     {
         const FString Source = Resolution.CreditSource == EKillCreditSource::DirectPlayerKill ? TEXT("DirectPlayerKill")
             : Resolution.CreditSource == EKillCreditSource::RecentAttacker ? TEXT("RecentAttacker") : TEXT("None");
-        Recorder->RecordCredit(Cast<APawn>(Owner), Resolution.CreditedPlayerState, Source);
+        const FString Cause = Resolution.DeathCause == EKillDeathCause::Player ? TEXT("Player")
+            : Resolution.DeathCause == EKillDeathCause::Suicide ? TEXT("Suicide") : TEXT("Environment");
+        Recorder->RecordCredit(Cast<APawn>(Owner), Resolution.CreditedPlayerState, Source, Cause);
     }
 	OnKillCreditResolved.Broadcast(Resolution);
 	return Resolution;

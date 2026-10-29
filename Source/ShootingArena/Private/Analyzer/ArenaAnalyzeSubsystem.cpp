@@ -1,4 +1,5 @@
 #include "Analyzer/ArenaAnalyzeSubsystem.h"
+#include "Analyzer/ArenaMatchLogSubsystem.h"
 
 #include "Engine/World.h"
 #include "EngineUtils.h"
@@ -13,6 +14,14 @@
 #include "Misc/DateTime.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
+
+namespace
+{
+UArenaMatchLogSubsystem* MatchLog(const UWorld* World)
+{
+    return World ? World->GetSubsystem<UArenaMatchLogSubsystem>() : nullptr;
+}
+}
 
 bool UArenaAnalyzeSubsystem::ShouldCreateSubsystem(UObject* Outer) const
 {
@@ -84,6 +93,11 @@ void UArenaAnalyzeSubsystem::RegisterController(AController* Controller)
     {
         Participant.Name = PS->GetPlayerName();
         Participant.PlayerId = PS->GetUniqueId().ToString();
+    }
+
+    if (auto* Log = MatchLog(GetWorld()))
+    {
+        Log->NoteController(State.ControllerId, Controller);
     }
 
     Controller->OnPossessedPawnChanged.AddUniqueDynamic(
@@ -239,6 +253,10 @@ void UArenaAnalyzeSubsystem::SetTrackedPawn(
         PawnHistory.Add(NewPawn, {State.ControllerId, State.CurrentTrackId});
         NewPawn->OnTakeAnyDamage.AddUniqueDynamic(
             this, &UArenaAnalyzeSubsystem::OnPawnTakeAnyDamage);
+        if (auto* Log = MatchLog(GetWorld()))
+        {
+            Log->NoteLifeBegin(NewPawn, State.ControllerId, State.CurrentTrackId + 1);
+        }
     }
 }
 
@@ -335,6 +353,10 @@ int32 UArenaAnalyzeSubsystem::RecordShot(AActor* Weapon, UObject* Data, FVector 
         Shot.ControllerId = State->ControllerId; Shot.TrackId = State->CurrentTrackId;
     }
     ShotSamples.Add(Shot); WeaponShots.Add(Weapon, Shot);
+    if (Shot.ControllerId != INDEX_NONE)
+    {
+        if (auto* Log = MatchLog(GetWorld())) Log->RecordFire(Shot.ShotId, Shot.ControllerId, Shot.TrackId + 1, Shot.WeaponId, Data);
+    }
     return Shot.ShotId;
 }
 
@@ -416,6 +438,29 @@ float UArenaAnalyzeSubsystem::ApplyShotDamage(AActor* Victim, float Damage, ACon
         FHitResult Contact(Victim, nullptr, Victim->GetActorLocation(), FVector::ZeroVector);
         Contact.bBlockingHit = true; RecordHit(FiringWeapon ? FiringWeapon : Causer, Contact, true);
     }
+    // Match log: reserve the damage event first so a death raised inside ApplyDamage can reference it.
+    auto* Log = MatchLog(GetWorld());
+    int32 DamageSeq = INDEX_NONE;
+    FArenaDamageRecord Record;
+    if (Log && Sample.DamagedControllerId != INDEX_NONE)
+    {
+        Record.VictimParticipantId = Sample.DamagedControllerId;
+        Record.VictimSpawnNumber = Sample.DamagedTrackId + 1;
+        if (Shot.ShotId != INDEX_NONE && Shot.ControllerId != INDEX_NONE)
+        {
+            Record.AttackId = Shot.ShotId;
+            Record.WeaponId = Shot.WeaponId;
+            Record.AttackerParticipantId = Shot.ControllerId;
+            Record.AttackerSpawnNumber = Shot.TrackId + 1;
+            if (Sample.bHasInstigatorLocation) Record.Distance = FVector::Dist(Sample.InstigatorLocation, Sample.DamagedLocation);
+            if (IsValid(Instigator)) Record.AttackerBuffTag = Log->SnapshotLife(Instigator->GetPawn()).BuffTag;
+        }
+        Record.RawDamage = Damage;
+        Record.VictimActor = Victim;
+        Record.Before = Log->SnapshotLife(Victim);
+        Record.VictimBuffTag = Record.Before.BuffTag;
+        DamageSeq = Log->BeginDamage(Record.AttackId);
+    }
     const auto PreviousVictim = ActiveVictim;
     ActiveVictim = Victim;
     const bool PreviousApplying = bApplyingDamage;
@@ -423,6 +468,12 @@ float UArenaAnalyzeSubsystem::ApplyShotDamage(AActor* Victim, float Damage, ACon
     bApplyingDamage = true; ActiveDamage = Shot;
     const float Applied = UGameplayStatics::ApplyDamage(Victim, Damage, Instigator, Causer, Type);
     ActiveDamage = PreviousDamage; bApplyingDamage = PreviousApplying; ActiveVictim = PreviousVictim;
+    if (Log && Sample.DamagedControllerId != INDEX_NONE)
+    {
+        Record.AppliedDamage = Applied;
+        Record.After = Log->SnapshotLife(Victim);
+        Log->EndDamage(DamageSeq, Record);
+    }
     if (Applied != 0)
     { Sample.Damage = Applied; DamageSamples.Add(MoveTemp(Sample)); }
     return Applied;
@@ -467,9 +518,16 @@ void UArenaAnalyzeSubsystem::RecordDeath(APawn* Victim, AController* Instigator,
     if (const auto* Credit = PendingCredits.Find(FObjectKey(Victim)))
     { Sample.CreditedControllerId = Credit->Key; Sample.CreditSource = Credit->Value; }
     DeathIndices.Add(FObjectKey(Victim), DeathSamples.Add(Sample));
+    if (auto* Log = MatchLog(GetWorld()))
+    {
+        const bool bDirect = Sample.Cause == TEXT("Player") && Sample.KillerControllerId != INDEX_NONE;
+        Log->RecordDeath(Victim, Sample.Cause == TEXT("Unknown") ? FString(TEXT("Environment")) : Sample.Cause,
+            bDirect ? Sample.KillerControllerId : INDEX_NONE,
+            (bDirect && bApplyingDamage && ActiveVictim.Get() == Victim) ? Log->GetActiveDamageSeq() : INDEX_NONE);
+    }
 }
 
-void UArenaAnalyzeSubsystem::RecordCredit(APawn* Victim, APlayerState* Credited, const FString& Source)
+void UArenaAnalyzeSubsystem::RecordCredit(APawn* Victim, APlayerState* Credited, const FString& Source, const FString& DeathCause)
 {
     if (!IsValid(Victim) || !Victim->HasAuthority()) return;
     int32 Id = INDEX_NONE;
@@ -482,6 +540,14 @@ void UArenaAnalyzeSubsystem::RecordCredit(APawn* Victim, APlayerState* Credited,
     PendingCredits.Add(FObjectKey(Victim), {Id, Source});
     if (const int32* Index = DeathIndices.Find(FObjectKey(Victim)))
     { DeathSamples[*Index].CreditedControllerId = Id; DeathSamples[*Index].CreditSource = Source; }
+    if (auto* Log = MatchLog(GetWorld()); Log && !DeathCause.IsEmpty())
+        Log->RecordCredit(Victim, DeathCause, Source, Id);
+}
+
+void UArenaAnalyzeSubsystem::NoteShotElements(AActor* Weapon, int32 Count)
+{
+    if (const auto* Shot = WeaponShots.Find(Weapon))
+        if (auto* Log = MatchLog(GetWorld())) Log->SetFireElementCount(Shot->ShotId, Count);
 }
 
 void UArenaAnalyzeSubsystem::UpdateShotAim(AActor* Weapon, FVector Start, FVector End)
