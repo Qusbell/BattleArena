@@ -65,6 +65,8 @@
 			"TargetAllowList": [
 				"Editor"
 			]
+		},
+		{
 			"Name": "SlateInsights",
 			"Enabled": true
 		}
