@@ -20,7 +20,7 @@ bool FFirstPersonCapsuleFitTest::RunTest(const FString& Parameters)
 			for (const double FOV : {1.0, 1.5})
 			{
 				const FVector Eye = Centre + EyeOffset;
-				const float Scale = FirstPersonRendering::FitScaleToCapsule(0.25f, Eye, Extent, Centre, Up, Radius, HalfHeight, Margin, FOV);
+				const float Scale = FirstPersonRendering::FitScaleToCapsule(0.25f, Eye, Extent, Centre, Up, Radius, HalfHeight, Margin, FOV, 0.001f);
 				TestTrue(TEXT("Fit never expands the configured maximum"), Scale > 0 && Scale <= 0.25f);
 				for (const FVector Direction : {FVector(1,0,0), FVector(-1,0,0), FVector(0,1,0), FVector(0,-1,0),
 					FVector(0,0,1), FVector(0,0,-1), FVector(1,1,1).GetSafeNormal(), FVector(-1,-1,-1).GetSafeNormal()})
@@ -33,6 +33,10 @@ bool FFirstPersonCapsuleFitTest::RunTest(const FString& Parameters)
 			}
 	TestEqual(TEXT("A camera outside the capsule retains the configured fallback"),
 		FirstPersonRendering::FitScaleToCapsule(0.25f, Centre + FVector(100,0,0), 200, Centre, Up, Radius, HalfHeight, Margin), 0.25f);
+	TestEqual(TEXT("Near-edge fit preserves the minimum visible scale"),
+		FirstPersonRendering::FitScaleToCapsule(0.25f, Centre + FVector(0, 0, 93), 250, Centre, Up, Radius, HalfHeight, Margin), 0.1f);
+	TestEqual(TEXT("The floor never exceeds the requested scale"),
+		FirstPersonRendering::FitScaleToCapsule(0.05f, Centre + FVector(0, 0, 93), 250, Centre, Up, Radius, HalfHeight, Margin), 0.05f);
 	TestEqual(TEXT("Empty bounds retain the configured scale"),
 		FirstPersonRendering::FitScaleToCapsule(0.25f, Centre, 0, Centre, Up, Radius, HalfHeight, Margin), 0.25f);
 	TestEqual(TEXT("Invalid configuration remains finite"),
