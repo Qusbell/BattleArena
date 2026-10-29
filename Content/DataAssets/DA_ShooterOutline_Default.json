@@ -1,0 +1,28 @@
+{
+	"style":
+	{
+		"bEnabled": true,
+		"color":
+		{
+			"r": 1,
+			"g": 1,
+			"b": 1,
+			"a": 1
+		},
+		"revengeColor":
+		{
+			"r": 1,
+			"g": 0,
+			"b": 0,
+			"a": 1
+		},
+		"thickness": 1,
+		"opacity": 1,
+		"depthTolerance": 0.5
+	},
+	"material": "/Script/Engine.Material'/Game/QuakeLike_1_0/Material/M_PP_ShooterOutline.M_PP_ShooterOutline'",
+	"shooterClass": "/Game/QuakeLike_1_0/Character/BP_ShooterBase.BP_ShooterBase_C",
+	"stencilValue": 2,
+	"revengeStencilValue": 3,
+	"refreshInterval": 0.20000000298023224
+}

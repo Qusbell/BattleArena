@@ -1,0 +1,50 @@
+[
+	{
+		"Name": "ID.Pistol",
+		"Weapon_Tag": "(TagName=\"ID.Pistol\")",
+		"Base_Weight": 0,
+		"DistanceCurve": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=0.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=\"/Script/Engine.CurveFloat'/Game/QuakeLike_1_0/AI/LSH_AI_Table/03_AI_Curve/WeaponDistanceCurve/CF_Weapon_Distance_Pistol.CF_Weapon_Distance_Pistol'\"))",
+		"AmmoCurve": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=0.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=None))",
+		"IsRadialWeapon": false
+	},
+	{
+		"Name": "ID.MachineGun",
+		"Weapon_Tag": "(TagName=\"ID.MachineGun\")",
+		"Base_Weight": 450,
+		"DistanceCurve": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=0.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=\"/Script/Engine.CurveFloat'/Game/QuakeLike_1_0/AI/LSH_AI_Table/03_AI_Curve/WeaponDistanceCurve/CF_Weapon_Distance_Machinegun.CF_Weapon_Distance_Machinegun'\"))",
+		"AmmoCurve": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=0.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=None))",
+		"IsRadialWeapon": false
+	},
+	{
+		"Name": "ID.ShotGun",
+		"Weapon_Tag": "(TagName=\"ID.ShotGun\")",
+		"Base_Weight": 500,
+		"DistanceCurve": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=0.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=\"/Script/Engine.CurveFloat'/Game/QuakeLike_1_0/AI/LSH_AI_Table/03_AI_Curve/WeaponDistanceCurve/CF_Weapon_Distance_Shotgun.CF_Weapon_Distance_Shotgun'\"))",
+		"AmmoCurve": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=0.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=None))",
+		"IsRadialWeapon": false
+	},
+	{
+		"Name": "ID.PlasmaGun",
+		"Weapon_Tag": "(TagName=\"ID.PlasmaGun\")",
+		"Base_Weight": 550,
+		"DistanceCurve": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=0.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=\"/Script/Engine.CurveFloat'/Game/QuakeLike_1_0/AI/LSH_AI_Table/03_AI_Curve/WeaponDistanceCurve/CF_Weapon_Distance_Plasmagun.CF_Weapon_Distance_Plasmagun'\"))",
+		"AmmoCurve": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=0.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=None))",
+		"IsRadialWeapon": false
+	},
+	{
+		"Name": "ID.RailGun",
+		"Weapon_Tag": "(TagName=\"ID.RailGun\")",
+		"Base_Weight": 600,
+		"DistanceCurve": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=0.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=\"/Script/Engine.CurveFloat'/Game/QuakeLike_1_0/AI/LSH_AI_Table/03_AI_Curve/WeaponDistanceCurve/CF_Weapon_Distance_Railgun.CF_Weapon_Distance_Railgun'\"))",
+		"AmmoCurve": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=0.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=None))",
+		"IsRadialWeapon": false
+	},
+	{
+		"Name": "ID.RocketLauncher",
+		"Weapon_Tag": "(TagName=\"ID.RocketLauncher\")",
+		"Base_Weight": 650,
+		"DistanceCurve": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=0.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=\"/Script/Engine.CurveFloat'/Game/QuakeLike_1_0/AI/LSH_AI_Table/03_AI_Curve/WeaponDistanceCurve/CF_Weapon_Distance_RockectLauncher.CF_Weapon_Distance_RockectLauncher'\"))",
+		"AmmoCurve": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=0.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=None))",
+		"IsRadialWeapon": true
+	}
+]

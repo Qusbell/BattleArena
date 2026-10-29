@@ -1,0 +1,15 @@
+{
+	"startHealth": 200,
+	"maxHealth": 100,
+	"overMaxHealth": 200,
+	"startPlate": 0,
+	"maxPlate": 100,
+	"overMaxPlate": 200,
+	"decayRate": 3,
+	"healthSound": "None",
+	"plateSound": "None",
+	"overHealthSound": "None",
+	"overPlateSound": "None",
+	"healthFX": "None",
+	"plateFX": "None"
+}

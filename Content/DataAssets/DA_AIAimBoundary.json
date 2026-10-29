@@ -1,0 +1,12 @@
+{
+	"aimBoundary":
+	{
+		"x": 500,
+		"y": 500,
+		"z": 150
+	},
+	"clampAimDistance": 25,
+	"near Distance": 250,
+	"near Angle": 120,
+	"far Angle": 40
+}

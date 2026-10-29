@@ -1,0 +1,11 @@
+{
+	"centerOffset": 70,
+	"initialCameraDistance": 600,
+	"cameraMoveInterpSpeed": 5,
+	"bEnableKillerHighlight": true,
+	"killerHighlightType": "Fill",
+	"killerHighlightStencilValue": 1,
+	"killerHighlightOutlineMaterial": "/Script/Engine.Material'/Game/QuakeLike_1_0/Material/M_PP_DeathCamKillerHighlight_OutLine.M_PP_DeathCamKillerHighlight_OutLine'",
+	"killerHighlightFillMaterial": "/Script/Engine.Material'/Game/QuakeLike_1_0/Material/M_PP_DeathCamKillerHighlight_Fill.M_PP_DeathCamKillerHighlight_Fill'",
+	"viewTargetBlendTime": 0.20000000298023224
+}

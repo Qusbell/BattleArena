@@ -1,0 +1,21 @@
+{
+	"maxSpeed": 1600,
+	"startSpeed": 900,
+	"timeRate": 0.29999999999999999,
+	"death Force": 0,
+	"footStepSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/Footstep.Footstep'",
+	"footStepInterval": 5,
+	"footStepVolume": 1.5,
+	"jumpSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/Jump.Jump'",
+	"jumpVolume": 1,
+	"footStepPitch": 1,
+	"landSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/Landing.Landing'",
+	"landVolume": 5,
+	"landPitch": 1,
+	"jumpPitch": 1,
+	"onMaxSpeedSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/MaxSpeed.MaxSpeed'",
+	"onMaxSpeedVolume": 0.59999999999999998,
+	"onMaxSpeedPitch": 1,
+	"nPC Min Limited Speed": 800,
+	"nPC Speed Skill Baseline": 0.59999999999999998
+}

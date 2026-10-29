@@ -1,0 +1,64 @@
+{
+	"style":
+	{
+		"bEnabled": true,
+		"bShowAboveCrosshair": true,
+		"color":
+		{
+			"r": 1,
+			"g": 1,
+			"b": 1,
+			"a": 1
+		},
+		"revengeColor":
+		{
+			"r": 1,
+			"g": 0,
+			"b": 0,
+			"a": 1
+		},
+		"font":
+		{
+			"fontObject": "/Script/Engine.Font'/Engine/EngineFonts/Roboto.Roboto'",
+			"fontMaterial": "None",
+			"outlineSettings":
+			{
+				"outlineSize": 2,
+				"bMiteredCorners": false,
+				"bSeparateFillAlpha": false,
+				"bApplyOutlineToDropShadows": false,
+				"outlineMaterial": "None",
+				"outlineColor":
+				{
+					"r": 0,
+					"g": 0,
+					"b": 0,
+					"a": 1
+				}
+			},
+			"typefaceFontName": "Bold",
+			"size": 20,
+			"letterSpacing": 0,
+			"skewAmount": 0,
+			"bForceMonospaced": false,
+			"bMaterialIsStencil": false,
+			"monospacedWidth": 1
+		},
+		"offset":
+		{
+			"x": 0,
+			"y": 28
+		},
+		"lingerTime": 0.40000000596046448
+	},
+	"shooterClass": "/Game/QuakeLike_1_0/Character/BP_ShooterBase.BP_ShooterBase_C",
+	"traceChannel": "ECC_GameTraceChannel2",
+	"maxDistance": 20000,
+	"bUseSphereTraceFallback": true,
+	"sphereTraceRadius": 30,
+	"crosshairUV":
+	{
+		"x": 0.5,
+		"y": 0.5
+	}
+}

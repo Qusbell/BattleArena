@@ -1,0 +1,111 @@
+{
+	"weaponType": "Projectile",
+	"damage": 20,
+	"range": 5000,
+	"fireRate": 0.070000000000000007,
+	"spread": 0,
+	"projectileClass": "/Script/Engine.BlueprintGeneratedClass'/Game/QuakeLike_1_0/HeldItem/Projectile/BP_PlasmaProjectile.BP_PlasmaProjectile_C'",
+	"projectileSpeed": 10000,
+	"damageJudgmentOffset": 0,
+	"explosionRadius": 0,
+	"explosionDamage": 0,
+	"selfDamageMultiplier": 0,
+	"selfKnockbackMultiplier": 0,
+	"otherKnockbackMultiplier": 0,
+	"pellet": 0,
+	"nSFireFX": "/Script/Niagara.NiagaraSystem'/Game/MuzzleFlashes/Particles/NiagaraSystems/Plasma_Flash.Plasma_Flash'",
+	"fireFX": "/Script/Engine.ParticleSystem'/Game/QuakeLike_Base/SDM/Effect/Plasma.Plasma'",
+	"fireSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/Fire_Plasma.Fire_Plasma'",
+	"pierceMultiplier": 0,
+	"zoomFov": 50,
+	"interpSpeed": 160,
+	"pierceMax": 0,
+	"traceChannel": "TraceTypeQuery1",
+	"projectileSound": "None",
+	"nSProjectileDestroyEffect": "None",
+	"projectileDestroyEffect": "/Script/Engine.ParticleSystem'/Game/ParagonWraith/FX/Particles/Abilities/Primary/FX/P_Wraith_Primary_HitWorld.P_Wraith_Primary_HitWorld'",
+	"emptyAmmoSound": "None",
+	"fallOffStart": 0,
+	"minDamageMultiplier": 0,
+	"hitscanBeamEffect": "None",
+	"nSHitscanHitEffect": "None",
+	"hitscanHitEffect": "None",
+	"reloadTime": 0,
+	"explosionEffectScale": 0,
+	"railGunSonicBombEffect": "None",
+	"railGunTrailEffect": "None",
+	"chHitSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/ETC/Quake3_Hit.Quake3_Hit'",
+	"fireVolumeMultiplier": 0.80000000000000004,
+	"emptyAmmoVolumeMultiplier": 1,
+	"chHitVolumeMultiplier": 2.5,
+	"projectileVisualForwardOffset": 200,
+	"projectileDestroyVolumeMultiplier": 1,
+	"selfDamage": 40,
+	"lockTimeMultiplier": 1,
+	"rocketJumpZOffset": 0,
+	"explosionPhysicsForce": 0,
+	"nSAfterSmokeEffect": "None",
+	"afterSmokeEffect": "None",
+	"smokeEffectSocketName": "None",
+	"crosshairSetting":
+	{
+		"crosshairType": "Crosshair_02",
+		"crosshairColor":
+		{
+			"r": 0,
+			"g": 0.10644499957561493,
+			"b": 1,
+			"a": 1
+		},
+		"crosshairScale": 1
+	},
+	"zoomAimSpeedMultiplier": 0.69999999999999996,
+	"name": "PlasmaGun",
+	"icon": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/Assets/WeaponIMG/plasmaV2.plasmaV2'",
+	"weaponHUDColor":
+	{
+		"r": 0.015805000439286232,
+		"g": 0.40829700231552124,
+		"b": 1,
+		"a": 1
+	},
+	"machineGunBeamLifeTime": 12000,
+	"railGunBeamLifeTime": 0.20000000000000001,
+	"crosshairRecoilSpreadAmount": 20,
+	"useSeparatePlayerProjectileDestroyEffects": true,
+	"projectilePlayerDestroyEffect": "/Script/Engine.ParticleSystem'/Game/ParagonWraith/FX/Particles/Abilities/Primary/FX/P_Wraith_Primary_HitWorld.P_Wraith_Primary_HitWorld'",
+	"nSProjectilePlayerDestroyEffect": "None",
+	"attributes":
+	{
+	},
+	"startUsageCount": 50,
+	"maxUsageCount": 50,
+	"fpAnim": "/Script/Engine.AnimBlueprintGeneratedClass'/Game/QuakeLike_1_0/Animation/Steel/ABP/Steel_ABP_FP_BGH_Pistol.Steel_ABP_FP_BGH_Pistol_C'",
+	"tpAnim": "/Script/Engine.AnimBlueprintGeneratedClass'/Game/QuakeLike_1_0/Animation/Steel/ABP/Steel_ABP_TP_BGH_PlasmaGun_AimAligned.Steel_ABP_TP_BGH_PlasmaGun_AimAligned_C'",
+	"skeletalMesh": "/Script/Engine.SkeletalMesh'/Game/Plasma_Buy/SKM_plasmacannon_low.SKM_plasmacannon_low'",
+	"useMontage": "/Script/Engine.AnimMontage'/Game/QuakeLike_1_0/Animation/Steel/Anim/Plasma_Fire_Montage.Plasma_Fire_Montage'",
+	"equipMontage": "/Script/Engine.AnimMontage'/Game/QuakeLike_1_0/Animation/Steel/Anim/Steel_PistolAnim_Weapon_Up_Montage.Steel_PistolAnim_Weapon_Up_Montage'",
+	"equipSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/PickUp_Weapon.PickUp_Weapon'",
+	"equipVolumeMultiplier": 1,
+	"reloadSound": "None",
+	"slotNumber": 4,
+	"reloadVolumeMultiplier": 1,
+	"fOV90GripOffset":
+	{
+		"x": 0,
+		"y": 0,
+		"z": 0
+	},
+	"fOV110GripOffset":
+	{
+		"x": 0,
+		"y": 0,
+		"z": 0
+	},
+	"fOV120GripOffset":
+	{
+		"x": 0,
+		"y": 0,
+		"z": 0
+	}
+}

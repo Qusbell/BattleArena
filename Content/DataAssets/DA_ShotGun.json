@@ -1,0 +1,111 @@
+{
+	"weaponType": "HitScan",
+	"damage": 18,
+	"range": 10000,
+	"fireRate": 1.3,
+	"spread": 16,
+	"projectileClass": "None",
+	"projectileSpeed": 0,
+	"damageJudgmentOffset": 0,
+	"explosionRadius": 0,
+	"explosionDamage": 0,
+	"selfDamageMultiplier": 0,
+	"selfKnockbackMultiplier": 0,
+	"otherKnockbackMultiplier": 0,
+	"pellet": 16,
+	"nSFireFX": "/Script/Niagara.NiagaraSystem'/Game/MuzzleFlashes/Particles/NiagaraSystems/RocketLauncher_Flash.RocketLauncher_Flash'",
+	"fireFX": "None",
+	"fireSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/SFX_ShotGun2_Cue.SFX_ShotGun2_Cue'",
+	"pierceMultiplier": 0,
+	"zoomFov": 50,
+	"interpSpeed": 160,
+	"pierceMax": 0,
+	"traceChannel": "TraceTypeQuery2",
+	"projectileSound": "None",
+	"nSProjectileDestroyEffect": "None",
+	"projectileDestroyEffect": "None",
+	"emptyAmmoSound": "None",
+	"fallOffStart": 0.01,
+	"minDamageMultiplier": 0.59999999999999998,
+	"hitscanBeamEffect": "None",
+	"nSHitscanHitEffect": "None",
+	"hitscanHitEffect": "/Script/Engine.ParticleSystem'/Game/Scifi_Arsenal_Vol2/Particle_Systems/P_Shotgun_Flash.P_Shotgun_Flash'",
+	"reloadTime": 0,
+	"explosionEffectScale": 0,
+	"railGunSonicBombEffect": "None",
+	"railGunTrailEffect": "None",
+	"chHitSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/ETC/Quake3_Hit.Quake3_Hit'",
+	"fireVolumeMultiplier": 2.5,
+	"emptyAmmoVolumeMultiplier": 1,
+	"chHitVolumeMultiplier": 3,
+	"projectileVisualForwardOffset": 100,
+	"projectileDestroyVolumeMultiplier": 1,
+	"selfDamage": 40,
+	"lockTimeMultiplier": 1,
+	"rocketJumpZOffset": 0,
+	"explosionPhysicsForce": 0,
+	"nSAfterSmokeEffect": "None",
+	"afterSmokeEffect": "None",
+	"smokeEffectSocketName": "None",
+	"crosshairSetting":
+	{
+		"crosshairType": "Crosshair_11",
+		"crosshairColor":
+		{
+			"r": 1,
+			"g": 0.20323599874973297,
+			"b": 0,
+			"a": 1
+		},
+		"crosshairScale": 1
+	},
+	"zoomAimSpeedMultiplier": 0.69999999999999996,
+	"name": "ShotGun",
+	"icon": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/Assets/WeaponIMG/shotgunV2.shotgunV2'",
+	"weaponHUDColor":
+	{
+		"r": 1,
+		"g": 0.17550699412822723,
+		"b": 0,
+		"a": 1
+	},
+	"machineGunBeamLifeTime": 12000,
+	"railGunBeamLifeTime": 0.20000000000000001,
+	"crosshairRecoilSpreadAmount": 20,
+	"useSeparatePlayerProjectileDestroyEffects": false,
+	"projectilePlayerDestroyEffect": "None",
+	"nSProjectilePlayerDestroyEffect": "None",
+	"attributes":
+	{
+	},
+	"startUsageCount": 8,
+	"maxUsageCount": 8,
+	"fpAnim": "/Script/Engine.AnimBlueprintGeneratedClass'/Game/QuakeLike_1_0/Animation/Steel/ABP/Steel_ABP_FP_BGH_Pistol.Steel_ABP_FP_BGH_Pistol_C'",
+	"tpAnim": "/Script/Engine.AnimBlueprintGeneratedClass'/Game/QuakeLike_1_0/Animation/Steel/ABP/Steel_ABP_TP_BGH_Pistol.Steel_ABP_TP_BGH_Pistol_C'",
+	"skeletalMesh": "/Script/Engine.SkeletalMesh'/Game/Sci-Fi_Weapon_Starter_Pack/Sci-Fi_Shotgun/Shotgun/SK_Mesh/SK_Shotgun.SK_Shotgun'",
+	"useMontage": "/Script/Engine.AnimMontage'/Game/QuakeLike_1_0/Animation/Steel/Anim/Steel_ShotGun_Fire_Hand_Montage.Steel_ShotGun_Fire_Hand_Montage'",
+	"equipMontage": "/Script/Engine.AnimMontage'/Game/QuakeLike_1_0/Animation/Steel/Anim/Steel_PistolAnim_Weapon_Up_Montage.Steel_PistolAnim_Weapon_Up_Montage'",
+	"equipSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/PickUp_Shotgun.PickUp_Shotgun'",
+	"equipVolumeMultiplier": 2.5,
+	"reloadSound": "None",
+	"slotNumber": 3,
+	"reloadVolumeMultiplier": 1,
+	"fOV90GripOffset":
+	{
+		"x": 0,
+		"y": 0,
+		"z": 0
+	},
+	"fOV110GripOffset":
+	{
+		"x": 0,
+		"y": 0,
+		"z": 0
+	},
+	"fOV120GripOffset":
+	{
+		"x": 0,
+		"y": 0,
+		"z": 0
+	}
+}
