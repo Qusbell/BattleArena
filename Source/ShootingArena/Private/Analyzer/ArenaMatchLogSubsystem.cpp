@@ -88,15 +88,30 @@ namespace
 		{
 			return nullptr;
 		}
+		// The scan below runs a regex per property; damage and tick paths call this constantly, so remember each answer.
+		// Misses are remembered too. Weak keys make a recompiled or collected class a new entry instead of a dangling one.
+		static TMap<TPair<TWeakObjectPtr<const UStruct>, FName>, FProperty*> Resolved;
+		const TPair<TWeakObjectPtr<const UStruct>, FName> Key(Struct, FName(Name));
+		if (FProperty* const* Found = Resolved.Find(Key))
+		{
+			return *Found;
+		}
+		if (Resolved.Num() > 4096)
+		{
+			Resolved.Reset();
+		}
+		FProperty* Result = nullptr;
 		const FString Target = NormalizeName(Name);
 		for (TFieldIterator<FProperty> It(Struct); It; ++It)
 		{
 			if (NormalizeName(It->GetName()) == Target)
 			{
-				return *It;
+				Result = *It;
+				break;
 			}
 		}
-		return nullptr;
+		Resolved.Add(Key, Result);
+		return Result;
 	}
 
 	bool ReadNumber(const UStruct* Struct, const void* Container, const TCHAR* Name, double& Out)
@@ -889,27 +904,50 @@ FArenaLifeSnapshot UArenaMatchLogSubsystem::SnapshotLife(AActor* Pawn) const
 	{
 		return Snapshot;
 	}
-	TArray<UActorComponent*> Components;
-	Pawn->GetComponents(Components);
-	for (UActorComponent* Component : Components)
+	// Damage snapshots run three times per hit, so the components are looked up once per pawn and then reused.
+	FSnapshotComponents& Cached = SnapshotComponents.FindOrAdd(Pawn);
+	if (!Cached.Life.IsValid())
 	{
-		if (!IsValid(Component))
+		TArray<UActorComponent*> Components;
+		Pawn->GetComponents(Components);
+		for (UActorComponent* Component : Components)
 		{
-			continue;
-		}
-		if (!Snapshot.bValid)
-		{
-			if (const FStructProperty* LifeInfo = CastField<FStructProperty>(FindLoose(Component->GetClass(), TEXT("LifeInfo"))))
+			if (!IsValid(Component))
 			{
-				const void* Struct = LifeInfo->ContainerPtrToValuePtr<void>(Component);
-				Snapshot.bValid = ReadNumber(LifeInfo->Struct, Struct, TEXT("NowHealth"), Snapshot.Health)
-					&& ReadNumber(LifeInfo->Struct, Struct, TEXT("NowPlate"), Snapshot.Armor);
+				continue;
+			}
+			if (!Cached.Life.IsValid() && FindLoose(Component->GetClass(), TEXT("LifeInfo")))
+			{
+				Cached.Life = Component;
+			}
+			if (!Cached.Buff.IsValid() && FindLoose(Component->GetClass(), TEXT("currentBuffTag")))
+			{
+				Cached.Buff = Component;
 			}
 		}
-		if (Snapshot.BuffTag.IsEmpty())
+		if (SnapshotComponents.Num() > 256)
 		{
-			Snapshot.BuffTag = ReadBuffTag(Component);
+			for (auto It = SnapshotComponents.CreateIterator(); It; ++It)
+			{
+				if (!It.Key().IsValid())
+				{
+					It.RemoveCurrent();
+				}
+			}
 		}
+	}
+	if (const UActorComponent* Life = Cached.Life.Get())
+	{
+		if (const FStructProperty* LifeInfo = CastField<FStructProperty>(FindLoose(Life->GetClass(), TEXT("LifeInfo"))))
+		{
+			const void* Struct = LifeInfo->ContainerPtrToValuePtr<void>(Life);
+			Snapshot.bValid = ReadNumber(LifeInfo->Struct, Struct, TEXT("NowHealth"), Snapshot.Health)
+				&& ReadNumber(LifeInfo->Struct, Struct, TEXT("NowPlate"), Snapshot.Armor);
+		}
+	}
+	if (const UActorComponent* Buff = Cached.Buff.Get())
+	{
+		Snapshot.BuffTag = ReadBuffTag(Buff);
 	}
 	return Snapshot;
 }

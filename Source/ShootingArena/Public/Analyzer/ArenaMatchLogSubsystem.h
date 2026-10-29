@@ -220,6 +220,13 @@ private:
     TMap<TWeakObjectPtr<AActor>, FArenaLifeSnapshot> PickupBefore;
     TMap<TWeakObjectPtr<AActor>, uint64> PickupFrame;
     TMap<TWeakObjectPtr<AActor>, FString> BuffByPawn;
+    /** Life and buff components of a pawn, found once so a damage snapshot does not walk every component. */
+    struct FSnapshotComponents
+    {
+        TWeakObjectPtr<UActorComponent> Life;
+        TWeakObjectPtr<UActorComponent> Buff;
+    };
+    mutable TMap<TWeakObjectPtr<AActor>, FSnapshotComponents> SnapshotComponents;
     TMap<TWeakObjectPtr<AActor>, FString> ItemCategories;
     TMap<int32, FString> ItemCategoryById;
     TMap<int32, double> ItemAmountById;
