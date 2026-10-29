@@ -1,0 +1,111 @@
+{
+	"weaponType": "Projectile",
+	"damage": 50,
+	"range": 100000,
+	"fireRate": 0.80000000000000004,
+	"spread": 0,
+	"projectileClass": "/Script/Engine.BlueprintGeneratedClass'/Game/QuakeLike_1_0/HeldItem/Projectile/BP_RocketLauncherProjectile.BP_RocketLauncherProjectile_C'",
+	"projectileSpeed": 4800,
+	"damageJudgmentOffset": 0.80000000000000004,
+	"explosionRadius": 400,
+	"explosionDamage": 80,
+	"selfDamageMultiplier": 0.5,
+	"selfKnockbackMultiplier": 1,
+	"otherKnockbackMultiplier": 0.29999999999999999,
+	"pellet": 0,
+	"nSFireFX": "/Script/Niagara.NiagaraSystem'/Game/MuzzleFlashes/Particles/NiagaraSystems/RocketLauncher_Flash.RocketLauncher_Flash'",
+	"fireFX": "None",
+	"fireSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/Fire_RocketLauncher.Fire_RocketLauncher'",
+	"pierceMultiplier": 0,
+	"zoomFov": 50,
+	"interpSpeed": 160,
+	"pierceMax": 0,
+	"traceChannel": "TraceTypeQuery1",
+	"projectileSound": "/Script/Engine.SoundCue'/Game/SciFiRocketLauncher_AK9/Sounds/SC_RocketLauncher_AK9_Explosion.SC_RocketLauncher_AK9_Explosion'",
+	"nSProjectileDestroyEffect": "None",
+	"projectileDestroyEffect": "/Script/Engine.ParticleSystem'/Game/Realistic_Starter_VFX_Pack_Vol2/Particles/Explosion/P_Explosion_Big_A.P_Explosion_Big_A'",
+	"emptyAmmoSound": "None",
+	"fallOffStart": 0,
+	"minDamageMultiplier": 0,
+	"hitscanBeamEffect": "None",
+	"nSHitscanHitEffect": "None",
+	"hitscanHitEffect": "None",
+	"reloadTime": 0,
+	"explosionEffectScale": 0,
+	"railGunSonicBombEffect": "None",
+	"railGunTrailEffect": "None",
+	"chHitSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/ETC/Quake3_Hit.Quake3_Hit'",
+	"fireVolumeMultiplier": 1,
+	"emptyAmmoVolumeMultiplier": 1,
+	"chHitVolumeMultiplier": 2.5,
+	"projectileVisualForwardOffset": 0,
+	"projectileDestroyVolumeMultiplier": 2,
+	"selfDamage": 40,
+	"lockTimeMultiplier": 1,
+	"rocketJumpZOffset": 50,
+	"explosionPhysicsForce": 5,
+	"nSAfterSmokeEffect": "None",
+	"afterSmokeEffect": "None",
+	"smokeEffectSocketName": "None",
+	"crosshairSetting":
+	{
+		"crosshairType": "Crosshair_09",
+		"crosshairColor":
+		{
+			"r": 1,
+			"g": 0.00057299999753013253,
+			"b": 0,
+			"a": 1
+		},
+		"crosshairScale": 1
+	},
+	"zoomAimSpeedMultiplier": 0.69999999999999996,
+	"name": "RocketLauncher",
+	"icon": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/Assets/WeaponIMG/rocketlancherV2.rocketlancherV2'",
+	"weaponHUDColor":
+	{
+		"r": 1,
+		"g": 0,
+		"b": 0.018459999933838844,
+		"a": 1
+	},
+	"machineGunBeamLifeTime": 12000,
+	"railGunBeamLifeTime": 0.20000000000000001,
+	"crosshairRecoilSpreadAmount": 20,
+	"useSeparatePlayerProjectileDestroyEffects": true,
+	"projectilePlayerDestroyEffect": "/Script/Engine.ParticleSystem'/Game/Realistic_Starter_VFX_Pack_Vol2/Particles/Explosion/P_Explosion_Big_A.P_Explosion_Big_A'",
+	"nSProjectilePlayerDestroyEffect": "None",
+	"attributes":
+	{
+	},
+	"startUsageCount": 12,
+	"maxUsageCount": 12,
+	"fpAnim": "/Script/Engine.AnimBlueprintGeneratedClass'/Game/QuakeLike_1_0/Animation/Steel/ABP/Steel_ABP_FP_BGH_RocketLauncher1.Steel_ABP_FP_BGH_RocketLauncher1_C'",
+	"tpAnim": "/Script/Engine.AnimBlueprintGeneratedClass'/Game/QuakeLike_1_0/Animation/Steel/ABP/Steel_ABP_TP_BGH_RocketLauncher_AimAligned.Steel_ABP_TP_BGH_RocketLauncher_AimAligned_C'",
+	"skeletalMesh": "/Script/Engine.SkeletalMesh'/Game/SciFiRocketLauncher_AK9/Meshes/SK_RocketLauncher_AK9.SK_RocketLauncher_AK9'",
+	"useMontage": "/Script/Engine.AnimMontage'/Game/QuakeLike_1_0/Animation/Steel/Anim/RocketShoot_Made_Anim_Montage.RocketShoot_Made_Anim_Montage'",
+	"equipMontage": "/Script/Engine.AnimMontage'/Game/QuakeLike_1_0/Animation/Steel/Anim/Steel_PistolAnim_Weapon_Up_Montage.Steel_PistolAnim_Weapon_Up_Montage'",
+	"equipSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/PickUp_Weapon.PickUp_Weapon'",
+	"equipVolumeMultiplier": 1,
+	"reloadSound": "None",
+	"slotNumber": 6,
+	"reloadVolumeMultiplier": 1,
+	"fOV90GripOffset":
+	{
+		"x": 0,
+		"y": 0,
+		"z": 0
+	},
+	"fOV110GripOffset":
+	{
+		"x": 0,
+		"y": 0,
+		"z": 0
+	},
+	"fOV120GripOffset":
+	{
+		"x": 0,
+		"y": 0,
+		"z": 0
+	}
+}

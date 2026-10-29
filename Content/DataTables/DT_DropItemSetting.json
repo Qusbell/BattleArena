@@ -1,0 +1,27 @@
+[
+	{
+		"Name": "Default",
+		"WeaponDropEnabled": true,
+		"SubstituteWeapon": "(DataTable=\"/Script/Engine.DataTable'/Game/QuakeLike_1_0/Data/Item/DropTable/DT_HeldItemTable.DT_HeldItemTable'\",RowName=\"ID.MachineGun\")",
+		"BuffDropEnabled": true,
+		"SmallHealthDropEnabled": true,
+		"SmallArmorDropEnabled": true,
+		"MaxDropCount": 4,
+		"DirectionError": 10,
+		"MinUpAngle": 35,
+		"MaxUpAngle": 65,
+		"MinLaunchForce": 350,
+		"MaxLaunchForce": 550,
+		"HorizontalDecelTime": 1.2,
+		"HorizontalDecelExponent": 2,
+		"DespawnTime": 30,
+		"SettlementHeightOffset": 50,
+		"SmallHealthItem": "(DataTable=\"/Script/Engine.DataTable'/Game/QuakeLike_1_0/Data/Item/DropTable/DT_LifeItemTable.DT_LifeItemTable'\",RowName=\"ID.HealPack.Small\")",
+		"SmallArmorItem": "(DataTable=\"/Script/Engine.DataTable'/Game/QuakeLike_1_0/Data/Item/DropTable/DT_LifeItemTable.DT_LifeItemTable'\",RowName=\"ID.PlatePack.Small\")",
+		"WeaponTable": "/Game/QuakeLike_1_0/Data/Item/DropTable/DT_HeldItemTable.DT_HeldItemTable",
+		"BuffTable": "/Game/QuakeLike_1_0/Data/Item/DropTable/DT_BuffTable.DT_BuffTable",
+		"WeaponPickupClass": "/Game/QuakeLike_1_0/DropItem/BP_HoldableItem.BP_HoldableItem_C",
+		"BuffPickupClass": "/Game/QuakeLike_1_0/DropItem/BP_BuffItem.BP_BuffItem_C",
+		"LifePickupClass": "/Game/QuakeLike_1_0/DropItem/BP_LifeItem.BP_LifeItem_C"
+	}
+]

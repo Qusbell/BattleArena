@@ -1,0 +1,68 @@
+[
+	{
+		"Name": "ID.MachineGun",
+		"item": "/Script/Engine.BlueprintGeneratedClass'/Game/QuakeLike_1_0/HeldItem/Gun/BP_Weapon_MachineGun.BP_Weapon_MachineGun_C'",
+		"Item DA": "/Game/QuakeLike_1_0/Data/PDA/PDA_WeaponBase.PDA_WeaponBase_C'/Game/QuakeLike_1_0/Data/Item/DA_MachineGun.DA_MachineGun'",
+		"Weapon DA": "/Game/QuakeLike_1_0/Data/PDA/PDA_WeaponBase.PDA_WeaponBase_C'/Game/QuakeLike_1_0/Data/Item/DA_MachineGun.DA_MachineGun'",
+		"mesh": "/Script/Engine.StaticMesh'/Game/QuakeLike_Base/SDM/SM_Weapon/MachineGun_02.MachineGun_02'",
+		"SpawnSound": "None",
+		"SpawnVolume": 1,
+		"PickupSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/PickUp_Weapon.PickUp_Weapon'",
+		"PickupVolume": 1
+	},
+	{
+		"Name": "ID.PlasmaGun",
+		"item": "/Script/Engine.BlueprintGeneratedClass'/Game/QuakeLike_1_0/HeldItem/Gun/BP_Weapon_PlasmaGun.BP_Weapon_PlasmaGun_C'",
+		"Item DA": "/Game/QuakeLike_1_0/Data/PDA/PDA_WeaponBase.PDA_WeaponBase_C'/Game/QuakeLike_1_0/Data/Item/DA_PlasmaGun.DA_PlasmaGun'",
+		"Weapon DA": "/Game/QuakeLike_1_0/Data/PDA/PDA_WeaponBase.PDA_WeaponBase_C'/Game/QuakeLike_1_0/Data/Item/DA_PlasmaGun.DA_PlasmaGun'",
+		"mesh": "/Script/Engine.StaticMesh'/Game/QuakeLike_Base/SDM/SM_Weapon/Plasma_Pick.Plasma_Pick'",
+		"SpawnSound": "None",
+		"SpawnVolume": 1,
+		"PickupSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/PickUp_Weapon.PickUp_Weapon'",
+		"PickupVolume": 1
+	},
+	{
+		"Name": "ID.RocketLauncher",
+		"item": "/Script/Engine.BlueprintGeneratedClass'/Game/QuakeLike_1_0/HeldItem/Gun/BP_Weapon_RocketLauncher.BP_Weapon_RocketLauncher_C'",
+		"Item DA": "/Game/QuakeLike_1_0/Data/PDA/PDA_WeaponBase.PDA_WeaponBase_C'/Game/QuakeLike_1_0/Data/Item/DA_RocketLauncher.DA_RocketLauncher'",
+		"Weapon DA": "/Game/QuakeLike_1_0/Data/PDA/PDA_WeaponBase.PDA_WeaponBase_C'/Game/QuakeLike_1_0/Data/Item/DA_RocketLauncher.DA_RocketLauncher'",
+		"mesh": "None",
+		"SpawnSound": "None",
+		"SpawnVolume": 1,
+		"PickupSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/PickUp_Weapon.PickUp_Weapon'",
+		"PickupVolume": 1
+	},
+	{
+		"Name": "ID.ShotGun",
+		"item": "/Script/Engine.BlueprintGeneratedClass'/Game/QuakeLike_1_0/HeldItem/Gun/BP_Weapon_ShotGun.BP_Weapon_ShotGun_C'",
+		"Item DA": "/Game/QuakeLike_1_0/Data/PDA/PDA_WeaponBase.PDA_WeaponBase_C'/Game/QuakeLike_1_0/Data/Item/DA_ShotGun.DA_ShotGun'",
+		"Weapon DA": "/Game/QuakeLike_1_0/Data/PDA/PDA_WeaponBase.PDA_WeaponBase_C'/Game/QuakeLike_1_0/Data/Item/DA_ShotGun.DA_ShotGun'",
+		"mesh": "/Script/Engine.StaticMesh'/Game/QuakeLike_Base/SDM/SM_Weapon/Shotgun_Spawn.Shotgun_Spawn'",
+		"SpawnSound": "None",
+		"SpawnVolume": 1,
+		"PickupSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/PickUp_Shotgun.PickUp_Shotgun'",
+		"PickupVolume": 2.5
+	},
+	{
+		"Name": "ID.RailGun",
+		"item": "/Script/Engine.BlueprintGeneratedClass'/Game/QuakeLike_1_0/HeldItem/Gun/BP_Weapon_RailGun.BP_Weapon_RailGun_C'",
+		"Item DA": "/Game/QuakeLike_1_0/Data/PDA/PDA_WeaponBase.PDA_WeaponBase_C'/Game/QuakeLike_1_0/Data/Item/DA_RailGun.DA_RailGun'",
+		"Weapon DA": "/Game/QuakeLike_1_0/Data/PDA/PDA_WeaponBase.PDA_WeaponBase_C'/Game/QuakeLike_1_0/Data/Item/DA_RailGun.DA_RailGun'",
+		"mesh": "/Script/Engine.StaticMesh'/Game/QuakeLike_Base/SDM/SM_Weapon/RailGun_03.RailGun_03'",
+		"SpawnSound": "None",
+		"SpawnVolume": 1,
+		"PickupSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/PickUp_Weapon.PickUp_Weapon'",
+		"PickupVolume": 1
+	},
+	{
+		"Name": "ID.Pistol",
+		"item": "/Script/Engine.BlueprintGeneratedClass'/Game/QuakeLike_1_0/HeldItem/Gun/BP_Weapon_Pistol.BP_Weapon_Pistol_C'",
+		"Item DA": "/Game/QuakeLike_1_0/Data/PDA/PDA_WeaponBase.PDA_WeaponBase_C'/Game/QuakeLike_1_0/Data/Item/DA_Pistol.DA_Pistol'",
+		"Weapon DA": "/Game/QuakeLike_1_0/Data/PDA/PDA_WeaponBase.PDA_WeaponBase_C'/Game/QuakeLike_1_0/Data/Item/DA_Pistol.DA_Pistol'",
+		"mesh": "/Script/Engine.StaticMesh'/Game/QuakeLike_1_0/Weapon_SM/SM_Sci-fi_Pistol.SM_Sci-fi_Pistol'",
+		"SpawnSound": "None",
+		"SpawnVolume": 1,
+		"PickupSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/PickUp_Weapon.PickUp_Weapon'",
+		"PickupVolume": 1
+	}
+]

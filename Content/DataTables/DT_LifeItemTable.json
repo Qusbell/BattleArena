@@ -1,0 +1,110 @@
+[
+	{
+		"Name": "HealPack_Default",
+		"attributes": "(GameplayTags=((TagName=\"AITargetable.DropItem.Health\"),(TagName=\"ID.HealPack\")))",
+		"type": "Health",
+		"amount": 50,
+		"mesh": "/Script/Engine.StaticMesh'/Game/Shield/Heal_Mega.Heal_Mega'",
+		"isMegaPack": false,
+		"pickupSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/_힐팩후보1_0163_qk_sfx_item_health_25_Cue._힐팩후보1_0163_qk_sfx_item_health_25_Cue'",
+		"pickupVolume": 1,
+		"SpawnSound": "None",
+		"SpawnVolume": 1
+	},
+	{
+		"Name": "ID.HealPack.Big",
+		"attributes": "(GameplayTags=((TagName=\"AITargetable.DropItem.Health\"),(TagName=\"ID.HealPack.Big\")))",
+		"type": "Health",
+		"amount": 100,
+		"mesh": "/Script/Engine.StaticMesh'/Game/Shield/Heal_Mega.Heal_Mega'",
+		"isMegaPack": false,
+		"pickupSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/_힐팩후보1_0163_qk_sfx_item_health_25_Cue._힐팩후보1_0163_qk_sfx_item_health_25_Cue'",
+		"pickupVolume": 1,
+		"SpawnSound": "None",
+		"SpawnVolume": 1
+	},
+	{
+		"Name": "ID.HealPack.middle",
+		"attributes": "(GameplayTags=((TagName=\"AITargetable.DropItem.Health\"),(TagName=\"ID.HealPack.middle\")))",
+		"type": "Health",
+		"amount": 50,
+		"mesh": "/Script/Engine.StaticMesh'/Game/Shield/Heal_Mega.Heal_Mega'",
+		"isMegaPack": false,
+		"pickupSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/_힐팩후보1_0163_qk_sfx_item_health_25_Cue._힐팩후보1_0163_qk_sfx_item_health_25_Cue'",
+		"pickupVolume": 1,
+		"SpawnSound": "None",
+		"SpawnVolume": 1
+	},
+	{
+		"Name": "ID.HealPack.Small",
+		"attributes": "(GameplayTags=((TagName=\"AITargetable.DropItem.Health\"),(TagName=\"ID.HealPack.Small\")))",
+		"type": "Health",
+		"amount": 10,
+		"mesh": "/Script/Engine.StaticMesh'/Game/Shield/Heal_Mega.Heal_Mega'",
+		"isMegaPack": false,
+		"pickupSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/_힐팩후보1_0163_qk_sfx_item_health_25_Cue._힐팩후보1_0163_qk_sfx_item_health_25_Cue'",
+		"pickupVolume": 1,
+		"SpawnSound": "None",
+		"SpawnVolume": 1
+	},
+	{
+		"Name": "ID.HealPack.Mega",
+		"attributes": "(GameplayTags=((TagName=\"AITargetable.DropItem.Health\"),(TagName=\"ID.HealPack.Mega\")))",
+		"type": "Health",
+		"amount": 200,
+		"mesh": "/Script/Engine.StaticMesh'/Game/QuakeLike_Base/SDM/SM_Weapon/HealPAck_07.HealPAck_07'",
+		"isMegaPack": true,
+		"pickupSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/_힐팩후보1_0163_qk_sfx_item_health_25_Cue._힐팩후보1_0163_qk_sfx_item_health_25_Cue'",
+		"pickupVolume": 1,
+		"SpawnSound": "None",
+		"SpawnVolume": 1
+	},
+	{
+		"Name": "ID.PlatePack.Big",
+		"attributes": "(GameplayTags=((TagName=\"AITargetable.DropItem.Plate\"),(TagName=\"ID.PlatePack.Big\")))",
+		"type": "Plate",
+		"amount": 100,
+		"mesh": "/Script/Engine.StaticMesh'/Game/Shield/Shield_01/Shield.Shield'",
+		"isMegaPack": false,
+		"pickupSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/_아머후보5_ar2_pkup_Cue._아머후보5_ar2_pkup_Cue'",
+		"pickupVolume": 1,
+		"SpawnSound": "None",
+		"SpawnVolume": 1
+	},
+	{
+		"Name": "ID.PlatePack.middle",
+		"attributes": "(GameplayTags=((TagName=\"AITargetable.DropItem.Plate\"),(TagName=\"ID.PlatePack.middle\")))",
+		"type": "Plate",
+		"amount": 50,
+		"mesh": "/Script/Engine.StaticMesh'/Game/Shield/Shield_01/Shield.Shield'",
+		"isMegaPack": false,
+		"pickupSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/_아머후보5_ar2_pkup_Cue._아머후보5_ar2_pkup_Cue'",
+		"pickupVolume": 1,
+		"SpawnSound": "None",
+		"SpawnVolume": 1
+	},
+	{
+		"Name": "ID.PlatePack.Small",
+		"attributes": "(GameplayTags=((TagName=\"AITargetable.DropItem.Plate\"),(TagName=\"ID.PlatePack.Small\")))",
+		"type": "Plate",
+		"amount": 10,
+		"mesh": "/Script/Engine.StaticMesh'/Game/Shield/Shield_01/Shield.Shield'",
+		"isMegaPack": false,
+		"pickupSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/_아머후보4_ar1_pkup_Cue._아머후보4_ar1_pkup_Cue'",
+		"pickupVolume": 1,
+		"SpawnSound": "None",
+		"SpawnVolume": 1
+	},
+	{
+		"Name": "ID.PlatePack.Mega",
+		"attributes": "(GameplayTags=((TagName=\"AITargetable.DropItem.Plate\"),(TagName=\"ID.PlatePack.Mega\")))",
+		"type": "Plate",
+		"amount": 200,
+		"mesh": "/Script/Engine.StaticMesh'/Game/QuakeLike_Base/SDM/SM_Weapon/Shield_03.Shield_03'",
+		"isMegaPack": true,
+		"pickupSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/_후보2_0132_qk_sfx_item_armor_mid_Cue._후보2_0132_qk_sfx_item_armor_mid_Cue'",
+		"pickupVolume": 1,
+		"SpawnSound": "None",
+		"SpawnVolume": 1
+	}
+]

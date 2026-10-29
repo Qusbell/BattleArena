@@ -1,0 +1,68 @@
+[
+	{
+		"Name": "Bullet",
+		"attributes": "(GameplayTags=((TagName=\"AITargetable.DropItem.Ammo\"),(TagName=\"ID.MachineGun.Ammo\")))",
+		"TargetItemID": "(TagName=\"ID.MachineGun\")",
+		"ammo": 30,
+		"mesh": "/Script/Engine.StaticMesh'/Game/Variant_Shooter/Blueprints/Pickups/Projectiles/Meshes/SM_FoamBullet.SM_FoamBullet'",
+		"PickupSound": "None",
+		"pickupVolume": 0,
+		"SpawnSound": "None",
+		"SpawnVolume": 1
+	},
+	{
+		"Name": "ID.MachineGun.Ammo",
+		"attributes": "(GameplayTags=((TagName=\"AITargetable.DropItem.Ammo\"),(TagName=\"ID.MachineGun.Ammo\")))",
+		"TargetItemID": "(TagName=\"ID.MachineGun\")",
+		"ammo": 50,
+		"mesh": "/Script/Engine.StaticMesh'/Game/Scifi_Arsenal_Vol2/Static_Meshes/MachineGunAmmo.MachineGunAmmo'",
+		"PickupSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/_총알후보1_0130_qk_sfx_item_ammo_Cue._총알후보1_0130_qk_sfx_item_ammo_Cue'",
+		"pickupVolume": 1,
+		"SpawnSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/_총알후보1_0130_qk_sfx_item_ammo_Cue._총알후보1_0130_qk_sfx_item_ammo_Cue'",
+		"SpawnVolume": 1
+	},
+	{
+		"Name": "ID.PlasmaGun.Ammo",
+		"attributes": "(GameplayTags=((TagName=\"AITargetable.DropItem.Ammo\"),(TagName=\"ID.PlasmaGun.Ammo\")))",
+		"TargetItemID": "(TagName=\"ID.PlasmaGun\")",
+		"ammo": 50,
+		"mesh": "/Script/Engine.StaticMesh'/Game/Scifi_Arsenal_Vol2/Static_Meshes/PlasmaAmmo.PlasmaAmmo'",
+		"PickupSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/_총알후보1_0130_qk_sfx_item_ammo_Cue._총알후보1_0130_qk_sfx_item_ammo_Cue'",
+		"pickupVolume": 1,
+		"SpawnSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/_총알후보1_0130_qk_sfx_item_ammo_Cue._총알후보1_0130_qk_sfx_item_ammo_Cue'",
+		"SpawnVolume": 1
+	},
+	{
+		"Name": "ID.ShotGun.Ammo",
+		"attributes": "(GameplayTags=((TagName=\"AITargetable.DropItem.Ammo\"),(TagName=\"ID.ShotGun.Ammo\")))",
+		"TargetItemID": "(TagName=\"ID.ShotGun\")",
+		"ammo": 30,
+		"mesh": "/Script/Engine.StaticMesh'/Game/Scifi_Arsenal_Vol2/Static_Meshes/ShotGunAmmo.ShotGunAmmo'",
+		"PickupSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/_총알후보1_0130_qk_sfx_item_ammo_Cue._총알후보1_0130_qk_sfx_item_ammo_Cue'",
+		"pickupVolume": 1,
+		"SpawnSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/_총알후보1_0130_qk_sfx_item_ammo_Cue._총알후보1_0130_qk_sfx_item_ammo_Cue'",
+		"SpawnVolume": 1
+	},
+	{
+		"Name": "ID.RocketLauncher.Ammo",
+		"attributes": "(GameplayTags=((TagName=\"AITargetable.DropItem.Ammo\"),(TagName=\"ID.RocketLauncher.Ammo\")))",
+		"TargetItemID": "(TagName=\"ID.RocketLauncher\")",
+		"ammo": 20,
+		"mesh": "/Script/Engine.StaticMesh'/Game/Scifi_Arsenal_Vol2/Static_Meshes/RocketLauncherAmmo.RocketLauncherAmmo'",
+		"PickupSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/_총알후보1_0130_qk_sfx_item_ammo_Cue._총알후보1_0130_qk_sfx_item_ammo_Cue'",
+		"pickupVolume": 1,
+		"SpawnSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/_총알후보1_0130_qk_sfx_item_ammo_Cue._총알후보1_0130_qk_sfx_item_ammo_Cue'",
+		"SpawnVolume": 1
+	},
+	{
+		"Name": "ID.RailGun.Ammo",
+		"attributes": "(GameplayTags=((TagName=\"AITargetable.DropItem.Ammo\"),(TagName=\"ID.RailGun.Ammo\")))",
+		"TargetItemID": "(TagName=\"ID.RailGun\")",
+		"ammo": 10,
+		"mesh": "/Script/Engine.StaticMesh'/Game/Scifi_Arsenal_Vol2/Static_Meshes/RailGunAmmo.RailGunAmmo'",
+		"PickupSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/_총알후보1_0130_qk_sfx_item_ammo_Cue._총알후보1_0130_qk_sfx_item_ammo_Cue'",
+		"pickupVolume": 1,
+		"SpawnSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/_총알후보1_0130_qk_sfx_item_ammo_Cue._총알후보1_0130_qk_sfx_item_ammo_Cue'",
+		"SpawnVolume": 1
+	}
+]

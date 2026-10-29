@@ -1,0 +1,27 @@
+{
+	"mainMenuBGM":
+	{
+		"sound": "None",
+		"volumeMultiplier": 1,
+		"bLoop": true,
+		"fadeInTime": -1,
+		"fadeOutTime": -1
+	},
+	"gameplayBGMByMap":
+	{
+		"lvl_PortalMap":
+		{
+			"sound": "/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/_후보5_050_qk_music_goroth_neutral_loop_Cue._후보5_050_qk_music_goroth_neutral_loop_Cue",
+			"volumeMultiplier": 0.69999998807907104,
+			"bLoop": true,
+			"fadeInTime": -1,
+			"fadeOutTime": -1
+		}
+	},
+	"defaultFadeInTime": 1,
+	"defaultFadeOutTime": 1,
+	"loadingVolumeMultiplier": 0.5,
+	"loadingVolumeRestoreTime": 0.5,
+	"soundMix": "/Script/Engine.SoundMix'/Game/QuakeLike_1_0/GameProgressFlow/Sound_Class/MIX_Settings.MIX_Settings'",
+	"bGMSoundClass": "/Script/Engine.SoundClass'/Game/QuakeLike_1_0/GameProgressFlow/Sound_Class/SC_BGM.SC_BGM'"
+}

@@ -1,0 +1,111 @@
+{
+	"weaponType": "HitScan",
+	"damage": 100,
+	"range": 100000,
+	"fireRate": 1.5,
+	"spread": 0,
+	"projectileClass": "None",
+	"projectileSpeed": 0,
+	"damageJudgmentOffset": 0,
+	"explosionRadius": 0,
+	"explosionDamage": 0,
+	"selfDamageMultiplier": 0,
+	"selfKnockbackMultiplier": 0,
+	"otherKnockbackMultiplier": 0,
+	"pellet": 1,
+	"nSFireFX": "/Script/Niagara.NiagaraSystem'/Game/MuzzleFlashes/Particles/NiagaraSystems/Railgun_Flash.Railgun_Flash'",
+	"fireFX": "None",
+	"fireSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/_레일건후보_0161_qk_wpn_railgun_q3_shot__Cue._레일건후보_0161_qk_wpn_railgun_q3_shot__Cue'",
+	"pierceMultiplier": 0.80000000000000004,
+	"zoomFov": 50,
+	"interpSpeed": 200,
+	"pierceMax": 1,
+	"traceChannel": "TraceTypeQuery3",
+	"projectileSound": "None",
+	"nSProjectileDestroyEffect": "None",
+	"projectileDestroyEffect": "None",
+	"emptyAmmoSound": "None",
+	"fallOffStart": 0,
+	"minDamageMultiplier": 0,
+	"hitscanBeamEffect": "/Script/Niagara.NiagaraSystem'/Game/QuakeLike_1_0/HeldItem/NiagaraSystem/NS_RailGunEffect_Handmade.NS_RailGunEffect_Handmade'",
+	"nSHitscanHitEffect": "None",
+	"hitscanHitEffect": "/Script/Engine.ParticleSystem'/Game/Realistic_Starter_VFX_Pack_Vol2/Particles/Hit/P_Rubber.P_Rubber'",
+	"reloadTime": 0,
+	"explosionEffectScale": 0,
+	"railGunSonicBombEffect": "/Script/Niagara.NiagaraSystem'/Game/QuakeLike_1_0/HeldItem/NiagaraSystem/NS_RailGunEffect_Handmade_DUp.NS_RailGunEffect_Handmade_DUp'",
+	"railGunTrailEffect": "None",
+	"chHitSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/ETC/Quake3_Hit.Quake3_Hit'",
+	"fireVolumeMultiplier": 3,
+	"emptyAmmoVolumeMultiplier": 1,
+	"chHitVolumeMultiplier": 2.5,
+	"projectileVisualForwardOffset": 100,
+	"projectileDestroyVolumeMultiplier": 1,
+	"selfDamage": 40,
+	"lockTimeMultiplier": 1,
+	"rocketJumpZOffset": 0,
+	"explosionPhysicsForce": 0,
+	"nSAfterSmokeEffect": "None",
+	"afterSmokeEffect": "None",
+	"smokeEffectSocketName": "None",
+	"crosshairSetting":
+	{
+		"crosshairType": "Crosshair_07",
+		"crosshairColor":
+		{
+			"r": 0.0020429999567568302,
+			"g": 1,
+			"b": 0.020679999142885208,
+			"a": 1
+		},
+		"crosshairScale": 1
+	},
+	"zoomAimSpeedMultiplier": 0.17000000000000001,
+	"name": "RailGun",
+	"icon": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/Assets/WeaponIMG/railgunV2.railgunV2'",
+	"weaponHUDColor":
+	{
+		"r": 0.22389699518680573,
+		"g": 1,
+		"b": 0.092848002910614014,
+		"a": 1
+	},
+	"machineGunBeamLifeTime": 12000,
+	"railGunBeamLifeTime": 0.5,
+	"crosshairRecoilSpreadAmount": 20,
+	"useSeparatePlayerProjectileDestroyEffects": false,
+	"projectilePlayerDestroyEffect": "None",
+	"nSProjectilePlayerDestroyEffect": "None",
+	"attributes":
+	{
+	},
+	"startUsageCount": 8,
+	"maxUsageCount": 8,
+	"fpAnim": "/Script/Engine.AnimBlueprintGeneratedClass'/Game/QuakeLike_1_0/Animation/Steel/ABP/Steel_ABP_FP_BGH_RailGun1.Steel_ABP_FP_BGH_RailGun1_C'",
+	"tpAnim": "/Script/Engine.AnimBlueprintGeneratedClass'/Game/QuakeLike_1_0/Animation/Steel/ABP/Steel_ABP_TP_BGH_RailGun.Steel_ABP_TP_BGH_RailGun_C'",
+	"skeletalMesh": "/Script/Engine.SkeletalMesh'/Game/Plasma_Buy/SKM_test_unity_3.SKM_test_unity_3'",
+	"useMontage": "/Script/Engine.AnimMontage'/Game/Variant_Shooter/Anims/FP_Rifle_Shoot_Montage.FP_Rifle_Shoot_Montage'",
+	"equipMontage": "/Script/Engine.AnimMontage'/Game/QuakeLike_1_0/Animation/Steel/Anim/Steel_PistolAnim_Weapon_Up_Montage.Steel_PistolAnim_Weapon_Up_Montage'",
+	"equipSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/PickUp_Weapon.PickUp_Weapon'",
+	"equipVolumeMultiplier": 1,
+	"reloadSound": "None",
+	"slotNumber": 5,
+	"reloadVolumeMultiplier": 1,
+	"fOV90GripOffset":
+	{
+		"x": 0,
+		"y": 0,
+		"z": 0
+	},
+	"fOV110GripOffset":
+	{
+		"x": 0,
+		"y": 0,
+		"z": 0
+	},
+	"fOV120GripOffset":
+	{
+		"x": 0,
+		"y": 0,
+		"z": 0
+	}
+}
