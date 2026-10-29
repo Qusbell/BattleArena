@@ -6,6 +6,7 @@
 #include "LocalDedicatedServerLibrary.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerState.h"
+#include "UObject/UnrealType.h"
 
 ALobbyGameState* ALobbyPlayerController::GetLobbyGameState() const
 {
@@ -322,5 +323,12 @@ void ALobbyPlayerController::ClientWasKicked_Implementation(const FText& KickRea
 	if (UShootingArenaGameInstance* SAGameInstance = GetGameInstance<UShootingArenaGameInstance>())
 	{
 		SAGameInstance->SetPendingConnectMessage(TEXT("kicked"));
+
+		// BP_QuakeGameInstance 의 NetworkError 는 bIntentionalDisconnect 가 false 인 ConnectionLost 를 "예상 못 한 끊김"으로 보고
+		// 1초 뒤 마지막 서버에 자동 재접속합니다. 강퇴도 의도된 끊김이므로 true 로 두어 재접속을 막습니다.
+		if (FBoolProperty* Intentional = CastField<FBoolProperty>(SAGameInstance->GetClass()->FindPropertyByName(TEXT("bIntentionalDisconnect"))))
+		{
+			Intentional->SetPropertyValue_InContainer(SAGameInstance, true);
+		}
 	}
 }
