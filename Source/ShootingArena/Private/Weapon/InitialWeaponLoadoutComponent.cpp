@@ -1,5 +1,6 @@
 #include "Weapon/InitialWeaponLoadoutComponent.h"
 #include "Weapon/InitialWeaponLoadoutDataAsset.h"
+#include "Analyzer/ArenaMatchLogSubsystem.h"
 
 #include "Engine/World.h"
 #include "GameFramework/Pawn.h"
@@ -226,6 +227,8 @@ void UInitialWeaponLoadoutComponent::GrantLoadout()
 
 	bGrantedThisSpawn = true;
 	TSet<FSoftObjectPath> GrantedClasses;
+	TArray<FString> GrantedIds;
+	TArray<bool> GrantedDefaults;
 	auto GrantEntry = [&](const FInitialWeaponEntry& Selection, bool bDefault)
 	{
 		FInitialWeaponEntry Entry;
@@ -243,10 +246,18 @@ void UInitialWeaponLoadoutComponent::GrantLoadout()
 		if (GrantOne(Owner, Inventory, Entry, bDefault))
 		{
 			GrantedClasses.Add(Entry.WeaponClass.ToSoftObjectPath());
+			GrantedIds.Add(Entry.WeaponData.IsNull() ? Entry.WeaponClass.GetAssetName() : Entry.WeaponData.GetAssetName());
+			GrantedDefaults.Add(bDefault);
 		}
 	};
 	for (const FInitialWeaponEntry& Entry : Data->DefaultWeapons) GrantEntry(Entry, true);
 	for (const FInitialWeaponEntry& Entry : Data->GrantedWeapons) GrantEntry(Entry, false);
+
+	// Loadout is complete: this is the point the spawn row (with its initial weapons) is recorded.
+	if (UArenaMatchLogSubsystem* MatchLog = UArenaMatchLogSubsystem::Get(Owner))
+	{
+		MatchLog->CompleteSpawn(Cast<APawn>(Owner), GrantedIds, GrantedDefaults, FString());
+	}
 }
 
 bool UInitialWeaponLoadoutComponent::IsDefaultWeapon(const AActor* Weapon) const

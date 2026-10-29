@@ -48,6 +48,10 @@
 			]
 		},
 		{
+			"Name": "SQLiteCore",
+			"Enabled": true
+		},
+		{
 			"Name": "JsonBlueprintUtilities",
 			"Enabled": true
 		},

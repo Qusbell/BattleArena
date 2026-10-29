@@ -39,4 +39,4 @@ void UArenaCombatLibrary::ConfirmDeath(AActor* Victim, AController* Instigator, 
 void UArenaCombatLibrary::RecordTrace(AActor* Weapon, const FHitResult& Hit, FVector Start, FVector End)
 { if (auto* S = Recorder(Weapon)) { S->UpdateShotAim(Weapon, Start, End); S->RecordHit(Weapon, Hit); } }
 void UArenaCombatLibrary::RecordTraces(AActor* Weapon, const TArray<FHitResult>& Hits, FVector Start, FVector End)
-{ if (auto* S = Recorder(Weapon)) { S->UpdateShotAim(Weapon, Start, End); for (const auto& Hit : Hits) S->RecordHit(Weapon, Hit); } }
+{ if (auto* S = Recorder(Weapon)) { S->UpdateShotAim(Weapon, Start, End); for (const auto& Hit : Hits) S->RecordHit(Weapon, Hit); S->NoteShotElements(Weapon, Hits.Num()); } }

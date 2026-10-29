@@ -156,7 +156,8 @@ public:
     void RecordHit(AActor* Source, const FHitResult& Hit, bool bDamageContact = false);
     float ApplyShotDamage(AActor* Victim, float Damage, AController* Instigator, AActor* Causer, TSubclassOf<UDamageType> Type, AActor* FiringWeapon = nullptr);
     void RecordDeath(APawn* Victim, AController* Instigator, AActor* Causer);
-    void RecordCredit(APawn* Victim, class APlayerState* Credited, const FString& Source);
+    void RecordCredit(APawn* Victim, class APlayerState* Credited, const FString& Source, const FString& DeathCause = FString());
+    void NoteShotElements(AActor* Weapon, int32 Count);
     UFUNCTION(BlueprintCallable, Category = "Arena Analyze")
     FArenaAnalyzeSession Snapshot() const;
 
