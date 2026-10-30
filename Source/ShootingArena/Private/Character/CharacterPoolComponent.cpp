@@ -299,6 +299,8 @@ void UCharacterPoolComponent::ResetGameplay()
 		Reset(Health, {TEXT("LifeInfo"), TEXT("DamageWeaponData"), TEXT("OverLifeTimerHandle")});
 		Call(Health, TEXT("Init Info"));
 		Call(Health, TEXT("OnRep_LifeInfo"));
+		// Reused pawns do not run BeginPlay again after their life timers are cleared.
+		Call(Health, TEXT("CheckStartOverLifeTimer"));
 	}
 	ResetAnimationForLife();
 	if (auto* Loadout = Actor->FindComponentByClass<UInitialWeaponLoadoutComponent>()) Loadout->GrantLoadout();

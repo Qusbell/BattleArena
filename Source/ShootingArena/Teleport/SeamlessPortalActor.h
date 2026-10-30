@@ -49,9 +49,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Spatial Portal|Setup", meta = (DisplayName = "Elliptical Opening"))
 	bool bEllipticalOpening = true;
 
-	/** Enter at the first front-side capsule contact with the opening, without waiting for its centre.
-	 * Does not expand the opening, change the real capsule, or bypass destination collision. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Spatial Portal|Traversal", meta = (DisplayName = "Allow Partial Capsule Entry"))
+	/** Serialized compatibility only. Entry is now determined by EntryCollision overlap. */
+	UPROPERTY(BlueprintReadOnly, Category = "Spatial Portal|Traversal")
 	bool bAllowPartialCapsuleEntry = true;
 
 	/** Arrival only: discard the entrance's sideways offset, so both edges use the same exit centre.
@@ -59,9 +58,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Spatial Portal|Traversal", meta = (DisplayName = "Center Exit Horizontally"))
 	bool bCenterExitHorizontally = true;
 
-	/** Strict mode only: allow a little head/foot overhang while the torso crosses the plane.
-	 * Does not shrink the real capsule or relax destination collision. 0 restores full-height eligibility. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Spatial Portal|Traversal", meta = (DisplayName = "Head And Foot Tolerance", EditCondition = "!bAllowPartialCapsuleEntry", ClampMin = "0.0", ClampMax = "50.0", Units = "cm"))
+	/** Serialized compatibility only; engine overlap entry no longer uses a head/foot fit tolerance. */
+	UPROPERTY(BlueprintReadOnly, Category = "Spatial Portal|Traversal")
 	float headAndFootTolerance = 20.0f;
 
 	/** Non-spatial targets (any Actor, including legacy portals) are exit anchors, not matching doorway meshes.
@@ -74,8 +72,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Spatial Portal|Traversal", meta = (ClampMin = "1.0", ClampMax = "5000.0", EditCondition = "bAlignActorExitToFloor"))
 	float actorExitFloorSearchDistance = 500.0f;
 
-	/** Position discontinuities larger than this are treated as another system's teleport, not a crossing. */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Spatial Portal|Traversal", meta = (ClampMin = "1.0"))
+	/** Serialized compatibility only; engine overlap entry no longer compares movement samples. */
+	UPROPERTY(BlueprintReadOnly, Category = "Spatial Portal|Traversal")
 	float maximumTraversalStep = 5000.0f;
 
 	/** Minimum camera-to-portal-plane distance used only for the spatial capture, in cm.
@@ -88,9 +86,9 @@ public:
 	bool CanTraverse() const;
 	bool GetDestinationFrame(FTransform& frame) const;
 	FVector2D GetOpeningHalfSize() const;
-	bool FindCrossing(const ACharacter* character, const FVector& previous, double& fraction) const;
-	bool TryTraverse(ACharacter* character, const FVector& previous, FVector& outSafeExit) const;
-	bool FitsAt(const ACharacter* character, const FVector& position) const;
+	/** Server-only arrival after a trusted EntryCollision overlap notification. */
+	bool TryTraverseFromOverlap(ACharacter* character, FVector& outSafeExit) const;
+	UBoxComponent* GetNearbyCollision() const { return nearbyCollision; }
 	double GetCapsuleNormalExtent(const ACharacter* character) const;
 	double GetPassageFrontExtent() const;
 
@@ -103,6 +101,15 @@ protected:
 		bool, const FHitResult&) override;
 
 private:
+	void UpdateNearbyCollision();
+	UFUNCTION()
+	void OnNearbyBegin(UPrimitiveComponent* component, AActor* actor, UPrimitiveComponent* otherComponent,
+		int32 bodyIndex, bool bFromSweep, const FHitResult& hit);
+	UFUNCTION()
+	void OnNearbyEnd(UPrimitiveComponent* component, AActor* actor, UPrimitiveComponent* otherComponent, int32 bodyIndex);
+	UPROPERTY(VisibleAnywhere, Category = "Teleport|Components")
+	TObjectPtr<UBoxComponent> nearbyCollision;
+	bool bOverlapReady = false;
 	/** Shared project settings when this portal has no explicitly assigned data asset. */
 	UPROPERTY()
 	TObjectPtr<UTeleportDataAsset> defaultPortalInfo;

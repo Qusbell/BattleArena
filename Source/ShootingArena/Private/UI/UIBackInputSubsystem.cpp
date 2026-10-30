@@ -10,6 +10,7 @@
 #include "CommonActivatableWidget.h"
 #include "CommonButtonBase.h"
 #include "Components/Button.h"
+#include "Components/PanelWidget.h"
 #include "Engine/GameInstance.h"
 #include "Engine/GameViewportClient.h"
 #include "Framework/Application/IInputProcessor.h"
@@ -69,7 +70,8 @@ void UUIBackInputSubsystem::Deinitialize()
 bool UUIBackInputSubsystem::HandleKeyPressed(const FKey& Key)
 {
 	const UUIBackInputSettings* Settings = GetDefault<UUIBackInputSettings>();
-	if (!Settings->BackKeys.Contains(Key))
+	const bool bBackKey = Settings->BackKeys.Contains(Key);
+	if (!bBackKey && !Settings->HotkeyButtons.ContainsByPredicate([&Key](const FUIHotkeyButton& H) { return H.Key == Key; }))
 	{
 		return false;
 	}
@@ -84,7 +86,72 @@ bool UUIBackInputSubsystem::HandleKeyPressed(const FKey& Key)
 		}
 	}
 
-	return HandleBackAction();
+	return bBackKey ? HandleBackAction() : HandleHotkey(Key);
+}
+
+bool UUIBackInputSubsystem::HandleHotkey(const FKey& Key)
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return false;
+	}
+
+	// 텍스트 입력 중에는 글자 키를 가로채지 않습니다.
+	if (const TSharedPtr<SWidget> Focused = FSlateApplication::Get().GetUserFocusedWidget(0))
+	{
+		if (Focused->GetType().ToString().Contains(TEXT("Editable")))
+		{
+			return false;
+		}
+	}
+
+	TArray<UUserWidget*> TopLevelWidgets;
+	UWidgetBlueprintLibrary::GetAllWidgetsOfClass(World, TopLevelWidgets, UUserWidget::StaticClass(), true);
+
+	// 모달/팝업이 위에 떠 있으면 아래 화면의 단축키는 막습니다.
+	for (UUserWidget* Widget : TopLevelWidgets)
+	{
+		if (!Widget || !Widget->IsVisible() || !Widget->WidgetTree)
+		{
+			continue;
+		}
+		if (Widget->GetClass()->GetName().Contains(TEXT("Pop")))
+		{
+			return false;
+		}
+		bool bModalActive = false;
+		Widget->WidgetTree->ForEachWidgetAndDescendants([&bModalActive](UWidget* Child)
+		{
+			const UCommonActivatableWidgetContainerBase* Stack = Cast<UCommonActivatableWidgetContainerBase>(Child);
+			if (Stack && Stack->GetName().Contains(TEXT("Modal")) && Stack->GetActiveWidget())
+			{
+				bModalActive = true;
+			}
+		});
+		if (bModalActive)
+		{
+			return false;
+		}
+	}
+
+	const UUIBackInputSettings* Settings = GetDefault<UUIBackInputSettings>();
+	for (int32 i = TopLevelWidgets.Num() - 1; i >= 0; --i)
+	{
+		UUserWidget* Widget = TopLevelWidgets[i];
+		if (!Widget || !Widget->IsVisible())
+		{
+			continue;
+		}
+		for (const FUIHotkeyButton& Hotkey : Settings->HotkeyButtons)
+		{
+			if (Hotkey.Key == Key && TryClickButtonByName(Widget, Hotkey.ButtonName))
+			{
+				return true;
+			}
+		}
+	}
+	return false;
 }
 
 bool UUIBackInputSubsystem::HandleBackAction()
@@ -173,30 +240,50 @@ bool UUIBackInputSubsystem::TryClickBackButton(UUserWidget* Widget) const
 {
 	for (const FName& ButtonName : GetDefault<UUIBackInputSettings>()->BackButtonNames)
 	{
-		UWidget* Found = Widget->GetWidgetFromName(ButtonName);
-		if (!Found || !Found->IsVisible() || !Found->GetIsEnabled())
+		if (TryClickButtonByName(Widget, ButtonName))
 		{
-			continue;
-		}
-
-		if (UCommonButtonBase* CommonButton = Cast<UCommonButtonBase>(Found))
-		{
-			if (!CommonButton->IsInteractionEnabled())
-			{
-				continue;
-			}
-			// 실제 클릭과 같은 경로(HandleButtonClicked → OnButtonBaseClicked 브로드캐스트)를 탑니다. protected UFUNCTION이라 리플렉션으로 호출합니다.
-			if (UFunction* ClickFunction = CommonButton->FindFunction(TEXT("HandleButtonClicked")))
-			{
-				CommonButton->ProcessEvent(ClickFunction, nullptr);
-				return true;
-			}
-		}
-		else if (UButton* Button = Cast<UButton>(Found))
-		{
-			Button->OnClicked.Broadcast();
 			return true;
 		}
+	}
+	return false;
+}
+
+bool UUIBackInputSubsystem::TryClickButtonByName(UUserWidget* Widget, const FName& ButtonName) const
+{
+	UWidget* Found = Widget->GetWidgetFromName(ButtonName);
+	if (!Found || !Found->IsVisible() || !Found->GetIsEnabled())
+	{
+		return false;
+	}
+
+	for (UWidget* Current = Found; Current;)
+	{
+		if (!Current->IsVisible() || !Current->GetIsEnabled())
+		{
+			return false;
+		}
+		if (Current == Widget) break;
+		// Named-slot content can cross a UserWidget's widget tree.
+		Current = Current->GetParent() ? static_cast<UWidget*>(Current->GetParent()) : Current->GetTypedOuter<UUserWidget>();
+	}
+
+	if (UCommonButtonBase* CommonButton = Cast<UCommonButtonBase>(Found))
+	{
+		if (!CommonButton->IsInteractionEnabled())
+		{
+			return false;
+		}
+		// 실제 클릭과 같은 경로(HandleButtonClicked → OnButtonBaseClicked 브로드캐스트)를 탑니다. protected UFUNCTION이라 리플렉션으로 호출합니다.
+		if (UFunction* ClickFunction = CommonButton->FindFunction(TEXT("HandleButtonClicked")))
+		{
+			CommonButton->ProcessEvent(ClickFunction, nullptr);
+			return true;
+		}
+	}
+	else if (UButton* Button = Cast<UButton>(Found))
+	{
+		Button->OnClicked.Broadcast();
+		return true;
 	}
 	return false;
 }

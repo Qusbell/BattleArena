@@ -76,6 +76,7 @@ public:
 	FVector GetExitLaunchForward() const;
 
 protected:
+	virtual void EndPlay(const EEndPlayReason::Type reason) override;
 	virtual void BeginPlay() override;
 	virtual void OnConstruction(const FTransform& Transform) override;
 

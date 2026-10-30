@@ -50,6 +50,14 @@ if errorlevel 1 (
     exit /b 1
 )
 
+REM Copy only the editing schema required by DataEditor.
+if not exist "%ARCHIVE_DIR%\ExternalData" mkdir "%ARCHIVE_DIR%\ExternalData"
+copy /y "%~dp0ExternalData\JsonAssetSyncManifest.json" "%ARCHIVE_DIR%\ExternalData\JsonAssetSyncManifest.json" >nul
+if errorlevel 1 (
+    echo [ERROR] Failed to copy ExternalData\JsonAssetSyncManifest.json.
+    pause
+    exit /b 1
+)
 echo.
 echo === DONE ===
 echo   Client: %ARCHIVE_DIR%\Windows\ShootingArena\Binaries\Win64\ShootingArena.exe

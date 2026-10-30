@@ -6,16 +6,16 @@
 #include "Components/SceneCaptureComponent2D.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "Engine/Engine.h"
-#include "EngineUtils.h"
 #include "Camera/PlayerCameraManager.h"
 #include "GameFramework/PlayerController.h"
 #include "RHIGlobals.h"
+#include "Misc/ScopeExit.h"
 
 namespace PortalViewPrivate
 {
 	struct FPortalCandidate
 	{
-		TObjectPtr<AOneWayTeleportActor> portal;
+		TWeakObjectPtr<AOneWayTeleportActor> portal;
 		float distance = 0.0f;
 		float score = 0.0f;
 		float screenCoverage = 0.0f;
@@ -23,7 +23,7 @@ namespace PortalViewPrivate
 
 	struct FReadyPortalCapture
 	{
-		TObjectPtr<AOneWayTeleportActor> portal;
+		TWeakObjectPtr<AOneWayTeleportActor> portal;
 		float score = 0.0f;
 		float accumulatedWaitTime = 0.0f;
 		FPortalCaptureView captureView;
@@ -31,6 +31,38 @@ namespace PortalViewPrivate
 		bool bForced = false;
 		FPortalCaptureHistory history;
 	};
+}
+
+struct FPortalViewTickBuffers
+{
+	TSet<TWeakObjectPtr<AOneWayTeleportActor>> registeredPortals;
+	TArray<TWeakObjectPtr<AActor>> portalSnapshot;
+	TArray<PortalViewPrivate::FPortalCandidate> candidates;
+	TArray<PortalViewPrivate::FReadyPortalCapture> readyCaptures;
+	TSet<TWeakObjectPtr<AOneWayTeleportActor>> visiblePortals;
+	bool bRegistryDirty = false;
+};
+
+void FPortalViewTickBuffersDeleter::operator()(FPortalViewTickBuffers* buffers) const { delete buffers; }
+UPortalViewSubsystem::UPortalViewSubsystem() : tickBuffers(new FPortalViewTickBuffers()) {}
+UPortalViewSubsystem::~UPortalViewSubsystem() = default;
+
+int32 UPortalViewSubsystem::GetRegisteredPortalCount() const
+{ return tickBuffers->registeredPortals.Num(); }
+
+void UPortalViewSubsystem::RegisterPortal(AOneWayTeleportActor* portal)
+{
+	if (bDeinitializing || !IsValid(portal) || portal->GetWorld()!=GetWorld() || !IsValid(GetWorld())
+		|| GetWorld()->bIsTearingDown || GetWorld()->GetNetMode()==NM_DedicatedServer) return;
+	tickBuffers->registeredPortals.Add(portal);
+	tickBuffers->bRegistryDirty = true;
+}
+
+void UPortalViewSubsystem::UnregisterPortal(AOneWayTeleportActor* portal)
+{
+	tickBuffers->registeredPortals.Remove(portal);
+	// Keep this tick's snapshot and view-map entries stable across actor callbacks.
+	tickBuffers->bRegistryDirty = true;
 }
 
 void UPortalViewSubsystem::Initialize(FSubsystemCollectionBase& collection)
@@ -48,18 +80,34 @@ void UPortalViewSubsystem::Initialize(FSubsystemCollectionBase& collection)
 
 void UPortalViewSubsystem::Deinitialize()
 {
-	ClearAllPortalViews();
+	if (bDeinitializing) return;
+	bDeinitializing = true;
+	// Capture/portal transform callbacks can end the world inside Tick. Its references must
+	// remain alive until the active update unwinds, then all resources are released together.
+	if (!bUpdatingViews && !bClearingViews) FinishViewUpdate();
 	Super::Deinitialize();
+}
+
+void UPortalViewSubsystem::FinishViewUpdate()
+{
+	bUpdatingViews = false;
+	if (bDeinitializing)
+	{
+		ClearAllPortalViews();
+		*tickBuffers = FPortalViewTickBuffers();
+	}
 }
 
 void UPortalViewSubsystem::Tick(float deltaTime)
 {
 	UWorld* world = GetWorld();
-	if (!IsValid(world) || world->bIsTearingDown || !FMath::IsFinite(deltaTime)
+	if (bUpdatingViews || bDeinitializing || !IsValid(world) || world->bIsTearingDown || !FMath::IsFinite(deltaTime)
 		|| world->GetNetMode() == NM_DedicatedServer)
 	{
 		return;
 	}
+	bUpdatingViews = true;
+	ON_SCOPE_EXIT { FinishViewUpdate(); };
 
 	APlayerController* playerController = world->GetFirstPlayerController();
 	if (!IsValid(playerController) || !playerController->IsLocalController()
@@ -95,50 +143,68 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 	lastObserverTransform = observerTransform;
 	bHasObserverTransform = true;
 
-	TArray<PortalViewPrivate::FPortalCandidate> candidates;
-	TArray<AOneWayTeleportActor*> allPortals;
-
-	for (TActorIterator<AOneWayTeleportActor> iterator(world); iterator; ++iterator)
+	if (tickBuffers->bRegistryDirty)
 	{
-		AOneWayTeleportActor* portal = *iterator;
-		allPortals.Add(portal);
+		tickBuffers->portalSnapshot.Reset();
+		for (auto it=tickBuffers->registeredPortals.CreateIterator(); it; ++it)
+		{
+			if (!it->IsValid()) { it.RemoveCurrent(); continue; }
+			tickBuffers->portalSnapshot.Add(it->Get());
+		}
+		tickBuffers->bRegistryDirty = false;
+	}
+	auto& candidates = tickBuffers->candidates;
+	auto& readyCaptures = tickBuffers->readyCaptures;
+	auto& visiblePortals = tickBuffers->visiblePortals;
+	const auto& allPortals = tickBuffers->portalSnapshot;
+	candidates.Reset(); readyCaptures.Reset(); visiblePortals.Reset();
+	for (const auto& weakPortal : allPortals)
+	{
+		auto* portal = Cast<AOneWayTeleportActor>(weakPortal.Get());
+		if (!IsValid(portal) || !tickBuffers->registeredPortals.Contains(portal))
+		{ tickBuffers->bRegistryDirty = true; continue; }
 		float distance = 0.0f;
 		float score = 0.0f;
 		float screenCoverage = 0.0f;
-		if (IsValid(portal)
-			&& portal->CanDisplayPortalView(
+		const bool bCanDisplay = portal->CanDisplayPortalView(
 				playerController,
 				cameraLocation,
 				aimDirection,
 				distance,
 				score,
-				screenCoverage)
+				screenCoverage);
+		if (bDeinitializing || world->bIsTearingDown) return;
+		if (bCanDisplay && IsValid(portal) && tickBuffers->registeredPortals.Contains(portal)
 			&& FMath::IsFinite(distance) && FMath::IsFinite(score) && FMath::IsFinite(screenCoverage))
 		{
 			candidates.Add({ portal, distance, score, screenCoverage });
 		}
 	}
 
+	// A later portal's callback may have removed an earlier candidate in this same update.
+	candidates.RemoveAll([&](const auto& candidate)
+	{
+		return !candidate.portal.IsValid() || !tickBuffers->registeredPortals.Contains(candidate.portal);
+	});
 	if (candidates.IsEmpty())
 	{
 		ClearAllPortalViews();
 		return;
 	}
 
-	candidates.Sort([](const PortalViewPrivate::FPortalCandidate& left, const PortalViewPrivate::FPortalCandidate& right)
-	{
-		return left.score > right.score;
-	});
+	// Only selecting a limited subset needs a full sort. The global DA still comes from the top score.
+	int32 bestCandidate = 0;
+	for (int32 i=1; i<candidates.Num(); ++i)
+		if (candidates[i].score>candidates[bestCandidate].score) bestCandidate=i;
+	candidates.Swap(0,bestCandidate);
 
 	const UTeleportDataAsset* firstSettings = candidates[0].portal->GetTeleportDataAsset();
 	const int32 maxViews = IsValid(firstSettings) ? firstSettings->maxSimultaneousPortalViews : 0;
 	if (maxViews > 0 && candidates.Num() > maxViews)
 	{
-		candidates.SetNum(maxViews);
+		candidates.Sort([](const auto& left,const auto& right) { return left.score>right.score; });
+		candidates.SetNum(maxViews,EAllowShrinking::No);
 	}
-
-	TSet<TWeakObjectPtr<AOneWayTeleportActor>> visiblePortals;
-	TArray<PortalViewPrivate::FReadyPortalCapture> readyCaptures;
 	for (const PortalViewPrivate::FPortalCandidate& candidate : candidates)
 	{
 		AOneWayTeleportActor* portal = candidate.portal.Get();
@@ -156,7 +222,9 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 		visiblePortals.Add(portal);
 		FPortalCaptureView captureView;
 		const FTransform playerCameraTransform(cameraRotation, cameraLocation);
-		if (!portal->BuildPortalCaptureView(playerCameraTransform, captureView)
+		const bool bBuiltView=portal->BuildPortalCaptureView(playerCameraTransform, captureView);
+		if (bDeinitializing || world->bIsTearingDown) return;
+		if (!bBuiltView || !IsValid(portal) || !tickBuffers->registeredPortals.Contains(portal)
 			|| captureView.transform.ContainsNaN() || !captureView.transform.GetRotation().IsNormalized()
 			|| (captureView.bCustomProjection && captureView.projection.ContainsNaN())
 			|| (captureView.bEnableClipPlane && (captureView.clipBase.ContainsNaN()
@@ -166,6 +234,7 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 			continue;
 		}
 		FPortalViewInstance& view = FindOrCreateView(portal);
+		if (bDeinitializing || world->bIsTearingDown) return;
 		const bool bObserverMoving = bCanCompareObserver
 			&& IsObserverMoving(previousObserverTransform, observerTransform, deltaTime,
 				settings->portalViewStillLocationTolerance, settings->portalViewStillRotationTolerance);
@@ -181,6 +250,7 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 			view,
 			desiredRenderTargetSize,
 			captureView.bSpatialView || settings->bUseHighQualityPortalCapture);
+		if (bDeinitializing || world->bIsTearingDown) return;
 		if (!IsValid(view.renderTarget) || !IsValid(view.sceneCapture))
 		{
 			continue;
@@ -204,6 +274,9 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 			blurAlpha);
 		portal->ApplyPortalView(view.renderTarget, captureView.bSpatialView ? 0.0f : blurStrength,
 			captureView.bSpatialView ? 1.0f : portal->GetPortalViewOpacity(candidate.distance));
+		if (bDeinitializing || world->bIsTearingDown) return;
+		if (!IsValid(portal) || !tickBuffers->registeredPortals.Contains(portal))
+		{ visiblePortals.Remove(candidate.portal); continue; }
 
 		view.captureAccumulator = FMath::Min(
 			view.captureAccumulator + FMath::Max(deltaTime, 0.0f),
@@ -245,7 +318,9 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 
 	// 예산에서 밀린 포탈은 누적 대기 시간이 계속 증가합니다. 다음 프레임에는 가장 오래
 	// 기다린 포탈부터 처리하므로, 가까운 포탈만 계속 갱신되고 나머지가 멈추는 현상을 막습니다.
-	readyCaptures.Sort([](
+	const int32 captureBudget = IsValid(firstSettings)
+		? FMath::Max(0, firstSettings->maxPortalCapturesPerFrame) : 0;
+	if (captureBudget>0 && readyCaptures.Num()>captureBudget) readyCaptures.Sort([](
 		const PortalViewPrivate::FReadyPortalCapture& left,
 		const PortalViewPrivate::FReadyPortalCapture& right)
 	{
@@ -257,9 +332,6 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 		return left.score > right.score;
 	});
 
-	const int32 captureBudget = IsValid(firstSettings)
-		? FMath::Max(0, firstSettings->maxPortalCapturesPerFrame)
-		: 0;
 	const int32 captureCount = captureBudget > 0
 		? FMath::Min(captureBudget, readyCaptures.Num())
 		: readyCaptures.Num();
@@ -301,23 +373,27 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 			? FMath::Max(settings->portalCaptureLODDistanceFactor, 0.01f) : 1.0f;
 
 		view->sceneCapture->SetWorldTransform(captureView.transform);
+		if (bDeinitializing || world->bIsTearingDown) return;
+		if (!IsValid(portal) || !tickBuffers->registeredPortals.Contains(portal)
+			|| !IsValid(view->sceneCapture) || !view->sceneCapture->IsRegistered()) continue;
 		view->sceneCapture->bUseCustomProjectionMatrix = captureView.bCustomProjection;
 		view->sceneCapture->CustomProjectionMatrix = captureView.projection;
 		view->sceneCapture->bEnableClipPlane = captureView.bEnableClipPlane;
 		view->sceneCapture->TextureTarget = view->renderTarget;
 		view->sceneCapture->ClipPlaneBase = captureView.clipBase;
 		view->sceneCapture->ClipPlaneNormal = captureView.clipNormal;
-		view->sceneCapture->HiddenActors.Empty();
-		view->sceneCapture->HiddenActors.Add(portal);
+		view->sceneCapture->HiddenActors.Reset();
+		if (captureView.bSpatialView)
+			for (const auto& hidden:allPortals)
+				if (AActor* actor=hidden.Get()) view->sceneCapture->HiddenActors.Add(actor);
+		view->sceneCapture->HiddenActors.AddUnique(portal);
 		if (AOneWayTeleportActor* exitPortal = Cast<AOneWayTeleportActor>(portal->GetExitTarget()))
 		{
-			view->sceneCapture->HiddenActors.Add(exitPortal);
+			view->sceneCapture->HiddenActors.AddUnique(exitPortal);
 		}
 		if (captureView.bSpatialView)
 		{
 			// No recursive feedback or a separate Niagara render inside each portal view.
-			for (AOneWayTeleportActor* otherPortal : allPortals)
-				view->sceneCapture->HiddenActors.AddUnique(otherPortal);
 			view->sceneCapture->ShowFlags.SetMotionBlur(false);
 			view->sceneCapture->ShowFlags.SetDepthOfField(false);
 		}
@@ -328,6 +404,7 @@ void UPortalViewSubsystem::Tick(float deltaTime)
 			view->sceneCapture->CaptureSceneDeferred();
 		}
 		else view->sceneCapture->CaptureScene();
+		if (bDeinitializing || world->bIsTearingDown) return;
 		view->lastCaptureTransform = captureView.transform;
 		view->lastCaptureHistory = readyCaptures[captureIndex].history;
 		view->bHasCaptured = true;
@@ -483,9 +560,9 @@ FPortalViewInstance& UPortalViewSubsystem::FindOrCreateView(AOneWayTeleportActor
 	newView.sceneCapture->bCaptureOnMovement = false;
 	newView.sceneCapture->bEnableClipPlane = true;
 	newView.sceneCapture->RegisterComponent();
-	if (!newView.sceneCapture->IsRegistered())
+	if (!IsValid(newView.sceneCapture) || !newView.sceneCapture->IsRegistered())
 	{
-		newView.sceneCapture->DestroyComponent();
+		if (IsValid(newView.sceneCapture)) newView.sceneCapture->DestroyComponent();
 		newView.sceneCapture = nullptr;
 	}
 	return newView;
@@ -676,6 +753,8 @@ void UPortalViewSubsystem::ClearPortalView(AOneWayTeleportActor* portal, FPortal
 
 void UPortalViewSubsystem::ClearAllPortalViews()
 {
+	if (bClearingViews) return;
+	TGuardValue<bool> clearing(bClearingViews,true);
 	bHasObserverTransform = false;
 	lastObserverPawn.Reset();
 	lastObserverViewTarget.Reset();
