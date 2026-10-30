@@ -1,8 +1,10 @@
 #include "Analyzer/ArenaLoggingSettings.h"
 
+#include "Analyzer/ArenaLoggingDataAsset.h"
 #include "HAL/IConsoleManager.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
+#include "UObject/UObjectGlobals.h"
 
 static TAutoConsoleVariable<int32> CVarArenaLogging(
 	TEXT("arena.Logging"), 0,
@@ -21,5 +23,13 @@ bool IsArenaLoggingEnabled()
 	{
 		return true;
 	}
-	return CVarArenaLogging.GetValueOnAnyThread() != 0;
+	if (CVarArenaLogging.GetValueOnAnyThread() != 0)
+	{
+		return true;
+	}
+	// DA_ArenaLogging: every process (editor, PIE dedicated server, standalone) loads the same asset from Content.
+	// A missing asset counts as off, without a load warning.
+	const UArenaLoggingDataAsset* Asset = LoadObject<UArenaLoggingDataAsset>(
+		nullptr, UArenaLoggingDataAsset::GetAssetPath(), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	return Asset && Asset->bLoggingEnabled;
 }
