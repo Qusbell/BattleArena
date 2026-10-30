@@ -1,4 +1,5 @@
 #include "Analyzer/ArenaMatchLogSubsystem.h"
+#include "Analyzer/ArenaLoggingSettings.h"
 
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Dom/JsonObject.h"
@@ -240,7 +241,7 @@ namespace
 bool UArenaMatchLogSubsystem::ShouldCreateSubsystem(UObject* Outer) const
 {
 	const UWorld* World = Cast<UWorld>(Outer);
-	if (!World || World->GetNetMode() == NM_Client)
+	if (!bArenaLoggingEnabled || !World || World->GetNetMode() == NM_Client)
 	{
 		return false;
 	}

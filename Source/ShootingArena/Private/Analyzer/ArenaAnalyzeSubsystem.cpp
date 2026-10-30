@@ -1,5 +1,6 @@
 #include "Analyzer/ArenaAnalyzeSubsystem.h"
 #include "Analyzer/ArenaMatchLogSubsystem.h"
+#include "Analyzer/ArenaLoggingSettings.h"
 
 #include "Engine/World.h"
 #include "EngineUtils.h"
@@ -26,7 +27,7 @@ UArenaMatchLogSubsystem* MatchLog(const UWorld* World)
 bool UArenaAnalyzeSubsystem::ShouldCreateSubsystem(UObject* Outer) const
 {
     const UWorld* World = Cast<UWorld>(Outer);
-    if (!World || World->GetNetMode() == ENetMode::NM_Client)
+    if (!bArenaLoggingEnabled || !World || World->GetNetMode() == ENetMode::NM_Client)
     {
         return false;
     }

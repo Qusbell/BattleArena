@@ -2,6 +2,8 @@
 #include "Analyzer/ArenaAnalyzeLibrary.h"
 #include "Analyzer/ArenaCombatLibrary.h"
 #include "Analyzer/ArenaAnalyzeRenderLibrary.h"
+#include "Analyzer/ArenaLoggingSettings.h"
+#include "Analyzer/ArenaMatchLogSubsystem.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/SceneComponent.h"
 #include "Engine/StaticMesh.h"
@@ -29,6 +31,13 @@ bool FArenaAnalyzerIdentityTest::RunTest(const FString& Parameters)
     World->SetGameMode(FURL());
     World->InitializeActorsForPlay(FURL());
     auto* S = World->GetSubsystem<UArenaAnalyzeSubsystem>();
+    if (!bArenaLoggingEnabled)
+    {
+        TestNull(TEXT("Analyzer is disabled"), S);
+        TestNull(TEXT("Match log is disabled"), World->GetSubsystem<UArenaMatchLogSubsystem>());
+        AddInfo(TEXT("Recording identity checks require bArenaLoggingEnabled to be true."));
+        return true;
+    }
     if (!TestNotNull(TEXT("Recorder exists"), S)) return false;
     auto* PC = World->SpawnActor<APlayerController>(); auto* AI = World->SpawnActor<AAIController>();
     auto* Shooter = World->SpawnActor<APawn>(); auto* Target = World->SpawnActor<APawn>();
