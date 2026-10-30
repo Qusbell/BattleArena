@@ -34,6 +34,11 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Kill Streak Voice")
 	void NotifyOwnerDeath();
 
+	UFUNCTION(BlueprintPure, Category = "Kill Streak")
+	int32 GetCurrentStreakCount() const { return CurrentStreakCount; }
+
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
@@ -60,6 +65,7 @@ private:
 	FTimerHandle KillBatchTimerHandle;
 	int32 PendingKillEventCount = 0;
 	bool bPendingRevengeKill = false;
+	UPROPERTY(Replicated)
 	int32 CurrentStreakCount = 0;
 	float KillBatchStartTime = 0.0f;
 	float NextVoiceAllowedTime = 0.0f;

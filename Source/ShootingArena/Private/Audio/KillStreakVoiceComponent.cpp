@@ -9,8 +9,15 @@
 #include "Kismet/GameplayStatics.h"
 #include "Sound/SoundBase.h"
 #include "TimerManager.h"
+#include "Net/UnrealNetwork.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogKillStreakVoice, Log, All);
+
+void UKillStreakVoiceComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME_CONDITION(UKillStreakVoiceComponent, CurrentStreakCount, COND_OwnerOnly);
+}
 
 UKillStreakVoiceComponent::UKillStreakVoiceComponent()
 {
@@ -63,6 +70,9 @@ void UKillStreakVoiceComponent::QueueKillEvent(bool bIsRevenge)
 		++PendingKillEventCount;
 	}
 	bPendingRevengeKill |= bIsRevenge;
+	// Update the HUD for every credited kill, independently of voice batching or playback.
+	if (CurrentStreakCount < MAX_int32) ++CurrentStreakCount;
+	Owner->ForceNetUpdate();
 
 	// The first event starts the fixed window. Further events are collected without extending it.
 	if (PendingKillEventCount > 1)
@@ -123,6 +133,7 @@ void UKillStreakVoiceComponent::NotifyOwnerDeath()
 	PendingKillEventCount = 0;
 	bPendingRevengeKill = false;
 	CurrentStreakCount = 0;
+	Owner->ForceNetUpdate();
 	KillBatchStartTime = 0.0f;
 
 	const APlayerState* PlayerState = Cast<APlayerState>(Owner);
@@ -149,10 +160,6 @@ void UKillStreakVoiceComponent::ProcessKillBatch()
 	{
 		return;
 	}
-
-	CurrentStreakCount = static_cast<int32>(FMath::Min<int64>(
-		static_cast<int64>(CurrentStreakCount) + KillEventsInBatch,
-		MAX_int32));
 
 	USoundBase* SelectedSound = nullptr;
 	EKillMedalType SelectedMedal = EKillMedalType::None;
@@ -341,11 +348,6 @@ void UKillStreakVoiceComponent::PlayVoiceLocally(USoundBase* Sound, EKillMedalTy
 		ActiveVoiceComponent = nullptr;
 	}
 
-	const APlayerState* State = Cast<APlayerState>(GetOwner());
-	if (AMyPlayerController* PC = State ? Cast<AMyPlayerController>(State->GetPlayerController()) : nullptr)
-	{
-		PC->ShowConfiguredKillMedal(MedalType, true);
-	}
 	ActiveVoiceComponent = IsValid(Sound) ? UGameplayStatics::SpawnSound2D(World, Sound) : nullptr;
 	if (IsValid(ActiveVoiceComponent))
 	{
