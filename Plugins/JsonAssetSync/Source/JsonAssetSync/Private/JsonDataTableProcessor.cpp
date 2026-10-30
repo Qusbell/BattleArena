@@ -1,8 +1,11 @@
 ﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "JsonDataTableProcessor.h"
+#include "JsonPropertyNameNormalizer.h"
 
+#include "Dom/JsonObject.h"
 #include "Engine/DataTable.h"
+#include "Serialization/JsonSerializer.h"
 #include "UObject/Package.h"
 #include "UObject/UObjectGlobals.h"
 
@@ -231,15 +234,55 @@ bool FJsonDataTableProcessor::ValidateAndApply(
 	 * 임시 테이블의 기본값을 기준으로 변환한다.
 	 */
 	stagedDataTable->bPreserveExistingValues = false;
+	stagedDataTable->ImportKeyField = originalImportKeyField;
 
 	/*
 	 * JSON 전체를 임시 DataTable에 변환한다.
 	 *
 	 * 실제 대상 DataTable은 아직 변경되지 않는다.
 	 */
+	// Editor friendly names ("Item DA") may become sanitized names ("ItemDA")
+	// in cooked user-defined structs. Normalize to actual FProperty names recursively.
+	TArray<TSharedPtr<FJsonValue>> rows;
+	if (!FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(jsonText), rows))
+	{
+		AddIssue(inOutResult, EJsonApplyIssueStage::JsonParse, EJsonApplyIssueSeverity::Error,
+			TEXT("DataTable JSON must be an array of rows."));
+		return false;
+	}
+	const FString rowKey = targetDataTable->ImportKeyField.IsEmpty() ? TEXT("Name") : targetDataTable->ImportKeyField;
+	for (TSharedPtr<FJsonValue>& row : rows)
+	{
+		if (!row.IsValid() || row->Type != EJson::Object)
+		{
+			AddIssue(inOutResult, EJsonApplyIssueStage::Structure, EJsonApplyIssueSeverity::Error,
+				TEXT("DataTable row must be a JSON object."));
+			return false;
+		}
+		TSharedPtr<FJsonObject> source = MakeShared<FJsonObject>();
+		source->Values = row->AsObject()->Values;
+		const TSharedPtr<FJsonValue> rowName = source->TryGetField(rowKey);
+		source->RemoveField(rowKey);
+		TSharedPtr<FJsonObject> normalized;
+		FString error;
+		if (!FJsonPropertyNameNormalizer::NormalizeObject(source, targetDataTable->GetRowStruct(), false, normalized, error))
+		{
+			AddIssue(inOutResult, EJsonApplyIssueStage::Structure, EJsonApplyIssueSeverity::Error, error);
+			return false;
+		}
+		if (rowName.IsValid()) normalized->SetField(rowKey, rowName);
+		row = MakeShared<FJsonValueObject>(normalized);
+	}
+	FString normalizedJson;
+	if (!FJsonSerializer::Serialize(rows, TJsonWriterFactory<>::Create(&normalizedJson)))
+	{
+		AddIssue(inOutResult, EJsonApplyIssueStage::Conversion, EJsonApplyIssueSeverity::Error,
+			TEXT("Could not serialize normalized DataTable rows."));
+		return false;
+	}
 	const TArray<FString> importProblems =
 		stagedDataTable->CreateTableFromJSONString(
-			jsonText
+			normalizedJson
 		);
 
 	/*

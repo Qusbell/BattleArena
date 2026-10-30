@@ -15,6 +15,10 @@ void UJsonAssetSyncSubsystem::Initialize(
 {
 	Super::Initialize(collection);
 
+	// Runtime data must be ready before GEngine->Start loads the first game map.
+	runtimePostEngineInitHandle = FCoreDelegates::OnPostEngineInit.AddUObject(
+		this, &UJsonAssetSyncSubsystem::HandleRuntimePostEngineInit);
+
 	/*
 	 * Engine Subsystem 초기화 직후에는 엔진 전체 초기화가
 	 * 아직 완료되지 않았을 수 있다.
@@ -48,6 +52,9 @@ void UJsonAssetSyncSubsystem::Deinitialize()
 	 * 에디터 모듈 등 외부 구독자를 정리한다.
 	 */
 	processingCompletedEvent.Clear();
+	FCoreDelegates::OnPostEngineInit.Remove(runtimePostEngineInitHandle);
+	runtimePostEngineInitHandle.Reset();
+	activeRegistry = nullptr;
 
 	Super::Deinitialize();
 }
@@ -55,6 +62,10 @@ void UJsonAssetSyncSubsystem::Deinitialize()
 void UJsonAssetSyncSubsystem::
 HandleEngineLoopInitComplete()
 {
+	if (IsRunningCommandlet() || initialValidationCompleted)
+	{
+		return;
+	}
 	const UJsonAssetSyncSettings* settings =
 		GetDefault<UJsonAssetSyncSettings>();
 
@@ -158,6 +169,14 @@ UJsonAssetSyncSubsystem::ValidateAllNow()
 	return summary;
 }
 
+void UJsonAssetSyncSubsystem::HandleRuntimePostEngineInit()
+{
+	if (!GIsEditor && !IsRunningCommandlet())
+	{
+		HandleEngineLoopInitComplete();
+	}
+}
+
 FJsonApplySummary
 UJsonAssetSyncSubsystem::ApplyAllNow()
 {
@@ -193,6 +212,12 @@ UJsonAssetSyncSubsystem::RunProcessing(
 		 */
 		registry =
 			settings->registryAsset.LoadSynchronous();
+	}
+
+	activeRegistry = registry;
+	if (IsValid(registry))
+	{
+		registry->RestoreCookedTargets();
 	}
 
 	const FJsonApplySummary summary =

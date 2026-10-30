@@ -443,9 +443,9 @@ void FJsonAssetSyncEditorModule::HandleObjectPreSave(
 )
 {
 	using namespace JsonAssetSyncEditor::Private;
-	static_cast<void>(saveContext);
-
-	if (!IsValid(savedObject))
+	// Cooker saves must never replace externally authored source JSON with asset values.
+	if (IsRunningCommandlet() || saveContext.IsCooking() || saveContext.IsProceduralSave() ||
+		!GIsEditor || !IsValid(savedObject))
 	{
 		return;
 	}

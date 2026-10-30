@@ -480,6 +480,49 @@ namespace JsonAssetSync::PackagingPreflightPrivate
 		);
 	}
 
+	/** Include targets and Blueprint data-class parents, not just the Registry package. */
+	void EnsureTargetCookDirectories(UProjectPackagingSettings* packagingSettings,
+		const UJsonApplyRegistry* registry, bool autoConfigure,
+		FJsonAssetSyncPackagingPreflightReport& report)
+	{
+		if (!IsValid(registry)) return;
+		auto EnsureObject = [&](const UObject* object)
+		{
+			if (!IsValid(object)) return;
+			const FString package = object->GetOutermost()->GetName();
+			if (package.StartsWith(TEXT("/Script/")) || package.StartsWith(TEXT("/Temp/"))) return;
+			const FString directory = FPackageName::GetLongPackagePath(package);
+			if (directory.IsEmpty() || ContainsPackageDirectory(packagingSettings->DirectoriesToAlwaysCook, directory)) return;
+			if (!autoConfigure)
+			{
+				AddIssue(report, EJsonApplyIssueSeverity::Error,
+					FString::Printf(TEXT("JSON target/class folder must be cooked: %s"), *directory));
+				return;
+			}
+			FDirectoryPath path;
+			path.Path = directory;
+			packagingSettings->DirectoriesToAlwaysCook.Add(path);
+			report.packagingSettingsChanged = true;
+		};
+		auto EnsureTarget = [&](const UObject* target)
+		{
+			EnsureObject(target);
+			for (UClass* type = IsValid(target) ? target->GetClass() : nullptr;
+				type && !type->HasAnyClassFlags(CLASS_Native); type = type->GetSuperClass())
+			{
+				EnsureObject(type);
+			}
+		};
+		for (const auto& binding : registry->dataTableBindings)
+		{
+			EnsureTarget(binding.targetDataTable);
+			if (IsValid(binding.targetDataTable)) EnsureObject(binding.targetDataTable->GetRowStruct());
+		}
+		for (const auto& binding : registry->curveTableBindings) EnsureTarget(binding.targetCurveTable);
+		for (const auto& binding : registry->floatCurveBindings) EnsureTarget(binding.targetFloatCurve);
+		for (const auto& binding : registry->dataAssetBindings) EnsureTarget(binding.targetDataAsset);
+	}
+
 	/**
 	 * Registry Binding의 대상 에셋이 유효한지 확인한다.
 	 */
@@ -925,6 +968,9 @@ FJsonAssetSyncPackagingPreflight::Run(
 		report
 	);
 
+	UJsonApplyRegistry* registry = settings->registryAsset.LoadSynchronous();
+	EnsureTargetCookDirectories(packagingSettings, registry, autoConfigurePackagingSettings, report);
+
 	/*
 	 * 패키징 설정이 자동 변경됐다면 DefaultGame.ini에 저장한다.
 	 */
@@ -950,14 +996,6 @@ FJsonAssetSyncPackagingPreflight::Run(
 				)
 			);
 		}
-	}
-
-	UJsonApplyRegistry* registry = nullptr;
-
-	if (!settings->registryAsset.IsNull())
-	{
-		registry =
-			settings->registryAsset.LoadSynchronous();
 	}
 
 	if (!IsValid(registry))

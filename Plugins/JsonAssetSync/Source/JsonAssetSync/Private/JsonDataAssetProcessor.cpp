@@ -1,6 +1,7 @@
 ﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "JsonDataAssetProcessor.h"
+#include "JsonPropertyNameNormalizer.h"
 
 #include "Dom/JsonObject.h"
 #include "Dom/JsonValue.h"
@@ -218,9 +219,7 @@ namespace JsonAssetSync::DataAssetPrivate
 				);
 
 			const FString converterJsonFieldName =
-				FJsonObjectConverter::StandardizeCase(
-					property->GetName()
-				);
+				dataAssetClass->GetAuthoredNameForField(property);
 
 			const FString authoredComparisonKey =
 				MakeComparisonKey(authoredJsonFieldName);
@@ -589,8 +588,15 @@ bool FJsonDataAssetProcessor::ValidateAndApply(
 	TSharedRef<FJsonObject> filteredJsonObject =
 		MakeShared<FJsonObject>();
 
+	TSharedPtr<FJsonObject> normalizedJsonObject;
+	FString normalizationError;
+	if (!FJsonPropertyNameNormalizer::NormalizeObject(jsonObject, dataAssetClass, true, normalizedJsonObject, normalizationError))
+	{
+		AddIssue(inOutResult, EJsonApplyIssueStage::Structure, EJsonApplyIssueSeverity::Error, normalizationError);
+		return false;
+	}
 	if (!BuildFilteredJsonObject(
-		jsonObject,
+		normalizedJsonObject,
 		syncProperties,
 		supportedPropertiesByKey,
 		unsupportedPropertiesByKey,

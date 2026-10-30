@@ -66,6 +66,10 @@ public:
 			)
 	)
 	TObjectPtr<UDataTable> targetDataTable = nullptr;
+
+	/** Save/cook-time path used to recover and diagnose missing cooked references. */
+	UPROPERTY()
+	FString cookedTargetPath;
 };
 
 
@@ -113,6 +117,9 @@ public:
 			)
 	)
 	TObjectPtr<UCurveTable> targetCurveTable = nullptr;
+
+	UPROPERTY()
+	FString cookedTargetPath;
 };
 
 
@@ -160,6 +167,9 @@ public:
 			)
 	)
 	TObjectPtr<UCurveFloat> targetFloatCurve = nullptr;
+
+	UPROPERTY()
+	FString cookedTargetPath;
 };
 
 /**
@@ -211,6 +221,9 @@ public:
 			)
 	)
 	TObjectPtr<UDataAsset> targetDataAsset = nullptr;
+
+	UPROPERTY()
+	FString cookedTargetPath;
 };
 
 /**
@@ -231,6 +244,10 @@ class JSONASSETSYNC_API UJsonApplyRegistry : public UPrimaryDataAsset
 	GENERATED_BODY()
 
 public:
+	virtual void PreSave(FObjectPreSaveContext saveContext) override;
+	/** Reconnect cooked targets using saved object paths, keeping recovered objects referenced. */
+	void RestoreCookedTargets();
+
 	/**
 	 * Content/DataTables 내부의 JSON과 대상 DataTable 연결 목록이다.
 	 *
