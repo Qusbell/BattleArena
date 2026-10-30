@@ -8,7 +8,7 @@ void AMyAIController::OnPossess(APawn* InPawn)
     OrbitalAimOffset = FVector::ZeroVector;
     OrbitalNextAimTarget = FVector::ZeroVector;
     OrbitalCurrentRotation = InPawn ? InPawn->GetActorRotation() : FRotator::ZeroRotator;
-    OrbitalRotationThreshold = 1.5f;
+    OrbitalRotationThresholdCos = FMath::Cos(FMath::DegreesToRadians(1.5));
     OrbitalInterpSpeed = 5.0f;
     OrbitalMaxChange = 180.0f;
     bOrbitalLookActive = false;
@@ -27,7 +27,11 @@ void AMyAIController::ConfigureOrbitalLook(APawn* Observer, float RotationThresh
     if (AMyAIController* Controller = Observer ? Cast<AMyAIController>(Observer->GetController()) : nullptr;
         Controller && Controller->HasAuthority())
     {
-        Controller->OrbitalRotationThreshold = RotationThreshold;
+        // Match angle > threshold even for thresholds outside the [0, 180] range.
+        // NaN, like the original comparison, selects the inner speed.
+        Controller->OrbitalRotationThresholdCos = RotationThreshold < 0.0f ? 2.0
+            : RotationThreshold < 180.0f ? FMath::Cos(FMath::DegreesToRadians(static_cast<double>(RotationThreshold)))
+            : -1.0;
         Controller->OrbitalInterpSpeed = InterpSpeed;
         Controller->OrbitalMaxChange = MaxChange;
     }
@@ -94,17 +98,30 @@ void AMyAIController::UpdateControlRotation(float DeltaTime, bool bUpdatePawn)
             FVector ViewLocation;
             FRotator ViewRotation;
             MyPawn->GetActorEyesViewPoint(ViewLocation, ViewRotation);
-            const FRotator TargetRotation = (OrbitalNextAimTarget - ViewLocation).Rotation();
+            const FVector TargetDelta = OrbitalNextAimTarget - ViewLocation;
+            const FRotator TargetRotation = TargetDelta.Rotation();
+            // A zero delta previously produced zero rotation, whose forward vector is +X.
+            const FVector TargetDirection = TargetDelta.GetSafeNormal(0.0, FVector::ForwardVector);
             const double Dot = FMath::Clamp(FVector::DotProduct(
-                OrbitalCurrentRotation.Vector(), TargetRotation.Vector()), -1.0, 1.0);
-            const double ErrorDegrees = FMath::RadiansToDegrees(FMath::Acos(Dot));
-            const float Speed = ErrorDegrees > OrbitalRotationThreshold ? OrbitalMaxChange : OrbitalInterpSpeed;
+                OrbitalCurrentRotation.Vector(), TargetDirection), -1.0, 1.0);
+            const float Speed = Dot < OrbitalRotationThresholdCos ? OrbitalMaxChange : OrbitalInterpSpeed;
             OrbitalCurrentRotation = FMath::RInterpConstantTo(OrbitalCurrentRotation, TargetRotation, DeltaTime, Speed);
 
             // Preserve the old drone's EyesViewPoint origin and the controller's PawnViewLocation origin.
             // No Actor transform update is needed to represent this virtual focus point.
-            NewControlRotation = (ViewLocation + OrbitalCurrentRotation.Vector() * 100.0
-                - MyPawn->GetPawnViewLocation()).Rotation();
+            const FVector PawnViewLocation = MyPawn->GetPawnViewLocation();
+            if (ViewLocation == PawnViewLocation &&
+                OrbitalCurrentRotation.Pitch > -90.0 && OrbitalCurrentRotation.Pitch < 90.0)
+            {
+                // With coincident origins the vector round trip only normalizes yaw and drops roll.
+                NewControlRotation = FRotator(OrbitalCurrentRotation.Pitch,
+                    FRotator::NormalizeAxis(OrbitalCurrentRotation.Yaw), 0.0);
+            }
+            else
+            {
+                NewControlRotation = (ViewLocation + OrbitalCurrentRotation.Vector() * 100.0
+                    - PawnViewLocation).Rotation();
+            }
         }
         else
         {

@@ -38,7 +38,8 @@ private:
     FVector OrbitalAimOffset = FVector::ZeroVector;
     FVector OrbitalNextAimTarget = FVector::ZeroVector;
     FRotator OrbitalCurrentRotation = FRotator::ZeroRotator;
-    float OrbitalRotationThreshold = 1.5f;
+    // Cached when configured: speed selection needs a dot threshold, not an angle.
+    double OrbitalRotationThresholdCos = 0.9996573249755573; // cos(1.5 degrees)
     float OrbitalInterpSpeed = 5.0f;
     float OrbitalMaxChange = 180.0f;
     bool bOrbitalLookActive = false;
