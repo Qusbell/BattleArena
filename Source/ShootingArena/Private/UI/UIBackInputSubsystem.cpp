@@ -10,6 +10,7 @@
 #include "CommonActivatableWidget.h"
 #include "CommonButtonBase.h"
 #include "Components/Button.h"
+#include "Components/PanelWidget.h"
 #include "Engine/GameInstance.h"
 #include "Engine/GameViewportClient.h"
 #include "Framework/Application/IInputProcessor.h"
@@ -178,6 +179,20 @@ bool UUIBackInputSubsystem::TryClickBackButton(UUserWidget* Widget) const
 		{
 			continue;
 		}
+
+		bool bAncestorsAvailable = true;
+		for (UWidget* Current = Found; Current;)
+		{
+			if (!Current->IsVisible() || !Current->GetIsEnabled())
+			{
+				bAncestorsAvailable = false;
+				break;
+			}
+			if (Current == Widget) break;
+			// Named-slot content can cross a UserWidget's widget tree.
+			Current = Current->GetParent() ? static_cast<UWidget*>(Current->GetParent()) : Current->GetTypedOuter<UUserWidget>();
+		}
+		if (!bAncestorsAvailable) continue;
 
 		if (UCommonButtonBase* CommonButton = Cast<UCommonButtonBase>(Found))
 		{
