@@ -1,6 +1,7 @@
 ﻿#include "AI/QuakeTargetSelectionAIController.h"
 
 #include "BehaviorTree/BlackboardComponent.h"
+#include "AI/QuakeAIFireCycleComponent.h"
 #include "Character/CharacterPoolComponent.h"
 #include "Components/ActorComponent.h"
 #include "GameFramework/Character.h"
@@ -22,11 +23,15 @@ namespace QuakeTargetSelection
 
 AQuakeTargetSelectionAIController::AQuakeTargetSelectionAIController()
 {
+	FireCycle = CreateDefaultSubobject<UQuakeAIFireCycleComponent>(TEXT("FireCycle"));
 }
 
 void AQuakeTargetSelectionAIController::OnPossess(APawn* InPawn)
 {
+	// ReceivePossess can start the BT, so prepare before Blueprint runs.
+	FireCycle->InitializeForPawn(InPawn);
 	Super::OnPossess(InPawn);
+	FireCycle->ObserveBlackboard();
 	CharacterTargets.Reset();
 	RecentDamageDirection = FVector::ZeroVector;
 	RecentDamageExpireTime = 0.0f;
@@ -45,6 +50,7 @@ void AQuakeTargetSelectionAIController::OnPossess(APawn* InPawn)
 
 void AQuakeTargetSelectionAIController::OnUnPossess()
 {
+	FireCycle->ResetForLife();
 	if (APawn* PreviousPawn = GetPawn())
 		if (const auto* Pool = PreviousPawn->FindComponentByClass<UCharacterPoolComponent>(); Pool && Pool->IsManaged())
 			UCharacterPoolComponent::ResetAIForLife(this, PreviousPawn);
