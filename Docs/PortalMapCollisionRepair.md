@@ -2,6 +2,17 @@
 
 대상: `/Game/QuakeLike_Base/Lvl_PortalMap`, NavMeshBoundsVolume 내부 플레이 공간.
 
+## 2026-10-30 Office 53: 포털 뒤 벽의 누락 충돌 보강
+
+`SM_BigWall_Office53`은 원본이 `NoCollision`이며, 기존 `PCF_Wall_SM_BigWall_Office53`의 네 박스에 포털 형태의 빈 영역이 남아 있었다. 현재 `SeamlessPortalActor5`의 입구는 해당 벽 앞에 떨어져 있으므로 벽 몸체에 이 개구부를 유지할 필요가 없다.
+
+- 기존 생성기의 `WallContinuity.plan()`에 이 벽과 바로 위 `SM_BigWall_Office52`만 입력해 연속 벽을 재계산했다. 기존 프록시 한 개의 박스 네 개를 평평한 단일 박스로 교체했다. 위아래 벽을 잇는 범위와 두께를 유지하며 빈 영역을 채웠다.
+- 숨김 `BlockAll`, `Unwalkable`, `ECB_No` 규칙을 유지했다. 원본 메시·배치와 포털 설정은 변경하지 않았으며 NavLink도 추가하지 않았다.
+- 양면의 Pawn·Projectile·RailGun 레이 4,356건과 세 캡슐 크기의 벽·접합부 접근 252건에서 누락 0건이다. 다른 지형의 가림을 제외해 이 프록시 자체의 차단을 확인했다. 반경 60cm·반높이 109.5cm 캡슐로 포털 입구 세 동선이 새 벽에 막히지 않는 것도 확인했다. 실제 플레이 중 포털 전송 검사는 수행하지 않았다.
+- 나머지 액터 5,076개의 배치·메시·충돌·오버랩 설정을 비교해 동일함을 확인했다. 기존 벽 프록시의 외부 패키지 `C/16/LO50RF4ET3TV9VANOVNVTQ` 하나만 저장했다. Navigation 설정과 저장된 NavMesh는 변경하지 않았다.
+
+수정 전 인스턴스·패키지 백업, 새 계획과 검증 기록은 `Saved/CollisionAudit/Lvl_PortalMap/20261030_wall53/`에 있다.
+
 ## 2026-10-28 Stair 51: 계단 중간 NavMesh 누락 보정
 
 사용자 사진의 갈색 빈 부분은 표시 가림만이 아니라 실제 내비메시 누락이었다. 이전의 세 경로 검사와 AI 이동은 남아 있는 면으로 우회할 수 있어 이 누락을 검출하지 못했다. 동일한 계단 본체 표본 899개 중 수정 전 264개에서 내비메시 투영이 실패했다.
