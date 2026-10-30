@@ -5,6 +5,19 @@
 #include "InputCoreTypes.h"
 #include "UIBackInputSettings.generated.h"
 
+/** 키 하나가 클릭할 버튼의 위젯 이름입니다. */
+USTRUCT()
+struct FUIHotkeyButton
+{
+	GENERATED_BODY()
+
+	UPROPERTY(Config, EditAnywhere, Category = "Hotkey")
+	FKey Key;
+
+	UPROPERTY(Config, EditAnywhere, Category = "Hotkey")
+	FName ButtonName;
+};
+
 /**
  * 메뉴 "뒤로가기/취소/창 닫기" 공용 입력 설정. Project Settings > Game > UI Back Input.
  * 에디터에서는 Esc가 PIE를 종료시키므로 임시로 F10을 쓰고, 패키징 후에는 BackKeys에 Escape만 남기면 됩니다.
@@ -27,4 +40,11 @@ public:
 	 */
 	UPROPERTY(Config, EditAnywhere, Category = "Back")
 	TArray<FName> BackButtonNames;
+
+	/**
+	 * 단축키 → 버튼 클릭. 화면에 보이는 위젯 중 해당 이름의 버튼이 있으면 클릭합니다(버튼이 숨김/비활성이면 무시).
+	 * 모달/팝업이 떠 있거나 텍스트 입력 중이면 동작하지 않습니다.
+	 */
+	UPROPERTY(Config, EditAnywhere, Category = "Hotkey")
+	TArray<FUIHotkeyButton> HotkeyButtons;
 };
