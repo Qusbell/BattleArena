@@ -1,6 +1,14 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "MyPlayerController.h"
+#include "UI/CompetitiveRankingHUD.h"
+#include "UI/KillMedalUISettings.h"
+#include "Blueprint/WidgetTree.h"
+#include "Components/CanvasPanel.h"
+#include "Components/CanvasPanelSlot.h"
+#include "Components/SizeBox.h"
+#include "Components/HorizontalBox.h"
+#include "Components/VerticalBox.h"
 #include "Audio/KillStreakVoiceComponent.h"
 #include "Audio/KillStreakSettingsDataAsset.h"
 #include "Animation/WidgetAnimation.h"
@@ -172,23 +180,65 @@ bool FKillMedalAutomaticAwardsTest::RunTest(const FString& Parameters)
 	Voice->QueueKillEvent();
 	Voice->QueueKillEvent(true);
 	Voice->QueueKillEvent();
-	if (!TestEqual(TEXT("Kills wait for the existing voice batch decision"), PC->PendingKillMedals.Num(), 1)) return false;
-	TestTrue(TEXT("First blood remains until the batch is processed"), PC->PendingKillMedals[0].Style.Text.EqualTo(PC->KillMedalStyles[EKillMedalType::FirstBlood].Text));
+	TestEqual(TEXT("Each credited kill immediately updates the streak"), Voice->GetCurrentStreakCount(), 4);
+	TestTrue(TEXT("Voice events no longer queue the old tier medals"), PC->PendingKillMedals.IsEmpty());
 	Voice->ProcessKillBatch();
-	if (!TestEqual(TEXT("A silent batch still shows only its selected medal"), PC->PendingKillMedals.Num(), 1)) return false;
-	TestTrue(TEXT("The highest selected tier replaces intermediate medals"), PC->PendingKillMedals[0].Style.Text.EqualTo(PC->KillMedalStyles[EKillMedalType::Rampage].Text));
-	TestEqual(TEXT("Common editor duration is used"), PC->PendingKillMedals[0].DisplayTime, 0.8);
-	TestEqual(TEXT("Selected medal retains its editor position"), PC->PendingKillMedals[0].Style.PositionOffset, PC->KillMedalStyles[EKillMedalType::Rampage].PositionOffset);
+	TestEqual(TEXT("Voice batching cannot double count kills"), Voice->GetCurrentStreakCount(), 4);
 	Voice->Settings->RevengeSound = Existing->RevengeSound;
 	if (!TestNotNull(TEXT("Existing revenge sound is configured"), Existing->RevengeSound.Get())) return false;
 	Voice->QueueKillEvent(true);
 	Voice->ProcessKillBatch();
-	if (!TestEqual(TEXT("Revenge selects one medal instead of also showing the streak"), PC->PendingKillMedals.Num(), 1)) return false;
-	TestTrue(TEXT("Medal uses the existing voice's revenge priority"), PC->PendingKillMedals[0].Style.Text.EqualTo(PC->KillMedalStyles[EKillMedalType::RevengeShot].Text));
+	TestEqual(TEXT("Revenge is still one credited kill"), Voice->GetCurrentStreakCount(), 5);
+	TestTrue(TEXT("Revenge audio cannot replace the accumulated medals"), PC->PendingKillMedals.IsEmpty());
+	UCompetitiveRankingHUD* StreakHUD = CreateWidget<UCompetitiveRankingHUD>(PC);
+	if (!TestNotNull(TEXT("Streak HUD"), StreakHUD)) return false;
+	StreakHUD->WidgetTree = NewObject<UWidgetTree>(StreakHUD);
+	StreakHUD->WidgetTree->RootWidget = StreakHUD->WidgetTree->ConstructWidget<UCanvasPanel>();
+	UKillMedalUISettings* MedalSettings = StreakHUD->KillMedalUISettings.LoadSynchronous();
+	if (!TestNotNull(TEXT("Designer medal settings asset is connected"), MedalSettings)) return false;
+	if (!TestNotNull(TEXT("Existing first-kill artwork"), MedalSettings->MedalTexture.Get())) return false;
+	TestEqual(TEXT("Count uses the unified HUD font"), GetPathNameSafe(MedalSettings->CountFont.FontObject),
+		FString(TEXT("/Game/QuakeLike_Base/SDM/F_BITCORE1.F_BITCORE1")));
+	UKillMedalUISettings* CustomSettings = DuplicateObject<UKillMedalUISettings>(MedalSettings, StreakHUD);
+	CustomSettings->FirstMedalSize = FVector2D(90, 70);
+	CustomSettings->AdditionalMedalSize = FVector2D(30, 25);
+	CustomSettings->LargeMedalSize = FVector2D(110, 85);
+	CustomSettings->MedalAnchor = FVector2D(0.4, 0.2);
+	CustomSettings->MedalPosition = FVector2D(15, -20);
+	CustomSettings->CountPosition = FVector2D(-6, 8);
+	CustomSettings->CountFont.Size = 31;
+	StreakHUD->ActiveStreakSettings = CustomSettings;
+	for (int32 Count : {1, 2, 10, 11, 25})
+	{
+		StreakHUD->RefreshStreakMedals(Count);
+		TestEqual(TEXT("Ten individual medals then one large medal"), StreakHUD->StreakIcons->GetChildrenCount(), Count > 10 ? 1 : Count);
+		TestEqual(TEXT("Numeric count is visible only after ten"), StreakHUD->StreakCountLabel->GetVisibility(),
+			Count > 10 ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		if (Count > 10) TestTrue(TEXT("Large medal shows the actual total"), StreakHUD->StreakCountLabel->GetText().EqualTo(FText::AsNumber(Count)));
+		USizeBox* FirstBox = Cast<USizeBox>(StreakHUD->StreakIcons->GetChildAt(0));
+		const FVector2D ExpectedSize = Count > 10 ? CustomSettings->LargeMedalSize : CustomSettings->FirstMedalSize;
+		TestTrue(TEXT("Medal size comes from its data asset"), FirstBox &&
+			FMath::IsNearlyEqual(FirstBox->GetWidthOverride(), float(ExpectedSize.X)) &&
+			FMath::IsNearlyEqual(FirstBox->GetHeightOverride(), float(ExpectedSize.Y)));
+		if (Count > 1 && Count <= 10)
+		{
+			const USizeBox* SmallBox = Cast<USizeBox>(StreakHUD->StreakIcons->GetChildAt(1));
+			TestTrue(TEXT("Additional medals use their own configured size"), SmallBox &&
+				SmallBox->GetWidthOverride() == 30.0f && SmallBox->GetHeightOverride() == 25.0f);
+		}
+	}
+	const UCanvasPanelSlot* StreakSlot = Cast<UCanvasPanelSlot>(StreakHUD->StreakPanel->Slot);
+	TestTrue(TEXT("Medal anchor comes from the data asset"), StreakSlot && StreakSlot->GetAnchors().Minimum.Equals(CustomSettings->MedalAnchor));
+	TestTrue(TEXT("Medal position comes from the data asset"), StreakSlot && StreakSlot->GetPosition().Equals(CustomSettings->MedalPosition));
+	TestEqual(TEXT("Text size comes from the data asset"), StreakHUD->StreakCountLabel->GetFont().Size, 31.0f);
+	TestTrue(TEXT("Text position comes from the data asset"), StreakHUD->StreakCountLabel->GetRenderTransform().Translation.Equals(CustomSettings->CountPosition));
 	Voice->NotifyOwnerDeath();
+	StreakHUD->RefreshStreakMedals(Voice->GetCurrentStreakCount());
+	TestEqual(TEXT("Death resets the streak"), Voice->GetCurrentStreakCount(), 0);
+	TestEqual(TEXT("Death hides the accumulated medals"), StreakHUD->StreakPanel->GetVisibility(), ESlateVisibility::Collapsed);
 	Voice->QueueKillEvent();
 	Voice->ProcessKillBatch();
-	TestEqual(TEXT("Existing death reset prevents an additional streak medal"), PC->PendingKillMedals.Num(), 1);
+	TestEqual(TEXT("The next life starts at one"), Voice->GetCurrentStreakCount(), 1);
 	return !HasAnyErrors();
 }
 
@@ -321,7 +371,15 @@ bool FKillMedalNetworkTest::RunTest(const FString& Parameters)
 			if (Observation->bCheckedFIFO)
 			{
 				if (Elapsed < 9.0) return false;
-				TestEqual(TEXT("The voice RPC delivers only its selected revenge medal"), Current, FString(TEXT("Revenge Shot")));
+				const auto* OwnerStreak = OwnerWeak->PlayerState->FindComponentByClass<UKillStreakVoiceComponent>();
+				TestTrue(TEXT("Streak count replicates to its owning client"), OwnerStreak && OwnerStreak->GetCurrentStreakCount() == 4);
+				APlayerState* RemoteState = OwnerWeak->PlayerState;
+				for (APlayerState* State : TActorRange<APlayerState>(ObserverWeak->GetWorld()))
+					if (State->GetPlayerId() == RemoteState->GetPlayerId())
+					{
+						const auto* RemoteStreak = State->FindComponentByClass<UKillStreakVoiceComponent>();
+						TestTrue(TEXT("Other clients do not receive the owner's streak count"), RemoteStreak && RemoteStreak->GetCurrentStreakCount() == 0);
+					}
 				TestFalse(TEXT("The unified voice and medal cue remains owner-only"), Observation->bObserverChanged);
 				return true;
 			}

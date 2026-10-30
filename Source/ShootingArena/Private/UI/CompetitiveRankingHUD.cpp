@@ -1,5 +1,7 @@
 #include "UI/CompetitiveRankingHUD.h"
 #include "UI/CompetitiveRankingOrder.h"
+#include "UI/KillMedalUISettings.h"
+#include "Audio/KillStreakVoiceComponent.h"
 #include "UI/UIPalette.h"
 #include "Camera/ShooterDisplayLibrary.h"
 #include "Blueprint/WidgetTree.h"
@@ -8,6 +10,8 @@
 #include "Components/CanvasPanelSlot.h"
 #include "Components/HorizontalBox.h"
 #include "Components/HorizontalBoxSlot.h"
+#include "Components/Image.h"
+#include "Components/ScaleBox.h"
 #include "Components/ProgressBar.h"
 #include "Components/SizeBox.h"
 #include "Components/SizeBoxSlot.h"
@@ -15,6 +19,7 @@
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
 #include "Engine/World.h"
+#include "Engine/Texture2D.h"
 #include "GameFramework/GameStateBase.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerState.h"
@@ -36,6 +41,61 @@ namespace
 		const FIntProperty* Property = IsValid(Object) ? FindFProperty<FIntProperty>(Object->GetClass(), Name) : nullptr;
 		return Property ? Property->GetPropertyValue_InContainer(Object) : 0;
 	}
+}
+
+void UCompetitiveRankingHUD::RefreshStreakMedals(int32 Count)
+{
+	Count = FMath::Max(0, Count);
+	if (DisplayedStreak == Count) return;
+	if (!ActiveStreakSettings) ActiveStreakSettings = KillMedalUISettings.LoadSynchronous();
+	const UKillMedalUISettings* Settings = ActiveStreakSettings ? ActiveStreakSettings.Get() : GetDefault<UKillMedalUISettings>();
+	if (!StreakPanel && Count > 0)
+	{
+		UCanvasPanel* Canvas = Cast<UCanvasPanel>(GetRootWidget());
+		if (!Canvas || !WidgetTree || !Settings->MedalTexture) return;
+		StreakPanel = WidgetTree->ConstructWidget<UVerticalBox>();
+		StreakPanel->SetVisibility(ESlateVisibility::HitTestInvisible);
+		UCanvasPanelSlot* StreakSlot = Canvas->AddChildToCanvas(StreakPanel);
+		StreakSlot->SetAnchors(FAnchors(Settings->MedalAnchor.X, Settings->MedalAnchor.Y));
+		StreakSlot->SetAlignment(FVector2D(0.5f, 0.0f));
+		StreakSlot->SetPosition(Settings->MedalPosition);
+		StreakSlot->SetAutoSize(true);
+		StreakSlot->SetZOrder(11);
+		StreakIcons = WidgetTree->ConstructWidget<UHorizontalBox>();
+		StreakPanel->AddChildToVerticalBox(StreakIcons)->SetHorizontalAlignment(HAlign_Center);
+		StreakCountLabel = WidgetTree->ConstructWidget<UTextBlock>();
+		StreakCountLabel->SetFont(Settings->CountFont);
+		StreakCountLabel->SetRenderTranslation(Settings->CountPosition);
+		StreakCountLabel->SetColorAndOpacity(FSlateColor(FLinearColor::White));
+		StreakCountLabel->SetShadowColorAndOpacity(FLinearColor::Black);
+		StreakCountLabel->SetShadowOffset(FVector2D(1, 1));
+		StreakPanel->AddChildToVerticalBox(StreakCountLabel)->SetHorizontalAlignment(HAlign_Center);
+	}
+	DisplayedStreak = Count;
+	if (!StreakPanel) return;
+	StreakPanel->SetVisibility(Count > 0 ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	StreakIcons->ClearChildren();
+	const int32 IconCount = Count > 10 ? 1 : Count;
+	for (int32 Index = 0; Index < IconCount; ++Index)
+	{
+		const FVector2D Size = Count > 10 ? Settings->LargeMedalSize : Index == 0 ? Settings->FirstMedalSize : Settings->AdditionalMedalSize;
+		USizeBox* Box = WidgetTree->ConstructWidget<USizeBox>();
+		Box->SetWidthOverride(FMath::Max(1.0, Size.X));
+		Box->SetHeightOverride(FMath::Max(1.0, Size.Y));
+		UScaleBox* Scale = WidgetTree->ConstructWidget<UScaleBox>();
+		Scale->SetStretch(EStretch::ScaleToFit);
+		Box->SetContent(Scale);
+		UImage* Image = WidgetTree->ConstructWidget<UImage>();
+		Image->SetBrushFromTexture(Settings->MedalTexture, true);
+		Scale->SetContent(Image);
+		UHorizontalBoxSlot* IconSlot = StreakIcons->AddChildToHorizontalBox(Box);
+		IconSlot->SetVerticalAlignment(VAlign_Center);
+		IconSlot->SetPadding(FMargin(FMath::Max(0.0f, Settings->MedalGap) * 0.5f, 0.0f));
+	}
+	StreakCountLabel->SetVisibility(Count > 10 ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	StreakCountLabel->SetText(Count > 10
+		? FText::Format(NSLOCTEXT("KillMedal", "StreakCount", "{0} Kill"), FText::AsNumber(Count))
+		: FText::GetEmpty());
 }
 
 void UCompetitiveRankingHUD::NativeConstruct()
@@ -275,6 +335,10 @@ void UCompetitiveRankingHUD::PositionBesideTimer(const FGeometry& Geometry)
 void UCompetitiveRankingHUD::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
+	const APlayerController* Owner = GetOwningPlayer();
+	const UKillStreakVoiceComponent* Streak = Owner && Owner->PlayerState
+		? Owner->PlayerState->FindComponentByClass<UKillStreakVoiceComponent>() : nullptr;
+	RefreshStreakMedals(Streak ? Streak->GetCurrentStreakCount() : 0);
 	if (!RankingPanel) return;
 	PositionBesideTimer(MyGeometry);
 	if (UWidget* MessageArea = GetWidgetFromName(TEXT("SB_Killmessage")))
@@ -312,6 +376,12 @@ void UCompetitiveRankingHUD::NativeTick(const FGeometry& MyGeometry, float InDel
 void UCompetitiveRankingHUD::NativeDestruct()
 {
 	BindScoreChanges(nullptr);
+	if (StreakPanel) StreakPanel->RemoveFromParent();
+	StreakPanel = nullptr;
+	StreakIcons = nullptr;
+	StreakCountLabel = nullptr;
+	ActiveStreakSettings = nullptr;
+	DisplayedStreak = INDEX_NONE;
 	if (RankingPanel) RankingPanel->RemoveFromParent();
 	RankingPanel = nullptr;
 	RankingSlot = nullptr;
