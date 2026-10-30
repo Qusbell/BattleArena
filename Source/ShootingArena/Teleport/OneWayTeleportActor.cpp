@@ -2,6 +2,7 @@
 
 #include "TeleportDataAsset.h"
 #include "PortalTraversalGuard.h"
+#include "PortalViewSubsystem.h"
 
 #include "Components/BoxComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -227,6 +228,8 @@ void AOneWayTeleportActor::OnConstruction(const FTransform& Transform)
 void AOneWayTeleportActor::BeginPlay()
 {
 	Super::BeginPlay();
+	if (auto* world=GetWorld(); IsValid(world) && !world->bIsTearingDown)
+		if (auto* views=world->GetSubsystem<UPortalViewSubsystem>()) views->RegisterPortal(this);
 	UpdatePortalVisual();
 	UpdateTeleportActivation();
 
@@ -241,6 +244,13 @@ void AOneWayTeleportActor::BeginPlay()
 	{
 		portalVisual->SetHiddenInGame(!bShowPortalInGame);
 	}
+}
+
+void AOneWayTeleportActor::EndPlay(const EEndPlayReason::Type reason)
+{
+	if (auto* world=GetWorld())
+		if (auto* views=world->GetSubsystem<UPortalViewSubsystem>()) views->UnregisterPortal(this);
+	Super::EndPlay(reason);
 }
 
 void AOneWayTeleportActor::UpdateTeleportActivation()
