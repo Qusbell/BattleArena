@@ -31,11 +31,11 @@ bool FArenaAnalyzerIdentityTest::RunTest(const FString& Parameters)
     World->SetGameMode(FURL());
     World->InitializeActorsForPlay(FURL());
     auto* S = World->GetSubsystem<UArenaAnalyzeSubsystem>();
-    if (!bArenaLoggingEnabled)
+    if (!IsArenaLoggingEnabled())
     {
         TestNull(TEXT("Analyzer is disabled"), S);
         TestNull(TEXT("Match log is disabled"), World->GetSubsystem<UArenaMatchLogSubsystem>());
-        AddInfo(TEXT("Recording identity checks require bArenaLoggingEnabled to be true."));
+        AddInfo(TEXT("Recording identity checks require logging to be on (-ArenaLogging or arena.Logging 1)."));
         return true;
     }
     if (!TestNotNull(TEXT("Recorder exists"), S)) return false;

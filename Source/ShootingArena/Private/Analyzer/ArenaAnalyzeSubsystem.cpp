@@ -27,7 +27,7 @@ UArenaMatchLogSubsystem* MatchLog(const UWorld* World)
 bool UArenaAnalyzeSubsystem::ShouldCreateSubsystem(UObject* Outer) const
 {
     const UWorld* World = Cast<UWorld>(Outer);
-    if (!bArenaLoggingEnabled || !World || World->GetNetMode() == ENetMode::NM_Client)
+    if (!IsArenaLoggingEnabled() || !World || World->GetNetMode() == ENetMode::NM_Client)
     {
         return false;
     }
