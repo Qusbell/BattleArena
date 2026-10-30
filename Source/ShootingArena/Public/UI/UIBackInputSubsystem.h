@@ -36,6 +36,8 @@ public:
 private:
 	bool TryHandleWidget(UUserWidget* Widget) const;
 	bool TryClickBackButton(UUserWidget* Widget) const;
+	bool TryClickButtonByName(UUserWidget* Widget, const FName& ButtonName) const;
+	bool HandleHotkey(const FKey& Key);
 
 	TSharedPtr<FUIBackInputProcessor> InputProcessor;
 };
