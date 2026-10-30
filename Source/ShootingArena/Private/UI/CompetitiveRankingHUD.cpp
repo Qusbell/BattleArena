@@ -22,12 +22,13 @@
 #include "Styling/CoreStyle.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Fonts/FontMeasure.h"
+#include "Fonts/FontCache.h"
 
 namespace
 {
 	constexpr float PanelWidth = 286.0f;
 	constexpr float PanelHeight = 56.0f;
-	constexpr float TimerReferenceHeight = 48.0f;
+	constexpr float RankingScale = 0.975f;
 	constexpr float TimerGap = 5.0f;
 
 	int32 ReadInt(const UObject* Object, FName Name)
@@ -67,6 +68,12 @@ void UCompetitiveRankingHUD::NativeConstruct()
 	if (USizeBox* TimerBox = Timer ? Cast<USizeBox>(Timer->GetWidgetFromName(TEXT("SB_Timer"))) : nullptr)
 	{
 		const auto Measure = FSlateApplication::Get().GetRenderer()->GetFontMeasureService();
+		const auto FontCache = FSlateApplication::Get().GetRenderer()->GetFontCache();
+		const FCharacterEntry& DigitGlyph = FontCache->GetCharacterList(Font, 1.0f).GetCharacter(TEXT('0'), EFontFallback::FF_Max);
+		if (DigitGlyph.Valid && DigitGlyph.VSize > 0)
+			Font.Size = FMath::RoundToInt(Font.Size * PanelHeight * RankingScale / DigitGlyph.VSize);
+		if (UTextBlock* Colon = Cast<UTextBlock>(Timer->GetWidgetFromName(TEXT("Text_Points"))))
+			Colon->SetFont(Font);
 		float DigitWidth = 0;
 		for (TCHAR Digit = TEXT('0'); Digit <= TEXT('9'); ++Digit)
 			DigitWidth = FMath::Max(DigitWidth, float(Measure->Measure(FString::Chr(Digit), Font).X));
@@ -214,14 +221,21 @@ void UCompetitiveRankingHUD::PositionBesideTimer(const FGeometry& Geometry)
 	const FGeometry& Frame = TimerFrame->GetCachedGeometry();
 	const float Determinant = Geometry.GetAccumulatedRenderTransform().GetMatrix().Determinant();
 	if (!FMath::IsFinite(Determinant) || FMath::IsNearlyZero(Determinant) || Digits.GetLocalSize().Y <= 0 || Frame.GetLocalSize().X <= 0) return;
-	const FVector2D Top = Geometry.AbsoluteToLocal(Digits.LocalToAbsolute(FVector2D(Digits.GetLocalSize().X, 0)));
-	const FVector2D Bottom = Geometry.AbsoluteToLocal(Digits.LocalToAbsolute(Digits.GetLocalSize()));
+	const FSlateFontInfo TimerFont = CastChecked<UTextBlock>(Seconds)->GetFont();
+	const auto Renderer = FSlateApplication::Get().GetRenderer();
+	const auto Measure = Renderer->GetFontMeasureService();
+	const FCharacterEntry& Digit = Renderer->GetFontCache()->GetCharacterList(TimerFont, 1.0f).GetCharacter(TEXT('0'), EFontFallback::FF_Max);
+	// Align against the painted digits rather than the font's empty ascent/descent space.
+	const float InkTop = Digit.Valid ? Measure->GetMaxCharacterHeight(TimerFont) + Measure->GetBaseline(TimerFont) - Digit.VerticalOffset : 0.0f;
+	const float InkHeight = Digit.Valid ? float(Digit.VSize) : float(Digits.GetLocalSize().Y);
+	const FVector2D Top = Geometry.AbsoluteToLocal(Digits.LocalToAbsolute(FVector2D(Digits.GetLocalSize().X, InkTop)));
+	const FVector2D Bottom = Geometry.AbsoluteToLocal(Digits.LocalToAbsolute(FVector2D(Digits.GetLocalSize().X, InkTop + InkHeight)));
 	// Layout coordinates exclude our render offset, avoiding feedback from last frame's position.
 	const auto ToRootLayout = Concatenate(Frame.GetAccumulatedLayoutTransform(), Inverse(Geometry.GetAccumulatedLayoutTransform()));
 	const FVector2D Left = TransformPoint(ToRootLayout, FVector2D::ZeroVector);
 	const FVector2D Right = TransformPoint(ToRootLayout, FVector2D(Frame.GetLocalSize().X, 0));
 	if (Top.ContainsNaN() || Bottom.ContainsNaN() || Left.ContainsNaN() || Right.ContainsNaN()) return;
-	const float Scale = FMath::Clamp(float((Bottom.Y - Top.Y) / TimerReferenceHeight), 0.975f, 2.25f);
+	const float Scale = RankingScale;
 	if (!FMath::IsNearlyEqual(float(RankingSlot->GetSize().X), PanelWidth * Scale))
 	{
 		// Resize layout and glyphs instead of stretching the rendered text.
@@ -253,7 +267,7 @@ void UCompetitiveRankingHUD::PositionBesideTimer(const FGeometry& Geometry)
 	RankingPanel->SetRenderScale(FVector2D(1.0f));
 	const FVector2D Position(FMath::Clamp(Right.X + Shift + TimerGap, 0.0,
 		FMath::Max(0.0, Geometry.GetLocalSize().X - PanelWidth * Scale - 8.0)),
-		FMath::Max(0.0, (Top.Y + Bottom.Y - PanelHeight * Scale) * 0.5 - 4.0f * Scale));
+		FMath::Max(0.0, (Top.Y + Bottom.Y - PanelHeight * Scale) * 0.5));
 	const FVector2D Absolute = Geometry.LocalToAbsolute(Position);
 	RankingSlot->SetPosition(Geometry.AbsoluteToLocal(FVector2D(FMath::RoundToDouble(Absolute.X), FMath::RoundToDouble(Absolute.Y))));
 }
@@ -263,6 +277,33 @@ void UCompetitiveRankingHUD::NativeTick(const FGeometry& MyGeometry, float InDel
 	Super::NativeTick(MyGeometry, InDeltaTime);
 	if (!RankingPanel) return;
 	PositionBesideTimer(MyGeometry);
+	if (UWidget* MessageArea = GetWidgetFromName(TEXT("SB_Killmessage")))
+	{
+		APlayerController* PC = GetOwningPlayer();
+		const auto* DeathProperty = PC ? FindFProperty<FObjectPropertyBase>(PC->GetClass(), TEXT("deathScreen")) : nullptr;
+		UUserWidget* DeathScreen = DeathProperty ? Cast<UUserWidget>(DeathProperty->GetObjectPropertyValue_InContainer(PC)) : nullptr;
+		UWidget* RespawnBar = DeathScreen ? DeathScreen->GetWidgetFromName(TEXT("PB_RespawnBar")) : nullptr;
+		if (DeathScreen && DeathScreen->IsInViewport() && DeathScreen->IsVisible() && RespawnBar)
+		{
+			UUserWidget* Messages = Cast<UUserWidget>(GetWidgetFromName(TEXT("WB_KillMessage")));
+			UPanelWidget* Content = Messages ? Cast<UPanelWidget>(Messages->GetWidgetFromName(TEXT("OV_Content"))) : nullptr;
+			UUserWidget* Message = Content && Content->GetChildrenCount() ? Cast<UUserWidget>(Content->GetChildAt(0)) : nullptr;
+			UWidget* Text = Message ? Message->GetWidgetFromName(TEXT("VerticalBox_0")) : nullptr;
+			if (Text && RespawnBar->GetCachedGeometry().GetLocalSize().X > 0 && Text->GetCachedGeometry().GetLocalSize().Y > 0
+				&& !FMath::IsNearlyZero(MyGeometry.GetAccumulatedLayoutTransform().GetScale()))
+			{
+				// Use layout transforms so the previous render offset never accumulates.
+				const auto ToRoot = Inverse(MyGeometry.GetAccumulatedLayoutTransform());
+				const auto BarLayout = Concatenate(RespawnBar->GetCachedGeometry().GetAccumulatedRenderTransform(), ToRoot);
+				const auto TextLayout = Concatenate(Text->GetCachedGeometry().GetAccumulatedLayoutTransform(), ToRoot);
+				const FVector2D BarTop = TransformPoint(BarLayout, FVector2D(RespawnBar->GetCachedGeometry().GetLocalSize().X * 0.5, 0));
+				const FVector2D TextBottom = TransformPoint(TextLayout, FVector2D(Text->GetCachedGeometry().GetLocalSize().X * 0.5, Text->GetCachedGeometry().GetLocalSize().Y));
+				const FVector2D Offset = BarTop - TextBottom + FVector2D(0, 16.0f);
+				if (!Offset.ContainsNaN()) MessageArea->SetRenderTranslation(Offset);
+			}
+		}
+		else MessageArea->SetRenderTranslation(FVector2D::ZeroVector);
+	}
 	RefreshElapsed += InDeltaTime;
 	// Player joins/leaves and late replication can arrive without a score-change broadcast.
 	if (RefreshElapsed >= 0.5f) { RefreshElapsed = 0.0f; RefreshRanking(); }
