@@ -7,6 +7,8 @@
 #include "Subsystems/EngineSubsystem.h"
 #include "JsonAssetSyncSubsystem.generated.h"
 
+class UJsonApplyRegistry;
+
 /**
  * JSON 전체 처리 완료 시 호출되는 네이티브 이벤트다.
  *
@@ -105,6 +107,7 @@ private:
 	 * 엔진 초기화가 끝났을 때 호출된다.
 	 */
 	void HandleEngineLoopInitComplete();
+	void HandleRuntimePostEngineInit();
 
 	/**
 	 * JSON 검사 또는 적용을 실제로 실행한다.
@@ -126,6 +129,12 @@ private:
 	/** 가장 최근 JSON 처리 결과다. */
 	UPROPERTY(Transient)
 	FJsonApplySummary lastSummary;
+
+	/** Keep the applied objects alive across GC and map travel. */
+	UPROPERTY(Transient)
+	TObjectPtr<UJsonApplyRegistry> activeRegistry;
+
+	FDelegateHandle runtimePostEngineInitHandle;
 
 	/**
 	 * 시작 시 자동 처리 여부 확인이 끝났는지 저장한다.
