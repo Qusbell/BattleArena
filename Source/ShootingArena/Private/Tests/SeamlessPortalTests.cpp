@@ -5,6 +5,8 @@
 #include "../../Teleport/SeamlessPortalTraversalSubsystem.h"
 #include "../../Teleport/PortalTraversalGuard.h"
 #include "../../Teleport/PortalViewSubsystem.h"
+#include "../../Teleport/SeamlessPortalSyncComponent.h"
+#include "Character/CharacterPoolComponent.h"
 #include "Components/BoxComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -93,140 +95,6 @@ bool FSpatialPortalMathTest::RunTest(const FString&)
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSpatialPortalTraversalTest, "ShootingArena.Portal.Spatial.TraversalAndIsolation",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FSpatialPortalTraversalTest::RunTest(const FString&)
-{
-	const auto values = UWorld::InitializationValues().AllowAudioPlayback(false).RequiresHitProxies(false)
-		.CreatePhysicsScene(true).CreateNavigation(false).CreateAISystem(false).ShouldSimulatePhysics(false).SetTransactional(false);
-	UWorld* world = UWorld::CreateWorld(EWorldType::Game, false, NAME_None, nullptr, true, ERHIFeatureLevel::Num, &values);
-	if (!TestNotNull(TEXT("Isolated world"), world)) return false;
-	GEngine->CreateNewWorldContext(EWorldType::Game).SetCurrentWorld(world);
-	auto* entry = world->SpawnActor<ASeamlessPortalActor>();
-	auto* exit = world->SpawnActor<ASeamlessPortalActor>();
-	auto* legacy = world->SpawnActor<AOneWayTeleportActor>();
-	exit->SetActorLocation(FVector(1000,0,0));
-	entry->SetDestination(exit);
-	TestTrue(TEXT("New portal accepts a directed exit"), entry->CanTraverse());
-	TestFalse(TEXT("Setting A to B never implicitly links B to A"), exit->CanTraverse());
-	TestNotNull(TEXT("Existing DA type is reused with a safe default"), entry->GetTeleportDataAsset());
-	FPortalCaptureView view;
-	TestTrue(TEXT("Spatial view builds with no DA asset or material authoring"), entry->BuildPortalCaptureView(FTransform(FVector(100,20,30)), view));
-	TestTrue(TEXT("Spatial view is custom perspective, not a fixed exit camera"),
-		view.bCustomProjection && view.bSpatialView && view.transform.GetLocation().Equals(FVector(900,-20,30)));
-	// Project actual engine mesh vertices using the actual actor transform, not assumed UV conventions.
-	TArray<UStaticMeshComponent*> components;
-	entry->GetComponents(components);
-	for (UStaticMeshComponent* component : components)
-	{
-		if (component->GetFName() != TEXT("PortalScreen") || !component->GetStaticMesh()) continue;
-		const auto& lod = component->GetStaticMesh()->GetRenderData()->LODResources[0];
-		for (uint32 i = 0; i < lod.VertexBuffers.PositionVertexBuffer.GetNumVertices(); ++i)
-		{
-			const FVector position = component->GetComponentTransform().TransformPosition(FVector(lod.VertexBuffers.PositionVertexBuffer.VertexPosition(i)));
-			const FVector destination = SeamlessPortalMath::MapPoint(entry->GetPortalFrameTransform(),exit->GetPortalFrameTransform(),position);
-			const FVector local = view.transform.InverseTransformPositionNoScale(destination);
-			const FVector4 clip = view.projection.TransformFVector4(FVector4(local.Y,local.Z,local.X,1));
-			const FVector2f uv = lod.VertexBuffers.StaticMeshVertexBuffer.GetVertexUV(i,0);
-			TestTrue(TEXT("Actual surface UV matches the doorway ray: no upside-down or mirrored image"),
-				FMath::IsNearlyEqual(double(uv.X),0.5+0.5*clip.X/clip.W,0.001)
-				&& FMath::IsNearlyEqual(double(uv.Y),0.5-0.5*clip.Y/clip.W,0.001));
-		}
-	}
-	TestFalse(TEXT("Default engine global clip plane is not required"), view.bEnableClipPlane);
-	TestFalse(TEXT("Unconfigured legacy portal remains unconfigured"), legacy->BuildPortalCaptureView(FTransform::Identity, view));
-	ACharacter* character = world->SpawnActor<ACharacter>();
-	character->GetCapsuleComponent()->SetCapsuleSize(20,40);
-	character->SetActorLocation(FVector(-25,0,0));
-	character->GetCharacterMovement()->Velocity = FVector(-600,50,20);
-	FVector safeExit;
-	TestTrue(TEXT("Server traverses a fitting capsule"), entry->TryTraverse(character, FVector(100,0,0), safeExit));
-	TestTrue(TEXT("Relative position survives traversal"), character->GetActorLocation().Equals(FVector(1025,0,0),0.01));
-	TestTrue(TEXT("Velocity is redirected instead of replaced by Launch settings"), character->GetCharacterMovement()->Velocity.Equals(FVector(600,-50,20),0.01));
-	TestTrue(TEXT("Reentry lock is shared with the legacy portal path"), PortalTraversalGuard::IsLocked(character,world->GetTimeSeconds()));
-	PortalTraversalGuard::Unlock(character);
-	// A solid exit must reject traversal before moving or starting a lock.
-	AActor* wall = world->SpawnActor<AActor>();
-	UBoxComponent* block = NewObject<UBoxComponent>(wall);
-	wall->SetRootComponent(block);
-	block->SetBoxExtent(FVector(100,100,100));
-	block->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	block->SetCollisionResponseToAllChannels(ECR_Block);
-	block->RegisterComponent();
-	wall->SetActorLocation(FVector(1025,0,0));
-	character->SetActorLocation(FVector(-25,0,0));
-	TestFalse(TEXT("Blocked destination cannot embed a player in geometry"), entry->TryTraverse(character,FVector(100,0,0),safeExit));
-	TestTrue(TEXT("Failed traversal retains the original position"), character->GetActorLocation().Equals(FVector(-25,0,0)));
-	TestFalse(TEXT("Failed traversal does not leave a reentry lock"), PortalTraversalGuard::IsLocked(character,world->GetTimeSeconds()));
-	wall->Destroy();
-	auto SpawnWall = [world](double x)
-	{
-		AActor* actor = world->SpawnActor<AActor>();
-		UBoxComponent* box = NewObject<UBoxComponent>(actor);
-		actor->SetRootComponent(box);
-		box->SetBoxExtent(FVector(5,175,250));
-		box->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-		box->SetCollisionResponseToAllChannels(ECR_Block);
-		box->RegisterComponent();
-		actor->SetActorLocation(FVector(x,0,0));
-		return actor;
-	};
-	AActor* entranceWall = SpawnWall(0);
-	AActor* exitWall = SpawnWall(1000);
-	entry->passageWalls.Add(entranceWall);
-	exit->passageWalls.Add(exitWall);
-	AActor* externalIgnore = world->SpawnActor<AActor>();
-	character->GetCapsuleComponent()->IgnoreActorWhenMoving(externalIgnore,true);
-	character->GetCharacterMovement()->Velocity = FVector::ZeroVector;
-	character->SetActorLocation(FVector(30,0,0));
-	auto* subsystem = world->GetSubsystem<USeamlessPortalTraversalSubsystem>();
-	if (TestNotNull(TEXT("Authority traversal subsystem"),subsystem))
-	{
-		subsystem->RegisterPortal(entry);
-		subsystem->RegisterPortal(exit);
-		subsystem->Tick(1.f/60);
-		TestTrue(TEXT("Only the explicitly selected wall is temporarily ignored"),character->GetCapsuleComponent()->GetMoveIgnoreActors().Contains(entranceWall));
-		character->SetActorLocation(FVector(-5,0,0));
-		subsystem->Tick(1.f/60);
-		TestTrue(TEXT("Subsystem detects a plane crossing"),character->GetActorLocation().Equals(FVector(1005,0,0),0.01));
-		TestFalse(TEXT("Entrance wall exclusion is restored after transfer"),character->GetCapsuleComponent()->GetMoveIgnoreActors().Contains(entranceWall));
-		TestTrue(TEXT("Destination-only portals retain exit wall clearance during transfer"),character->GetCapsuleComponent()->GetMoveIgnoreActors().Contains(exitWall));
-		subsystem->UnregisterPortal(exit);
-		TestFalse(TEXT("Removing a portal releases owned exclusions"),character->GetCapsuleComponent()->GetMoveIgnoreActors().Contains(exitWall));
-		TestTrue(TEXT("Another system's exclusion survives cleanup"),character->GetCapsuleComponent()->GetMoveIgnoreActors().Contains(externalIgnore));
-		TestTrue(TEXT("Removing a portal cannot leave a capsule embedded in its wall"),character->GetActorLocation().X>=1027);
-		ACharacter* owner = world->SpawnActor<ACharacter>();
-		owner->GetCapsuleComponent()->SetCapsuleSize(20,40);
-		owner->SetActorLocation(FVector(30,0,0));
-		APlayerController* controller = world->SpawnActor<APlayerController>();
-		controller->Possess(owner);
-		owner->SetRole(ROLE_AutonomousProxy);
-		subsystem->Tick(1.f/60);
-		TestTrue(TEXT("Owning client predicts only its own entrance wall exclusions"),owner->GetCapsuleComponent()->GetMoveIgnoreActors().Contains(entranceWall));
-		owner->SetActorLocation(FVector(-5,0,0));
-		subsystem->Tick(1.f/60);
-		TestTrue(TEXT("Owning client never executes the authority teleport"),owner->GetActorLocation().Equals(FVector(-5,0,0)));
-		TestTrue(TEXT("Client clearance survives while waiting for the server position update"),owner->GetCapsuleComponent()->GetMoveIgnoreActors().Contains(entranceWall));
-		subsystem->UnregisterPortal(entry);
-		TestFalse(TEXT("Owner collision prediction is cleaned up with the portal"),owner->GetCapsuleComponent()->GetMoveIgnoreActors().Contains(entranceWall));
-		// Restore the synthetic network role before destroying this standalone test world.
-		owner->SetRole(ROLE_Authority);
-		controller->UnPossess();
-		controller->Destroy();
-	}
-	entry->SetDestination(nullptr);
-	TestFalse(TEXT("Missing destination is inert"), entry->CanTraverse());
-	entry->SetDestination(entry);
-	TestFalse(TEXT("Self destinations are rejected"), entry->CanTraverse());
-	entry->SetDestination(exit);
-	exit->Destroy();
-	TestFalse(TEXT("Destroyed exits are handled safely"), entry->CanTraverse());
-	world->DestroyWorld(false);
-	GEngine->DestroyWorldContext(world);
-	return true;
-}
-
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSpatialPortalActorDestinationTest, "ShootingArena.Portal.Spatial.ActorDestinations",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
@@ -281,9 +149,11 @@ bool FSpatialPortalActorDestinationTest::RunTest(const FString&)
 		TestTrue(TEXT("Camera and traversal share the same corrected destination frame"),capture.transform.GetLocation().Equals(
 			SeamlessPortalMath::MapPoint(source,destination,camera.GetLocation()),0.01));
 		FVector safeExit;
-		TestTrue(FString::Printf(TEXT("Walking through the rotated entrance reaches %s without jumping"),label),entry->TryTraverse(character,previous,safeExit));
-		TestTrue(TEXT("Mapped feet stay above the destination floor"),character->GetActorLocation().Equals(
-			SeamlessPortalMath::MapPoint(source,destination,current),0.01));
+		TestTrue(FString::Printf(TEXT("Walking through the rotated entrance reaches %s without jumping"),label),entry->TryTraverseFromOverlap(character,safeExit));
+		TestTrue(TEXT("Arrival clears the exit plane without changing the mapped foot height"),
+			character->GetActorLocation().Equals(safeExit,0.01)
+			&& FMath::IsNearlyEqual(character->GetActorLocation().Z,
+				SeamlessPortalMath::MapPoint(source,destination,current).Z,0.01));
 		TestTrue(TEXT("Rotation still redirects the original velocity"),character->GetCharacterMovement()->Velocity.Equals(
 			SeamlessPortalMath::MapVector(source,destination,velocity),0.01));
 		TestTrue(TEXT("Exit actor transform is never rewritten"),target->GetActorTransform().Equals(original));
@@ -318,7 +188,7 @@ bool FSpatialPortalActorDestinationTest::RunTest(const FString&)
 	const FVector current = source.TransformPositionNoScale(FVector(-20,0,walkingHeight-source.GetLocation().Z));
 	character->SetActorLocation(current);
 	FVector safeExit;
-	TestFalse(TEXT("Floor alignment cannot bypass an obstructing ceiling"),entry->TryTraverse(character,previous,safeExit));
+	TestFalse(TEXT("Floor alignment cannot bypass an obstructing ceiling"),entry->TryTraverseFromOverlap(character,safeExit));
 	TestTrue(TEXT("An unsafe ordinary exit leaves the player at the entrance"),character->GetActorLocation().Equals(current));
 	TestFalse(TEXT("An unsafe ordinary exit never acquires a teleport lock"),PortalTraversalGuard::IsLocked(character,world->GetTimeSeconds()));
 	ceiling->Destroy();
@@ -327,10 +197,10 @@ bool FSpatialPortalActorDestinationTest::RunTest(const FString&)
 	FTransform exact;
 	TestTrue(TEXT("Exact airborne anchor mode is available"),entry->GetDestinationFrame(exact));
 	TestTrue(TEXT("Opting out preserves the literal actor transform"),exact.GetLocation().Equals(point->GetActorLocation()));
-	TestFalse(TEXT("Exact mode does not bypass floor collision"),entry->TryTraverse(character,previous,safeExit));
+	TestFalse(TEXT("Exact mode does not bypass floor collision"),entry->TryTraverseFromOverlap(character,safeExit));
 	AActor* solidTarget = SpawnBox(FVector(2000,0,250),FVector(100,100,100));
 	entry->SetDestination(solidTarget);
-	TestFalse(TEXT("A solid actor target is not silently excluded from destination collision"),entry->TryTraverse(character,previous,safeExit));
+	TestFalse(TEXT("A solid actor target is not silently excluded from destination collision"),entry->TryTraverseFromOverlap(character,safeExit));
 	solidTarget->Destroy();
 	entry->bAlignActorExitToFloor = true;
 	ASeamlessPortalActor* spatialExit = world->SpawnActor<ASeamlessPortalActor>();
@@ -342,9 +212,7 @@ bool FSpatialPortalActorDestinationTest::RunTest(const FString&)
 	entry->SetDestination(point);
 	TestTrue(TEXT("A rotated airborne target remains valid"),entry->GetDestinationFrame(exact));
 	TestTrue(TEXT("No floor in range preserves an intentionally airborne exit"),exact.GetLocation().Equals(point->GetActorLocation()));
-	double fraction;
-	TestTrue(TEXT("Crossing detection remains independent of anchor resolution"),entry->FindCrossing(character,previous,fraction));
-	TestTrue(TEXT("A non-yaw ordinary target can still be traversed"),entry->TryTraverse(character,previous,safeExit));
+	TestTrue(TEXT("A non-yaw ordinary target can still be traversed"),entry->TryTraverseFromOverlap(character,safeExit));
 	PortalTraversalGuard::Unlock(character);
 	// Reproduce the reported layout: entry Z470 over floor Z220.715, legacy exit Z1598 over floor Z1460.715.
 	SpawnBox(FVector(0,0,170.715),FVector(500,500,50));
@@ -356,299 +224,6 @@ bool FSpatialPortalActorDestinationTest::RunTest(const FString&)
 	entry->SetDestination(point);
 	point->Destroy();
 	TestFalse(TEXT("Destroyed arbitrary targets safely disable traversal"),entry->CanTraverse());
-	world->DestroyWorld(false);
-	GEngine->DestroyWorldContext(world);
-	return true;
-}
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSpatialPortalForgivingCrossingTest, "ShootingArena.Portal.Spatial.HeadAndFootTolerance",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FSpatialPortalForgivingCrossingTest::RunTest(const FString&)
-{
-	const auto values = UWorld::InitializationValues().AllowAudioPlayback(false).RequiresHitProxies(false)
-		.CreatePhysicsScene(true).CreateNavigation(false).CreateAISystem(false).ShouldSimulatePhysics(false).SetTransactional(false);
-	UWorld* world = UWorld::CreateWorld(EWorldType::Game,false,NAME_None,nullptr,true,ERHIFeatureLevel::Num,&values);
-	if (!TestNotNull(TEXT("Isolated forgiving traversal world"),world)) return false;
-	GEngine->CreateNewWorldContext(EWorldType::Game).SetCurrentWorld(world);
-	ASeamlessPortalActor* entry = world->SpawnActor<ASeamlessPortalActor>();
-	ASeamlessPortalActor* exit = world->SpawnActor<ASeamlessPortalActor>();
-	entry->bAllowPartialCapsuleEntry = false; // Regression coverage for the optional former strict mode.
-	exit->SetActorLocation(FVector(1000,0,0));
-	entry->SetDestination(exit);
-	ACharacter* character = world->SpawnActor<ACharacter>();
-	character->GetCapsuleComponent()->SetCapsuleSize(51,132);
-	// At the swept plane intersection the feet are 12cm below the opening, but by the end
-	// of this jump frame they are inside. The former full-height test lost this crossing forever.
-	const FVector previous(20,0,-145), current(-20,0,-115);
-	character->SetActorLocation(current);
-	double fraction;
-	entry->headAndFootTolerance = 0;
-	TestFalse(TEXT("Zero tolerance reproduces the strict jump rejection"),entry->FindCrossing(character,previous,fraction));
-	entry->headAndFootTolerance = 20;
-	TestTrue(TEXT("A jumping torso crossing is accepted despite slight foot overhang"),entry->FindCrossing(character,previous,fraction));
-	TestTrue(TEXT("Swept plane-crossing timing is unchanged"),FMath::IsNearlyEqual(fraction,0.5));
-	FVector safeExit;
-	TestTrue(TEXT("A valid slightly-overhanging jump really reaches the exit"),entry->TryTraverse(character,previous,safeExit));
-	TestTrue(TEXT("Tolerance never adds a teleport position offset"),character->GetActorLocation().Equals(FVector(1020,0,-115),0.01));
-	TestTrue(TEXT("Real character capsule height is never changed"),FMath::IsNearlyEqual(character->GetCapsuleComponent()->GetScaledCapsuleHalfHeight(),132.0));
-	PortalTraversalGuard::Unlock(character);
-	character->SetActorLocation(FVector(10,0,0));
-	TestFalse(TEXT("Approaching/touching without a centre-plane crossing cannot teleport"),entry->FindCrossing(character,FVector(100,0,0),fraction));
-	TestFalse(TEXT("Back-to-front crossings remain disabled"),entry->FindCrossing(character,FVector(-10,0,0),fraction));
-	character->SetActorLocation(FVector(-10,160,0));
-	TestFalse(TEXT("Side grazing is not made wider by head/foot tolerance"),entry->FindCrossing(character,FVector(10,160,0),fraction));
-	character->SetActorLocation(FVector(-10,0,-180));
-	TestFalse(TEXT("A torso too far below the portal is still rejected"),entry->FindCrossing(character,FVector(10,0,-180),fraction));
-	entry->headAndFootTolerance = 100000;
-	character->SetActorLocation(FVector(-10,0,-200));
-	TestFalse(TEXT("Oversized tolerance values cannot remove the torso requirement"),entry->FindCrossing(character,FVector(10,0,-200),fraction));
-	entry->headAndFootTolerance = 20;
-	AActor* ground = world->SpawnActor<AActor>();
-	UBoxComponent* floor = NewObject<UBoxComponent>(ground);
-	ground->SetRootComponent(floor);
-	floor->SetBoxExtent(FVector(200,200,50));
-	floor->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	floor->SetCollisionResponseToAllChannels(ECR_Block);
-	floor->RegisterComponent();
-	ground->SetActorLocation(FVector(1000,0,-300));
-	character->SetActorLocation(FVector(-10,0,-130));
-	TestTrue(TEXT("Torso eligibility allows a small foot overhang"),entry->FindCrossing(character,FVector(10,0,-130),fraction));
-	TestFalse(TEXT("The FULL real capsule still prevents arrival inside the destination floor"),entry->TryTraverse(character,FVector(10,0,-130),safeExit));
-	TestTrue(TEXT("Rejected arrival retains the original location"),character->GetActorLocation().Equals(FVector(-10,0,-130)));
-	TestFalse(TEXT("Rejected arrival never starts the reentry lock"),PortalTraversalGuard::IsLocked(character,world->GetTimeSeconds()));
-	world->DestroyWorld(false);
-	GEngine->DestroyWorldContext(world);
-	return true;
-}
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSpatialPortalPartialEntryTest, "ShootingArena.Portal.Spatial.PartialCapsuleEntry",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FSpatialPortalPartialEntryTest::RunTest(const FString&)
-{
-	using namespace SeamlessPortalMath;
-	const FVector2D opening(175,250);
-	TestTrue(TEXT("A side/arm contact is accepted even with the centre outside the aperture"),
-		CapsuleTouchesOpening(FTransform::Identity,FVector(0,215,0),FVector::UpVector,51,132,opening,true));
-	TestFalse(TEXT("A capsule entirely outside the side cannot trigger"),
-		CapsuleTouchesOpening(FTransform::Identity,FVector(0,230,0),FVector::UpVector,51,132,opening,true));
-	TestTrue(TEXT("A head/foot-only contact is accepted"),
-		CapsuleTouchesOpening(FTransform::Identity,FVector(0,0,-350),FVector::UpVector,51,132,opening,true));
-	TestFalse(TEXT("No head/foot contact means no traversal"),
-		CapsuleTouchesOpening(FTransform::Identity,FVector(0,0,-390),FVector::UpVector,51,132,opening,true));
-	TestTrue(TEXT("A diagonal contact with a circular aperture uses the curved edge"),
-		CapsuleTouchesOpening(FTransform::Identity,FVector(0,77,77),FVector::UpVector,10,10,FVector2D(100,100),true));
-	TestFalse(TEXT("An empty bounding-box corner is not part of the circular aperture"),
-		CapsuleTouchesOpening(FTransform::Identity,FVector(0,80,80),FVector::UpVector,10,10,FVector2D(100,100),true));
-	TestTrue(TEXT("A rectangular corner can be touched by a rounded capsule"),
-		CapsuleTouchesOpening(FTransform::Identity,FVector(0,210,280),FVector::UpVector,51,51,opening,false));
-	TestFalse(TEXT("A rectangular bounding-box expansion cannot admit a non-contact corner"),
-		CapsuleTouchesOpening(FTransform::Identity,FVector(0,225,300),FVector::UpVector,51,51,opening,false));
-	const FTransform rotated(FRotator(32,73,-21),FVector(700,-200,100));
-	TestTrue(TEXT("Contact is invariant under a rotated portal and capsule"),
-		CapsuleTouchesOpening(rotated,rotated.TransformPositionNoScale(FVector(0,215,0)),
-			rotated.TransformVectorNoScale(FVector::UpVector),51,132,opening,true));
-	const FTransform floorPortal(FRotator(90,0,0));
-	TestTrue(TEXT("A floor portal handles a capsule axis normal to its surface"),
-		CapsuleTouchesOpening(floorPortal,floorPortal.TransformPositionNoScale(FVector(0,215,0)),FVector::UpVector,51,132,opening,true));
-	TestFalse(TEXT("Tilted partial contact still rejects a distant capsule"),
-		CapsuleTouchesOpening(floorPortal,floorPortal.TransformPositionNoScale(FVector(0,240,0)),FVector::UpVector,51,132,opening,true));
-	const FTransform tiltedPortal(FRotator(45,0,0));
-	TestTrue(TEXT("A tilted capsule segment can touch the curved edge while its centre sphere misses"),
-		CapsuleTouchesOpening(tiltedPortal,tiltedPortal.TransformPositionNoScale(FVector(0,0,310)),FVector::UpVector,51,132,opening,true));
-	TestFalse(TEXT("Tilted capsule distance includes its normal offset, not just its projected silhouette"),
-		CapsuleTouchesOpening(tiltedPortal,tiltedPortal.TransformPositionNoScale(FVector(0,0,330)),FVector::UpVector,51,132,opening,true));
-	TestFalse(TEXT("Invalid capsule input is rejected"),CapsuleTouchesOpening(FTransform::Identity,FVector::ZeroVector,
-		FVector::UpVector,std::numeric_limits<double>::quiet_NaN(),132,opening,true));
-	TestFalse(TEXT("Invalid opening input is rejected"),CapsuleTouchesOpening(FTransform::Identity,FVector::ZeroVector,
-		FVector::UpVector,51,132,FVector2D(0,250),true));
-
-	const auto values = UWorld::InitializationValues().AllowAudioPlayback(false).RequiresHitProxies(false)
-		.CreatePhysicsScene(true).CreateNavigation(false).CreateAISystem(false).ShouldSimulatePhysics(false).SetTransactional(false);
-	UWorld* world = UWorld::CreateWorld(EWorldType::Game,false,NAME_None,nullptr,true,ERHIFeatureLevel::Num,&values);
-	if (!TestNotNull(TEXT("Isolated partial-entry world"),world)) return false;
-	GEngine->CreateNewWorldContext(EWorldType::Game).SetCurrentWorld(world);
-	auto* entry = world->SpawnActor<ASeamlessPortalActor>();
-	entry->bCenterExitHorizontally = false; // This regression suite specifically covers relative side mapping.
-	auto* exit = world->SpawnActor<ASeamlessPortalActor>();
-	exit->SetActorLocation(FVector(1000,0,0));
-	entry->SetDestination(exit);
-	ACharacter* character = world->SpawnActor<ACharacter>();
-	character->GetCapsuleComponent()->SetCapsuleSize(51,132);
-	TestTrue(TEXT("Partial capsule entry is enabled by default"),entry->bAllowPartialCapsuleEntry);
-	const FVector previous(10,-137.8,-115.85), current(-10,-137.8,-115.85);
-	character->SetActorLocation(current);
-	double fraction;
-	entry->bAllowPartialCapsuleEntry = false;
-	entry->headAndFootTolerance = 50;
-	TestFalse(TEXT("The reported side contact reproduces the former strict rejection even at tolerance 50"),entry->FindCrossing(character,previous,fraction));
-	entry->bAllowPartialCapsuleEntry = true;
-	entry->headAndFootTolerance = 0;
-	TestTrue(TEXT("The reported side contact crosses with no full-capsule containment requirement"),entry->FindCrossing(character,previous,fraction));
-	FVector safeExit;
-	TestTrue(TEXT("The actual reported off-centre walking contact reaches the exit"),entry->TryTraverse(character,previous,safeExit));
-	TestTrue(TEXT("Partial entry preserves the mapped position, not a forced centre snap"),
-		character->GetActorLocation().Equals(FVector(1010,137.8,-115.85),0.001));
-	TestTrue(TEXT("The real collision capsule is not resized"),
-		FMath::IsNearlyEqual(character->GetCapsuleComponent()->GetScaledCapsuleRadius(),51.0)
-		&& FMath::IsNearlyEqual(character->GetCapsuleComponent()->GetScaledCapsuleHalfHeight(),132.0));
-	PortalTraversalGuard::Unlock(character);
-	character->SetActorLocation(FVector(-10,215,0));
-	TestTrue(TEXT("An arm-only contact can teleport, even with the centre beyond the side edge"),entry->TryTraverse(character,FVector(10,215,0),safeExit));
-	PortalTraversalGuard::Unlock(character);
-	character->SetActorLocation(FVector(10,215,0));
-	TestTrue(TEXT("Capsule contact no longer waits for the centre-plane crossing"),entry->FindCrossing(character,FVector(100,215,0),fraction));
-	TestFalse(TEXT("Reverse travel remains disabled for partial contacts"),entry->FindCrossing(character,FVector(-10,215,0),fraction));
-	character->SetActorLocation(FVector(-10,230,0));
-	TestFalse(TEXT("A non-contact crossing outside the side does not teleport"),entry->FindCrossing(character,FVector(10,230,0),fraction));
-	// A permissive aperture is never permission to arrive inside solid geometry.
-	AActor* wall = world->SpawnActor<AActor>();
-	UBoxComponent* box = NewObject<UBoxComponent>(wall);
-	wall->SetRootComponent(box);
-	box->SetBoxExtent(FVector(100,100,200));
-	box->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	box->SetCollisionResponseToAllChannels(ECR_Block);
-	box->RegisterComponent();
-	wall->SetActorLocation(FVector(1010,-215,0));
-	character->SetActorLocation(FVector(-10,215,0));
-	TestFalse(TEXT("Partial entry still rejects a blocked exit using the FULL capsule"),entry->TryTraverse(character,FVector(10,215,0),safeExit));
-	TestTrue(TEXT("Blocked partial entry retains the original location"),character->GetActorLocation().Equals(FVector(-10,215,0)));
-	TestFalse(TEXT("Blocked partial entry does not acquire a reentry lock"),PortalTraversalGuard::IsLocked(character,world->GetTimeSeconds()));
-	wall->Destroy();
-	// The world scheduler must use the same contact rule, not just direct TryTraverse calls.
-	auto* subsystem = world->GetSubsystem<USeamlessPortalTraversalSubsystem>();
-	if (TestNotNull(TEXT("Partial entry traversal scheduler"),subsystem))
-	{
-		subsystem->RegisterPortal(entry);
-		character->SetActorLocation(FVector(10,215,0));
-		subsystem->Tick(1.f/60);
-		character->SetActorLocation(FVector(-10,215,0));
-		subsystem->Tick(1.f/60);
-		TestTrue(TEXT("Scheduled side contact really teleports"),character->GetActorLocation().Equals(FVector(1010,-215,0),0.001));
-		subsystem->UnregisterPortal(entry);
-	}
-	world->DestroyWorld(false);
-	GEngine->DestroyWorldContext(world);
-	return true;
-}
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSpatialPortalContactEntryTest, "ShootingArena.Portal.Spatial.ContactBeforeCentre",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FSpatialPortalContactEntryTest::RunTest(const FString&)
-{
-	using namespace SeamlessPortalMath;
-	const FVector2D opening(175,250);
-	double fraction;
-	TestTrue(TEXT("First capsule contact is found while BOTH centres remain in front"),
-		FindFrontCapsuleContact(FTransform::Identity,FVector(100,0,0),FVector(30,0,0),FVector::UpVector,51,132,opening,true,fraction));
-	TestTrue(TEXT("Early contact occurs at the actual leading surface, 51cm before the plane"),
-		FMath::IsNearlyEqual(FMath::Lerp(100.0,30.0,fraction),51.0,0.001));
-	TestTrue(TEXT("Arm-edge contact accounts for normal AND lateral distance"),
-		FindFrontCapsuleContact(FTransform::Identity,FVector(100,215,0),FVector(30,215,0),FVector::UpVector,51,132,opening,true,fraction));
-	TestTrue(TEXT("Side contact is not falsely triggered at the full radius from the plane"),
-		FMath::IsNearlyEqual(FMath::Lerp(100.0,30.0,fraction),FMath::Sqrt(51.0*51-40.0*40),0.001));
-	TestFalse(TEXT("Projected arm overlap alone is insufficient before actual plane contact"),
-		FindFrontCapsuleContact(FTransform::Identity,FVector(100,215,0),FVector(40,215,0),FVector::UpVector,51,132,opening,true,fraction));
-	TestTrue(TEXT("Swept lateral arm contact works with no normal centre movement"),
-		FindFrontCapsuleContact(FTransform::Identity,FVector(40,300,0),FVector(40,-300,0),FVector::UpVector,51,132,opening,true,fraction));
-	TestTrue(TEXT("A fast grazing step finds its first contact even when both endpoints miss"),
-		FMath::IsNearlyEqual(FMath::Lerp(300.0,-300.0,fraction),175+FMath::Sqrt(51.0*51-40.0*40),0.001));
-	TestFalse(TEXT("Walking parallel just beyond capsule reach never triggers"),
-		FindFrontCapsuleContact(FTransform::Identity,FVector(52,300,0),FVector(52,0,0),FVector::UpVector,51,132,opening,true,fraction));
-	TestFalse(TEXT("Standing in contact does not repeatedly fire a movement event"),
-		FindFrontCapsuleContact(FTransform::Identity,FVector(30,0,0),FVector(30,0,0),FVector::UpVector,51,132,opening,true,fraction));
-	TestFalse(TEXT("Receding from a contacted portal never fires"),
-		FindFrontCapsuleContact(FTransform::Identity,FVector(30,0,0),FVector(40,0,0),FVector::UpVector,51,132,opening,true,fraction));
-	TestFalse(TEXT("Rear-side contact cannot teleport"),
-		FindFrontCapsuleContact(FTransform::Identity,FVector(-30,0,0),FVector(-20,0,0),FVector::UpVector,51,132,opening,true,fraction));
-	TestFalse(TEXT("Nonfinite swept input is rejected"),FindFrontCapsuleContact(FTransform::Identity,
-		FVector(100,0,0),FVector(std::numeric_limits<double>::infinity(),0,0),FVector::UpVector,51,132,opening,true,fraction));
-	const FTransform floorPortal(FRotator(90,0,0));
-	TestTrue(TEXT("Floor-portal contact uses the capsule height rather than its radius"),
-		FindFrontCapsuleContact(floorPortal,floorPortal.TransformPositionNoScale(FVector(200,0,0)),
-			floorPortal.TransformPositionNoScale(FVector(120,0,0)),FVector::UpVector,51,132,opening,true,fraction));
-	TestTrue(TEXT("The feet contact a floor portal while the centre is still 132cm away"),
-		FMath::IsNearlyEqual(FMath::Lerp(200.0,120.0,fraction),132.0,0.001));
-	const FTransform rotated(FRotator(0,-90,0),FVector(-1240,-290,470.715));
-	TestTrue(TEXT("The reported rotated portal contacts the walking capsule before its centre crosses"),
-		FindFrontCapsuleContact(rotated,rotated.TransformPositionNoScale(FVector(60,-137.8,-115.85)),
-			rotated.TransformPositionNoScale(FVector(29,-137.8,-115.85)),FVector::UpVector,51,132,opening,true,fraction));
-
-	const auto values = UWorld::InitializationValues().AllowAudioPlayback(false).RequiresHitProxies(false)
-		.CreatePhysicsScene(true).CreateNavigation(false).CreateAISystem(false).ShouldSimulatePhysics(false).SetTransactional(false);
-	UWorld* world = UWorld::CreateWorld(EWorldType::Game,false,NAME_None,nullptr,true,ERHIFeatureLevel::Num,&values);
-	if (!TestNotNull(TEXT("Isolated early-contact world"),world)) return false;
-	GEngine->CreateNewWorldContext(EWorldType::Game).SetCurrentWorld(world);
-	auto* entry = world->SpawnActor<ASeamlessPortalActor>();
-	entry->bCenterExitHorizontally = false; // Contact timing remains independent of the arrival policy.
-	auto* exit = world->SpawnActor<ASeamlessPortalActor>();
-	exit->SetActorLocation(FVector(1000,0,0));
-	entry->SetDestination(exit);
-	ACharacter* character = world->SpawnActor<ACharacter>();
-	character->GetCapsuleComponent()->SetCapsuleSize(51,132);
-	character->GetCharacterMovement()->Velocity = FVector(-600,0,0);
-	character->SetActorLocation(FVector(30,215,0));
-	FVector safeExit;
-	TestTrue(TEXT("Actual early arm contact teleports before the centre reaches the entry"),
-		entry->TryTraverse(character,FVector(100,215,0),safeExit));
-	TestTrue(TEXT("Early contact places the FULL capsule on the exit FRONT, not behind its wall"),
-		character->GetActorLocation().Equals(FVector(1053,-215,0),0.001));
-	TestTrue(TEXT("Early arrival retains the redirected velocity"),character->GetVelocity().Equals(FVector(600,0,0),0.001));
-	character->SetActorLocation(FVector(30,215,0));
-	TestFalse(TEXT("The shared reentry lock prevents repeat early contacts"),entry->TryTraverse(character,FVector(100,215,0),safeExit));
-	PortalTraversalGuard::Unlock(character);
-	character->SetActorLocation(FVector(30,215,0));
-	entry->bAllowPartialCapsuleEntry = false;
-	TestFalse(TEXT("Strict-mode rollback keeps the old centre-plane requirement"),entry->FindCrossing(character,FVector(100,215,0),fraction));
-	entry->bAllowPartialCapsuleEntry = true;
-	AActor* wall = world->SpawnActor<AActor>();
-	UBoxComponent* box = NewObject<UBoxComponent>(wall);
-	wall->SetRootComponent(box);
-	box->SetBoxExtent(FVector(30,100,200));
-	box->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	box->SetCollisionResponseToAllChannels(ECR_Block);
-	box->RegisterComponent();
-	wall->SetActorLocation(FVector(1053,-215,0));
-	TestFalse(TEXT("An early-arrival exit obstruction is rejected with the FULL real capsule"),
-		entry->TryTraverse(character,FVector(100,215,0),safeExit));
-	TestTrue(TEXT("Blocked early contact leaves the player in front of the entry"),character->GetActorLocation().Equals(FVector(30,215,0)));
-	TestFalse(TEXT("Blocked early contact leaves no lock"),PortalTraversalGuard::IsLocked(character,world->GetTimeSeconds()));
-	box->SetBoxExtent(FVector(500,500,50));
-	wall->SetActorLocation(FVector(1000,0,-300));
-	character->SetActorLocation(FVector(30,0,-130));
-	TestTrue(TEXT("A head/foot contact can be eligible before the source centre crosses"),
-		entry->FindCrossing(character,FVector(100,0,-130),fraction));
-	TestFalse(TEXT("Early contact does not bypass a destination floor intersecting the actual feet"),
-		entry->TryTraverse(character,FVector(100,0,-130),safeExit));
-	wall->Destroy();
-	auto* subsystem = world->GetSubsystem<USeamlessPortalTraversalSubsystem>();
-	if (TestNotNull(TEXT("Early contact world scheduler"),subsystem))
-	{
-		subsystem->RegisterPortal(entry);
-		character->SetActorLocation(FVector(100,215,0));
-		subsystem->Tick(1.f/60);
-		character->SetActorLocation(FVector(30,215,0));
-		subsystem->Tick(1.f/60);
-		TestTrue(TEXT("The real scheduler teleports while the source centre is still in front"),
-			character->GetActorLocation().Equals(FVector(1053,-215,0),0.001));
-		ACharacter* owner = world->SpawnActor<ACharacter>();
-		owner->GetCapsuleComponent()->SetCapsuleSize(51,132);
-		owner->SetActorLocation(FVector(100,215,0));
-		APlayerController* controller = world->SpawnActor<APlayerController>();
-		controller->Possess(owner);
-		owner->SetRole(ROLE_AutonomousProxy);
-		subsystem->Tick(1.f/60);
-		owner->SetActorLocation(FVector(30,215,0));
-		subsystem->Tick(1.f/60);
-		TestTrue(TEXT("Owning-client early contact never executes an authority teleport"),
-			owner->GetActorLocation().Equals(FVector(30,215,0)));
-		owner->SetRole(ROLE_Authority);
-		controller->UnPossess();
-		controller->Destroy();
-		subsystem->UnregisterPortal(entry);
-	}
 	world->DestroyWorld(false);
 	GEngine->DestroyWorldContext(world);
 	return true;
@@ -700,7 +275,7 @@ bool FSpatialPortalCenteredExitTest::RunTest(const FString&)
 	const FVector rightCurrent = source.TransformPositionNoScale(FVector(30,154,-115.85));
 	character->SetActorLocation(rightCurrent);
 	TestFalse(TEXT("Former relative mapping reproduces the blocked right edge"),
-		entry->TryTraverse(character,source.TransformPositionNoScale(FVector(100,154,-115.85)),safeExit));
+		entry->TryTraverseFromOverlap(character,safeExit));
 	entry->bCenterExitHorizontally = true;
 	const FVector localVelocity(-600,30,10);
 	for (double side : {-154.0,0.0,154.0})
@@ -709,7 +284,7 @@ bool FSpatialPortalCenteredExitTest::RunTest(const FString&)
 		character->SetActorLocation(source.TransformPositionNoScale(FVector(30,side,-115.85)));
 		character->GetCharacterMovement()->Velocity = source.TransformVectorNoScale(localVelocity);
 		TestTrue(TEXT("Left, centre and right contacts all reach the centre despite the side obstruction"),
-			entry->TryTraverse(character,source.TransformPositionNoScale(FVector(100,side,-115.85)),safeExit));
+			entry->TryTraverseFromOverlap(character,safeExit));
 		TestTrue(TEXT("All three contacts have exactly the same safe arrival position"),character->GetActorLocation().Equals(expected,0.01));
 		TestTrue(TEXT("Walking height remains unchanged above the corrected exit floor"),FMath::IsNearlyEqual(character->GetActorLocation().Z,1594.865,0.01));
 		TestTrue(TEXT("Centring does not change mapped velocity"),character->GetVelocity().Equals(
@@ -727,7 +302,7 @@ bool FSpatialPortalCenteredExitTest::RunTest(const FString&)
 		const FVector current = source.TransformPositionNoScale(FVector(30,side,-115.85));
 		character->SetActorLocation(current);
 		TestFalse(TEXT("A blocked centre rejects ALL entry sides instead of ignoring the wall"),
-			entry->TryTraverse(character,source.TransformPositionNoScale(FVector(100,side,-115.85)),safeExit));
+			entry->TryTraverseFromOverlap(character,safeExit));
 		TestTrue(TEXT("Failed centred arrival never moves the player"),character->GetActorLocation().Equals(current));
 		TestFalse(TEXT("Failed centred arrival leaves no reentry lock"),PortalTraversalGuard::IsLocked(character,world->GetTimeSeconds()));
 	}
@@ -742,7 +317,7 @@ bool FSpatialPortalCenteredExitTest::RunTest(const FString&)
 		PortalTraversalGuard::Unlock(character);
 		character->SetActorLocation(source.TransformPositionNoScale(FVector(30,side,-115.85)));
 		TestTrue(TEXT("Both sides also reach an ordinary Actor exit"),
-			entry->TryTraverse(character,source.TransformPositionNoScale(FVector(100,side,-115.85)),safeExit));
+			entry->TryTraverseFromOverlap(character,safeExit));
 		TestTrue(TEXT("Ordinary Actor arrival is centred with the original floor alignment"),
 			character->GetActorLocation().Equals(FVector(2053,0,134.15),0.01));
 	}
@@ -854,60 +429,6 @@ bool FSpatialPortalPlacementTest::RunTest(const FString&)
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSpatialPortalLifetimeTest, "ShootingArena.Portal.Spatial.LifetimeSafety",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FSpatialPortalLifetimeTest::RunTest(const FString&)
-{
-	const auto values = UWorld::InitializationValues().AllowAudioPlayback(false).RequiresHitProxies(false)
-		.CreatePhysicsScene(true).CreateNavigation(false).CreateAISystem(false).ShouldSimulatePhysics(false).SetTransactional(false);
-	UWorld* world = UWorld::CreateWorld(EWorldType::Game, false, NAME_None, nullptr, true, ERHIFeatureLevel::Num, &values);
-	if (!TestNotNull(TEXT("Isolated lifetime regression world"), world)) return false;
-	GEngine->CreateNewWorldContext(EWorldType::Game).SetCurrentWorld(world);
-	auto* subsystem = world->GetSubsystem<USeamlessPortalTraversalSubsystem>();
-	if (!TestNotNull(TEXT("Traversal lifetime subsystem"), subsystem))
-	{ world->DestroyWorld(false); GEngine->DestroyWorldContext(world); return false; }
-
-	ATargetPoint* target = world->SpawnActor<ATargetPoint>();
-	target->SetActorLocation(FVector(1000, 0, 0));
-	for (bool bShutdownOnArrival : {false, true})
-	{
-		auto* portal = world->SpawnActor<ASeamlessPortalActor>();
-		portal->bAlignActorExitToFloor = false;
-		portal->SetDestination(target);
-		auto* character = world->SpawnActor<ACharacter>();
-		character->GetCapsuleComponent()->SetCapsuleSize(20, 40);
-		character->SetActorLocation(FVector(100, 0, 0));
-		subsystem->RegisterPortal(portal);
-		subsystem->Tick(1.f / 60);
-		character->SetActorLocation(FVector(10, 0, 0));
-		bool bArrivalCallback = false;
-		const FDelegateHandle handle = character->GetRootComponent()->TransformUpdated.AddLambda(
-			[&](USceneComponent* component, EUpdateTransformFlags, ETeleportType)
-			{
-				if (bArrivalCallback || component->GetComponentLocation().X < 500) return;
-				bArrivalCallback = true;
-				// These callbacks run synchronously inside TeleportTo, before Tick resumes.
-				subsystem->UnregisterPortal(portal);
-				portal->Destroy();
-				if (bShutdownOnArrival) world->bIsTearingDown = true;
-			});
-		subsystem->Tick(1.f / 60);
-		character->GetRootComponent()->TransformUpdated.Remove(handle);
-		TestTrue(TEXT("Arrival callback executed during traversal"), bArrivalCallback);
-		TestFalse(TEXT("Portal can be destroyed synchronously without retaining an invalid iterator"), IsValid(portal));
-		TestTrue(TEXT("A successful teleport is not rolled back after its portal is removed"), character->GetActorLocation().X > 1000);
-		TestTrue(TEXT("Arrival still starts the shared anti-reentry lock"), PortalTraversalGuard::IsLocked(character, world->GetTimeSeconds()));
-		// Let DestroyWorld own subsystem Deinitialize; calling it manually would deinitialize it twice.
-		world->bIsTearingDown = false;
-		PortalTraversalGuard::Unlock(character);
-		character->Destroy();
-	}
-	world->DestroyWorld(false);
-	GEngine->DestroyWorldContext(world);
-	return true;
-}
-
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSpatialPortalDefaultSurfaceTest, "ShootingArena.Portal.Spatial.DefaultSurface",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
@@ -971,6 +492,363 @@ bool FSpatialPortalAppearanceTest::RunTest(const FString&)
 	UPortalViewSubsystem::ConfigureCaptureAppearance(*capture,false,true);
 	TestTrue(TEXT("Legacy high-quality HDR capture remains available"),capture->CaptureSource == SCS_SceneColorHDR);
 	TestTrue(TEXT("Legacy high-quality post-process flags remain unchanged"),capture->ShowFlags.Bloom && capture->ShowFlags.EyeAdaptation);
+	return true;
+}
+
+namespace PortalOverlapTests
+{
+	struct FWorld
+	{
+		UWorld* world=nullptr;
+		ASeamlessPortalActor* entry=nullptr;
+		ATargetPoint* exit=nullptr;
+		ACharacter* character=nullptr;
+		USeamlessPortalTraversalSubsystem* subsystem=nullptr;
+		FWorld()
+		{
+			const auto values=UWorld::InitializationValues().AllowAudioPlayback(false).RequiresHitProxies(false)
+				.CreatePhysicsScene(true).CreateNavigation(false).CreateAISystem(false).ShouldSimulatePhysics(false).SetTransactional(false);
+			world=UWorld::CreateWorld(EWorldType::Game,false,NAME_None,nullptr,true,ERHIFeatureLevel::Num,&values);
+			GEngine->CreateNewWorldContext(EWorldType::Game).SetCurrentWorld(world);
+			world->InitializeActorsForPlay(FURL());
+			entry=world->SpawnActor<ASeamlessPortalActor>();
+			exit=world->SpawnActor<ATargetPoint>(); exit->SetActorLocation(FVector(1000,0,0));
+			entry->bAlignActorExitToFloor=false; entry->SetDestination(exit);
+			entry->DispatchBeginPlay();
+			subsystem=world->GetSubsystem<USeamlessPortalTraversalSubsystem>();
+			character=SpawnCharacter(FVector(500,0,0));
+			// PrimitiveComponent suppresses overlap delegates before the world has begun play.
+			// This isolated physics world has no GameMode to set the flag for us.
+			world->SetBegunPlay(true);
+		}
+		ACharacter* SpawnCharacter(const FVector& location)
+		{
+			auto* result=world->SpawnActor<ACharacter>(ACharacter::StaticClass(),location,FRotator::ZeroRotator);
+			result->GetCapsuleComponent()->SetCapsuleSize(20,40);
+			result->GetCapsuleComponent()->SetGenerateOverlapEvents(true);
+			result->DispatchBeginPlay();
+			return result;
+		}
+		UBoxComponent* EntryBox() const
+		{
+			TArray<UBoxComponent*> boxes; entry->GetComponents(boxes);
+			for (auto* box:boxes) if(box->GetFName()==TEXT("EntryCollision")) return box;
+			return nullptr;
+		}
+		AActor* Wall(const FVector& location,const FVector& extent)
+		{
+			auto* actor=world->SpawnActor<AActor>();
+			auto* box=NewObject<UBoxComponent>(actor);
+			actor->SetRootComponent(box); actor->AddInstanceComponent(box);
+			box->SetBoxExtent(extent); box->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+			box->SetCollisionResponseToAllChannels(ECR_Block); box->RegisterComponent();
+			actor->SetActorLocation(location);
+			return actor;
+		}
+		void Move(const FVector& location) { character->SetActorLocation(location,false,nullptr,ETeleportType::TeleportPhysics); }
+		void Tick() { subsystem->Tick(1.f/60); }
+		~FWorld()
+		{
+			world->bIsTearingDown=false;
+			world->EndPlay(EEndPlayReason::Quit);
+			world->DestroyWorld(false); GEngine->DestroyWorldContext(world);
+		}
+	};
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSpatialPortalOverlapEntryTest,"ShootingArena.Portal.Spatial.OverlapEntry",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FSpatialPortalOverlapEntryTest::RunTest(const FString&)
+{
+	PortalOverlapTests::FWorld f;
+	f.Move(FVector(100,0,0)); f.Tick();
+	TestTrue(TEXT("Nearby registration is not a teleport trigger"),f.character->GetActorLocation().Equals(FVector(100,0,0)));
+	f.character->GetCharacterMovement()->Velocity=FVector(-600,30,0);
+	f.Move(FVector(15,187,260));
+	TestTrue(TEXT("Real engine overlap accepts a capsule partly outside the rectangular opening"),f.EntryBox()->IsOverlappingActor(f.character));
+	f.Tick();
+	TestTrue(TEXT("Capsule centre need not cross the portal plane"),f.character->GetActorLocation().X>1000);
+	TestTrue(TEXT("Existing horizontal exit-centre placement is retained"),FMath::Abs(f.character->GetActorLocation().Y)<0.01);
+	TestTrue(TEXT("Existing redirected momentum is retained"),f.character->GetVelocity().Equals(FVector(600,-30,0),0.01));
+	const FVector arrival=f.character->GetActorLocation();
+	f.EntryBox()->OnComponentBeginOverlap.Broadcast(f.EntryBox(),f.character,f.character->GetCapsuleComponent(),0,false,FHitResult());
+	f.Tick();
+	TestTrue(TEXT("Repeated callbacks cannot bypass the shared reentry lock"),f.character->GetActorLocation().Equals(arrival));
+	PortalTraversalGuard::Unlock(f.character);
+	f.Move(FVector(-500,0,0)); f.Tick();
+	f.Move(FVector(-15,0,0)); f.Tick();
+	TestTrue(TEXT("Overlap entry has no hidden front/centre crossing condition"),f.character->GetActorLocation().X>1000);
+	auto* unreported=f.SpawnCharacter(FVector(500,0,200));
+	unreported->GetCapsuleComponent()->SetGenerateOverlapEvents(false);
+	unreported->SetActorLocation(FVector(0,0,200));
+	f.Tick();
+	TestTrue(TEXT("Unreported characters are not found by a hidden world scan or distance trigger"),unreported->GetActorLocation().Equals(FVector(0,0,200)));
+	unreported->Destroy();
+	auto* first=f.SpawnCharacter(FVector(500,0,120));
+	auto* second=f.SpawnCharacter(FVector(500,0,220));
+	first->SetActorLocation(FVector(15,0,120)); second->SetActorLocation(FVector(15,0,220));
+	f.Tick();
+	TestTrue(TEXT("Authority processes all overlapping characters, including AI, without a world scan"),
+		first->GetActorLocation().X>1000 && second->GetActorLocation().X>1000);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSpatialPortalOverlapSafetyTest,"ShootingArena.Portal.Spatial.OverlapSafety",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FSpatialPortalOverlapSafetyTest::RunTest(const FString&)
+{
+	PortalOverlapTests::FWorld f;
+	auto* obstruction=f.Wall(FVector(1022,0,0),FVector(80,80,80));
+	f.Move(FVector(15,0,0)); f.Tick();
+	TestTrue(TEXT("Blocked exit rejects an actual overlap without moving to an unsafe location"),f.character->GetActorLocation().X<100);
+	TestFalse(TEXT("Rejected overlaps do not acquire the teleport lock"),PortalTraversalGuard::IsLocked(f.character,f.world->GetTimeSeconds()));
+	obstruction->Destroy(); f.Move(FVector(500,0,0));
+	f.Move(FVector(15,0,0)); f.Tick();
+	TestTrue(TEXT("Leaving and re-entering succeeds after an exit obstruction is removed"),f.character->GetActorLocation().X>1000);
+	PortalTraversalGuard::Unlock(f.character);
+	f.Move(FVector(500,0,0)); f.entry->SetDestination(nullptr);
+	f.Move(FVector(15,0,0)); f.Tick();
+	TestTrue(TEXT("Destination-only portals cannot teleport overlap entrants"),f.character->GetActorLocation().X<100);
+	f.Move(FVector(500,0,0)); f.entry->SetDestination(f.exit);
+	f.Move(FVector(15,0,0)); f.Tick();
+	TestTrue(TEXT("Assigning an exit at runtime re-enables engine overlap entry"),f.character->GetActorLocation().X>1000);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSpatialPortalOverlapWallsTest,"ShootingArena.Portal.Spatial.OverlapWallLifetime",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FSpatialPortalOverlapWallsTest::RunTest(const FString&)
+{
+	PortalOverlapTests::FWorld f;
+	auto* wall=f.Wall(FVector::ZeroVector,FVector(5,175,250));
+	auto* unrelated=f.world->SpawnActor<AActor>();
+	f.entry->passageWalls.Add(wall);
+	f.character->GetCapsuleComponent()->IgnoreActorWhenMoving(unrelated,true);
+	f.Move(FVector(100,0,0)); f.Tick();
+	TestTrue(TEXT("Nearby overlap prepares wall exclusions before thin entry contact"),f.character->GetCapsuleComponent()->GetMoveIgnoreActors().Contains(wall));
+	f.Move(FVector(5,0,0));
+	f.entry->Destroy();
+	f.Tick();
+	TestTrue(TEXT("Removing a portal cannot leave its capsule embedded in the old wall"),f.character->GetActorLocation().X>=25);
+	TestFalse(TEXT("Portal removal releases only owned exclusions"),f.character->GetCapsuleComponent()->GetMoveIgnoreActors().Contains(wall));
+	TestTrue(TEXT("Another system's exclusions survive portal removal"),f.character->GetCapsuleComponent()->GetMoveIgnoreActors().Contains(unrelated));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSpatialPortalOverlapPoolTest,"ShootingArena.Portal.Spatial.OverlapPoolAndClient",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FSpatialPortalOverlapPoolTest::RunTest(const FString&)
+{
+	PortalOverlapTests::FWorld f;
+	f.Move(FVector(15,0,0)); // queues a real entry for this life
+	f.character->SetActorEnableCollision(false);
+	f.subsystem->ForgetCharacter(f.character);
+	f.Tick();
+	TestTrue(TEXT("Pool reset invalidates queued entries belonging to the old life"),f.character->GetActorLocation().X<100);
+	f.Move(FVector(100,0,0));
+	f.character->SetActorEnableCollision(true);
+	f.Move(FVector(15,0,0)); f.Tick();
+	TestTrue(TEXT("Re-enabled pooled capsules are registered by fresh overlap events"),f.character->GetActorLocation().X>1000);
+	PortalTraversalGuard::Unlock(f.character);
+	f.Move(FVector(500,0,0));
+	auto* pc=f.world->SpawnActor<APlayerController>();
+	pc->Possess(f.character); f.character->SetRole(ROLE_AutonomousProxy);
+	auto* wall=f.Wall(FVector::ZeroVector,FVector(5,175,250));
+	f.entry->passageWalls.Add(wall);
+	f.Move(FVector(100,0,0)); f.Tick();
+	TestTrue(TEXT("Only the local owner's nearby overlaps predict wall exclusions"),f.character->GetCapsuleComponent()->GetMoveIgnoreActors().Contains(wall));
+	f.Move(FVector(15,0,0)); f.Tick();
+	TestTrue(TEXT("Owning client overlaps never execute an authoritative teleport"),f.character->GetActorLocation().X<100);
+	auto* remote=f.SpawnCharacter(FVector(500,0,150));
+	remote->SetRole(ROLE_SimulatedProxy);
+	remote->SetActorLocation(FVector(15,0,150)); f.Tick();
+	TestFalse(TEXT("Remote replicated characters are not processed for local collision prediction"),remote->GetCapsuleComponent()->GetMoveIgnoreActors().Contains(wall));
+	f.character->SetRole(ROLE_Authority); remote->SetRole(ROLE_Authority); pc->UnPossess();
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSpatialPortalOverlapCallbackTest,"ShootingArena.Portal.Spatial.OverlapCallbackSafety",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FSpatialPortalOverlapCallbackTest::RunTest(const FString&)
+{
+	for (bool tearDown:{false,true})
+	{
+		PortalOverlapTests::FWorld f;
+		bool called=false;
+		const auto handle=f.character->GetRootComponent()->TransformUpdated.AddLambda(
+			[&](USceneComponent* component,EUpdateTransformFlags,ETeleportType)
+			{
+				if (called || component->GetComponentLocation().X<900) return;
+				called=true; f.entry->Destroy();
+				if (tearDown) f.world->bIsTearingDown=true;
+			});
+		f.Move(FVector(15,0,0)); f.Tick();
+		f.character->GetRootComponent()->TransformUpdated.Remove(handle);
+		TestTrue(TEXT("Arrival invokes synchronous destruction/teardown callback"),called);
+		TestTrue(TEXT("Accepted arrival is not rolled back when its source is destroyed"),f.character->GetActorLocation().X>1000);
+		f.world->bIsTearingDown=false;
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSpatialPortalRegistryTest,"ShootingArena.Portal.Spatial.RegistryLifecycle",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FSpatialPortalRegistryTest::RunTest(const FString&)
+{
+	PortalOverlapTests::FWorld f;
+	auto* views=f.world->GetSubsystem<UPortalViewSubsystem>();
+	TestEqual(TEXT("Seamless BeginPlay registers through the shared legacy base"),views->GetRegisteredPortalCount(),1);
+	auto* legacy=f.world->SpawnActor<AOneWayTeleportActor>(); legacy->DispatchBeginPlay();
+	TestEqual(TEXT("Legacy portals remain registered alongside Seamless portals"),views->GetRegisteredPortalCount(),2);
+	views->RegisterPortal(f.entry);
+	TestEqual(TEXT("Duplicate registration does not duplicate capture candidates"),views->GetRegisteredPortalCount(),2);
+	legacy->Destroy();
+	TestEqual(TEXT("Legacy EndPlay unregisters its rendering candidate"),views->GetRegisteredPortalCount(),1);
+	f.entry->Destroy();
+	TestEqual(TEXT("Seamless EndPlay also unregisters its rendering candidate"),views->GetRegisteredPortalCount(),0);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSpatialPortalOverlapSweepTest,"ShootingArena.Portal.Spatial.OverlapExitPath",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FSpatialPortalOverlapSweepTest::RunTest(const FString&)
+{
+	PortalOverlapTests::FWorld f;
+	auto* obstruction=f.Wall(FVector(1100,0,0),FVector(5,80,80));
+	f.Move(FVector(-200,0,0));
+	FVector safeExit;
+	TestFalse(TEXT("An empty landing point cannot bypass an intervening exit obstruction"),
+		f.entry->TryTraverseFromOverlap(f.character,safeExit));
+	TestTrue(TEXT("Rejected exit sweeps retain the original character position"),f.character->GetActorLocation().Equals(FVector(-200,0,0)));
+	obstruction->Destroy();
+	TestTrue(TEXT("The same mapped arrival succeeds when its exit path is clear"),f.entry->TryTraverseFromOverlap(f.character,safeExit));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSpatialPortalDisabledEntryTest,"ShootingArena.Portal.Spatial.DisabledQueuedEntry",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FSpatialPortalDisabledEntryTest::RunTest(const FString&)
+{
+	for (bool disableActor:{false,true})
+	{
+		PortalOverlapTests::FWorld f;
+		f.Move(FVector(15,0,0));
+		if (disableActor) f.character->SetActorEnableCollision(false);
+		else f.character->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		f.Tick();
+		TestTrue(TEXT("Disabling collision invalidates a previously queued entry"),f.character->GetActorLocation().X<100);
+		TestFalse(TEXT("Disabled entrants never acquire the teleport lock"),PortalTraversalGuard::IsLocked(f.character,f.world->GetTimeSeconds()));
+		f.Move(FVector(500,0,0));
+		f.character->SetActorEnableCollision(true);
+		f.character->GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		f.Move(FVector(15,0,0)); f.Tick();
+		TestTrue(TEXT("Fresh overlap entry still works after collision is restored"),f.character->GetActorLocation().X>1000);
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSpatialPortalLifeCallbackTest,"ShootingArena.Portal.Spatial.ArrivalLifeChange",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FSpatialPortalLifeCallbackTest::RunTest(const FString&)
+{
+	for (bool clientArrival:{false,true})
+	{
+		PortalOverlapTests::FWorld f;
+		auto* pool=NewObject<UCharacterPoolComponent>(f.character);
+		f.character->AddInstanceComponent(pool); pool->RegisterComponent(); pool->Life.bManaged=true;
+		auto* pc=f.world->SpawnActor<APlayerController>(); pc->Possess(f.character);
+		auto* sync=USeamlessPortalSyncComponent::FindOrCreate(f.character);
+		if (clientArrival) f.character->SetRole(ROLE_AutonomousProxy);
+		const FVector respawn(500,0,120), freshVelocity(0,170,0);
+		bool called=false;
+		const auto handle=f.character->GetRootComponent()->TransformUpdated.AddLambda(
+			[&](USceneComponent* component,EUpdateTransformFlags,ETeleportType)
+			{
+				if (called || component->GetComponentLocation().X<900) return;
+				called=true;
+				f.subsystem->ForgetCharacter(f.character);
+				++pool->Life.Generation;
+				f.character->SetActorLocation(respawn,false,nullptr,ETeleportType::TeleportPhysics);
+				// No floor exists in this isolated world; Flying is a valid new-life mode
+				// that the engine's own OnTeleported will preserve before our portal resumes.
+				f.character->GetCharacterMovement()->SetMovementMode(MOVE_Flying);
+				f.character->GetCharacterMovement()->Velocity=freshVelocity;
+			});
+		if (clientArrival)
+		{
+			FSeamlessPortalArrival arrival; arrival.bValid=true; arrival.location=FVector(1022,0,0); arrival.velocity=FVector(600,0,0);
+			TestFalse(TEXT("Owner arrival stops updating an actor whose pooled life changed during teleport"),sync->ApplyArrival(arrival));
+		}
+		else { f.Move(FVector(15,0,0)); f.Tick(); }
+		f.character->GetRootComponent()->TransformUpdated.Remove(handle);
+		TestTrue(TEXT("Life reset was invoked from the actual teleport transform callback"),called);
+		TestTrue(TEXT("Old arrival cannot overwrite the new life position"),f.character->GetActorLocation().Equals(respawn));
+		TestTrue(FString::Printf(TEXT("Old arrival cannot overwrite the new life velocity (actual %s)"),*f.character->GetVelocity().ToString()),
+			f.character->GetVelocity().Equals(freshVelocity));
+		TestEqual(TEXT("Old arrival cannot overwrite the new life movement mode"),int32(f.character->GetCharacterMovement()->MovementMode),int32(MOVE_Flying));
+		f.character->SetRole(ROLE_Authority); pc->UnPossess();
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSpatialPortalExitGraceTest,"ShootingArena.Portal.Spatial.ExitGraceLifetime",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FSpatialPortalExitGraceTest::RunTest(const FString&)
+{
+	PortalOverlapTests::FWorld f;
+	auto* exit=f.world->SpawnActor<ASeamlessPortalActor>(); exit->SetActorLocation(FVector(1000,0,0)); exit->DispatchBeginPlay();
+	auto* wall=f.Wall(FVector(1000,0,0),FVector(5,175,250)); exit->passageWalls.Add(wall);
+	f.entry->SetDestination(exit);
+	f.Move(FVector(15,0,0)); f.Tick();
+	TestTrue(TEXT("Accepted spatial arrival temporarily retains its exit wall exclusion"),f.character->GetCapsuleComponent()->GetMoveIgnoreActors().Contains(wall));
+	f.Move(f.character->GetActorLocation()+FVector(0,1000,0)); f.Tick();
+	TestFalse(TEXT("Leaving the exit sideways releases grace even at the same plane depth"),f.character->GetCapsuleComponent()->GetMoveIgnoreActors().Contains(wall));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSpatialPortalShutdownTest,"ShootingArena.Portal.Spatial.TraversalShutdown",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FSpatialPortalShutdownTest::RunTest(const FString&)
+{
+	PortalOverlapTests::FWorld first,second;
+	PortalTraversalGuard::Lock(first.character,first.world->GetTimeSeconds()+100);
+	PortalTraversalGuard::Lock(second.character,second.world->GetTimeSeconds()+100);
+	first.Move(FVector(100,0,0));
+	first.subsystem->Deinitialize();
+	TestFalse(TEXT("Shutdown removes locks owned by its world"),PortalTraversalGuard::IsLocked(first.character,first.world->GetTimeSeconds()));
+	TestTrue(TEXT("Shutdown leaves another world's independent locks intact"),PortalTraversalGuard::IsLocked(second.character,second.world->GetTimeSeconds()));
+	first.Move(FVector(15,0,0)); first.Tick(); first.subsystem->Deinitialize();
+	TestTrue(TEXT("Late callbacks and repeat shutdown cannot restart traversal"),first.character->GetActorLocation().X<100);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSpatialPortalRenderShutdownTest,"ShootingArena.Portal.Spatial.RenderShutdownCallback",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FSpatialPortalRenderShutdownTest::RunTest(const FString&)
+{
+	PortalOverlapTests::FWorld f;
+	auto* views=f.world->GetSubsystem<UPortalViewSubsystem>();
+	auto& view=views->FindOrCreateView(f.entry);
+	auto* capture=view.sceneCapture.Get();
+	if (!TestNotNull(TEXT("Capture component for the shutdown callback"),capture)) return false;
+	bool called=false;
+	const auto handle=capture->TransformUpdated.AddLambda([&](USceneComponent*,EUpdateTransformFlags,ETeleportType)
+	{
+		called=true; views->Deinitialize();
+		TestEqual(TEXT("In-flight view storage remains valid until its update unwinds"),views->portalViews.Num(),1);
+		TestTrue(TEXT("In-flight capture is not destroyed under its transform callback"),capture->IsRegistered());
+		views->Tick(1.f/60);
+	});
+	views->bUpdatingViews=true;
+	capture->SetWorldLocation(FVector(20,0,0));
+	capture->TransformUpdated.Remove(handle);
+	TestTrue(TEXT("Shutdown was invoked inside a real capture transform callback"),called);
+	views->FinishViewUpdate();
+	TestEqual(TEXT("Unwinding releases all view instances"),views->portalViews.Num(),0);
+	TestEqual(TEXT("Unwinding clears cached portal membership"),views->GetRegisteredPortalCount(),0);
+	TestFalse(TEXT("Unwinding unregisters the capture component"),capture->IsRegistered());
+	views->RegisterPortal(f.entry); views->Tick(1.f/60); views->Deinitialize();
+	TestEqual(TEXT("Late registration and repeat shutdown cannot recreate rendering state"),views->GetRegisteredPortalCount(),0);
 	return true;
 }
 
