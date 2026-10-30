@@ -21,6 +21,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "AI|Fire Cycle")
 	static void SetFireGateForController(AAIController* Controller, UObject* Service, bool bAllowed);
 
+	// BP supplies its fixed characteristic values when the fire service activates.
+	UFUNCTION(BlueprintCallable, Category = "AI|Fire Cycle")
+	static void ActivateFireGateForController(AAIController* Controller, UObject* Service,
+		double AimSkill, double FireThrottle);
+
 	void InitializeForPawn(APawn* Pawn);
 	void ObserveBlackboard();
 	void ResetForLife();
@@ -47,7 +52,6 @@ private:
 	void ResetCombat();
 	void UpdateCycle();
 	void BeginNextPhase(double Now);
-	bool ReadCharacteristic(double& AimSkill, double& Throttle);
 	void SendWeaponInput(bool bUse);
 	void UnbindLife();
 	EBlackboardNotificationResult OnBlackboardChanged(const UBlackboardComponent& Blackboard, FBlackboard::FKey Key);
@@ -64,10 +68,10 @@ private:
 	bool bCombatActive = false;
 	bool bFirePhase = false;
 	double PhaseEndTime = 0.;
+	bool bHasCharacteristic = false;
+	double CachedAimSkill = 0.;
+	double CachedFireThrottle = 0.;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UFunction> UsingItemFunction;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UFunction> CharacteristicFunction;
 };

@@ -37,7 +37,6 @@ void UQuakeAIFireCycleComponent::InitializeForPawn(APawn* Pawn)
 	bLifeEnded = !IsValid(Pawn);
 	if (!IsValid(Pawn) || !Pawn->HasAuthority()) return;
 	UsingItemFunction = Pawn->FindFunction(TEXT("UsingItem"));
-	CharacteristicFunction = GetOwner()->FindFunction(TEXT("Get Characteristic"));
 	for (UActorComponent* Component : Pawn->GetComponents())
 	{
 		if (Component->GetClass()->GetName() != TEXT("BPC_Life_C")) continue;
@@ -93,6 +92,8 @@ void UQuakeAIFireCycleComponent::RefreshCombat()
 		ResetCombat();
 		return;
 	}
+	// Before the first service activation BP has not supplied the fixed settings yet.
+	if (!bHasCharacteristic) return;
 	if (bCombatActive) return; // Target/weapon/BT branch changes preserve the phase and deadline.
 	bCombatActive = true;
 	BeginNextPhase(GetWorld()->GetTimeSeconds());
@@ -108,6 +109,19 @@ void UQuakeAIFireCycleComponent::SetFireGateForController(AAIController* Control
 	if (IsValid(Controller))
 		if (auto* Cycle = Controller->FindComponentByClass<UQuakeAIFireCycleComponent>())
 			Cycle->SetFireGate(Service, bAllowed);
+}
+
+void UQuakeAIFireCycleComponent::ActivateFireGateForController(
+	AAIController* Controller, UObject* Service, double AimSkill, double FireThrottle)
+{
+	if (!IsValid(Controller) || !IsValid(Service)) return;
+	if (auto* Cycle = Controller->FindComponentByClass<UQuakeAIFireCycleComponent>())
+	{
+		Cycle->CachedAimSkill = AimSkill;
+		Cycle->CachedFireThrottle = FireThrottle;
+		Cycle->bHasCharacteristic = true;
+		Cycle->SetFireGate(Service, true);
+	}
 }
 
 void UQuakeAIFireCycleComponent::SetFireGate(UObject* Service, bool bAllowed)
@@ -143,40 +157,16 @@ void UQuakeAIFireCycleComponent::UpdateCycle()
 
 void UQuakeAIFireCycleComponent::BeginNextPhase(double Now)
 {
-	double AimSkill = 0., Throttle = 0.;
-	if (!ReadCharacteristic(AimSkill, Throttle) || AimSkill <= 0. || !FMath::IsFinite(Throttle))
+	if (!bHasCharacteristic || CachedAimSkill <= 0. || !FMath::IsFinite(CachedFireThrottle))
 	{
 		bFirePhase = false;
 		PhaseEndTime = Now;
 		return;
 	}
 	FQuakeAIFireCycleState Next;
-	Next.BeginNext(Now, Throttle, FMath::FRand());
+	Next.BeginNext(Now, CachedFireThrottle, FMath::FRand());
 	bFirePhase = Next.bFiring;
 	PhaseEndTime = Next.EndTime;
-}
-
-bool UQuakeAIFireCycleComponent::ReadCharacteristic(double& AimSkill, double& Throttle)
-{
-	if (!CharacteristicFunction) return false;
-	FStructOnScope Params(CharacteristicFunction);
-	GetOwner()->ProcessEvent(CharacteristicFunction, Params.GetStructMemory());
-	bool bAimFound = false, bThrottleFound = false;
-	for (TFieldIterator<FStructProperty> It(CharacteristicFunction); It; ++It)
-	{
-		const FStructProperty* Struct = *It;
-		if (!Struct->HasAllPropertyFlags(CPF_Parm | CPF_OutParm)) continue;
-		const void* Data = Struct->ContainerPtrToValuePtr<void>(Params.GetStructMemory());
-		for (TFieldIterator<FNumericProperty> Field(Struct->Struct); Field; ++Field)
-		{
-			if (!Field->IsFloatingPoint()) continue;
-			const double Value = Field->GetFloatingPointPropertyValue(Field->ContainerPtrToValuePtr<void>(Data));
-			if (Field->GetName().StartsWith(TEXT("Aim_Skill_"))) { AimSkill = Value; bAimFound = true; }
-			if (Field->GetName().StartsWith(TEXT("Fire_Throttle_"))) { Throttle = Value; bThrottleFound = true; }
-		}
-	}
-	// The original service reads the struct directly; it does not branch on the Valid output.
-	return bAimFound && bThrottleFound;
 }
 
 void UQuakeAIFireCycleComponent::SendWeaponInput(bool bUse)
@@ -229,7 +219,9 @@ void UQuakeAIFireCycleComponent::ResetForLife()
 	ObservedBlackboard.Reset();
 	LifePawn.Reset();
 	UsingItemFunction = nullptr;
-	CharacteristicFunction = nullptr;
+	bHasCharacteristic = false;
+	CachedAimSkill = 0.;
+	CachedFireThrottle = 0.;
 }
 
 void UQuakeAIFireCycleComponent::Deactivate()
