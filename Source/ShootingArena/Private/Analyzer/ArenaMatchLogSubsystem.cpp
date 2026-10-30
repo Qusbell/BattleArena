@@ -18,7 +18,6 @@
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerState.h"
 #include "HAL/FileManager.h"
-#include "Internationalization/Regex.h"
 #include "JsonObjectConverter.h"
 #include "MatchRulesInfo.h"
 #include "Misc/App.h"
@@ -29,6 +28,7 @@
 #include "Misc/Paths.h"
 #include "Misc/SecureHash.h"
 #include "Policies/CondensedJsonPrintPolicy.h"
+#include "ProfilingDebugging/CpuProfilerTrace.h"
 #include "SQLiteDatabase.h"
 #include "Serialization/JsonSerializer.h"
 #include "Serialization/JsonWriter.h"
@@ -73,15 +73,50 @@ namespace
 	/** Blueprint member names carry a "_<n>_<guid>" suffix; spaces and underscores are cosmetic. */
 	FString NormalizeName(const FString& In)
 	{
-		FString S = In;
-		static const FRegexPattern Pattern(TEXT("^(.*)_\\d+_[0-9A-Fa-f]{32}$"));
-		FRegexMatcher Matcher(Pattern, S);
-		if (Matcher.FindNext())
+		// Drop a trailing "_<digits>_<32 hex>" without a regex: this runs for every property of a class.
+		int32 End = In.Len();
+		constexpr int32 GuidLen = 32;
+		if (End > GuidLen + 2 && In[End - GuidLen - 1] == TEXT('_'))
 		{
-			S = Matcher.GetCaptureGroup(1);
+			bool bGuid = true;
+			for (int32 Index = End - GuidLen; Index < End && bGuid; ++Index)
+			{
+				bGuid = FChar::IsHexDigit(In[Index]);
+			}
+			int32 DigitsStart = End - GuidLen - 1;
+			while (bGuid && DigitsStart > 0 && FChar::IsDigit(In[DigitsStart - 1]))
+			{
+				--DigitsStart;
+			}
+			if (bGuid && DigitsStart < End - GuidLen - 1 && DigitsStart > 1 && In[DigitsStart - 1] == TEXT('_'))
+			{
+				End = DigitsStart - 1;
+			}
 		}
-		return S.Replace(TEXT("_"), TEXT("")).Replace(TEXT(" "), TEXT("")).ToLower();
+		FString S;
+		S.Reserve(End);
+		for (int32 Index = 0; Index < End; ++Index)
+		{
+			const TCHAR C = In[Index];
+			if (C != TEXT('_') && C != TEXT(' '))
+			{
+				S.AppendChar(FChar::ToLower(C));
+			}
+		}
+		return S;
 	}
+
+	/** Property lookups are repeated for every damage / pickup; classes do not change during a match, so remember them (misses too). */
+	struct FLooseCache
+	{
+		struct FEntry
+		{
+			TWeakObjectPtr<const UStruct> Owner;
+			TMap<FName, FProperty*> Properties;
+		};
+		TMap<const UStruct*, FEntry> Structs;
+	};
+	FLooseCache GLooseCache;
 
 	FProperty* FindLoose(const UStruct* Struct, const TCHAR* Name)
 	{
@@ -89,15 +124,30 @@ namespace
 		{
 			return nullptr;
 		}
+		FLooseCache::FEntry& Entry = GLooseCache.Structs.FindOrAdd(Struct);
+		if (Entry.Owner.Get() != Struct)
+		{
+			// New class (or a class reallocated at an old address, e.g. after a Blueprint recompile).
+			Entry.Owner = Struct;
+			Entry.Properties.Reset();
+		}
+		const FName Key(Name);
+		if (FProperty** Cached = Entry.Properties.Find(Key))
+		{
+			return *Cached;
+		}
+		FProperty* Found = nullptr;
 		const FString Target = NormalizeName(Name);
 		for (TFieldIterator<FProperty> It(Struct); It; ++It)
 		{
 			if (NormalizeName(It->GetName()) == Target)
 			{
-				return *It;
+				Found = *It;
+				break;
 			}
 		}
-		return nullptr;
+		Entry.Properties.Add(Key, Found);
+		return Found;
 	}
 
 	bool ReadNumber(const UStruct* Struct, const void* Container, const TCHAR* Name, double& Out)
@@ -241,7 +291,7 @@ namespace
 bool UArenaMatchLogSubsystem::ShouldCreateSubsystem(UObject* Outer) const
 {
 	const UWorld* World = Cast<UWorld>(Outer);
-	if (!bArenaLoggingEnabled || !World || World->GetNetMode() == NM_Client)
+	if (!IsArenaLoggingEnabled() || !World || World->GetNetMode() == NM_Client)
 	{
 		return false;
 	}
@@ -251,6 +301,7 @@ bool UArenaMatchLogSubsystem::ShouldCreateSubsystem(UObject* Outer) const
 void UArenaMatchLogSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
+	GLooseCache.Structs.Reset();
 }
 
 void UArenaMatchLogSubsystem::Deinitialize()
@@ -271,6 +322,7 @@ void UArenaMatchLogSubsystem::Deinitialize()
 		PendingSql.Reset();
 	}
 	CloseDatabase();
+	GLooseCache.Structs.Reset();
 	Super::Deinitialize();
 }
 
@@ -932,6 +984,7 @@ void UArenaMatchLogSubsystem::FlushPendingFires()
 
 FArenaLifeSnapshot UArenaMatchLogSubsystem::SnapshotLife(AActor* Pawn) const
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(ArenaMatchLog_SnapshotLife);
 	FArenaLifeSnapshot Snapshot;
 	if (!IsValid(Pawn))
 	{
@@ -1409,6 +1462,7 @@ void UArenaMatchLogSubsystem::Spool(const TArray<FString>& Statements, const FSt
 
 void UArenaMatchLogSubsystem::Flush()
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(ArenaMatchLog_Flush);
 	if (!Db)
 	{
 		return;
@@ -1629,6 +1683,7 @@ void UArenaMatchLogSubsystem::HandleItemDestroyed(AActor* DestroyedActor)
 
 void UArenaMatchLogSubsystem::BeginItemPickup(AActor* Item, AActor* Picker)
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(ArenaMatchLog_BeginItemPickup);
 	if (bDisabled || !IsValid(Picker) || !ItemIds.Contains(Item))
 	{
 		return;
@@ -1643,6 +1698,7 @@ void UArenaMatchLogSubsystem::BeginItemPickup(AActor* Item, AActor* Picker)
 
 void UArenaMatchLogSubsystem::CommitItemPickup(AActor* Item, AActor* Picker)
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(ArenaMatchLog_CommitItemPickup);
 	APawn* Pawn = Cast<APawn>(Picker);
 	const int32* Id = ItemIds.Find(Item);
 	if (bDisabled || !Pawn || !Id)
@@ -1750,6 +1806,7 @@ namespace
 
 void UArenaMatchLogSubsystem::CollectAmmo(const AActor* Holder, TMap<TWeakObjectPtr<AActor>, int32>& Out) const
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(ArenaMatchLog_CollectAmmo);
 	Out.Reset();
 	const UWorld* World = GetWorld();
 	if (!World || !IsValid(Holder))
