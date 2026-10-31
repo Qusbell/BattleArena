@@ -381,6 +381,22 @@ bool UArenaMatchLogSubsystem::OpenDatabase()
 		}
 		Db->Execute(TEXT("COMMIT"));
 	}
+	else
+	{
+		// Databases created before match.StartAtKst existed get the column so the match insert keeps working.
+		int64 HasStartAtKst = 0;
+		Db->Execute(TEXT("SELECT COUNT(*) FROM pragma_table_info('match') WHERE name='StartAtKst'"),
+			[&HasStartAtKst](const FSQLitePreparedStatement& Row)
+			{
+				Row.GetColumnValueByIndex(0, HasStartAtKst);
+				return ESQLitePreparedStatementExecuteRowResult::Stop;
+			});
+		if (HasStartAtKst == 0 && !Db->Execute(TEXT("ALTER TABLE match ADD COLUMN StartAtKst TEXT")))
+		{
+			UE_LOG(LogArenaMatchLog, Error, TEXT("Could not add match.StartAtKst: %s"), *Db->GetLastError());
+			++FailedWrites;
+		}
+	}
 	UE_LOG(LogArenaMatchLog, Log, TEXT("Match log database: %s"), *DbPath);
 	return true;
 }
@@ -525,8 +541,9 @@ void UArenaMatchLogSubsystem::EnsureMatchStarted()
 
 	const int32 Seq = NextEventSeq++;
 	Enqueue(FString::Printf(TEXT("INSERT INTO event (MatchId,EventSequence,ElapsedSeconds,EventType,CauseEventSequence) VALUES (%s,%d,0,'MatchStarted',NULL)"), *Q(MatchId), Seq));
-	Enqueue(FString::Printf(TEXT("INSERT INTO match (MatchId,EventSequence,MapId,GameBuildVersion,SettingsVersion,TimeLimitSeconds,KillTarget) VALUES (%s,%d,%s,%s,%s,%d,%d)"),
-		*Q(MatchId), Seq, *Q(MapId), *Q(FApp::GetBuildVersion()), *Q(SettingsVersion), TimeLimit, KillTarget));
+	const FString StartAtKst = (FDateTime::UtcNow() + FTimespan::FromHours(9)).ToString(TEXT("%y.%m.%d_%H:%M"));
+	Enqueue(FString::Printf(TEXT("INSERT INTO match (MatchId,EventSequence,MapId,GameBuildVersion,SettingsVersion,TimeLimitSeconds,KillTarget,StartAtKst) VALUES (%s,%d,%s,%s,%s,%d,%d,%s)"),
+		*Q(MatchId), Seq, *Q(MapId), *Q(FApp::GetBuildVersion()), *Q(SettingsVersion), TimeLimit, KillTarget, *Q(StartAtKst)));
 
 	World->GetTimerManager().SetTimer(TickHandle, this, &UArenaMatchLogSubsystem::Tick, 0.25f, true);
 	UE_LOG(LogArenaMatchLog, Log, TEXT("Match %s started on %s (time limit %d s, kill target %d)"), *MatchId, *MapId, TimeLimit, KillTarget);
