@@ -829,6 +829,14 @@ void UArenaMatchLogSubsystem::CompleteSpawn(APawn* Pawn, const TArray<FString>& 
 	{
 		Equipped = Life->PendingInitialEquip;
 	}
+	if (const FString* EquippedBeforeLife = PendingEquipByPawn.Find(Pawn))
+	{
+		if (Equipped.IsEmpty())
+		{
+			Equipped = *EquippedBeforeLife;
+		}
+		PendingEquipByPawn.Remove(Pawn);
+	}
 	if (Ids.IsEmpty() && IsValid(Pawn))
 	{
 		CollectHeldWeapons(Pawn, Ids, Defaults); // no grant reported: use what the pawn actually holds
@@ -908,6 +916,7 @@ void UArenaMatchLogSubsystem::EndLife(APawn* Pawn, const TCHAR* Reason, int32 Ca
 		return;
 	}
 	Life->bEnded = true;
+	PendingEquipByPawn.Remove(Pawn); // equips seen before this point belong to the life that just ended
 	if (!Life->bSpawnWritten)
 	{
 		UE_LOG(LogArenaMatchLog, Warning, TEXT("Life %d/%d ended (%s) before its spawn was recorded"), Life->ParticipantId, Life->SpawnNumber, Reason);
@@ -1177,14 +1186,21 @@ void UArenaMatchLogSubsystem::RecordCredit(APawn* Victim, const FString& DeathCa
 void UArenaMatchLogSubsystem::RecordWeaponEquip(APawn* Pawn, const FString& Before, const FString& After, const FString& Reason)
 {
 	int32 Participant = INDEX_NONE, SpawnNumber = INDEX_NONE;
-	if (bDisabled || !FindLife(Pawn, Participant, SpawnNumber))
+	if (bDisabled || !IsValid(Pawn))
 	{
+		return;
+	}
+	if (!FindLife(Pawn, Participant, SpawnNumber))
+	{
+		// The loadout is granted before the controller possesses the pawn; keep the last equip for the spawn row.
+		PendingEquipByPawn.Add(Pawn, After);
 		return;
 	}
 	if (FLifeState* Life = Lives.Find(LifeKey(Participant, SpawnNumber)))
 	{
 		if (Life->bEnded)
 		{
+			PendingEquipByPawn.Add(Pawn, After); // pooled respawn: the grant arrives while the pawn still maps to the ended life
 			return;
 		}
 		if (!Life->bSpawnWritten)
