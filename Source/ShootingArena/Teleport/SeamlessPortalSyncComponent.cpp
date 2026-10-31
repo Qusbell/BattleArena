@@ -1,4 +1,6 @@
 #include "SeamlessPortalSyncComponent.h"
+#include "SeamlessPortalTraversalSubsystem.h"
+#include "Character/CharacterPoolComponent.h"
 
 #include "Camera/PlayerCameraManager.h"
 #include "Engine/World.h"
@@ -27,7 +29,8 @@ void USeamlessPortalSyncComponent::SendArrival()
 {
 	ACharacter* character = Cast<ACharacter>(GetOwner());
 	UWorld* world = GetWorld();
-	if (!IsValid(character) || !character->HasAuthority() || !IsValid(world) || world->bIsTearingDown) return;
+	if (!IsValid(character) || !character->HasAuthority() || !IsValid(world) || world->bIsTearingDown
+		|| UCharacterPoolComponent::IsInactive(character) || !character->GetActorEnableCollision()) return;
 	UCharacterMovementComponent* movement = character->GetCharacterMovement();
 	APlayerController* player = Cast<APlayerController>(character->GetController());
 	if (!IsValid(movement) || !IsValid(player) || player->GetPawn() != character) return;
@@ -66,6 +69,17 @@ bool USeamlessPortalSyncComponent::ApplyArrival(const FSeamlessPortalArrival& ar
 	APlayerController* player = Cast<APlayerController>(character->GetController());
 	UCharacterMovementComponent* movement = character->GetCharacterMovement();
 	if (!IsValid(player) || !player->IsLocalController() || player->GetPawn() != character || !IsValid(movement)) return false;
+	const TWeakObjectPtr<UCharacterPoolComponent> pool=character->FindComponentByClass<UCharacterPoolComponent>();
+	const int32 generation=pool.IsValid() ? pool->Life.Generation : INDEX_NONE;
+	if (UCharacterPoolComponent::IsInactive(character) || !character->GetActorEnableCollision()) return false;
+	auto CanFinishArrival=[&]()
+	{
+		return IsValid(character) && IsValid(movement) && character->GetCharacterMovement()==movement
+			&& character->GetActorEnableCollision() && !UCharacterPoolComponent::IsInactive(character)
+			&& character->FindComponentByClass<UCharacterPoolComponent>()==pool.Get()
+			&& (generation==INDEX_NONE || (pool.IsValid() && pool->Life.Generation==generation))
+			&& IsValid(world) && !world->bIsTearingDown;
+	};
 	if (!character->HasAuthority())
 	{
 		// Inputs saved before receipt were simulated at the entrance. Replaying them as a
@@ -87,18 +101,20 @@ bool USeamlessPortalSyncComponent::ApplyArrival(const FSeamlessPortalArrival& ar
 		// Collision/eligibility was already validated by the server. Do not choose a different
 		// client-side fallback location (or a default origin) for the same accepted teleport.
 		if (!character->TeleportTo(arrival.location, arrival.facing, false, true)) return false;
-		if (!IsValid(character) || !IsValid(movement) || world->bIsTearingDown) return false;
+		if (!CanFinishArrival()) return false;
 		character->SetBase(nullptr);
-		if (!IsValid(character) || !IsValid(movement) || world->bIsTearingDown) return false;
+		if (!CanFinishArrival()) return false;
 		movement->Velocity = arrival.velocity;
 		movement->bJustTeleported = true;
 		movement->SetMovementMode(MOVE_Falling);
-		if (!IsValid(character) || !IsValid(movement) || !IsValid(player) || world->bIsTearingDown) return false;
+		if (!CanFinishArrival() || !IsValid(player)) return false;
 		movement->bNetworkSmoothingComplete = true;
 		player->SetControlRotation(arrival.controlRotation);
+		if (CanFinishArrival())
+			if (auto* traversal=world->GetSubsystem<USeamlessPortalTraversalSubsystem>()) traversal->NotifyLocalArrival(character);
 	}
 	// A listen-server player was already moved by TryTraverse; do not teleport them twice.
-	if (!IsValid(character) || !IsValid(player) || world->bIsTearingDown) return false;
+	if (!CanFinishArrival() || !IsValid(player) || player->GetPawn()!=character) return false;
 	if (IsValid(player->PlayerCameraManager)) player->PlayerCameraManager->SetGameCameraCutThisFrame();
 	return true;
 }

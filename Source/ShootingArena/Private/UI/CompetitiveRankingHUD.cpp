@@ -1,5 +1,7 @@
 #include "UI/CompetitiveRankingHUD.h"
 #include "UI/CompetitiveRankingOrder.h"
+#include "UI/KillMedalUISettings.h"
+#include "Audio/KillStreakVoiceComponent.h"
 #include "UI/UIPalette.h"
 #include "Camera/ShooterDisplayLibrary.h"
 #include "Blueprint/WidgetTree.h"
@@ -8,6 +10,8 @@
 #include "Components/CanvasPanelSlot.h"
 #include "Components/HorizontalBox.h"
 #include "Components/HorizontalBoxSlot.h"
+#include "Components/Image.h"
+#include "Components/ScaleBox.h"
 #include "Components/ProgressBar.h"
 #include "Components/SizeBox.h"
 #include "Components/SizeBoxSlot.h"
@@ -15,6 +19,7 @@
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
 #include "Engine/World.h"
+#include "Engine/Texture2D.h"
 #include "GameFramework/GameStateBase.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerState.h"
@@ -22,12 +27,13 @@
 #include "Styling/CoreStyle.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Fonts/FontMeasure.h"
+#include "Fonts/FontCache.h"
 
 namespace
 {
 	constexpr float PanelWidth = 286.0f;
 	constexpr float PanelHeight = 56.0f;
-	constexpr float TimerReferenceHeight = 48.0f;
+	constexpr float RankingScale = 0.975f;
 	constexpr float TimerGap = 5.0f;
 
 	int32 ReadInt(const UObject* Object, FName Name)
@@ -35,6 +41,61 @@ namespace
 		const FIntProperty* Property = IsValid(Object) ? FindFProperty<FIntProperty>(Object->GetClass(), Name) : nullptr;
 		return Property ? Property->GetPropertyValue_InContainer(Object) : 0;
 	}
+}
+
+void UCompetitiveRankingHUD::RefreshStreakMedals(int32 Count)
+{
+	Count = FMath::Max(0, Count);
+	if (DisplayedStreak == Count) return;
+	if (!ActiveStreakSettings) ActiveStreakSettings = KillMedalUISettings.LoadSynchronous();
+	const UKillMedalUISettings* Settings = ActiveStreakSettings ? ActiveStreakSettings.Get() : GetDefault<UKillMedalUISettings>();
+	if (!StreakPanel && Count > 0)
+	{
+		UCanvasPanel* Canvas = Cast<UCanvasPanel>(GetRootWidget());
+		if (!Canvas || !WidgetTree || !Settings->MedalTexture) return;
+		StreakPanel = WidgetTree->ConstructWidget<UVerticalBox>();
+		StreakPanel->SetVisibility(ESlateVisibility::HitTestInvisible);
+		UCanvasPanelSlot* StreakSlot = Canvas->AddChildToCanvas(StreakPanel);
+		StreakSlot->SetAnchors(FAnchors(Settings->MedalAnchor.X, Settings->MedalAnchor.Y));
+		StreakSlot->SetAlignment(FVector2D(0.5f, 0.0f));
+		StreakSlot->SetPosition(Settings->MedalPosition);
+		StreakSlot->SetAutoSize(true);
+		StreakSlot->SetZOrder(11);
+		StreakIcons = WidgetTree->ConstructWidget<UHorizontalBox>();
+		StreakPanel->AddChildToVerticalBox(StreakIcons)->SetHorizontalAlignment(HAlign_Center);
+		StreakCountLabel = WidgetTree->ConstructWidget<UTextBlock>();
+		StreakCountLabel->SetFont(Settings->CountFont);
+		StreakCountLabel->SetRenderTranslation(Settings->CountPosition);
+		StreakCountLabel->SetColorAndOpacity(FSlateColor(FLinearColor::White));
+		StreakCountLabel->SetShadowColorAndOpacity(FLinearColor::Black);
+		StreakCountLabel->SetShadowOffset(FVector2D(1, 1));
+		StreakPanel->AddChildToVerticalBox(StreakCountLabel)->SetHorizontalAlignment(HAlign_Center);
+	}
+	DisplayedStreak = Count;
+	if (!StreakPanel) return;
+	StreakPanel->SetVisibility(Count > 0 ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	StreakIcons->ClearChildren();
+	const int32 IconCount = Count > 10 ? 1 : Count;
+	for (int32 Index = 0; Index < IconCount; ++Index)
+	{
+		const FVector2D Size = Count > 10 ? Settings->LargeMedalSize : Index == 0 ? Settings->FirstMedalSize : Settings->AdditionalMedalSize;
+		USizeBox* Box = WidgetTree->ConstructWidget<USizeBox>();
+		Box->SetWidthOverride(FMath::Max(1.0, Size.X));
+		Box->SetHeightOverride(FMath::Max(1.0, Size.Y));
+		UScaleBox* Scale = WidgetTree->ConstructWidget<UScaleBox>();
+		Scale->SetStretch(EStretch::ScaleToFit);
+		Box->SetContent(Scale);
+		UImage* Image = WidgetTree->ConstructWidget<UImage>();
+		Image->SetBrushFromTexture(Settings->MedalTexture, true);
+		Scale->SetContent(Image);
+		UHorizontalBoxSlot* IconSlot = StreakIcons->AddChildToHorizontalBox(Box);
+		IconSlot->SetVerticalAlignment(VAlign_Center);
+		IconSlot->SetPadding(FMargin(FMath::Max(0.0f, Settings->MedalGap) * 0.5f, 0.0f));
+	}
+	StreakCountLabel->SetVisibility(Count > 10 ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	StreakCountLabel->SetText(Count > 10
+		? FText::Format(NSLOCTEXT("KillMedal", "StreakCount", "{0} Kill"), FText::AsNumber(Count))
+		: FText::GetEmpty());
 }
 
 void UCompetitiveRankingHUD::NativeConstruct()
@@ -67,6 +128,12 @@ void UCompetitiveRankingHUD::NativeConstruct()
 	if (USizeBox* TimerBox = Timer ? Cast<USizeBox>(Timer->GetWidgetFromName(TEXT("SB_Timer"))) : nullptr)
 	{
 		const auto Measure = FSlateApplication::Get().GetRenderer()->GetFontMeasureService();
+		const auto FontCache = FSlateApplication::Get().GetRenderer()->GetFontCache();
+		const FCharacterEntry& DigitGlyph = FontCache->GetCharacterList(Font, 1.0f).GetCharacter(TEXT('0'), EFontFallback::FF_Max);
+		if (DigitGlyph.Valid && DigitGlyph.VSize > 0)
+			Font.Size = FMath::RoundToInt(Font.Size * PanelHeight * RankingScale / DigitGlyph.VSize);
+		if (UTextBlock* Colon = Cast<UTextBlock>(Timer->GetWidgetFromName(TEXT("Text_Points"))))
+			Colon->SetFont(Font);
 		float DigitWidth = 0;
 		for (TCHAR Digit = TEXT('0'); Digit <= TEXT('9'); ++Digit)
 			DigitWidth = FMath::Max(DigitWidth, float(Measure->Measure(FString::Chr(Digit), Font).X));
@@ -214,14 +281,21 @@ void UCompetitiveRankingHUD::PositionBesideTimer(const FGeometry& Geometry)
 	const FGeometry& Frame = TimerFrame->GetCachedGeometry();
 	const float Determinant = Geometry.GetAccumulatedRenderTransform().GetMatrix().Determinant();
 	if (!FMath::IsFinite(Determinant) || FMath::IsNearlyZero(Determinant) || Digits.GetLocalSize().Y <= 0 || Frame.GetLocalSize().X <= 0) return;
-	const FVector2D Top = Geometry.AbsoluteToLocal(Digits.LocalToAbsolute(FVector2D(Digits.GetLocalSize().X, 0)));
-	const FVector2D Bottom = Geometry.AbsoluteToLocal(Digits.LocalToAbsolute(Digits.GetLocalSize()));
+	const FSlateFontInfo TimerFont = CastChecked<UTextBlock>(Seconds)->GetFont();
+	const auto Renderer = FSlateApplication::Get().GetRenderer();
+	const auto Measure = Renderer->GetFontMeasureService();
+	const FCharacterEntry& Digit = Renderer->GetFontCache()->GetCharacterList(TimerFont, 1.0f).GetCharacter(TEXT('0'), EFontFallback::FF_Max);
+	// Align against the painted digits rather than the font's empty ascent/descent space.
+	const float InkTop = Digit.Valid ? Measure->GetMaxCharacterHeight(TimerFont) + Measure->GetBaseline(TimerFont) - Digit.VerticalOffset : 0.0f;
+	const float InkHeight = Digit.Valid ? float(Digit.VSize) : float(Digits.GetLocalSize().Y);
+	const FVector2D Top = Geometry.AbsoluteToLocal(Digits.LocalToAbsolute(FVector2D(Digits.GetLocalSize().X, InkTop)));
+	const FVector2D Bottom = Geometry.AbsoluteToLocal(Digits.LocalToAbsolute(FVector2D(Digits.GetLocalSize().X, InkTop + InkHeight)));
 	// Layout coordinates exclude our render offset, avoiding feedback from last frame's position.
 	const auto ToRootLayout = Concatenate(Frame.GetAccumulatedLayoutTransform(), Inverse(Geometry.GetAccumulatedLayoutTransform()));
 	const FVector2D Left = TransformPoint(ToRootLayout, FVector2D::ZeroVector);
 	const FVector2D Right = TransformPoint(ToRootLayout, FVector2D(Frame.GetLocalSize().X, 0));
 	if (Top.ContainsNaN() || Bottom.ContainsNaN() || Left.ContainsNaN() || Right.ContainsNaN()) return;
-	const float Scale = FMath::Clamp(float((Bottom.Y - Top.Y) / TimerReferenceHeight), 0.975f, 2.25f);
+	const float Scale = RankingScale;
 	if (!FMath::IsNearlyEqual(float(RankingSlot->GetSize().X), PanelWidth * Scale))
 	{
 		// Resize layout and glyphs instead of stretching the rendered text.
@@ -253,7 +327,7 @@ void UCompetitiveRankingHUD::PositionBesideTimer(const FGeometry& Geometry)
 	RankingPanel->SetRenderScale(FVector2D(1.0f));
 	const FVector2D Position(FMath::Clamp(Right.X + Shift + TimerGap, 0.0,
 		FMath::Max(0.0, Geometry.GetLocalSize().X - PanelWidth * Scale - 8.0)),
-		FMath::Max(0.0, (Top.Y + Bottom.Y - PanelHeight * Scale) * 0.5 - 4.0f * Scale));
+		FMath::Max(0.0, (Top.Y + Bottom.Y - PanelHeight * Scale) * 0.5));
 	const FVector2D Absolute = Geometry.LocalToAbsolute(Position);
 	RankingSlot->SetPosition(Geometry.AbsoluteToLocal(FVector2D(FMath::RoundToDouble(Absolute.X), FMath::RoundToDouble(Absolute.Y))));
 }
@@ -261,8 +335,39 @@ void UCompetitiveRankingHUD::PositionBesideTimer(const FGeometry& Geometry)
 void UCompetitiveRankingHUD::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
+	const APlayerController* Owner = GetOwningPlayer();
+	const UKillStreakVoiceComponent* Streak = Owner && Owner->PlayerState
+		? Owner->PlayerState->FindComponentByClass<UKillStreakVoiceComponent>() : nullptr;
+	RefreshStreakMedals(Streak ? Streak->GetCurrentStreakCount() : 0);
 	if (!RankingPanel) return;
 	PositionBesideTimer(MyGeometry);
+	if (UWidget* MessageArea = GetWidgetFromName(TEXT("SB_Killmessage")))
+	{
+		APlayerController* PC = GetOwningPlayer();
+		const auto* DeathProperty = PC ? FindFProperty<FObjectPropertyBase>(PC->GetClass(), TEXT("deathScreen")) : nullptr;
+		UUserWidget* DeathScreen = DeathProperty ? Cast<UUserWidget>(DeathProperty->GetObjectPropertyValue_InContainer(PC)) : nullptr;
+		UWidget* RespawnBar = DeathScreen ? DeathScreen->GetWidgetFromName(TEXT("PB_RespawnBar")) : nullptr;
+		if (DeathScreen && DeathScreen->IsInViewport() && DeathScreen->IsVisible() && RespawnBar)
+		{
+			UUserWidget* Messages = Cast<UUserWidget>(GetWidgetFromName(TEXT("WB_KillMessage")));
+			UPanelWidget* Content = Messages ? Cast<UPanelWidget>(Messages->GetWidgetFromName(TEXT("OV_Content"))) : nullptr;
+			UUserWidget* Message = Content && Content->GetChildrenCount() ? Cast<UUserWidget>(Content->GetChildAt(0)) : nullptr;
+			UWidget* Text = Message ? Message->GetWidgetFromName(TEXT("VerticalBox_0")) : nullptr;
+			if (Text && RespawnBar->GetCachedGeometry().GetLocalSize().X > 0 && Text->GetCachedGeometry().GetLocalSize().Y > 0
+				&& !FMath::IsNearlyZero(MyGeometry.GetAccumulatedLayoutTransform().GetScale()))
+			{
+				// Use layout transforms so the previous render offset never accumulates.
+				const auto ToRoot = Inverse(MyGeometry.GetAccumulatedLayoutTransform());
+				const auto BarLayout = Concatenate(RespawnBar->GetCachedGeometry().GetAccumulatedRenderTransform(), ToRoot);
+				const auto TextLayout = Concatenate(Text->GetCachedGeometry().GetAccumulatedLayoutTransform(), ToRoot);
+				const FVector2D BarTop = TransformPoint(BarLayout, FVector2D(RespawnBar->GetCachedGeometry().GetLocalSize().X * 0.5, 0));
+				const FVector2D TextBottom = TransformPoint(TextLayout, FVector2D(Text->GetCachedGeometry().GetLocalSize().X * 0.5, Text->GetCachedGeometry().GetLocalSize().Y));
+				const FVector2D Offset = BarTop - TextBottom + FVector2D(0, 16.0f);
+				if (!Offset.ContainsNaN()) MessageArea->SetRenderTranslation(Offset);
+			}
+		}
+		else MessageArea->SetRenderTranslation(FVector2D::ZeroVector);
+	}
 	RefreshElapsed += InDeltaTime;
 	// Player joins/leaves and late replication can arrive without a score-change broadcast.
 	if (RefreshElapsed >= 0.5f) { RefreshElapsed = 0.0f; RefreshRanking(); }
@@ -271,6 +376,12 @@ void UCompetitiveRankingHUD::NativeTick(const FGeometry& MyGeometry, float InDel
 void UCompetitiveRankingHUD::NativeDestruct()
 {
 	BindScoreChanges(nullptr);
+	if (StreakPanel) StreakPanel->RemoveFromParent();
+	StreakPanel = nullptr;
+	StreakIcons = nullptr;
+	StreakCountLabel = nullptr;
+	ActiveStreakSettings = nullptr;
+	DisplayedStreak = INDEX_NONE;
 	if (RankingPanel) RankingPanel->RemoveFromParent();
 	RankingPanel = nullptr;
 	RankingSlot = nullptr;

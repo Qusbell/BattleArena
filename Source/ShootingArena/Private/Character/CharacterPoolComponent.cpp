@@ -3,6 +3,7 @@
 #include "Character/CharacterPoolSubsystem.h"
 #include "CharacterPoolReflection.h"
 #include "AIController.h"
+#include "AI/QuakeAIFireCycleComponent.h"
 #include "AI/Area/AreaManagerSubsystem.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "BrainComponent.h"
@@ -206,6 +207,7 @@ void UCharacterPoolComponent::ResetAIForLife(AController* Controller, APawn* Paw
 	using namespace CharacterPoolReflection;
 	auto* AI = Cast<AAIController>(Controller);
 	if (!AI) return;
+	if (auto* FireCycle = AI->FindComponentByClass<UQuakeAIFireCycleComponent>()) FireCycle->ResetForLife();
 	DetachControllerLife(AI, Pawn);
 	AI->StopMovement(); AI->ClearFocus(EAIFocusPriority::Gameplay);
 	if (AI->GetBrainComponent()) AI->GetBrainComponent()->StopLogic(TEXT("Pawn lifecycle changed"));
@@ -297,6 +299,8 @@ void UCharacterPoolComponent::ResetGameplay()
 		Reset(Health, {TEXT("LifeInfo"), TEXT("DamageWeaponData"), TEXT("OverLifeTimerHandle")});
 		Call(Health, TEXT("Init Info"));
 		Call(Health, TEXT("OnRep_LifeInfo"));
+		// Reused pawns do not run BeginPlay again after their life timers are cleared.
+		Call(Health, TEXT("CheckStartOverLifeTimer"));
 	}
 	ResetAnimationForLife();
 	if (auto* Loadout = Actor->FindComponentByClass<UInitialWeaponLoadoutComponent>()) Loadout->GrantLoadout();

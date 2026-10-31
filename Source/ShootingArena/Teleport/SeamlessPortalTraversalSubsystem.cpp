@@ -1,257 +1,299 @@
 #include "SeamlessPortalTraversalSubsystem.h"
 #include "Character/CharacterPoolComponent.h"
-
 #include "SeamlessPortalActor.h"
 #include "SeamlessPortalSyncComponent.h"
 #include "PortalTraversalGuard.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/BoxComponent.h"
 #include "Engine/World.h"
-#include "EngineUtils.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/PlayerController.h"
 
 bool USeamlessPortalTraversalSubsystem::DoesSupportWorldType(EWorldType::Type type) const
+{ return type==EWorldType::Game || type==EWorldType::PIE; }
+
+bool USeamlessPortalTraversalSubsystem::CanTrack(ACharacter* character,bool bAllowResetting) const
 {
-	return type == EWorldType::Game || type == EWorldType::PIE;
+	const auto* pool=IsValid(character) ? character->FindComponentByClass<UCharacterPoolComponent>() : nullptr;
+	const auto* capsule=IsValid(character) ? character->GetCapsuleComponent() : nullptr;
+	return !bDeinitializing && IsValid(GetWorld()) && !GetWorld()->bIsTearingDown
+		&& IsValid(character) && character->GetWorld()==GetWorld()
+		&& ((!UCharacterPoolComponent::IsInactive(character) && character->GetActorEnableCollision()
+			&& IsValid(capsule) && capsule->IsQueryCollisionEnabled())
+			|| (bAllowResetting && pool && pool->IsResetting()))
+		&& ((GetWorld()->GetNetMode()!=NM_Client && character->HasAuthority())
+			|| (character->IsLocallyControlled() && IsValid(Cast<APlayerController>(character->GetController()))));
 }
 
 void USeamlessPortalTraversalSubsystem::RegisterPortal(ASeamlessPortalActor* portal)
 {
-	if (!bDeinitializing && IsValid(portal) && portal->GetWorld() == GetWorld()) portals.Add(portal);
+	if (!bDeinitializing && IsValid(portal) && portal->GetWorld()==GetWorld()) portals.Add(portal);
 }
 
-void USeamlessPortalTraversalSubsystem::UnregisterPortal(ASeamlessPortalActor* portal)
+void USeamlessPortalTraversalSubsystem::NotifyNearby(ASeamlessPortalActor* portal,ACharacter* character,bool bBegin)
 {
-	portals.Remove(portal);
-	// The active tick recomputes exclusions after movement. Do not mutate its state from a callback.
-	UWorld* world = GetWorld();
-	if (bUpdatingTravellers || bDeinitializing || !IsValid(world) || world->bIsTearingDown) return;
-	TGuardValue<bool> updating(bUpdatingTravellers, true);
-	// Any owned collision exclusions must not survive removal of their portal.
-	TArray<TWeakObjectPtr<ACharacter>> characters;
-	travellers.GenerateKeyArray(characters);
-	for (const auto& key : characters)
-	{
-		const FTraveller* existing = travellers.Find(key);
-		if (!existing) continue;
-		FTraveller state = *existing;
-		ACharacter* character = key.Get();
-		if (IsValid(character) && character->HasAuthority() && IsBlockedWithoutOwnedIgnores(character, state))
-			character->SetActorLocation(state.safeLocation, false, nullptr, ETeleportType::TeleportPhysics);
-		RestoreIgnores(character, state);
-		if (bDeinitializing || world->bIsTearingDown) return;
-		state.exitGrace.Reset();
-		if (IsValid(character)) { state.previous = character->GetActorLocation(); travellers.Add(key, MoveTemp(state)); }
-		else travellers.Remove(key);
-	}
+	if (!CanTrack(character,true) || !IsValid(portal) || !portals.Contains(portal)) return;
+	nearbyEvents.Add({portal,character,bBegin});
+	if (!bUpdatingTravellers && CanTrack(character)) DrainNearbyEvents();
 }
 
-void USeamlessPortalTraversalSubsystem::RestoreIgnores(ACharacter* character, FTraveller& state)
+void USeamlessPortalTraversalSubsystem::StoreState(TWeakObjectPtr<ACharacter> key,FTraveller&& state)
+{
+	const FTraveller* current=travellers.Find(key);
+	// Pool reset/EndPlay may replace this life synchronously during a movement callback.
+	if (!current || current->revision!=state.revision) return;
+	if (!CanTrack(key.Get())) { RestoreIgnores(key.Get(),state); travellers.Remove(key); return; }
+	if (state.nearbyPortals.IsEmpty() && !state.exitGrace.IsValid() && state.ownedIgnores.IsEmpty()) travellers.Remove(key);
+	else travellers.Add(key,MoveTemp(state));
+}
+
+void USeamlessPortalTraversalSubsystem::DrainNearbyEvents()
+{
+	if (bUpdatingTravellers || bDeinitializing) return;
+	TGuardValue<bool> updating(bUpdatingTravellers,true);
+	const int32 count=nearbyEvents.Num();
+	for (int32 i=0; i<count && !bDeinitializing; ++i)
+	{
+		const FNearbyEvent event=nearbyEvents[i];
+		auto* character=event.character.Get(); auto* portal=event.portal.Get();
+		if (!CanTrack(character) && CanTrack(character,true)) { nearbyEvents.Add(event); continue; }
+		if (!CanTrack(character) || !IsValid(portal) || !portals.Contains(portal)) continue;
+		if (event.bBegin && !travellers.Contains(character))
+		{
+			FTraveller fresh; fresh.safeLocation=character->GetActorLocation(); fresh.revision=++nextRevision;
+			travellers.Add(character,MoveTemp(fresh));
+		}
+		const auto* found=travellers.Find(character); if (!found) continue;
+		FTraveller state=*found;
+		if (event.bBegin)
+		{
+			state.nearbyPortals.Add(portal);
+			if (character->HasAuthority()) USeamlessPortalSyncComponent::FindOrCreate(character);
+		}
+		else state.nearbyPortals.Remove(portal);
+		if (!CanTrack(character)) continue;
+		UpdatePassageIgnores(character,state,0);
+		if (bDeinitializing || GetWorld()->bIsTearingDown) return;
+		StoreState(event.character,MoveTemp(state));
+	}
+	if (!bDeinitializing) nearbyEvents.RemoveAt(0,count,EAllowShrinking::No);
+}
+
+void USeamlessPortalTraversalSubsystem::NotifyEntry(ASeamlessPortalActor* portal,ACharacter* character)
+{
+	if (!CanTrack(character,true) || !character->HasAuthority() || !IsValid(portal)
+		|| !portal->HasAuthority() || !portals.Contains(portal) || !portal->CanTraverse()) return;
+	// Event-driven entry still needs to prune the shared weak lock table (including old PIE lives).
+	PortalTraversalGuard::Cleanup(GetWorld(),GetWorld()->GetTimeSeconds());
+	if (PortalTraversalGuard::IsLocked(character,GetWorld()->GetTimeSeconds())) return;
+	NotifyNearby(portal,character,true);
+	const auto* state=travellers.Find(character);
+	entryEvents.Add({portal,character,state ? state->revision : 0});
+}
+
+void USeamlessPortalTraversalSubsystem::RestoreIgnores(ACharacter* character,FTraveller& state)
 {
 	if (IsValid(character) && IsValid(character->GetCapsuleComponent()))
-		for (const auto& wall : state.ownedIgnores)
-			if (wall.IsValid()) character->GetCapsuleComponent()->IgnoreActorWhenMoving(wall.Get(), false);
+		for (const auto& wall:state.ownedIgnores)
+			if (wall.IsValid()) character->GetCapsuleComponent()->IgnoreActorWhenMoving(wall.Get(),false);
 	state.ownedIgnores.Empty();
 }
 
-bool USeamlessPortalTraversalSubsystem::IsBlockedWithoutOwnedIgnores(ACharacter* character, const FTraveller& state) const
+bool USeamlessPortalTraversalSubsystem::IsBlockedWithoutOwnedIgnores(ACharacter* character,const FTraveller& state,
+	const TSet<TWeakObjectPtr<AActor>>& retained) const
 {
 	if (state.ownedIgnores.IsEmpty() || !IsValid(GetWorld()) || GetWorld()->bIsTearingDown
 		|| !IsValid(character) || !IsValid(character->GetCapsuleComponent())) return false;
-	const UCapsuleComponent* capsule = character->GetCapsuleComponent();
-	FCollisionQueryParams query(SCENE_QUERY_STAT(SpatialPortalRestore), false, character);
-	for (AActor* ignored : capsule->GetMoveIgnoreActors())
-		if (!state.ownedIgnores.Contains(ignored)) query.AddIgnoredActor(ignored);
-	return GetWorld()->OverlapBlockingTestByChannel(character->GetActorLocation(), character->GetActorQuat(),
-		capsule->GetCollisionObjectType(), FCollisionShape::MakeCapsule(capsule->GetScaledCapsuleRadius(),
-		capsule->GetScaledCapsuleHalfHeight()), query, FCollisionResponseParams(capsule->GetCollisionResponseToChannels()));
+	const auto* capsule=character->GetCapsuleComponent();
+	FCollisionQueryParams query(SCENE_QUERY_STAT(SpatialPortalRestore),false,character);
+	for (AActor* ignored:capsule->GetMoveIgnoreActors()) if (!state.ownedIgnores.Contains(ignored)) query.AddIgnoredActor(ignored);
+	for (const auto& wall:retained) if (wall.IsValid()) query.AddIgnoredActor(wall.Get());
+	return GetWorld()->OverlapBlockingTestByChannel(character->GetActorLocation(),character->GetActorQuat(),
+		capsule->GetCollisionObjectType(),FCollisionShape::MakeCapsule(capsule->GetScaledCapsuleRadius(),capsule->GetScaledCapsuleHalfHeight()),
+		query,FCollisionResponseParams(capsule->GetCollisionResponseToChannels()));
 }
 
-void USeamlessPortalTraversalSubsystem::UpdatePassageIgnores(ACharacter* character, FTraveller& state, float deltaTime)
+void USeamlessPortalTraversalSubsystem::UpdatePassageIgnores(ACharacter* character,FTraveller& state,float)
 {
-	UCapsuleComponent* capsule = character->GetCapsuleComponent();
-	if (!IsValid(capsule)) return;
+	if (!CanTrack(character) || !IsValid(character->GetCapsuleComponent())) return;
+	auto* capsule=character->GetCapsuleComponent();
 	TSet<TWeakObjectPtr<AActor>> desired;
-	bool bRecover = false;
-	const FVector location = character->GetActorLocation();
-	if (ASeamlessPortalActor* exit = state.exitGrace.Get())
+	for (auto it=state.nearbyPortals.CreateIterator(); it; ++it)
 	{
-		const double x = exit->GetPortalFrameTransform().InverseTransformPositionNoScale(location).X;
-		if (x < -0.01 || !exit->FitsAt(character, location))
-		{ bRecover = true; state.exitGrace.Reset(); }
-		else if (x <= exit->GetCapsuleNormalExtent(character) + exit->GetPassageFrontExtent() + 10)
-		{
-			for (AActor* wall : exit->passageWalls) if (IsValid(wall)) desired.Add(wall);
-		}
-		else state.exitGrace.Reset();
+		auto* portal=it->Get();
+		if (!IsValid(portal) || !portals.Contains(*it)) { it.RemoveCurrent(); continue; }
+		if (!portal->CanTraverse() || PortalTraversalGuard::IsLocked(character,GetWorld()->GetTimeSeconds())) continue;
+		for (AActor* wall:portal->passageWalls) if (IsValid(wall) && wall!=character) desired.Add(wall);
 	}
-	if (!bRecover && !PortalTraversalGuard::IsLocked(character, GetWorld()->GetTimeSeconds()))
+	if (auto* exit=state.exitGrace.Get())
 	{
-		const FVector predicted = location + character->GetVelocity() * FMath::Clamp(double(deltaTime) * 2, 1.0 / 60, 0.2);
-		for (const auto& weakPortal : portals)
-		{
-			ASeamlessPortalActor* portal = weakPortal.Get();
-			if (!IsValid(portal) || !portal->CanTraverse()) continue;
-			const FTransform frame = portal->GetPortalFrameTransform();
-			const FVector local = frame.InverseTransformPositionNoScale(location);
-			const double approachRange = portal->GetCapsuleNormalExtent(character) + portal->GetPassageFrontExtent()
-				+ 10 + (predicted - location).Length();
-			// An owning client may already have crossed while awaiting the server's position update.
-			const double minimumX = character->HasAuthority() ? 0 : -approachRange;
-			if (local.X < minimumX || local.X > approachRange || !portal->FitsAt(character, location)
-				|| !portal->FitsAt(character, predicted)) continue;
-			for (AActor* wall : portal->passageWalls)
-				if (IsValid(wall) && wall != character) desired.Add(wall);
-		}
+		const double x=exit->GetPortalFrameTransform().InverseTransformPositionNoScale(character->GetActorLocation()).X;
+		if (!portals.Contains(exit) || !IsValid(exit->GetNearbyCollision())
+			|| !exit->GetNearbyCollision()->IsOverlappingActor(character)
+			|| x<0 || x>exit->GetCapsuleNormalExtent(character)+exit->GetPassageFrontExtent()+10)
+			state.exitGrace.Reset();
+		else for (AActor* wall:exit->passageWalls) if (IsValid(wall)) desired.Add(wall);
 	}
-	if (character->HasAuthority() && (bRecover || desired.IsEmpty()) && IsBlockedWithoutOwnedIgnores(character, state))
+	bool dropping=false;
+	for (const auto& wall:state.ownedIgnores) if (!desired.Contains(wall)) { dropping=true; break; }
+	// Check every removed exclusion while retaining exclusions still owned by another nearby portal.
+	if (character->HasAuthority() && dropping && IsBlockedWithoutOwnedIgnores(character,state,desired))
 	{
-		// A blocked exit, sideways movement out of the opening, or disabling a portal cannot strand a capsule in its wall.
-		character->SetActorLocation(state.safeLocation, false, nullptr, ETeleportType::TeleportPhysics);
-		if (!IsValid(character) || !IsValid(capsule) || bDeinitializing || GetWorld()->bIsTearingDown) return;
-		if (auto* movement = character->GetCharacterMovement()) movement->StopMovementImmediately();
+		character->SetActorLocation(state.safeLocation,false,nullptr,ETeleportType::TeleportPhysics);
+		if (!CanTrack(character) || !IsValid(capsule)) return;
+		const auto* current=travellers.Find(character);
+		if (!current || current->revision!=state.revision) return;
+		if (auto* movement=character->GetCharacterMovement()) movement->StopMovementImmediately();
+		if (!CanTrack(character)) return;
+		current=travellers.Find(character);
+		if (!current || current->revision!=state.revision) return;
 		character->ForceNetUpdate();
-		desired.Empty();
 	}
-	if (state.ownedIgnores.IsEmpty() && !desired.IsEmpty() && !state.exitGrace.IsValid())
-		state.safeLocation = character->GetActorLocation();
-	for (auto it = state.ownedIgnores.CreateIterator(); it; ++it)
+	for (auto it=state.ownedIgnores.CreateIterator(); it; ++it)
 	{
-		if (!desired.Contains(*it))
-		{
-			if (it->IsValid()) capsule->IgnoreActorWhenMoving(it->Get(), false);
-			it.RemoveCurrent();
-		}
+		if (desired.Contains(*it)) continue;
+		if (it->IsValid()) capsule->IgnoreActorWhenMoving(it->Get(),false);
+		it.RemoveCurrent();
 	}
-	for (const auto& wall : desired)
-	{
-		// Preserve exclusions owned by the game/another system; only remove exclusions we added ourselves.
+	for (const auto& wall:desired)
 		if (!capsule->GetMoveIgnoreActors().Contains(wall.Get()))
+		{ capsule->IgnoreActorWhenMoving(wall.Get(),true); state.ownedIgnores.Add(wall); }
+}
+
+void USeamlessPortalTraversalSubsystem::NotifyLocalArrival(ACharacter* character)
+{
+	if (bUpdatingTravellers || !CanTrack(character) || character->HasAuthority() || !IsValid(character->GetCapsuleComponent())) return;
+	TArray<UPrimitiveComponent*> overlaps;
+	character->GetCapsuleComponent()->GetOverlappingComponents(overlaps);
+	for (auto* component:overlaps)
+	{
+		auto* portal=IsValid(component) ? Cast<ASeamlessPortalActor>(component->GetOwner()) : nullptr;
+		if (!IsValid(portal) || !portals.Contains(portal) || component!=portal->GetNearbyCollision()) continue;
+		const double x=portal->GetPortalFrameTransform().InverseTransformPositionNoScale(character->GetActorLocation()).X;
+		if (x<0 || x>portal->GetCapsuleNormalExtent(character)+portal->GetPassageFrontExtent()+10) continue;
+		NotifyNearby(portal,character,true);
+		if (auto* found=travellers.Find(character))
 		{
-			capsule->IgnoreActorWhenMoving(wall.Get(), true);
-			state.ownedIgnores.Add(wall);
+			FTraveller state=*found; state.exitGrace=portal; state.safeLocation=character->GetActorLocation();
+			TGuardValue<bool> updating(bUpdatingTravellers,true);
+			UpdatePassageIgnores(character,state,0);
+			StoreState(character,MoveTemp(state));
 		}
+		break;
 	}
 }
 
 void USeamlessPortalTraversalSubsystem::ForgetCharacter(ACharacter* character)
 {
-	if (FTraveller* State = travellers.Find(character)) RestoreIgnores(character, *State);
+	if (auto* state=travellers.Find(character)) RestoreIgnores(character,*state);
 	travellers.Remove(character);
+	entryEvents.RemoveAll([character](const auto& e){return e.character==character;});
+	// Invalidate queued events in place: an array may currently be read across a pool callback.
+	for (auto& event:nearbyEvents) if (event.character==character) event.character.Reset();
+	for (auto& event:entryWork) if (event.character==character) event.character.Reset();
+}
+
+void USeamlessPortalTraversalSubsystem::UnregisterPortal(ASeamlessPortalActor* portal)
+{
+	portals.Remove(portal);
+	if (bUpdatingTravellers || bDeinitializing || !IsValid(GetWorld()) || GetWorld()->bIsTearingDown) return;
+	TGuardValue<bool> updating(bUpdatingTravellers,true);
+	travellers.GenerateKeyArray(travellerKeys);
+	for (const auto& key:travellerKeys)
+	{
+		const auto* found=travellers.Find(key); if (!found) continue;
+		FTraveller state=*found; state.nearbyPortals.Remove(portal);
+		if (state.exitGrace==portal) state.exitGrace.Reset();
+		if (CanTrack(key.Get())) UpdatePassageIgnores(key.Get(),state,0);
+		if (bDeinitializing || GetWorld()->bIsTearingDown) return;
+		StoreState(key,MoveTemp(state));
+	}
 }
 
 void USeamlessPortalTraversalSubsystem::Tick(float deltaTime)
 {
-	UWorld* world = GetWorld();
-	if (bUpdatingTravellers || bDeinitializing || !IsValid(world) || world->bIsTearingDown || !FMath::IsFinite(deltaTime)) return;
-	TGuardValue<bool> updating(bUpdatingTravellers, true);
-	for (auto it = portals.CreateIterator(); it; ++it) if (!it->IsValid()) it.RemoveCurrent();
-	if (portals.IsEmpty())
+	if (bUpdatingTravellers || bDeinitializing || !IsValid(GetWorld()) || GetWorld()->bIsTearingDown || !FMath::IsFinite(deltaTime)) return;
+	// Possession may arrive after initial overlap notifications on a replicated client.
+	if (GetWorld()->GetNetMode()==NM_Client)
 	{
-		for (auto& pair : travellers) RestoreIgnores(pair.Key.Get(), pair.Value);
-		travellers.Empty();
-		return;
-	}
-	PortalTraversalGuard::Cleanup(world, world->GetTimeSeconds());
-	const TArray<TWeakObjectPtr<ASeamlessPortalActor>> portalSnapshot = portals.Array();
-	for (auto it = travellers.CreateIterator(); it; ++it)
-	{
-		ACharacter* character = it.Key().Get();
-		if (!IsValid(character) || UCharacterPoolComponent::IsInactive(character) || (!character->HasAuthority() && !character->IsLocallyControlled()))
-		{ RestoreIgnores(character, it.Value()); it.RemoveCurrent(); }
-	}
-	for (TActorIterator<ACharacter> it(world); it; ++it)
-	{
-		ACharacter* character = *it;
-		if (!IsValid(character) || UCharacterPoolComponent::IsInactive(character) || (!character->HasAuthority() && !character->IsLocallyControlled())) continue;
-		// Prepare the owner endpoint before the first accepted crossing.
-		if (character->HasAuthority()) USeamlessPortalSyncComponent::FindOrCreate(character);
-		const FVector current = character->GetActorLocation();
-		if (current.ContainsNaN()) continue;
-		const FTraveller* existing = travellers.Find(character);
-		// Never retain a map element across TeleportTo/SetActorLocation or movement delegates.
-		FTraveller localState;
-		if (!existing)
+		auto* pc=GetWorld()->GetFirstPlayerController();
+		auto* pawn=IsValid(pc) && pc->IsLocalController() ? Cast<ACharacter>(pc->GetPawn()) : nullptr;
+		const auto* pool=IsValid(pawn) ? pawn->FindComponentByClass<UCharacterPoolComponent>() : nullptr;
+		const int32 generation=pool ? pool->Life.Generation : 0;
+		if (lastLocalPawn!=pawn || lastLocalGeneration!=generation)
 		{
-			localState.previous = localState.safeLocation = current;
-			UpdatePassageIgnores(character, localState, deltaTime);
-			if (bDeinitializing || world->bIsTearingDown) return;
-			if (IsValid(character)) travellers.Add(character, MoveTemp(localState));
-			continue;
-		}
-		localState = *existing;
-		FTraveller* state = &localState;
-		if (!character->HasAuthority())
-		{
-			// A replicated teleport can land inside the destination wall before the capsule has cleared it.
-			// Infer that clearance locally without executing or authorizing any client-side teleport.
-			const double ordinaryStep = FMath::Max(100.0, character->GetVelocity().Size() * FMath::Max(deltaTime,0.0f) * 4);
-			if (FVector::DistSquared(current,state->previous) > FMath::Square(ordinaryStep))
+			lastLocalPawn=pawn;
+			lastLocalGeneration=generation;
+			if (CanTrack(pawn) && IsValid(pawn->GetCapsuleComponent()))
 			{
-				for (const auto& weakPortal : portalSnapshot)
-				{
-					ASeamlessPortalActor* portal = weakPortal.Get();
-					if (!IsValid(portal) || !portals.Contains(weakPortal)) continue;
-					const double x = portal->GetPortalFrameTransform().InverseTransformPositionNoScale(current).X;
-					if (x >= -0.01 && x <= portal->GetCapsuleNormalExtent(character) + portal->GetPassageFrontExtent() + 10
-						&& portal->FitsAt(character,current))
-					{ state->exitGrace = portal; break; }
-				}
+				TArray<UPrimitiveComponent*> overlaps; pawn->GetCapsuleComponent()->GetOverlappingComponents(overlaps);
+				for (auto* component:overlaps)
+					if (IsValid(component)) if (auto* portal=Cast<ASeamlessPortalActor>(component->GetOwner()))
+						if (component==portal->GetNearbyCollision()) NotifyNearby(portal,pawn,true);
 			}
 		}
-		else if (!PortalTraversalGuard::IsLocked(character, world->GetTimeSeconds()))
-		{
-			ASeamlessPortalActor* first = nullptr;
-			double firstFraction = DBL_MAX;
-			for (const auto& portal : portalSnapshot)
-			{
-				double fraction;
-				if (portal.IsValid() && portals.Contains(portal)
-					&& portal->FindCrossing(character, state->previous, fraction) && fraction < firstFraction)
-				{ first = portal.Get(); firstFraction = fraction; }
-			}
-			if (first)
-			{
-				FVector safeExit;
-				const bool bTraversed = first->TryTraverse(character, state->previous, safeExit);
-				if (bDeinitializing || world->bIsTearingDown) { RestoreIgnores(character, *state); return; }
-				if (!IsValid(character)) { RestoreIgnores(character, *state); travellers.Remove(character); continue; }
-				if (bTraversed)
-				{
-					RestoreIgnores(character, *state);
-					state->safeLocation = safeExit;
-					state->exitGrace = IsValid(first) ? Cast<ASeamlessPortalActor>(first->GetExitTarget()) : nullptr;
-				}
-				else if (!state->ownedIgnores.IsEmpty())
-				{
-					character->SetActorLocation(state->safeLocation, false, nullptr, ETeleportType::TeleportPhysics);
-					if (bDeinitializing || world->bIsTearingDown) { RestoreIgnores(character, *state); return; }
-					if (!IsValid(character)) { RestoreIgnores(character, *state); travellers.Remove(character); continue; }
-					if (auto* movement = character->GetCharacterMovement()) movement->StopMovementImmediately();
-				}
-			}
-		}
-		UpdatePassageIgnores(character, *state, deltaTime);
-		if (bDeinitializing || world->bIsTearingDown) { RestoreIgnores(character, *state); return; }
-		if (IsValid(character))
-		{
-			state->previous = character->GetActorLocation();
-			travellers.Add(character, MoveTemp(localState));
-		}
-		else { RestoreIgnores(character, *state); travellers.Remove(character); }
 	}
+	DrainNearbyEvents();
+	if (bDeinitializing || !IsValid(GetWorld()) || GetWorld()->bIsTearingDown) return;
+	{
+		TGuardValue<bool> updating(bUpdatingTravellers,true);
+		Swap(entryEvents,entryWork); entryEvents.Reset();
+		for (const FEntryEvent event:entryWork)
+		{
+			auto* character=event.character.Get(); auto* portal=event.portal.Get();
+			if (!CanTrack(character) && CanTrack(character,true)) { entryEvents.Add(event); continue; }
+			const auto* found=travellers.Find(event.character);
+			if (!CanTrack(character) || !IsValid(portal) || !portals.Contains(portal)
+				|| !found || (event.revision && found->revision!=event.revision)) continue;
+			FTraveller state=*found;
+			FVector safeExit;
+			if (portal->TryTraverseFromOverlap(character,safeExit))
+			{
+				if (!CanTrack(character)) continue;
+				const auto* current=travellers.Find(event.character);
+				if (!current || current->revision!=state.revision) continue;
+				RestoreIgnores(character,state); state.nearbyPortals.Empty(); state.safeLocation=safeExit;
+				state.exitGrace=IsValid(portal) ? Cast<ASeamlessPortalActor>(portal->GetExitTarget()) : nullptr;
+			}
+			else if (CanTrack(character) && !PortalTraversalGuard::IsLocked(character,GetWorld()->GetTimeSeconds()) && !state.ownedIgnores.IsEmpty())
+			{
+				character->SetActorLocation(state.safeLocation,false,nullptr,ETeleportType::TeleportPhysics);
+				if (CanTrack(character))
+				{
+					const auto* current=travellers.Find(event.character);
+					if (current && current->revision==state.revision)
+						if (auto* movement=character->GetCharacterMovement()) movement->StopMovementImmediately();
+				}
+			}
+			if (bDeinitializing || GetWorld()->bIsTearingDown) return;
+			StoreState(event.character,MoveTemp(state));
+		}
+		entryWork.Reset();
+		travellers.GenerateKeyArray(travellerKeys);
+		for (const auto& key:travellerKeys)
+		{
+			const auto* found=travellers.Find(key); if (!found) continue;
+			FTraveller state=*found;
+			if (CanTrack(key.Get())) UpdatePassageIgnores(key.Get(),state,deltaTime);
+			if (bDeinitializing || GetWorld()->bIsTearingDown) return;
+			StoreState(key,MoveTemp(state));
+		}
+	}
+	DrainNearbyEvents();
 }
 
 TStatId USeamlessPortalTraversalSubsystem::GetStatId() const
-{
-	RETURN_QUICK_DECLARE_CYCLE_STAT(USeamlessPortalTraversalSubsystem, STATGROUP_Tickables);
-}
+{ RETURN_QUICK_DECLARE_CYCLE_STAT(USeamlessPortalTraversalSubsystem,STATGROUP_Tickables); }
 
 void USeamlessPortalTraversalSubsystem::Deinitialize()
 {
-	bDeinitializing = true;
-	for (auto& pair : travellers) RestoreIgnores(pair.Key.Get(), pair.Value);
-	travellers.Empty();
-	portals.Empty();
+	if (bDeinitializing) return;
+	bDeinitializing=true;
+	// Expire this world's locks only. Other PIE worlds have their own clocks and participants.
+	PortalTraversalGuard::Cleanup(GetWorld(),TNumericLimits<double>::Max());
+	for (auto& pair:travellers) RestoreIgnores(pair.Key.Get(),pair.Value);
+	travellers.Empty(); portals.Empty(); nearbyEvents.Empty(); entryEvents.Empty();
+	// entryWork/travellerKeys may be read by a synchronous movement callback; Tick will unwind.
 	Super::Deinitialize();
 }

@@ -7,6 +7,11 @@
 class AOneWayTeleportActor;
 class USceneCaptureComponent2D;
 class UTextureRenderTarget2D;
+struct FPortalViewTickBuffers;
+struct FPortalViewTickBuffersDeleter
+{
+	void operator()(FPortalViewTickBuffers* buffers) const;
+};
 
 /** Snapshot of the reference frames used by an actual submitted capture, not a skipped update. */
 struct FPortalCaptureHistory
@@ -63,6 +68,11 @@ class SHOOTINGARENA_API UPortalViewSubsystem : public UTickableWorldSubsystem
 	GENERATED_BODY()
 
 public:
+	UPortalViewSubsystem();
+	virtual ~UPortalViewSubsystem() override;
+	void RegisterPortal(AOneWayTeleportActor* portal);
+	void UnregisterPortal(AOneWayTeleportActor* portal);
+	int32 GetRegisteredPortalCount() const;
 	virtual void Initialize(FSubsystemCollectionBase& collection) override;
 	virtual void Deinitialize() override;
 	virtual void Tick(float deltaTime) override;
@@ -85,7 +95,13 @@ public:
 		bool bSpatialView, bool bObserverMoving, float deltaTime);
 
 private:
+	TUniquePtr<FPortalViewTickBuffers,FPortalViewTickBuffersDeleter> tickBuffers;
 	friend class FSpatialPortalSmoothCaptureTest;
+	friend class FSpatialPortalRenderShutdownTest;
+	void FinishViewUpdate();
+	bool bUpdatingViews = false;
+	bool bDeinitializing = false;
+	bool bClearingViews = false;
 	static int32 ResolveSmoothRenderTargetSize(int32 normalResolution, const class UTeleportDataAsset& settings);
 	FPortalViewInstance& FindOrCreateView(AOneWayTeleportActor* portal);
 	int32 ResolvePortalRenderTargetSize(

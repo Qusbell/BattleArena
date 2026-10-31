@@ -34,12 +34,19 @@ bool FRespawnCountdownStartTest::RunTest(const FString& Parameters)
 
 	TestTrue(TEXT("Countdown initializes"), URespawnCountdownLibrary::StartRespawnCountdown(Widget, 2.4));
 	TestEqual(TEXT("Uses the supplied duration"), Remaining(), 2.4);
-	TestEqual(TEXT("Initial display is full"), Bar->GetPercent(), 1.f);
+	TestEqual(TEXT("Initial display is empty"), Bar->GetPercent(), 0.f);
 	TestTrue(TEXT("Timer is scheduled"), World->GetTimerManager().TimerExists(Handle));
+	Current->SetFloatingPointPropertyValue(Current->ContainerPtrToValuePtr<void>(Widget), 1.2);
+	Widget->ProcessEvent(Widget->FindFunctionChecked(TEXT("RefreshRespawnDisplay")), nullptr);
+	TestEqual(TEXT("Half the wait fills half the bar"), Bar->GetPercent(), 0.5f);
+	Current->SetFloatingPointPropertyValue(Current->ContainerPtrToValuePtr<void>(Widget), 0.0);
+	Widget->ProcessEvent(Widget->FindFunctionChecked(TEXT("RefreshRespawnDisplay")), nullptr);
+	TestEqual(TEXT("Finished wait fills the bar"), Bar->GetPercent(), 1.f);
 	const FTimerHandle Previous = Handle;
 	TestTrue(TEXT("An active countdown can restart"), URespawnCountdownLibrary::StartRespawnCountdown(Widget, 1.2));
 	TestFalse(TEXT("Restart removes the previous timer"), World->GetTimerManager().TimerExists(Previous));
 	TestEqual(TEXT("Restart resets remaining time"), Remaining(), 1.2);
+	TestEqual(TEXT("Restart empties the bar"), Bar->GetPercent(), 0.f);
 
 	TestTrue(TEXT("Zero duration is handled"), URespawnCountdownLibrary::StartRespawnCountdown(Widget, 0.0));
 	TestEqual(TEXT("Zero duration empties the bar"), Bar->GetPercent(), 0.f);

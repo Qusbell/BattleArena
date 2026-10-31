@@ -14,6 +14,59 @@
 #include "GameFramework/Character.h"
 #include "Logging/MessageLog.h"
 #include "Misc/AutomationTest.h"
+#include "../Character/CharacterPoolReflection.h"
+#include "TimerManager.h"
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCharacterPoolOverLifeTest,
+	"ShootingArena.CharacterPool.OverLifeDecayRestartsAfterRespawn",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCharacterPoolOverLifeTest::RunTest(const FString& Parameters)
+{
+	using namespace CharacterPoolReflection;
+	UClass* HealthClass = LoadClass<UActorComponent>(nullptr,
+		TEXT("/Game/QuakeLike_1_0/Life/BPC_Life.BPC_Life_C"));
+	UObject* LifeData = LoadObject<UObject>(nullptr,
+		TEXT("/Game/QuakeLike_1_0/Data/Chracter/DA_DefaultLife.DA_DefaultLife"));
+	if (!TestNotNull(TEXT("Existing health component"), HealthClass) || !TestNotNull(TEXT("Existing life settings"), LifeData)) return false;
+	const auto Values = UWorld::InitializationValues().AllowAudioPlayback(false).RequiresHitProxies(false)
+		.CreatePhysicsScene(true).CreateNavigation(false).CreateAISystem(false).ShouldSimulatePhysics(false).SetTransactional(false);
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, false, NAME_None, nullptr, true, ERHIFeatureLevel::Num, &Values);
+	if (!TestNotNull(TEXT("Isolated respawn world"), World)) return false;
+	GEngine->CreateNewWorldContext(EWorldType::Game).SetCurrentWorld(World);
+	ACharacter* Pawn = World->SpawnActor<ACharacter>();
+	UActorComponent* Health = NewObject<UActorComponent>(Pawn, HealthClass);
+	Pawn->AddInstanceComponent(Health); Health->RegisterComponent();
+	FindFProperty<FObjectPropertyBase>(HealthClass, TEXT("LifeData"))->SetObjectPropertyValue_InContainer(Health, LifeData);
+	const auto* Info = FindFProperty<FStructProperty>(HealthClass, TEXT("LifeInfo"));
+	FNumericProperty* HealthValue = nullptr;
+	for (TFieldIterator<FNumericProperty> It(Info->Struct); It; ++It)
+		if (It->GetName().StartsWith(TEXT("NowHealth_"))) HealthValue = *It;
+	const auto* Timer = FindFProperty<FStructProperty>(HealthClass, TEXT("OverLifeTimerHandle"));
+	if (TestNotNull(TEXT("Current health field"), HealthValue) && TestNotNull(TEXT("Existing decay timer"), Timer))
+	{
+		auto ReadHealth = [&] { return HealthValue->GetFloatingPointPropertyValue(
+			HealthValue->ContainerPtrToValuePtr<void>(Info->ContainerPtrToValuePtr<void>(Health))); };
+		auto* Pool = NewObject<UCharacterPoolComponent>(Pawn);
+		Pawn->AddInstanceComponent(Pool); Pool->RegisterComponent(); Pool->Life.bManaged = true; Pool->CapturePresentation();
+		for (int32 Cycle = 0; Cycle < 3; ++Cycle)
+		{
+			Pool->Life.bDead = true;
+			TestTrue(TEXT("Reused pawn prepares another life"), Pool->PrepareRespawn(FTransform::Identity));
+			const double SpawnHealth = ReadHealth();
+			TestTrue(TEXT("Spawn health exceeds the normal cap"), SpawnHealth > Number(LifeData, TEXT("MaxHealth")));
+			TestTrue(TEXT("Respawn restarts the existing decay timer without a heal pickup"),
+				World->GetTimerManager().IsTimerActive(*Timer->ContainerPtrToValuePtr<FTimerHandle>(Health)));
+			++GFrameCounter;
+			World->GetTimerManager().Tick(0.f);
+			++GFrameCounter;
+			World->GetTimerManager().Tick(1.1f);
+			TestTrue(TEXT("Health actually decreases without collecting an item"), ReadHealth() < SpawnHealth);
+		}
+	}
+	GEngine->DestroyWorldContext(World); World->DestroyWorld(false);
+	return !HasAnyErrors();
+}
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCharacterPoolResetTest,
 	"ShootingArena.CharacterPool.CutCapPhysicsAndFirstPersonTransforms",

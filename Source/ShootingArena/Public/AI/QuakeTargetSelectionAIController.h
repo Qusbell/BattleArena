@@ -6,6 +6,7 @@
 #include "QuakeTargetSelectionAIController.generated.h"
 
 class ACharacter;
+class UQuakeAIFireCycleComponent;
 
 UCLASS()
 class SHOOTINGARENA_API AQuakeTargetSelectionAIController : public AMyAIController
@@ -14,6 +15,9 @@ class SHOOTINGARENA_API AQuakeTargetSelectionAIController : public AMyAIControll
 
 public:
 	AQuakeTargetSelectionAIController();
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|Fire Cycle")
+	TObjectPtr<UQuakeAIFireCycleComponent> FireCycle;
 
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "AI|Target Selection")
 	void GetCharacterTargets(TArray<ACharacter*>& Characters) const;
