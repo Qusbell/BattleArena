@@ -128,9 +128,9 @@
 	{
 		"Name": "ID.QuadDamage",
 		"Item_Tag": "(TagName=\"ID.QuadDamage\")",
-		"Base_Score": 0,
+		"Base_Score": 1000,
 		"Reference_Tag": "(TagName=\"AITargetable\")",
-		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=0.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=None))"
+		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=None))"
 	},
 	{
 		"Name": "ID.Protection",
