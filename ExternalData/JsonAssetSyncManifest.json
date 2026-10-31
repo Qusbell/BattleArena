@@ -8899,6 +8899,16 @@
 						"units": "s"
 					},
 					"type": "float"
+				},
+				{
+					"name": "bUseCharacterStateCache",
+					"displayName": "Use Character State Cache",
+					"cppType": "bool",
+					"order": 6,
+					"tooltip": "Share alive/revenge calculations across a character's meshes within one update only.",
+					"category": "Outline|Performance",
+					"advancedDisplay": false,
+					"type": "bool"
 				}
 			]
 		},
@@ -9426,6 +9436,31 @@
 							"type": "double"
 						}
 					]
+				},
+				{
+					"name": "bUseTimerBasedSearch",
+					"displayName": "Use Timer Based Search",
+					"cppType": "bool",
+					"order": 7,
+					"tooltip": "Compare periodic timer searches against the original per-frame targeting.",
+					"category": "Nickname|Performance",
+					"advancedDisplay": false,
+					"type": "bool"
+				},
+				{
+					"name": "targetSearchInterval",
+					"displayName": "Target Search Interval",
+					"cppType": "float",
+					"order": 8,
+					"category": "Nickname|Performance",
+					"advancedDisplay": false,
+					"constraints":
+					{
+						"clampMin": "0.01",
+						"clampMax": "1.0",
+						"units": "s"
+					},
+					"type": "float"
 				}
 			]
 		},

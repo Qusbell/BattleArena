@@ -125,6 +125,7 @@ void UShooterOutlineComponent::ApplyOutlineSettings(UShooterOutlineSettings* New
 	Settings = NewSettings;
 	ShooterClass = NewSettings->ShooterClass.LoadSynchronous();
 	RefreshInterval = ShooterDisplayValidation::FiniteClamp(NewSettings->RefreshInterval, 0.05f, MAX_flt, 0.2f);
+	SetOutlineCharacterStateCacheEnabled(NewSettings->bUseCharacterStateCache);
 	StencilValue = FMath::Clamp(NewSettings->StencilValue, 2, 255);
 	RevengeStencilValue = FMath::Clamp(NewSettings->RevengeStencilValue, 2, 255);
 	if (RevengeStencilValue == StencilValue) RevengeStencilValue = StencilValue == 255 ? 254 : StencilValue + 1;
@@ -184,6 +185,11 @@ void UShooterOutlineComponent::SetOutlineEnabled(bool bEnabled)
 void UShooterOutlineComponent::ResetOutlineStyle()
 {
 	if (const UShooterOutlineSettings* Defaults = Settings.Get()) SetOutlineStyle(Defaults->Style);
+}
+
+void UShooterOutlineComponent::SetOutlineCharacterStateCacheEnabled(bool bEnabled)
+{
+	if (!bEndingPlay && !IsBeingDestroyed()) bUseCharacterStateCache = bEnabled;
 }
 
 void UShooterOutlineComponent::UpdateMaterial()
@@ -317,14 +323,41 @@ void UShooterOutlineComponent::UpdateProxies()
 	const APlayerController* PC = Cast<APlayerController>(GetOwner());
 	if (bEndingPlay || IsBeingDestroyed() || !IsValid(PC) || PC->IsActorBeingDestroyed()
 		|| !GetWorld() || GetWorld()->bIsTearingDown) return;
+	struct FCharacterState
+	{
+		bool bAlive;
+		int32 Stencil;
+	};
+	// Never retain state across frames: deaths, pooling and revenge changes are
+	// observed on the next update exactly as in the original per-mesh path.
+	TMap<APawn*, FCharacterState> CharacterStates;
+	if (bUseCharacterStateCache) CharacterStates.Reserve(Proxies.Num());
 	for (FShooterOutlineProxy& Proxy : Proxies)
 	{
 		UMeshComponent* Source = Proxy.Source.Get();
 		APawn* Shooter = Proxy.Shooter.Get();
-		const bool bVisible = Source && Shooter && !Shooter->IsHidden() && IsLiveMesh(Source, PC->GetViewTarget()) && UShooterDisplayLibrary::IsShooterAlive(Shooter);
 		if (!IsValid(Proxy.Mesh) || Proxy.Mesh->IsBeingDestroyed()) continue;
+		bool bVisible;
+		int32 Stencil;
+		if (bUseCharacterStateCache)
+		{
+			FCharacterState* State = CharacterStates.Find(Shooter);
+			if (!State)
+			{
+				State = &CharacterStates.Add(Shooter, FCharacterState{
+					IsValid(Shooter) && !Shooter->IsActorBeingDestroyed() && !Shooter->IsHidden() && UShooterDisplayLibrary::IsShooterAlive(Shooter),
+					GetShooterStencil(Shooter)});
+			}
+			bVisible = Source && Shooter && !Shooter->IsHidden() && IsLiveMesh(Source, PC->GetViewTarget()) && State->bAlive;
+			Stencil = State->Stencil;
+		}
+		else
+		{
+			bVisible = Source && Shooter && !Shooter->IsHidden() && IsLiveMesh(Source, PC->GetViewTarget()) && UShooterDisplayLibrary::IsShooterAlive(Shooter);
+			Stencil = GetShooterStencil(Shooter);
+		}
 		Proxy.Mesh->SetRenderCustomDepth(bVisible);
-		Proxy.Mesh->SetCustomDepthStencilValue(GetShooterStencil(Shooter));
+		Proxy.Mesh->SetCustomDepthStencilValue(Stencil);
 		if (!bVisible) continue;
 		Proxy.Mesh->SetOnlyOwnerSee(Source->bOnlyOwnerSee);
 		Proxy.Mesh->SetOwnerNoSee(Source->bOwnerNoSee);

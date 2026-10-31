@@ -45,4 +45,7 @@ public:
 	int32 RevengeStencilValue = 3;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Outline|Setup", meta = (ClampMin = "0.05", Units = "s"))
 	float RefreshInterval = 0.2f;
+	/** Share alive/revenge calculations across a character's meshes within one update only. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Outline|Performance")
+	bool bUseCharacterStateCache = false;
 };

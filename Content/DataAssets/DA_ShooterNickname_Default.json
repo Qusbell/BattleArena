@@ -60,5 +60,7 @@
 	{
 		"x": 0.5,
 		"y": 0.5
-	}
+	},
+	"bUseTimerBasedSearch": true,
+	"targetSearchInterval": 0.05000000074505806
 }

@@ -59,4 +59,9 @@ public:
 	/** Coordinates within the camera's constrained view rectangle, usually its centre. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Nickname|Targeting")
 	FVector2D CrosshairUV = FVector2D(0.5, 0.5);
+	/** Compare periodic timer searches against the original per-frame targeting. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Nickname|Performance")
+	bool bUseTimerBasedSearch = false;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Nickname|Performance", meta = (ClampMin = "0.01", ClampMax = "1.0", Units = "s", EditCondition = "bUseTimerBasedSearch"))
+	float TargetSearchInterval = 0.05f;
 };

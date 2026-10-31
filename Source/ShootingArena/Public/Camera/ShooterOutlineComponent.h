@@ -40,6 +40,10 @@ public:
 	void ApplyOutlineSettings(UShooterOutlineSettings* NewSettings);
 	UFUNCTION(BlueprintCallable, Category = "Shooter Outline")
 	void ResetOutlineStyle();
+	UFUNCTION(BlueprintCallable, Category = "Shooter Outline|Performance")
+	void SetOutlineCharacterStateCacheEnabled(bool bEnabled);
+	UFUNCTION(BlueprintPure, Category = "Shooter Outline|Performance")
+	bool IsOutlineCharacterStateCacheEnabled() const { return bUseCharacterStateCache; }
 	UFUNCTION(BlueprintPure, Category = "Shooter Outline")
 	bool IsOutlineEnabled() const { return Style.bEnabled; }
 	UFUNCTION(BlueprintPure, Category = "Shooter Outline")
@@ -54,6 +58,7 @@ protected:
 private:
 #if WITH_DEV_AUTOMATION_TESTS
 	friend class FCharacterDisplayRegressionTest;
+	friend class FCharacterDisplayPerformanceTest;
 #endif
 	UPROPERTY(Transient)
 	FShooterOutlineStyle Style;
@@ -66,6 +71,7 @@ private:
 	TSharedPtr<FSceneViewExtensionBase, ESPMode::ThreadSafe> ViewExtension;
 	bool bPresentationActive = false;
 	bool bEndingPlay = false;
+	bool bUseCharacterStateCache = false;
 	float RefreshInterval = 0.2f;
 	float RefreshElapsed = 0.0f;
 	int32 StencilValue = 2;
