@@ -7,7 +7,7 @@
 		"Fire_Throttle": 0,
 		"View_Max_Change": 540,
 		"ReactionTime": 0.5,
-		"Aggression": 0.20000000000000001,
+		"Aggression": 0.5,
 		"Aggression_Threshold": 0.90000000000000002,
 		"Jumper": 0.94999999999999996
 	},
