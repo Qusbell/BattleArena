@@ -6,7 +6,7 @@
 		"ammo": 30,
 		"mesh": "/Script/Engine.StaticMesh'/Game/Variant_Shooter/Blueprints/Pickups/Projectiles/Meshes/SM_FoamBullet.SM_FoamBullet'",
 		"PickupSound": "None",
-		"pickupVolume": 0,
+		"pickupVolume": 1,
 		"SpawnSound": "None",
 		"SpawnVolume": 1
 	},

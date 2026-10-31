@@ -41,7 +41,7 @@
 		"SpawnSound": "None",
 		"SpawnVolume": 1,
 		"PickupSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/PickUp_Shotgun.PickUp_Shotgun'",
-		"PickupVolume": 2.5
+		"PickupVolume": 1
 	},
 	{
 		"Name": "ID.RailGun",
