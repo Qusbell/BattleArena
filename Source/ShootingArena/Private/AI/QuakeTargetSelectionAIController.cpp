@@ -130,6 +130,7 @@ void AQuakeTargetSelectionAIController::HandlePossessedPawnDamaged(
 	RecentDamageDirection =
 		(Attacker->GetActorLocation() - DamagedActor->GetActorLocation()).GetSafeNormal();
 	RecentDamageExpireTime = GetWorld()->GetTimeSeconds() + RecentDamageWindow;
+	RequestDamageLook(RecentDamageDirection);
 }
 
 ACharacter* AQuakeTargetSelectionAIController::ResolveAttacker(
