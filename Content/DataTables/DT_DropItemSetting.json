@@ -14,7 +14,7 @@
 		"MaxLaunchForce": 550,
 		"HorizontalDecelTime": 1.2,
 		"HorizontalDecelExponent": 2,
-		"DespawnTime": 30,
+		"DespawnTime": 3,
 		"SettlementHeightOffset": 50,
 		"SmallHealthItem": "(DataTable=\"/Script/Engine.DataTable'/Game/QuakeLike_1_0/Data/Item/DropTable/DT_LifeItemTable.DT_LifeItemTable'\",RowName=\"ID.HealPack.Small\")",
 		"SmallArmorItem": "(DataTable=\"/Script/Engine.DataTable'/Game/QuakeLike_1_0/Data/Item/DropTable/DT_LifeItemTable.DT_LifeItemTable'\",RowName=\"ID.PlatePack.Small\")",
