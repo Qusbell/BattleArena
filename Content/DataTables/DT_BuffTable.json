@@ -18,7 +18,8 @@
 		"WarningWorldEnabled": false,
 		"WarningLocalVolume": 1,
 		"WarningWorldVolume": 1,
-		"WarningAttenuation": "None"
+		"WarningAttenuation": "None",
+		"attributes": "(GameplayTags=((TagName=\"AITargetable.DropItem.Buff\")))"
 	},
 	{
 		"Name": "Buff.Multi.Def",
@@ -39,7 +40,8 @@
 		"WarningWorldEnabled": false,
 		"WarningLocalVolume": 1,
 		"WarningWorldVolume": 1,
-		"WarningAttenuation": "None"
+		"WarningAttenuation": "None",
+		"attributes": "(GameplayTags=((TagName=\"AITargetable.DropItem.Buff\")))"
 	},
 	{
 		"Name": "Buff.Add.Atk",
@@ -60,7 +62,8 @@
 		"WarningWorldEnabled": false,
 		"WarningLocalVolume": 1,
 		"WarningWorldVolume": 1,
-		"WarningAttenuation": "None"
+		"WarningAttenuation": "None",
+		"attributes": "(GameplayTags=((TagName=\"AITargetable.DropItem.Buff\")))"
 	},
 	{
 		"Name": "Buff.Add.Def",
@@ -81,6 +84,7 @@
 		"WarningWorldEnabled": false,
 		"WarningLocalVolume": 1,
 		"WarningWorldVolume": 1,
-		"WarningAttenuation": "None"
+		"WarningAttenuation": "None",
+		"attributes": "(GameplayTags=((TagName=\"AITargetable.DropItem.Buff\")))"
 	}
 ]
