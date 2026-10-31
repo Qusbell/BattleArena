@@ -1,86 +1,5 @@
 [
 	{
-		"Name": "AITestMap",
-		"Map_Name": "LSH_AITest",
-		"Map_Image": "None",
-		"Map_Asset": "(WorldAsset=\"/Game/QuakeLike_Base/LSH_AITest.LSH_AITest\")",
-		"Character_List": [
-			"D01",
-			"D02"
-		],
-		"Max_Player_Count": 2,
-		"Map_Size": 0,
-		"Map_Explain": "",
-		"WinKillCount": -1,
-		"GameTimer": "(X=-1.000000,Y=0.000000)",
-		"Map_ID": "Map_05",
-		"Map_Feature": [],
-		"Feature_Icon": []
-	},
-	{
-		"Name": "Map_00",
-		"Map_Name": "Lvl_QuakeMap_00",
-		"Map_Image": "None",
-		"Map_Asset": "(WorldAsset=\"/Game/QuakeLike_Base/Lvl_QuakeMap_00.Lvl_QuakeMap_00\")",
-		"Character_List": [
-			"C01",
-			"C02"
-		],
-		"Max_Player_Count": 2,
-		"Map_Size": 0,
-		"Map_Explain": "",
-		"WinKillCount": -1,
-		"GameTimer": "(X=-1.000000,Y=0.000000)",
-		"Map_ID": "Map_00",
-		"Map_Feature": [],
-		"Feature_Icon": []
-	},
-	{
-		"Name": "Map_01",
-		"Map_Name": "AI_Test_Level",
-		"Map_Image": "None",
-		"Map_Asset": "(WorldAsset=\"/Game/QuakeLike_1_0/AITest_YJS/AI_Test_Level.AI_Test_Level\")",
-		"Character_List": [
-			"C02"
-		],
-		"Max_Player_Count": 6,
-		"Map_Size": 0,
-		"Map_Explain": "NSLOCTEXT(\"[9702DEC0DEE0E3E2145DB69F1E91813C]\", \"ADB5F5F24F420C49DF2B8FBFC3AA0732\", \"테스트 레벨입니다.글10자기준으로줄바꿈이됩니다..줄바꿈되나요\")",
-		"WinKillCount": -1,
-		"GameTimer": "(X=-1.000000,Y=0.000000)",
-		"Map_ID": "Map_01",
-		"Map_Feature": [
-			"NSLOCTEXT(\"[9702DEC0DEE0E3E2145DB69F1E91813C]\", \"1B3CC46449C4311D052AEFB692035015\", \"AI\")"
-		],
-		"Feature_Icon": [
-			"/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Icon/AI.AI'"
-		]
-	},
-	{
-		"Name": "Map_02",
-		"Map_Name": "Lvl_QuakeMap_02",
-		"Map_Image": "None",
-		"Map_Asset": "(WorldAsset=\"/Game/QuakeLike_Base/Lvl_QuakeMap_02.Lvl_QuakeMap_02\")",
-		"Character_List": [
-			"C04",
-			"C05"
-		],
-		"Max_Player_Count": 6,
-		"Map_Size": 0,
-		"Map_Explain": "NSLOCTEXT(\"[9702DEC0DEE0E3E2145DB69F1E91813C]\", \"F87B37B64662ADA18FE0B7BD1C72D920\", \"02맵입니다.\")",
-		"WinKillCount": -1,
-		"GameTimer": "(X=-1.000000,Y=0.000000)",
-		"Map_ID": "Map_02",
-		"Map_Feature": [
-			"NSLOCTEXT(\"[9702DEC0DEE0E3E2145DB69F1E91813C]\", \"7B4187454898847BF5BA368DC189EBAA\", \"AI\")",
-			"NSLOCTEXT(\"[9702DEC0DEE0E3E2145DB69F1E91813C]\", \"796766724644455A1DDFA5AA28DE1D55\", \"점프 패드\")"
-		],
-		"Feature_Icon": [
-			"/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Icon/AI.AI'",
-			"/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Icon/JumpPad.JumpPad'"
-		]
-	},
-	{
 		"Name": "Map_03",
 		"Map_Name": "Lvl_PortalMap",
 		"Map_Image": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Map_Image/04_Map.04_Map'",
@@ -96,8 +15,8 @@
 		"Max_Player_Count": 6,
 		"Map_Size": 2,
 		"Map_Explain": "NSLOCTEXT(\"[9702DEC0DEE0E3E2145DB69F1E91813C]\", \"06081D044470066631CB1FB2FC087DD8\", \"포탈맵입니다.\")",
-		"WinKillCount": -1,
-		"GameTimer": "(X=-1.000000,Y=0.000000)",
+		"WinKillCount": 10,
+		"GameTimer": "(X=3.000000,Y=0.000000)",
 		"Map_ID": "Map_03",
 		"Map_Feature": [
 			"NSLOCTEXT(\"[9702DEC0DEE0E3E2145DB69F1E91813C]\", \"D3C5F41C4FF6E7DED27C4080EB9A93D0\", \"AI\")",
@@ -197,5 +116,86 @@
 		"Map_ID": "LobbyMap",
 		"Map_Feature": [],
 		"Feature_Icon": []
+	},
+	{
+		"Name": "AITestMap",
+		"Map_Name": "LSH_AITest",
+		"Map_Image": "None",
+		"Map_Asset": "(WorldAsset=\"/Game/QuakeLike_Base/LSH_AITest.LSH_AITest\")",
+		"Character_List": [
+			"D01",
+			"D02"
+		],
+		"Max_Player_Count": 2,
+		"Map_Size": 0,
+		"Map_Explain": "",
+		"WinKillCount": -1,
+		"GameTimer": "(X=-1.000000,Y=0.000000)",
+		"Map_ID": "Map_05",
+		"Map_Feature": [],
+		"Feature_Icon": []
+	},
+	{
+		"Name": "Map_00",
+		"Map_Name": "Lvl_QuakeMap_00",
+		"Map_Image": "None",
+		"Map_Asset": "(WorldAsset=\"/Game/QuakeLike_Base/Lvl_QuakeMap_00.Lvl_QuakeMap_00\")",
+		"Character_List": [
+			"C01",
+			"C02"
+		],
+		"Max_Player_Count": 2,
+		"Map_Size": 0,
+		"Map_Explain": "",
+		"WinKillCount": -1,
+		"GameTimer": "(X=-1.000000,Y=0.000000)",
+		"Map_ID": "Map_00",
+		"Map_Feature": [],
+		"Feature_Icon": []
+	},
+	{
+		"Name": "Map_01",
+		"Map_Name": "AI_Test_Level",
+		"Map_Image": "None",
+		"Map_Asset": "(WorldAsset=\"/Game/QuakeLike_1_0/AITest_YJS/AI_Test_Level.AI_Test_Level\")",
+		"Character_List": [
+			"C02"
+		],
+		"Max_Player_Count": 6,
+		"Map_Size": 0,
+		"Map_Explain": "NSLOCTEXT(\"[9702DEC0DEE0E3E2145DB69F1E91813C]\", \"ADB5F5F24F420C49DF2B8FBFC3AA0732\", \"테스트 레벨입니다.글10자기준으로줄바꿈이됩니다..줄바꿈되나요\")",
+		"WinKillCount": -1,
+		"GameTimer": "(X=-1.000000,Y=0.000000)",
+		"Map_ID": "Map_01",
+		"Map_Feature": [
+			"NSLOCTEXT(\"[9702DEC0DEE0E3E2145DB69F1E91813C]\", \"1B3CC46449C4311D052AEFB692035015\", \"AI\")"
+		],
+		"Feature_Icon": [
+			"/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Icon/AI.AI'"
+		]
+	},
+	{
+		"Name": "Map_02",
+		"Map_Name": "Lvl_QuakeMap_02",
+		"Map_Image": "None",
+		"Map_Asset": "(WorldAsset=\"/Game/QuakeLike_Base/Lvl_QuakeMap_02.Lvl_QuakeMap_02\")",
+		"Character_List": [
+			"C04",
+			"C05"
+		],
+		"Max_Player_Count": 6,
+		"Map_Size": 0,
+		"Map_Explain": "NSLOCTEXT(\"[9702DEC0DEE0E3E2145DB69F1E91813C]\", \"F87B37B64662ADA18FE0B7BD1C72D920\", \"02맵입니다.\")",
+		"WinKillCount": -1,
+		"GameTimer": "(X=-1.000000,Y=0.000000)",
+		"Map_ID": "Map_02",
+		"Map_Feature": [
+			"NSLOCTEXT(\"[9702DEC0DEE0E3E2145DB69F1E91813C]\", \"7B4187454898847BF5BA368DC189EBAA\", \"AI\")",
+			"NSLOCTEXT(\"[9702DEC0DEE0E3E2145DB69F1E91813C]\", \"796766724644455A1DDFA5AA28DE1D55\", \"점프 패드\")"
+		],
+		"Feature_Icon": [
+			"/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Icon/AI.AI'",
+			"/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Icon/JumpPad.JumpPad'"
+		]
 	}
 ]
