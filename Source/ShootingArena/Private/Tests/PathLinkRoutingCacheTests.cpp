@@ -2,8 +2,13 @@
 #include "AI/PathLink/PathLinkRoutingCache.h"
 #include "AI/PathLink/PathLink.h"
 #include "AI/PathLink/Internal/PathLinkNavSnapshot.h"
+#include "AI/PathLink/Internal/PathLinkRuntimeCache.h"
 #include "Engine/World.h"
 #include "Misc/AutomationTest.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Guid.h"
+#include "Misc/Paths.h"
+#include "HAL/FileManager.h"
 #include "HAL/IConsoleManager.h"
 #include "Misc/ScopeExit.h"
 #include "Serialization/ObjectWriter.h"
@@ -160,6 +165,62 @@ bool FPathLinkRoutingCacheTest::RunTest(const FString& Parameters)
     Cache->Islands[0].DepartureDirections[2].Set(FVector::ZeroVector);
     TestEqual(TEXT("Missing directions preserve legacy endpoint offsets"),Cache->EstimateNormalDistance(0,FVector(200,0,0),1,FVector(1000,0,0)),1200.0);
     World->DestroyWorld(false);
+    return true;
+}
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPathLinkRuntimePersistenceTest, "ShootingArena.PathLink.RuntimePersistence",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FPathLinkRuntimePersistenceTest::RunTest(const FString& Parameters)
+{
+    const FString Name = TEXT("/Temp/PathLinkRuntimeCacheTest_") + FGuid::NewGuid().ToString(EGuidFormats::Digits);
+    UPackage* Package = CreatePackage(*Name);
+    const auto Values = UWorld::InitializationValues().AllowAudioPlayback(false).CreatePhysicsScene(false)
+        .CreateNavigation(false).CreateAISystem(false).ShouldSimulatePhysics(false).SetTransactional(false);
+    UWorld* World = UWorld::CreateWorld(EWorldType::Game, false, NAME_None, Package, true, ERHIFeatureLevel::Num, &Values);
+    if (!TestNotNull(TEXT("Transient test world"), World)) return false;
+    const FString File = PathLinkRuntimeCache::FilePath(World);
+    if (FPaths::FileExists(File)) { AddError(TEXT("Refusing to overwrite an existing cache file.")); World->DestroyWorld(false); return false; }
+    ON_SCOPE_EXIT { IFileManager::Get().Delete(*File); IFileManager::Get().Delete(*(File + TEXT(".tmp"))); IFileManager::Get().DeleteDirectory(*(File + TEXT(".tmp")), false, false); World->DestroyWorld(false); };
+    UPathLinkRoutingCacheData* Source = NewObject<UPathLinkRoutingCacheData>(World);
+    Source->DataVersion = PathLinkBake::Version; Source->NavigationSignature = TEXT("NavSignature");
+    Source->Polygons.SetNum(2);
+    Source->Polygons[0].Island = Source->Polygons[1].Island = 0;
+    Source->Polygons[0].LocalIndex = 0; Source->Polygons[1].LocalIndex = 1;
+    Source->Polygons[1].Center = FVector(1000,0,0);
+    auto& Island = Source->Islands.AddDefaulted_GetRef(); Island.PolygonCount = 2;
+    Island.Distances = {0,1000,1000,0}; Island.DepartureDirections.SetNumZeroed(4);
+    APathLink* Link = World->SpawnActor<APathLink>();
+    auto& Traversal = Source->Traversals.AddDefaulted_GetRef();
+    Traversal.Link = Link; Traversal.EntryPoly = 0; Traversal.ExitPoly = 1;
+    Source->TransitionDistances = {-1}; Source->LinkSignature = UPathLinkRoutingCacheData::ComputeLinkSignature(World);
+    FPathLinkNavSnapshot Snapshot; Snapshot.Signature = Source->NavigationSignature; Snapshot.Refs.SetNum(2);
+    FString Error;
+    if (!TestTrue(TEXT("Save complete runtime cache"), PathLinkRuntimeCache::Save(World, *Source, Error))) return false;
+    auto* Loaded = NewObject<UPathLinkRoutingCacheData>(World);
+    if (TestTrue(TEXT("Load matching runtime cache"), PathLinkRuntimeCache::Load(World, nullptr, Snapshot, *Loaded, Error)))
+    {
+        TestEqual(TEXT("Traversal is rebound to current world actor"), Loaded->Traversals[0].Link.Get(), Link);
+        TestEqual(TEXT("Distance table survives disk round trip"), Loaded->Islands[0].Distances[1], 1000.0f);
+    }
+    const FString TempDirectory = File + TEXT(".tmp");
+    if (TestTrue(TEXT("Create a directory that prevents temporary cache file creation"), IFileManager::Get().MakeDirectory(*TempDirectory)))
+    {
+        TestFalse(TEXT("Failed file save is reported"), PathLinkRuntimeCache::Save(World, *Source, Error));
+        TestTrue(TEXT("Save failure leaves in-memory cache valid"), Source->IsBaked());
+        IFileManager::Get().DeleteDirectory(*TempDirectory, false, false);
+    }
+    Snapshot.Signature = TEXT("DifferentNav");
+    auto* Stale = NewObject<UPathLinkRoutingCacheData>(World);
+    TestFalse(TEXT("Changed navigation rejects saved cache"), PathLinkRuntimeCache::Load(World, nullptr, Snapshot, *Stale, Error));
+    Snapshot.Signature = Source->NavigationSignature;
+    TArray<uint8> Bytes;
+    if (TestTrue(TEXT("Read saved cache for corruption test"), FFileHelper::LoadFileToArray(Bytes, *File)) && !Bytes.IsEmpty())
+    {
+        Bytes[0] ^= 1;
+        TestTrue(TEXT("Write corrupted test cache"), FFileHelper::SaveArrayToFile(Bytes, *File));
+        auto* Corrupt = NewObject<UPathLinkRoutingCacheData>(World);
+        TestFalse(TEXT("Checksum rejects corruption"), PathLinkRuntimeCache::Load(World, nullptr, Snapshot, *Corrupt, Error));
+    }
     return true;
 }
 #endif

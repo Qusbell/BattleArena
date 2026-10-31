@@ -11,6 +11,16 @@ class APathLink;
 class UPathLinkRoutingCacheData;
 class ANavigationData;
 class ARecastNavMesh;
+class FPathLinkRuntimeCacheJob;
+
+UENUM(BlueprintType)
+enum class EPathLinkRuntimeCacheState : uint8
+{
+    WaitingForNavigation,
+    Building,
+    Ready,
+    Failed
+};
 
 /** Result of the last estimate query, separate from validation of the baked data. */
 UENUM(BlueprintType)
@@ -139,6 +149,8 @@ public:
     UFUNCTION(BlueprintPure, Category = "AI|PathLink|Performance") double GetMaxRouteMilliseconds() const { return MaxRouteMilliseconds; }
     UFUNCTION(BlueprintPure, Category = "AI|PathLink|Performance") double GetMaxRouteWorkPerFrameMilliseconds() const { return MaxRouteWorkPerFrameMilliseconds; }
     UFUNCTION(BlueprintPure, Category = "AI|PathLink|Performance") FString GetRoutingCacheStatus() const { return RoutingCacheStatus; }
+    UFUNCTION(BlueprintPure, Category = "AI|PathLink|Performance") EPathLinkRuntimeCacheState GetRuntimeCacheState() const { return RuntimeCacheState; }
+    UFUNCTION(BlueprintPure, Category = "AI|PathLink|Performance") FString GetRuntimeCacheDetail() const { return RuntimeCacheDetail; }
     /** Read immediately after GetEstimatedRouteDistance; cache validation alone does not describe query success. */
     UFUNCTION(BlueprintPure, Category = "AI|PathLink|Debug") EPathLinkEstimateStatus GetLastEstimateStatus() const { return LastEstimateStatus; }
 
@@ -182,6 +194,12 @@ public:
     bool PrepareRoutingCacheForEditor(bool bForceRebuild = false);
 #endif
 private:
+    void TickRuntimeCache();
+    UPROPERTY(Transient) TObjectPtr<UPathLinkRoutingCacheData> RuntimeRoutingData;
+    TSharedPtr<FPathLinkRuntimeCacheJob> RuntimeCacheJob;
+    EPathLinkRuntimeCacheState RuntimeCacheState = EPathLinkRuntimeCacheState::WaitingForNavigation;
+    FString RuntimeCacheDetail;
+    double NextRuntimeCacheCheck = 0;
     mutable EPathLinkEstimateStatus LastEstimateStatus = EPathLinkEstimateStatus::NotQueried;
     mutable double NextEstimateDiagnosticTime = 0;
     UPROPERTY(Transient) TObjectPtr<UPathLinkRoutingCacheData> LegacyRoutingData;
