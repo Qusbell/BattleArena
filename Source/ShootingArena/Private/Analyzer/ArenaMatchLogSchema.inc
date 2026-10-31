@@ -21,7 +21,7 @@ static const TCHAR* const GArenaMatchLogSchema[] =
     GameBuildVersion     TEXT NOT NULL,
     SettingsVersion      TEXT NOT NULL,
     TimeLimitSeconds     INTEGER     NOT NULL,
-    KillTarget           INTEGER     NOT NULL,
+    KillTarget           INTEGER     NOT NULL, StartAtKst TEXT,
     PRIMARY KEY (MatchId),
     FOREIGN KEY (MatchId, EventSequence) REFERENCES event (MatchId, EventSequence) DEFERRABLE INITIALLY DEFERRED
 ))RAWSQL"),
