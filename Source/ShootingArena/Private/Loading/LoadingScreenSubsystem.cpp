@@ -135,7 +135,9 @@ void ULoadingScreenSubsystem::UpdateLoadingState()
 	// 복제 Actor가 도착할 시간을 충분히 준 뒤에만 안전장치로 해제합니다.
 	if (bExternalLoadingRequested && !bSawCoordinator)
 	{
-		if (SecondsSincePostLoad < 45.0f)
+		// 싱글플레이 로컬 서버는 처음 띄우면 부팅 + 첫 맵 로드로 45초를 넘길 수 있습니다.
+		// 맵 선택 위젯의 서버 Ready 대기(0.2초 x 600회 = 120초)와 같은 한도로 맞춥니다.
+		if (SecondsSincePostLoad < 120.0f)
 		{
 			// 호출자가 지정한 상태 문구(예: 메인 메뉴로 돌아가는 중)를 유지합니다.
 			return;
