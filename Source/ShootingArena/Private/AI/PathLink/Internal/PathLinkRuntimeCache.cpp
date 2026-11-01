@@ -8,6 +8,7 @@
 #include "EngineUtils.h"
 #include "HAL/FileManager.h"
 #include "Misc/FileHelper.h"
+#include "Misc/Guid.h"
 #include "Misc/Paths.h"
 #include "Misc/SecureHash.h"
 #include "Misc/ScopeExit.h"
@@ -224,17 +225,71 @@ FString PathLinkRuntimeCache::FilePath(UWorld* World)
     return FPaths::ProjectSavedDir() / TEXT("PathLinkCache") / Kind / (BytesToHex(Digest, sizeof(Digest)) + TEXT(".bin"));
 }
 
-bool PathLinkRuntimeCache::Save(UWorld* World, const UPathLinkRoutingCacheData& Data, FString& Error)
+bool PathLinkRuntimeCache::CaptureSave(const UPathLinkRoutingCacheData& Data, FCapturedCache& Out, FString& Error)
 {
-    TArray<uint8> Bytes; FMemoryWriter Writer(Bytes, true);
+    Out.DataVersion = Data.DataVersion; Out.NavigationSignature = Data.NavigationSignature;
+    Out.LinkSignature = Data.LinkSignature; Out.bHasNativeOffMeshLinks = Data.bHasNativeOffMeshLinks;
+    Out.Polygons = Data.Polygons; Out.Islands = Data.Islands; Out.TransitionDistances = Data.TransitionDistances;
+    Out.Traversals.Reset(Data.Traversals.Num());
+    for (const FPathLinkBakedTraversal& T : Data.Traversals)
+    {
+        if (!IsValid(T.Link)) { Error = TEXT("A PathLink became invalid before cache save."); return false; }
+        FCapturedTraversal& Copy = Out.Traversals.AddDefaulted_GetRef();
+        Copy.LinkKey = LinkKey(T.Link); Copy.Reverse = T.Reverse; Copy.LinkType = uint8(T.LinkType);
+        Copy.Entry = T.Entry; Copy.Exit = T.Exit; Copy.EntryNav = T.EntryNav; Copy.ExitNav = T.ExitNav;
+        Copy.LinkCost = T.LinkCost; Copy.EntryPoly = T.EntryPoly; Copy.ExitPoly = T.ExitPoly;
+    }
+    return true;
+}
+
+bool PathLinkRuntimeCache::WriteCaptured(const FString& Path, FCapturedCache& Data, FString& Error)
+{
+    TArray<uint8> Bytes; FMemoryWriter Ar(Bytes, true);
+    int32 Format = 1;
+    Ar << Format << Data.DataVersion << Data.NavigationSignature << Data.LinkSignature << Data.bHasNativeOffMeshLinks;
+    int32 N = Data.Polygons.Num(); Ar << N;
+    for (auto& P : Data.Polygons) Ar << P.Center << P.Island << P.LocalIndex;
+    N = Data.Islands.Num(); Ar << N;
+    for (auto& Island : Data.Islands)
+    {
+        Ar << Island.PolygonCount << Island.Float32TableMiB;
+        if (!PlainArray(Ar, Island.Distances)) { Error = TEXT("Could not serialize distance table."); return false; }
+        N = Island.DepartureDirections.Num(); Ar << N;
+        for (auto& D : Island.DepartureDirections) Ar << D.Packed;
+    }
+    N = Data.Traversals.Num(); Ar << N;
+    for (auto& T : Data.Traversals)
+        Ar << T.LinkKey << T.Reverse << T.LinkType << T.Entry << T.Exit << T.EntryNav << T.ExitNav
+            << T.LinkCost << T.EntryPoly << T.ExitPoly;
+    if (!PlainArray(Ar, Data.TransitionDistances) || Ar.IsError()) { Error = TEXT("Could not serialize runtime cache."); return false; }
+    Ar.Close(); uint8 Digest[FSHA1::DigestSize]; FSHA1::HashBuffer(Bytes.GetData(), Bytes.Num(), Digest);
+    Bytes.Append(Digest, sizeof(Digest));
+    return WritePrepared(Path, Bytes, Error);
+}
+
+bool PathLinkRuntimeCache::PrepareSave(UWorld* World, const UPathLinkRoutingCacheData& Data, TArray<uint8>& Bytes, FString& Error)
+{
+    Bytes.Reset(); FMemoryWriter Writer(Bytes, true);
     if (!Transfer(Writer, World, const_cast<UPathLinkRoutingCacheData&>(Data))) { Error = TEXT("Could not serialize runtime cache."); return false; }
     Writer.Close(); uint8 Digest[FSHA1::DigestSize]; FSHA1::HashBuffer(Bytes.GetData(), Bytes.Num(), Digest);
     Bytes.Append(Digest, sizeof(Digest));
-    const FString Path = FilePath(World), Temp = Path + TEXT(".tmp");
+    return true;
+}
+
+bool PathLinkRuntimeCache::WritePrepared(const FString& Path, const TArray<uint8>& Bytes, FString& Error)
+{
+    // Separate server worlds/processes may write the same map concurrently.
+    const FString Temp = Path + TEXT(".") + FGuid::NewGuid().ToString(EGuidFormats::Digits) + TEXT(".tmp");
     IFileManager::Get().MakeDirectory(*FPaths::GetPath(Path), true);
     if (!FFileHelper::SaveArrayToFile(Bytes, *Temp) || !IFileManager::Get().Move(*Path, *Temp, true, true))
-    { Error = FString::Printf(TEXT("Could not save runtime cache: %s"), *Path); return false; }
+    { IFileManager::Get().Delete(*Temp, false, true); Error = FString::Printf(TEXT("Could not save runtime cache: %s"), *Path); return false; }
     return true;
+}
+
+bool PathLinkRuntimeCache::Save(UWorld* World, const UPathLinkRoutingCacheData& Data, FString& Error)
+{
+    TArray<uint8> Bytes;
+    return PrepareSave(World, Data, Bytes, Error) && WritePrepared(FilePath(World), Bytes, Error);
 }
 
 bool PathLinkRuntimeCache::Load(UWorld* World, ARecastNavMesh* Nav, const FPathLinkNavSnapshot& Snapshot,

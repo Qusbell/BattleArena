@@ -19,6 +19,7 @@
 #include "ProfilingDebugging/CpuProfilerTrace.h"
 #include "HAL/IConsoleManager.h"
 #include "UObject/Stack.h"
+#include "Async/Async.h"
 
 #if WITH_EDITOR
 #include "Editor.h"
@@ -61,10 +62,84 @@ void UPathLinkSubsystem::TickRuntimeCache()
 {
     UWorld* World = GetWorld();
     if (!World || !World->HasBegunPlay() || World->GetNetMode() == NM_Client
-        || RuntimeCacheState == EPathLinkRuntimeCacheState::Ready || RuntimeCacheState == EPathLinkRuntimeCacheState::Failed) return;
+        || RuntimeCacheState == EPathLinkRuntimeCacheState::Failed) return;
+    if (RuntimeCacheFinalizeStage == 1)
+    {
+        const double ValidateStart = FPlatformTime::Seconds();
+        InvalidateRouteGraphCache();
+        if (!GetValidatedRoutingCache())
+        {
+            RuntimeCacheFinalizeStage = 0;
+            RuntimeCacheState = EPathLinkRuntimeCacheState::Failed; RuntimeCacheDetail = RoutingCacheStatus;
+            UE_LOG(LogPathLinkSubsystem, Error, TEXT("Generated runtime cache failed validation: %s"), *RuntimeCacheDetail); return;
+        }
+        RuntimeCacheState = EPathLinkRuntimeCacheState::Ready;
+        RuntimeCacheDetail = TEXT("Generated runtime cache ready; preparing to save.");
+        RuntimeCacheFinalizeStage = 2;
+        UE_LOG(LogPathLinkSubsystem, Display, TEXT("%s Slices=%d MaxSlice=%.3fms Budget=%.3fms Validation=%.3fms"),
+            *RuntimeCacheDetail, RuntimeCacheBuildSlices, RuntimeCacheMaxSliceMs, CVarPathLinkRuntimeBuildBudget.GetValueOnGameThread(),
+            (FPlatformTime::Seconds() - ValidateStart) * 1000.0);
+        return;
+    }
+    if (RuntimeCacheFinalizeStage == 2)
+    {
+        RuntimeCacheFinalizeStage = 0;
+        const double SerializeStart = FPlatformTime::Seconds();
+        FString SaveError;
+        PathLinkRuntimeCache::FCapturedCache SaveData;
+        if (PathLinkRuntimeCache::CaptureSave(*RuntimeRoutingData, SaveData, SaveError))
+        {
+            RuntimeCacheDetail = TEXT("Generated runtime cache ready; saving file.");
+            const FString SavePath = PathLinkRuntimeCache::FilePath(World);
+            const TWeakObjectPtr<UPathLinkSubsystem> WeakThis(this);
+            Async(EAsyncExecution::ThreadPool, [WeakThis, SavePath, Data = MoveTemp(SaveData)]() mutable
+            {
+                FString Error;
+                const bool bSaved = PathLinkRuntimeCache::WriteCaptured(SavePath, Data, Error);
+                AsyncTask(ENamedThreads::GameThread, [WeakThis, bSaved, Error = MoveTemp(Error)]()
+                {
+                    if (UPathLinkSubsystem* Self = WeakThis.Get())
+                    {
+                        Self->RuntimeCacheDetail = bSaved ? TEXT("Generated runtime cache ready and saved.")
+                            : TEXT("Generated runtime cache ready; save failed: ") + Error;
+                        if (bSaved) { UE_LOG(LogPathLinkSubsystem, Display, TEXT("%s"), *Self->RuntimeCacheDetail); }
+                        else { UE_LOG(LogPathLinkSubsystem, Warning, TEXT("%s"), *Self->RuntimeCacheDetail); }
+                    }
+                });
+            });
+        }
+        else
+        {
+            RuntimeCacheDetail = TEXT("Generated runtime cache ready; save failed: ") + SaveError;
+            UE_LOG(LogPathLinkSubsystem, Warning, TEXT("%s"), *RuntimeCacheDetail);
+        }
+        UE_LOG(LogPathLinkSubsystem, Display, TEXT("%s SaveSnapshot=%.3fms"), *RuntimeCacheDetail,
+            (FPlatformTime::Seconds() - SerializeStart) * 1000.0);
+        return;
+    }
+    if (RuntimeCacheState == EPathLinkRuntimeCacheState::Ready) return;
     if (RuntimeCacheState == EPathLinkRuntimeCacheState::Building)
     {
         FString Error;
+        if (PendingRuntimeSnapshot.IsValid())
+        {
+            const double BeginStart = FPlatformTime::Seconds();
+            RuntimeCacheJob = MakeShared<FPathLinkRuntimeCacheJob>();
+            const bool bBegun = PendingRuntimeNavigation.IsValid() && RuntimeRoutingData
+                && RuntimeCacheJob->Begin(World, PendingRuntimeNavigation.Get(), RuntimeRoutingData,
+                    MoveTemp(*PendingRuntimeSnapshot), Error);
+            PendingRuntimeSnapshot.Reset(); PendingRuntimeNavigation.Reset();
+            if (!bBegun)
+            {
+                RuntimeCacheState = EPathLinkRuntimeCacheState::Failed;
+                RuntimeCacheDetail = Error.IsEmpty() ? TEXT("Navigation disappeared during runtime cache preparation.") : Error;
+                RuntimeCacheJob.Reset(); UE_LOG(LogPathLinkSubsystem, Error, TEXT("Runtime routing cache failed: %s"), *RuntimeCacheDetail); return;
+            }
+            RuntimeCacheDetail = TEXT("Generating runtime routing cache.");
+            UE_LOG(LogPathLinkSubsystem, Display, TEXT("%s JobSetup=%.3fms"), *RuntimeCacheDetail,
+                (FPlatformTime::Seconds() - BeginStart) * 1000.0);
+            return;
+        }
         if (!RuntimeCacheJob.IsValid() || !RuntimeCacheJob->Tick(CVarPathLinkRuntimeBuildBudget.GetValueOnGameThread(), Error))
         {
             RuntimeCacheState = EPathLinkRuntimeCacheState::Failed;
@@ -72,24 +147,9 @@ void UPathLinkSubsystem::TickRuntimeCache()
             RuntimeCacheJob.Reset(); UE_LOG(LogPathLinkSubsystem, Error, TEXT("Runtime routing cache failed: %s"), *RuntimeCacheDetail); return;
         }
         if (!RuntimeCacheJob->IsComplete()) return;
-        const int32 Slices = RuntimeCacheJob->GetSliceCount();
-        const double MaxSliceMs = RuntimeCacheJob->GetMaxSliceMilliseconds();
-        RuntimeCacheJob.Reset();
-        const double FinalizeStart = FPlatformTime::Seconds();
-        InvalidateRouteGraphCache();
-        if (!GetValidatedRoutingCache())
-        {
-            RuntimeCacheState = EPathLinkRuntimeCacheState::Failed; RuntimeCacheDetail = RoutingCacheStatus;
-            UE_LOG(LogPathLinkSubsystem, Error, TEXT("Generated runtime cache failed validation: %s"), *RuntimeCacheDetail); return;
-        }
-        FString SaveError;
-        RuntimeCacheState = EPathLinkRuntimeCacheState::Ready;
-        const bool bSaved = PathLinkRuntimeCache::Save(World, *RuntimeRoutingData, SaveError);
-        RuntimeCacheDetail = bSaved ? TEXT("Generated runtime cache ready and saved.") : TEXT("Generated runtime cache ready; save failed: ") + SaveError;
-        UE_LOG(LogPathLinkSubsystem, Display, TEXT("%s Slices=%d MaxSlice=%.3fms Budget=%.3fms Finalize=%.3fms"),
-            *RuntimeCacheDetail, Slices, MaxSliceMs, CVarPathLinkRuntimeBuildBudget.GetValueOnGameThread(),
-            (FPlatformTime::Seconds() - FinalizeStart) * 1000.0);
-        if (!bSaved) UE_LOG(LogPathLinkSubsystem, Warning, TEXT("%s"), *RuntimeCacheDetail);
+        RuntimeCacheBuildSlices = RuntimeCacheJob->GetSliceCount();
+        RuntimeCacheMaxSliceMs = RuntimeCacheJob->GetMaxSliceMilliseconds();
+        RuntimeCacheJob.Reset(); RuntimeCacheFinalizeStage = 1;
         return;
     }
     const double Now = FPlatformTime::Seconds();
@@ -124,14 +184,10 @@ void UPathLinkSubsystem::TickRuntimeCache()
     else if (!Error.IsEmpty() && Error != TEXT("No saved runtime cache."))
         UE_LOG(LogPathLinkSubsystem, Warning, TEXT("Saved runtime cache rejected: %s"), *Error);
     RuntimeRoutingData = NewObject<UPathLinkRoutingCacheData>(this, NAME_None, RF_Transient);
-    RuntimeCacheJob = MakeShared<FPathLinkRuntimeCacheJob>();
-    if (!RuntimeCacheJob->Begin(World, Nav, RuntimeRoutingData, MoveTemp(Snapshot), Error))
-    {
-        RuntimeCacheState = EPathLinkRuntimeCacheState::Failed; RuntimeCacheDetail = Error;
-        RuntimeCacheJob.Reset(); UE_LOG(LogPathLinkSubsystem, Error, TEXT("Runtime routing cache failed: %s"), *Error); return;
-    }
+    PendingRuntimeNavigation = Nav;
+    PendingRuntimeSnapshot = MakeShared<FPathLinkNavSnapshot>(MoveTemp(Snapshot));
     RuntimeCacheState = EPathLinkRuntimeCacheState::Building;
-    RuntimeCacheDetail = TEXT("Generating runtime routing cache.");
+    RuntimeCacheDetail = TEXT("Preparing runtime routing cache generation.");
     UE_LOG(LogPathLinkSubsystem, Display, TEXT("%s Preparation=%.3fms"), *RuntimeCacheDetail,
         (FPlatformTime::Seconds() - Now) * 1000.0);
 }
@@ -366,7 +422,7 @@ void UPathLinkSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 
 void UPathLinkSubsystem::Deinitialize()
 {
-    RuntimeCacheJob.Reset(); RuntimeRoutingData = nullptr;
+    RuntimeCacheJob.Reset(); PendingRuntimeSnapshot.Reset(); PendingRuntimeNavigation.Reset(); RuntimeRoutingData = nullptr;
     for (auto& Weak : ObservedNavMeshes)
         if (ARecastNavMesh* Nav = Weak.Get()) Nav->OnNavMeshUpdate.RemoveAll(this);
     ObservedNavMeshes.Reset();

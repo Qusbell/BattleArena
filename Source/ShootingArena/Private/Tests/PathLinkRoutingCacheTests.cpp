@@ -180,7 +180,7 @@ bool FPathLinkRuntimePersistenceTest::RunTest(const FString& Parameters)
     if (!TestNotNull(TEXT("Transient test world"), World)) return false;
     const FString File = PathLinkRuntimeCache::FilePath(World);
     if (FPaths::FileExists(File)) { AddError(TEXT("Refusing to overwrite an existing cache file.")); World->DestroyWorld(false); return false; }
-    ON_SCOPE_EXIT { IFileManager::Get().Delete(*File); IFileManager::Get().Delete(*(File + TEXT(".tmp"))); IFileManager::Get().DeleteDirectory(*(File + TEXT(".tmp")), false, false); World->DestroyWorld(false); };
+    ON_SCOPE_EXIT { IFileManager::Get().Delete(*File); World->DestroyWorld(false); };
     UPathLinkRoutingCacheData* Source = NewObject<UPathLinkRoutingCacheData>(World);
     Source->DataVersion = PathLinkBake::Version; Source->NavigationSignature = TEXT("NavSignature");
     Source->Polygons.SetNum(2);
@@ -202,12 +202,19 @@ bool FPathLinkRuntimePersistenceTest::RunTest(const FString& Parameters)
         TestEqual(TEXT("Traversal is rebound to current world actor"), Loaded->Traversals[0].Link.Get(), Link);
         TestEqual(TEXT("Distance table survives disk round trip"), Loaded->Islands[0].Distances[1], 1000.0f);
     }
-    const FString TempDirectory = File + TEXT(".tmp");
-    if (TestTrue(TEXT("Create a directory that prevents temporary cache file creation"), IFileManager::Get().MakeDirectory(*TempDirectory)))
+    PathLinkRuntimeCache::FCapturedCache Captured;
+    if (TestTrue(TEXT("Capture plain background-writer data"), PathLinkRuntimeCache::CaptureSave(*Source, Captured, Error))
+        && TestTrue(TEXT("Write captured cache"), PathLinkRuntimeCache::WriteCaptured(File, Captured, Error)))
     {
-        TestFalse(TEXT("Failed file save is reported"), PathLinkRuntimeCache::Save(World, *Source, Error));
+        auto* BackgroundLoaded = NewObject<UPathLinkRoutingCacheData>(World);
+        TestTrue(TEXT("Captured writer format loads"), PathLinkRuntimeCache::Load(World, nullptr, Snapshot, *BackgroundLoaded, Error));
+    }
+    TArray<uint8> Prepared;
+    if (TestTrue(TEXT("Prepare cache for file write"), PathLinkRuntimeCache::PrepareSave(World, *Source, Prepared, Error)))
+    {
+        // File is a regular file, so attempting to create a child path must fail.
+        TestFalse(TEXT("Failed file save is reported"), PathLinkRuntimeCache::WritePrepared(File / TEXT("invalid"), Prepared, Error));
         TestTrue(TEXT("Save failure leaves in-memory cache valid"), Source->IsBaked());
-        IFileManager::Get().DeleteDirectory(*TempDirectory, false, false);
     }
     Snapshot.Signature = TEXT("DifferentNav");
     auto* Stale = NewObject<UPathLinkRoutingCacheData>(World);

@@ -12,6 +12,7 @@ class UPathLinkRoutingCacheData;
 class ANavigationData;
 class ARecastNavMesh;
 class FPathLinkRuntimeCacheJob;
+struct FPathLinkNavSnapshot;
 
 UENUM(BlueprintType)
 enum class EPathLinkRuntimeCacheState : uint8
@@ -197,9 +198,14 @@ private:
     void TickRuntimeCache();
     UPROPERTY(Transient) TObjectPtr<UPathLinkRoutingCacheData> RuntimeRoutingData;
     TSharedPtr<FPathLinkRuntimeCacheJob> RuntimeCacheJob;
+    TSharedPtr<FPathLinkNavSnapshot> PendingRuntimeSnapshot;
+    TWeakObjectPtr<ARecastNavMesh> PendingRuntimeNavigation;
     EPathLinkRuntimeCacheState RuntimeCacheState = EPathLinkRuntimeCacheState::WaitingForNavigation;
     FString RuntimeCacheDetail;
     double NextRuntimeCacheCheck = 0;
+    int32 RuntimeCacheFinalizeStage = 0;
+    int32 RuntimeCacheBuildSlices = 0;
+    double RuntimeCacheMaxSliceMs = 0;
     mutable EPathLinkEstimateStatus LastEstimateStatus = EPathLinkEstimateStatus::NotQueried;
     mutable double NextEstimateDiagnosticTime = 0;
     UPROPERTY(Transient) TObjectPtr<UPathLinkRoutingCacheData> LegacyRoutingData;
