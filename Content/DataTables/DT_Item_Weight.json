@@ -4,139 +4,159 @@
 		"Item_Tag": "(TagName=\"ID.HealPack.Mega\")",
 		"Base_Score": 800,
 		"Reference_Tag": "(TagName=\"AITargetable.DropItem.Health\")",
-		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=0.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=\"/Script/Engine.CurveFloat'/Game/QuakeLike_1_0/AI/LSH_AI_Table/03_AI_Curve/LifeItem/CF_HealPackWeight_Mega.CF_HealPackWeight_Mega'\"))"
+		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=0.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=\"/Script/Engine.CurveFloat'/Game/QuakeLike_1_0/AI/LSH_AI_Table/03_AI_Curve/LifeItem/CF_HealPackWeight_Mega.CF_HealPackWeight_Mega'\"))",
+		"Max_Falloff_Distance": 99999
 	},
 	{
 		"Name": "ID.HealPack.Big",
 		"Item_Tag": "(TagName=\"ID.HealPack.Big\")",
 		"Base_Score": 750,
 		"Reference_Tag": "(TagName=\"AITargetable.DropItem.Health\")",
-		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=0.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=\"/Script/Engine.CurveFloat'/Game/QuakeLike_1_0/AI/LSH_AI_Table/03_AI_Curve/LifeItem/CF_HealPackWeight_Big.CF_HealPackWeight_Big'\"))"
+		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=0.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=\"/Script/Engine.CurveFloat'/Game/QuakeLike_1_0/AI/LSH_AI_Table/03_AI_Curve/LifeItem/CF_HealPackWeight_Big.CF_HealPackWeight_Big'\"))",
+		"Max_Falloff_Distance": 99999
 	},
 	{
 		"Name": "ID.HealPack.middle",
 		"Item_Tag": "(TagName=\"ID.HealPack.middle\")",
 		"Base_Score": 700,
 		"Reference_Tag": "(TagName=\"AITargetable.DropItem.Health\")",
-		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=0.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=\"/Script/Engine.CurveFloat'/Game/QuakeLike_1_0/AI/LSH_AI_Table/03_AI_Curve/LifeItem/CF_HealPackWeight_middle.CF_HealPackWeight_middle'\"))"
+		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=0.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=\"/Script/Engine.CurveFloat'/Game/QuakeLike_1_0/AI/LSH_AI_Table/03_AI_Curve/LifeItem/CF_HealPackWeight_middle.CF_HealPackWeight_middle'\"))",
+		"Max_Falloff_Distance": 99999
 	},
 	{
 		"Name": "ID.HealPack.Small",
 		"Item_Tag": "(TagName=\"ID.HealPack.Small\")",
 		"Base_Score": 650,
 		"Reference_Tag": "(TagName=\"AITargetable.DropItem.Health\")",
-		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=0.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=\"/Script/Engine.CurveFloat'/Game/QuakeLike_1_0/AI/LSH_AI_Table/03_AI_Curve/LifeItem/CF_HealPackWeight_Small.CF_HealPackWeight_Small'\"))"
+		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=0.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=\"/Script/Engine.CurveFloat'/Game/QuakeLike_1_0/AI/LSH_AI_Table/03_AI_Curve/LifeItem/CF_HealPackWeight_Small.CF_HealPackWeight_Small'\"))",
+		"Max_Falloff_Distance": 99999
 	},
 	{
 		"Name": "ID.PlatePack.Mega",
 		"Item_Tag": "(TagName=\"ID.PlatePack.Mega\")",
 		"Base_Score": 800,
 		"Reference_Tag": "(TagName=\"AITargetable.DropItem.Plate\")",
-		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=0.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=\"/Script/Engine.CurveFloat'/Game/QuakeLike_1_0/AI/LSH_AI_Table/03_AI_Curve/LifeItem/CF_PlatePackWeight_Mega.CF_PlatePackWeight_Mega'\"))"
+		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=0.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=\"/Script/Engine.CurveFloat'/Game/QuakeLike_1_0/AI/LSH_AI_Table/03_AI_Curve/LifeItem/CF_PlatePackWeight_Mega.CF_PlatePackWeight_Mega'\"))",
+		"Max_Falloff_Distance": 99999
 	},
 	{
 		"Name": "ID.PlatePack.Big",
 		"Item_Tag": "(TagName=\"ID.PlatePack.Big\")",
 		"Base_Score": 750,
 		"Reference_Tag": "(TagName=\"AITargetable.DropItem.Plate\")",
-		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=0.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=\"/Script/Engine.CurveFloat'/Game/QuakeLike_1_0/AI/LSH_AI_Table/03_AI_Curve/LifeItem/CF_HealPackWeight_Big.CF_HealPackWeight_Big'\"))"
+		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=0.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=\"/Script/Engine.CurveFloat'/Game/QuakeLike_1_0/AI/LSH_AI_Table/03_AI_Curve/LifeItem/CF_HealPackWeight_Big.CF_HealPackWeight_Big'\"))",
+		"Max_Falloff_Distance": 99999
 	},
 	{
 		"Name": "ID.PlatePack.middle",
 		"Item_Tag": "(TagName=\"ID.PlatePack.middle\")",
 		"Base_Score": 700,
 		"Reference_Tag": "(TagName=\"AITargetable.DropItem.Plate\")",
-		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=0.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=\"/Script/Engine.CurveFloat'/Game/QuakeLike_1_0/AI/LSH_AI_Table/03_AI_Curve/LifeItem/CF_PlatePackWeight_middle.CF_PlatePackWeight_middle'\"))"
+		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=0.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=\"/Script/Engine.CurveFloat'/Game/QuakeLike_1_0/AI/LSH_AI_Table/03_AI_Curve/LifeItem/CF_PlatePackWeight_middle.CF_PlatePackWeight_middle'\"))",
+		"Max_Falloff_Distance": 99999
 	},
 	{
 		"Name": "ID.PlatePack.Small",
 		"Item_Tag": "(TagName=\"ID.PlatePack.Small\")",
 		"Base_Score": 650,
 		"Reference_Tag": "(TagName=\"AITargetable.DropItem.Plate\")",
-		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=0.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=\"/Script/Engine.CurveFloat'/Game/QuakeLike_1_0/AI/LSH_AI_Table/03_AI_Curve/LifeItem/CF_HealPackWeight_Small.CF_HealPackWeight_Small'\"))"
+		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=0.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=\"/Script/Engine.CurveFloat'/Game/QuakeLike_1_0/AI/LSH_AI_Table/03_AI_Curve/LifeItem/CF_HealPackWeight_Small.CF_HealPackWeight_Small'\"))",
+		"Max_Falloff_Distance": 99999
 	},
 	{
 		"Name": "ID.MachineGun",
 		"Item_Tag": "(TagName=\"ID.MachineGun\")",
 		"Base_Score": 600,
 		"Reference_Tag": "(TagName=\"AITargetable.DropItem.Weapon\")",
-		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=0.500000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=None))"
+		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=0.500000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=None))",
+		"Max_Falloff_Distance": 99999
 	},
 	{
 		"Name": "ID.MachineGun.Ammo",
 		"Item_Tag": "(TagName=\"ID.MachineGun.Ammo\")",
 		"Base_Score": 250,
 		"Reference_Tag": "(TagName=\"AITargetable.DropItem.Ammo\")",
-		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=0.300000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=None))"
+		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=0.300000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=None))",
+		"Max_Falloff_Distance": 99999
 	},
 	{
 		"Name": "ID.ShotGun",
 		"Item_Tag": "(TagName=\"ID.ShotGun\")",
 		"Base_Score": 640,
 		"Reference_Tag": "(TagName=\"AITargetable.DropItem.Weapon\")",
-		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=0.500000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=None))"
+		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=0.500000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=None))",
+		"Max_Falloff_Distance": 99999
 	},
 	{
 		"Name": "ID.ShotGun.Ammo",
 		"Item_Tag": "(TagName=\"ID.ShotGun.Ammo\")",
 		"Base_Score": 250,
 		"Reference_Tag": "(TagName=\"AITargetable.DropItem.Ammo\")",
-		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=0.300000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=None))"
+		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=0.300000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=None))",
+		"Max_Falloff_Distance": 99999
 	},
 	{
 		"Name": "ID.PlasmaGun",
 		"Item_Tag": "(TagName=\"ID.PlasmaGun\")",
 		"Base_Score": 660,
 		"Reference_Tag": "(TagName=\"AITargetable.DropItem.Weapon\")",
-		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=0.500000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=None))"
+		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=0.500000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=None))",
+		"Max_Falloff_Distance": 99999
 	},
 	{
 		"Name": "ID.PlasmaGun.Ammo",
 		"Item_Tag": "(TagName=\"ID.PlasmaGun.Ammo\")",
 		"Base_Score": 250,
 		"Reference_Tag": "(TagName=\"AITargetable.DropItem.Ammo\")",
-		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=0.400000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=None))"
+		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=0.400000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=None))",
+		"Max_Falloff_Distance": 99999
 	},
 	{
 		"Name": "ID.RailGun",
 		"Item_Tag": "(TagName=\"ID.RailGun\")",
 		"Base_Score": 680,
 		"Reference_Tag": "(TagName=\"AITargetable.DropItem.Weapon\")",
-		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=0.500000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=None))"
+		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=0.500000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=None))",
+		"Max_Falloff_Distance": 99999
 	},
 	{
 		"Name": "ID.RailGun.Ammo",
 		"Item_Tag": "(TagName=\"ID.RailGun.Ammo\")",
 		"Base_Score": 250,
 		"Reference_Tag": "(TagName=\"AITargetable.DropItem.Ammo\")",
-		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=0.300000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=None))"
+		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=0.300000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=None))",
+		"Max_Falloff_Distance": 99999
 	},
 	{
 		"Name": "ID.RocketLauncher",
 		"Item_Tag": "(TagName=\"ID.RocketLauncher\")",
 		"Base_Score": 700,
 		"Reference_Tag": "(TagName=\"AITargetable.DropItem.Weapon\")",
-		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=0.500000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=None))"
+		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=0.500000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=None))",
+		"Max_Falloff_Distance": 99999
 	},
 	{
 		"Name": "ID.RocketLauncher.Ammo",
 		"Item_Tag": "(TagName=\"ID.RocketLauncher.Ammo\")",
 		"Base_Score": 250,
 		"Reference_Tag": "(TagName=\"AITargetable.DropItem.Ammo\")",
-		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=0.300000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=None))"
+		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=0.300000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=None))",
+		"Max_Falloff_Distance": 99999
 	},
 	{
 		"Name": "ID.QuadDamage",
 		"Item_Tag": "(TagName=\"ID.QuadDamage\")",
 		"Base_Score": 1000,
 		"Reference_Tag": "(TagName=\"AITargetable\")",
-		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=None))"
+		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=None))",
+		"Max_Falloff_Distance": 1000
 	},
 	{
 		"Name": "ID.Protection",
 		"Item_Tag": "(TagName=\"ID.Protection\")",
 		"Base_Score": 0,
 		"Reference_Tag": "(TagName=\"AITargetable\")",
-		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=0.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=None))"
+		"Curve_FuzzyWeight": "(Curve=(EditorCurveData=(Keys=((InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=0.000000,Value=0.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000),(InterpMode=RCIM_Linear,TangentMode=RCTM_Auto,TangentWeightMode=RCTWM_WeightedNone,Time=1.000000,Value=1.000000,ArriveTangent=0.000000,ArriveTangentWeight=0.000000,LeaveTangent=0.000000,LeaveTangentWeight=0.000000)),DefaultValue=340282346638528859811704183484516925440.000000,PreInfinityExtrap=RCCE_Constant,PostInfinityExtrap=RCCE_Constant),ExternalCurve=None))",
+		"Max_Falloff_Distance": 1000
 	}
 ]
