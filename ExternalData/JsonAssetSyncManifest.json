@@ -10317,6 +10317,16 @@
 						"clampMin": "0.0"
 					},
 					"type": "float"
+				},
+				{
+					"name": "isBuffWeightAffectedByAggression",
+					"displayName": "Is Buff Weight Affected by Aggression",
+					"cppType": "bool",
+					"order": 9,
+					"tooltip": "버프 아이템의 가중치가 Aggression Score에 영향을 받을까?에 대해서",
+					"category": "Aggression|Buff",
+					"advancedDisplay": false,
+					"type": "bool"
 				}
 			]
 		}
