@@ -11,6 +11,8 @@
 #include "Components/HorizontalBox.h"
 #include "Components/HorizontalBoxSlot.h"
 #include "Components/Image.h"
+#include "Components/Overlay.h"
+#include "Components/OverlaySlot.h"
 #include "Components/ScaleBox.h"
 #include "Components/ProgressBar.h"
 #include "Components/SizeBox.h"
@@ -24,6 +26,8 @@
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerState.h"
 #include "UObject/UnrealType.h"
+#include "UObject/ConstructorHelpers.h"
+#include "TimerManager.h"
 #include "Styling/CoreStyle.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Fonts/FontMeasure.h"
@@ -43,16 +47,30 @@ namespace
 	}
 }
 
+UCompetitiveRankingHUD::UCompetitiveRankingHUD(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
+{
+	static ConstructorHelpers::FClassFinder<UUserWidget> Highlight(
+		TEXT("/Game/CompShooterHUD/UI/Content/Medals/WB_Medal_Highlight"));
+	StreakHighlightClass = Highlight.Class;
+}
+
+void UCompetitiveRankingHUD::HideStreakMedals()
+{
+	if (StreakPanel) StreakPanel->SetVisibility(ESlateVisibility::Collapsed);
+}
+
 void UCompetitiveRankingHUD::RefreshStreakMedals(int32 Count)
 {
 	Count = FMath::Max(0, Count);
 	if (DisplayedStreak == Count) return;
 	if (!ActiveStreakSettings) ActiveStreakSettings = KillMedalUISettings.LoadSynchronous();
 	const UKillMedalUISettings* Settings = ActiveStreakSettings ? ActiveStreakSettings.Get() : GetDefault<UKillMedalUISettings>();
+	const bool bLargeMedal = Count >= FMath::Max(1, Settings->LargeMedalMinKills);
 	if (!StreakPanel && Count > 0)
 	{
 		UCanvasPanel* Canvas = Cast<UCanvasPanel>(GetRootWidget());
-		if (!Canvas || !WidgetTree || !Settings->MedalTexture) return;
+		if (!Canvas || !WidgetTree) return;
 		StreakPanel = WidgetTree->ConstructWidget<UVerticalBox>();
 		StreakPanel->SetVisibility(ESlateVisibility::HitTestInvisible);
 		UCanvasPanelSlot* StreakSlot = Canvas->AddChildToCanvas(StreakPanel);
@@ -62,23 +80,47 @@ void UCompetitiveRankingHUD::RefreshStreakMedals(int32 Count)
 		StreakSlot->SetAutoSize(true);
 		StreakSlot->SetZOrder(11);
 		StreakIcons = WidgetTree->ConstructWidget<UHorizontalBox>();
-		StreakPanel->AddChildToVerticalBox(StreakIcons)->SetHorizontalAlignment(HAlign_Center);
+		UHorizontalBox* CountRow = WidgetTree->ConstructWidget<UHorizontalBox>();
+		CountRow->SetRenderTranslation(Settings->CountPosition);
 		StreakCountLabel = WidgetTree->ConstructWidget<UTextBlock>();
 		StreakCountLabel->SetFont(Settings->CountFont);
-		StreakCountLabel->SetRenderTranslation(Settings->CountPosition);
-		StreakCountLabel->SetColorAndOpacity(FSlateColor(FLinearColor::White));
+		StreakCountLabel->SetColorAndOpacity(FSlateColor(Settings->CountColor));
 		StreakCountLabel->SetShadowColorAndOpacity(FLinearColor::Black);
 		StreakCountLabel->SetShadowOffset(FVector2D(1, 1));
-		StreakPanel->AddChildToVerticalBox(StreakCountLabel)->SetHorizontalAlignment(HAlign_Center);
+		UTexture2D* AccentTexture = LoadObject<UTexture2D>(nullptr,
+			TEXT("/Game/CompShooterHUD/Textures/Highlights/T_Highlight2_1920x500.T_Highlight2_1920x500"));
+		const float FontSize = FMath::Max(1.0f, Settings->CountFont.Size);
+		for (int32 Side = 0; Side < 2; ++Side)
+		{
+			UImage* Accent = WidgetTree->ConstructWidget<UImage>();
+			FSlateBrush Brush;
+			Brush.SetResourceObject(AccentTexture);
+			Brush.ImageSize = FVector2D(FontSize * 2.25f, FontSize * 0.5f);
+			Brush.SetUVRegion(FBox2f(FVector2f(0, 0), FVector2f(0.5f, 1)));
+			Brush.Mirroring = Side == 0 ? ESlateBrushMirrorType::NoMirror : ESlateBrushMirrorType::Horizontal;
+			Accent->SetBrush(Brush);
+			Accent->SetColorAndOpacity(Settings->CountColor);
+			UHorizontalBoxSlot* AccentSlot = CountRow->AddChildToHorizontalBox(Accent);
+			AccentSlot->SetVerticalAlignment(VAlign_Center);
+			AccentSlot->SetPadding(Side == 0 ? FMargin(0, 0, FontSize * 0.25f, 0) : FMargin(FontSize * 0.25f, 0, 0, 0));
+			if (Side == 0) CountRow->AddChildToHorizontalBox(StreakCountLabel)->SetVerticalAlignment(VAlign_Center);
+		}
+		UVerticalBoxSlot* CountSlot = StreakPanel->AddChildToVerticalBox(CountRow);
+		CountSlot->SetHorizontalAlignment(HAlign_Center);
+		CountSlot->SetPadding(FMargin(0, 0, 0, 8));
+		StreakPanel->AddChildToVerticalBox(StreakIcons)->SetHorizontalAlignment(HAlign_Center);
 	}
 	DisplayedStreak = Count;
 	if (!StreakPanel) return;
+	if (StreakHighlight) StreakHighlight->StopAnimationsAndLatentActions();
+	StreakHighlight = nullptr;
 	StreakPanel->SetVisibility(Count > 0 ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	StreakIcons->ClearChildren();
-	const int32 IconCount = Count > 10 ? 1 : Count;
+	const int32 IconCount = bLargeMedal ? 1 : Count;
+	UTexture2D* Texture = bLargeMedal && Settings->LargeMedalTexture ? Settings->LargeMedalTexture.Get() : Settings->MedalTexture.Get();
 	for (int32 Index = 0; Index < IconCount; ++Index)
 	{
-		const FVector2D Size = Count > 10 ? Settings->LargeMedalSize : Index == 0 ? Settings->FirstMedalSize : Settings->AdditionalMedalSize;
+		const FVector2D Size = bLargeMedal ? Settings->LargeMedalSize : Index == 0 ? Settings->FirstMedalSize : Settings->AdditionalMedalSize;
 		USizeBox* Box = WidgetTree->ConstructWidget<USizeBox>();
 		Box->SetWidthOverride(FMath::Max(1.0, Size.X));
 		Box->SetHeightOverride(FMath::Max(1.0, Size.Y));
@@ -86,16 +128,47 @@ void UCompetitiveRankingHUD::RefreshStreakMedals(int32 Count)
 		Scale->SetStretch(EStretch::ScaleToFit);
 		Box->SetContent(Scale);
 		UImage* Image = WidgetTree->ConstructWidget<UImage>();
-		Image->SetBrushFromTexture(Settings->MedalTexture, true);
+		Image->SetBrushFromTexture(Texture, true);
 		Scale->SetContent(Image);
+		if (Index == IconCount - 1 && StreakHighlightClass)
+		{
+			StreakHighlight = CreateWidget<UUserWidget>(this, StreakHighlightClass);
+			if (StreakHighlight)
+			{
+				Scale->SetContent(nullptr);
+				UOverlay* Award = WidgetTree->ConstructWidget<UOverlay>();
+				Scale->SetContent(Award);
+				Award->AddChildToOverlay(Image);
+				UOverlaySlot* HighlightSlot = Award->AddChildToOverlay(StreakHighlight);
+				HighlightSlot->SetHorizontalAlignment(HAlign_Center);
+				HighlightSlot->SetVerticalAlignment(VAlign_Center);
+				StreakHighlight->SetVisibility(ESlateVisibility::HitTestInvisible);
+				// CompShooter's 1024-wide highlight surrounds a 128-wide medal.
+				StreakHighlight->SetRenderTransformPivot(FVector2D(0.5f, 0.5f));
+				StreakHighlight->SetRenderScale(FVector2D(8.0f, 8.0f));
+				StreakHighlight->SetRenderOpacity(FMath::Clamp(Settings->HighlightOpacity, 0.0f, 1.0f));
+				if (UFunction* Play = StreakHighlight->FindFunction(TEXT("PlayHighlight")))
+					StreakHighlight->ProcessEvent(Play, nullptr);
+			}
+		}
 		UHorizontalBoxSlot* IconSlot = StreakIcons->AddChildToHorizontalBox(Box);
 		IconSlot->SetVerticalAlignment(VAlign_Center);
 		IconSlot->SetPadding(FMargin(FMath::Max(0.0f, Settings->MedalGap) * 0.5f, 0.0f));
 	}
-	StreakCountLabel->SetVisibility(Count > 10 ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-	StreakCountLabel->SetText(Count > 10
-		? FText::Format(NSLOCTEXT("KillMedal", "StreakCount", "{0} Kill"), FText::AsNumber(Count))
+	StreakCountLabel->SetVisibility(bLargeMedal ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	StreakCountLabel->GetParent()->SetVisibility(StreakCountLabel->GetVisibility());
+	StreakCountLabel->SetText(bLargeMedal
+		? FText::AsNumber(Count)
 		: FText::GetEmpty());
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(StreakDisplayTimer);
+		if (Count > 0)
+		{
+			const float Duration = FMath::IsFinite(Settings->DisplayDuration) ? FMath::Max(0.01f, Settings->DisplayDuration) : 1.2f;
+			World->GetTimerManager().SetTimer(StreakDisplayTimer, this, &ThisClass::HideStreakMedals, Duration, false);
+		}
+	}
 }
 
 void UCompetitiveRankingHUD::NativeConstruct()
@@ -366,6 +439,24 @@ void UCompetitiveRankingHUD::NativeTick(const FGeometry& MyGeometry, float InDel
 				if (!Offset.ContainsNaN()) MessageArea->SetRenderTranslation(Offset);
 			}
 		}
+		else if (StreakPanel && DisplayedStreak > 0 && StreakIcons)
+		{
+			UUserWidget* Messages = Cast<UUserWidget>(GetWidgetFromName(TEXT("WB_KillMessage")));
+			UPanelWidget* Content = Messages ? Cast<UPanelWidget>(Messages->GetWidgetFromName(TEXT("OV_Content"))) : nullptr;
+			UUserWidget* Message = Content && Content->GetChildrenCount() ? Cast<UUserWidget>(Content->GetChildAt(0)) : nullptr;
+			UWidget* Text = Message ? Message->GetWidgetFromName(TEXT("VerticalBox_0")) : nullptr;
+			if (Text && StreakIcons->GetCachedGeometry().GetLocalSize().Y > 0 && Text->GetCachedGeometry().GetLocalSize().Y > 0
+				&& !FMath::IsNearlyZero(MyGeometry.GetAccumulatedLayoutTransform().GetScale()))
+			{
+				const auto ToRoot = Inverse(MyGeometry.GetAccumulatedLayoutTransform());
+				const auto IconsLayout = Concatenate(StreakIcons->GetCachedGeometry().GetAccumulatedLayoutTransform(), ToRoot);
+				const auto TextLayout = Concatenate(Text->GetCachedGeometry().GetAccumulatedLayoutTransform(), ToRoot);
+				const FVector2D IconsBottom = TransformPoint(IconsLayout, FVector2D(StreakIcons->GetCachedGeometry().GetLocalSize().X * 0.5, StreakIcons->GetCachedGeometry().GetLocalSize().Y));
+				const FVector2D TextTop = TransformPoint(TextLayout, FVector2D(Text->GetCachedGeometry().GetLocalSize().X * 0.5, 0));
+				const FVector2D Offset = IconsBottom - TextTop + FVector2D(0, 8);
+				if (!Offset.ContainsNaN()) MessageArea->SetRenderTranslation(Offset);
+			}
+		}
 		else MessageArea->SetRenderTranslation(FVector2D::ZeroVector);
 	}
 	RefreshElapsed += InDeltaTime;
@@ -376,6 +467,9 @@ void UCompetitiveRankingHUD::NativeTick(const FGeometry& MyGeometry, float InDel
 void UCompetitiveRankingHUD::NativeDestruct()
 {
 	BindScoreChanges(nullptr);
+	if (UWorld* World = GetWorld()) World->GetTimerManager().ClearTimer(StreakDisplayTimer);
+	if (StreakHighlight) StreakHighlight->StopAnimationsAndLatentActions();
+	StreakHighlight = nullptr;
 	if (StreakPanel) StreakPanel->RemoveFromParent();
 	StreakPanel = nullptr;
 	StreakIcons = nullptr;
