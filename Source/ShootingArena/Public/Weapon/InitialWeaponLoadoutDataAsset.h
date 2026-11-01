@@ -44,6 +44,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Initial Weapons", meta=(TitleProperty="WeaponName"))
 	TArray<FInitialWeaponEntry> GrantedWeapons;
 
+	/** Default weapons are a fallback while no regular weapon has ammunition. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Weapon Selection", meta=(DisplayName="일반 총기 사용 가능 시 기본 총기 선택 제한"))
+	bool bRestrictDefaultWeaponSelection = true;
+
 	/** Shared by granting, unlimited-ammo checks and death-drop substitution. */
 	bool ResolveWeaponEntry(const FInitialWeaponEntry& Entry, FInitialWeaponEntry& OutEntry) const;
 
