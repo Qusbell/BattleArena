@@ -105,6 +105,13 @@ public:
     )
     float ReatreatMaxAngle = 90.0f;
 
+    // 버프 아이템의 가중치가 Aggression Score에 영향을 받을까?에 대해서
+    UPROPERTY(
+        EditDefaultsOnly,
+        BlueprintReadOnly,
+        Category = "Aggression|Buff"
+    )
+    bool IsBuffWeightAffectedByAggression = true;
 
 #if WITH_EDITOR
 

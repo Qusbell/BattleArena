@@ -7,5 +7,6 @@
 	"armorWeight": 0.30000001192092896,
 	"weaponBaseMax": 1000,
 	"chaseMaxTime": 5,
-	"reatreatMaxAngle": 90
+	"reatreatMaxAngle": 90,
+	"isBuffWeightAffectedByAggression": true
 }
