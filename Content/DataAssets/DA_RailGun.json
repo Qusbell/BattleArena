@@ -27,7 +27,7 @@
 	"emptyAmmoSound": "None",
 	"fallOffStart": 0,
 	"minDamageMultiplier": 0,
-	"hitscanBeamEffect": "/Script/Niagara.NiagaraSystem'/Game/QuakeLike_1_0/HeldItem/NiagaraSystem/NS_RailGunEffect_Handmade.NS_RailGunEffect_Handmade'",
+	"hitscanBeamEffect": "/Script/Niagara.NiagaraSystem'/Game/QuakeLike_1_0/HeldItem/NiagaraSystem/NS_RailGunEffect_QC.NS_RailGunEffect_QC'",
 	"nSHitscanHitEffect": "None",
 	"hitscanHitEffect": "/Script/Engine.ParticleSystem'/Game/Realistic_Starter_VFX_Pack_Vol2/Particles/Hit/P_Rubber.P_Rubber'",
 	"reloadTime": 0,
