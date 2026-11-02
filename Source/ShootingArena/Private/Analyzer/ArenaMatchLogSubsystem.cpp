@@ -1774,6 +1774,12 @@ void UArenaMatchLogSubsystem::CommitItemPickup(AActor* Item, AActor* Picker)
 	const bool bTracksApplied = Category == TEXT("Life") || Category == TEXT("Ammo");
 	RecordItemPickup(Pawn, Item, bHasAmount ? Amount : 0.0, Applied, bHasAmount && (!bTracksApplied || bHasApplied));
 	PickupBefore.Remove(Picker);
+	// A picked-up item is gone from play even when its actor is kept alive (buff items are not destroyed on pickup),
+	// so close it here; the destroy hook and the match-end sweep skip items that are no longer open.
+	if (PickupSeqs.Contains(*Id))
+	{
+		RecordItemRemove(Item, TEXT("PickedUp"));
+	}
 }
 
 void UArenaMatchLogSubsystem::RecordWeaponSwap(AActor* Owner, AActor* BeforeItem, AActor* AfterItem)
