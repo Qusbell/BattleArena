@@ -19,6 +19,8 @@ class SHOOTINGARENA_API UCompetitiveRankingHUD : public UUserWidget
 {
 	GENERATED_BODY()
 public:
+	UCompetitiveRankingHUD(const FObjectInitializer& ObjectInitializer);
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "HUD|Kill Medal", meta = (DisplayName = "연속 킬 메달 UI 설정"))
 	TSoftObjectPtr<UKillMedalUISettings> KillMedalUISettings = TSoftObjectPtr<UKillMedalUISettings>(
 		FSoftObjectPath(TEXT("/Game/QuakeLike_1_0/UI/PlayerUI/KillMedals/DA_KillMedalUISettings.DA_KillMedalUISettings")));
@@ -34,7 +36,11 @@ private:
 	void BindScoreChanges(AGameStateBase* State);
 	void PositionBesideTimer(const FGeometry& Geometry);
 	void RefreshStreakMedals(int32 Count);
+	void HideStreakMedals();
 
+	UPROPERTY() TSubclassOf<UUserWidget> StreakHighlightClass;
+	UPROPERTY(Transient) TObjectPtr<UUserWidget> StreakHighlight;
+	FTimerHandle StreakDisplayTimer;
 	UPROPERTY(Transient) TObjectPtr<UKillMedalUISettings> ActiveStreakSettings;
 	UPROPERTY(Transient) TObjectPtr<UVerticalBox> StreakPanel;
 	UPROPERTY(Transient) TObjectPtr<UHorizontalBox> StreakIcons;

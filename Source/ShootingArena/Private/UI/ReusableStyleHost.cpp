@@ -139,6 +139,10 @@ void UReusableStyleHost::ApplyStyle()
             Style->GetNormalPressedBrush(SlateStyle.Pressed);
         }
         Style->GetDisabledBrush(SlateStyle.Disabled);
+        SlateStyle.PressedSlateSound = bSelected && Style->SelectedPressedSlateSound
+            ? Style->SelectedPressedSlateSound.Sound : Style->PressedSlateSound;
+        SlateStyle.HoveredSlateSound = bSelected && Style->SelectedHoveredSlateSound
+            ? Style->SelectedHoveredSlateSound.Sound : Style->HoveredSlateSound;
         UCommonTextStyle* NormalText = bSelected ? Style->GetSelectedTextStyle() : Style->GetNormalTextStyle();
         if (!NormalText) NormalText = Style->GetNormalTextStyle();
         UCommonTextStyle* HoverText = bSelected ? Style->GetSelectedHoveredTextStyle() : Style->GetNormalHoveredTextStyle();

@@ -381,6 +381,22 @@ bool UArenaMatchLogSubsystem::OpenDatabase()
 		}
 		Db->Execute(TEXT("COMMIT"));
 	}
+	else
+	{
+		// Databases created before match.StartedAtKst existed get the column so the match insert keeps working.
+		int64 HasStartedAtKst = 0;
+		Db->Execute(TEXT("SELECT COUNT(*) FROM pragma_table_info('match') WHERE name='StartedAtKst'"),
+			[&HasStartedAtKst](const FSQLitePreparedStatement& Row)
+			{
+				Row.GetColumnValueByIndex(0, HasStartedAtKst);
+				return ESQLitePreparedStatementExecuteRowResult::Stop;
+			});
+		if (HasStartedAtKst == 0 && !Db->Execute(TEXT("ALTER TABLE match ADD COLUMN StartedAtKst TEXT")))
+		{
+			UE_LOG(LogArenaMatchLog, Error, TEXT("Could not add match.StartedAtKst: %s"), *Db->GetLastError());
+			++FailedWrites;
+		}
+	}
 	UE_LOG(LogArenaMatchLog, Log, TEXT("Match log database: %s"), *DbPath);
 	return true;
 }
@@ -525,8 +541,9 @@ void UArenaMatchLogSubsystem::EnsureMatchStarted()
 
 	const int32 Seq = NextEventSeq++;
 	Enqueue(FString::Printf(TEXT("INSERT INTO event (MatchId,EventSequence,ElapsedSeconds,EventType,CauseEventSequence) VALUES (%s,%d,0,'MatchStarted',NULL)"), *Q(MatchId), Seq));
-	Enqueue(FString::Printf(TEXT("INSERT INTO match (MatchId,EventSequence,MapId,GameBuildVersion,SettingsVersion,TimeLimitSeconds,KillTarget) VALUES (%s,%d,%s,%s,%s,%d,%d)"),
-		*Q(MatchId), Seq, *Q(MapId), *Q(FApp::GetBuildVersion()), *Q(SettingsVersion), TimeLimit, KillTarget));
+	const FString StartedAtKst = (FDateTime::UtcNow() + FTimespan::FromHours(9)).ToString(TEXT("%y-%m-%d_%H:%M:%S"));
+	Enqueue(FString::Printf(TEXT("INSERT INTO match (MatchId,EventSequence,MapId,GameBuildVersion,SettingsVersion,TimeLimitSeconds,KillTarget,StartedAtKst) VALUES (%s,%d,%s,%s,%s,%d,%d,%s)"),
+		*Q(MatchId), Seq, *Q(MapId), *Q(FApp::GetBuildVersion()), *Q(SettingsVersion), TimeLimit, KillTarget, *Q(StartedAtKst)));
 
 	World->GetTimerManager().SetTimer(TickHandle, this, &UArenaMatchLogSubsystem::Tick, 0.25f, true);
 	UE_LOG(LogArenaMatchLog, Log, TEXT("Match %s started on %s (time limit %d s, kill target %d)"), *MatchId, *MapId, TimeLimit, KillTarget);
@@ -829,6 +846,14 @@ void UArenaMatchLogSubsystem::CompleteSpawn(APawn* Pawn, const TArray<FString>& 
 	{
 		Equipped = Life->PendingInitialEquip;
 	}
+	if (const FString* EquippedBeforeLife = PendingEquipByPawn.Find(Pawn))
+	{
+		if (Equipped.IsEmpty())
+		{
+			Equipped = *EquippedBeforeLife;
+		}
+		PendingEquipByPawn.Remove(Pawn);
+	}
 	if (Ids.IsEmpty() && IsValid(Pawn))
 	{
 		CollectHeldWeapons(Pawn, Ids, Defaults); // no grant reported: use what the pawn actually holds
@@ -908,6 +933,7 @@ void UArenaMatchLogSubsystem::EndLife(APawn* Pawn, const TCHAR* Reason, int32 Ca
 		return;
 	}
 	Life->bEnded = true;
+	PendingEquipByPawn.Remove(Pawn); // equips seen before this point belong to the life that just ended
 	if (!Life->bSpawnWritten)
 	{
 		UE_LOG(LogArenaMatchLog, Warning, TEXT("Life %d/%d ended (%s) before its spawn was recorded"), Life->ParticipantId, Life->SpawnNumber, Reason);
@@ -1177,14 +1203,21 @@ void UArenaMatchLogSubsystem::RecordCredit(APawn* Victim, const FString& DeathCa
 void UArenaMatchLogSubsystem::RecordWeaponEquip(APawn* Pawn, const FString& Before, const FString& After, const FString& Reason)
 {
 	int32 Participant = INDEX_NONE, SpawnNumber = INDEX_NONE;
-	if (bDisabled || !FindLife(Pawn, Participant, SpawnNumber))
+	if (bDisabled || !IsValid(Pawn))
 	{
+		return;
+	}
+	if (!FindLife(Pawn, Participant, SpawnNumber))
+	{
+		// The loadout is granted before the controller possesses the pawn; keep the last equip for the spawn row.
+		PendingEquipByPawn.Add(Pawn, After);
 		return;
 	}
 	if (FLifeState* Life = Lives.Find(LifeKey(Participant, SpawnNumber)))
 	{
 		if (Life->bEnded)
 		{
+			PendingEquipByPawn.Add(Pawn, After); // pooled respawn: the grant arrives while the pawn still maps to the ended life
 			return;
 		}
 		if (!Life->bSpawnWritten)

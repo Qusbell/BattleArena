@@ -7,6 +7,8 @@
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Components/SizeBox.h"
+#include "Components/ScaleBox.h"
+#include "Components/Image.h"
 #include "Components/HorizontalBox.h"
 #include "Components/VerticalBox.h"
 #include "Audio/KillStreakVoiceComponent.h"
@@ -20,6 +22,7 @@
 #include "Engine/GameViewportClient.h"
 #include "Engine/LocalPlayer.h"
 #include "Engine/World.h"
+#include "Engine/Texture2D.h"
 #include "EngineUtils.h"
 #include "GameFramework/HUD.h"
 #include "GameFramework/Pawn.h"
@@ -207,14 +210,37 @@ bool FKillMedalAutomaticAwardsTest::RunTest(const FString& Parameters)
 	CustomSettings->MedalPosition = FVector2D(15, -20);
 	CustomSettings->CountPosition = FVector2D(-6, 8);
 	CustomSettings->CountFont.Size = 31;
+	CustomSettings->CountColor = FLinearColor(0.8f, 0.4f, 0.05f, 1.0f);
+	CustomSettings->LargeMedalMinKills = 11;
+	CustomSettings->LargeMedalTexture = nullptr;
 	StreakHUD->ActiveStreakSettings = CustomSettings;
+	auto FirstImage = [StreakHUD]() -> UImage*
+	{
+		const USizeBox* Box = Cast<USizeBox>(StreakHUD->StreakIcons->GetChildAt(0));
+		const UScaleBox* Scale = Box ? Cast<UScaleBox>(Box->GetContent()) : nullptr;
+		const UOverlay* Award = Scale ? Cast<UOverlay>(Scale->GetContent()) : nullptr;
+		return Award ? Cast<UImage>(Award->GetChildAt(0)) : Scale ? Cast<UImage>(Scale->GetContent()) : nullptr;
+	};
 	for (int32 Count : {1, 2, 10, 11, 25})
 	{
 		StreakHUD->RefreshStreakMedals(Count);
+		TestNotNull(TEXT("Every award includes the existing CompShooter highlight"), StreakHUD->StreakHighlight.Get());
+		TestTrue(TEXT("Highlight rays extend beyond the medal from the first kill through the large-medal stage"),
+			StreakHUD->StreakHighlight && StreakHUD->StreakHighlight->GetRenderTransform().Scale.Equals(FVector2D(8, 8))
+			&& StreakHUD->StreakHighlight->GetRenderTransformPivot().Equals(FVector2D(0.5f, 0.5f)));
+		const UOverlay* Award = StreakHUD->StreakHighlight ? Cast<UOverlay>(StreakHUD->StreakHighlight->GetParent()) : nullptr;
+		TestTrue(TEXT("Highlight draws above the artwork including the numeric large-medal stage"),
+			Award && Award->GetChildrenCount() == 2 && Cast<UImage>(Award->GetChildAt(0))
+			&& Award->GetChildAt(1) == StreakHUD->StreakHighlight);
 		TestEqual(TEXT("Ten individual medals then one large medal"), StreakHUD->StreakIcons->GetChildrenCount(), Count > 10 ? 1 : Count);
 		TestEqual(TEXT("Numeric count is visible only after ten"), StreakHUD->StreakCountLabel->GetVisibility(),
 			Count > 10 ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-		if (Count > 10) TestTrue(TEXT("Large medal shows the actual total"), StreakHUD->StreakCountLabel->GetText().EqualTo(FText::AsNumber(Count)));
+		TestEqual(TEXT("Count accents share the numeric count visibility"), StreakHUD->StreakCountLabel->GetParent()->GetVisibility(),
+			StreakHUD->StreakCountLabel->GetVisibility());
+		if (Count > 10) TestEqual(TEXT("Large medal shows only the actual total"),
+			StreakHUD->StreakCountLabel->GetText().ToString(), FString::FromInt(Count));
+		TestTrue(TEXT("An unconfigured large image preserves the existing artwork"), FirstImage() &&
+			FirstImage()->GetBrush().GetResourceObject() == CustomSettings->MedalTexture.Get());
 		USizeBox* FirstBox = Cast<USizeBox>(StreakHUD->StreakIcons->GetChildAt(0));
 		const FVector2D ExpectedSize = Count > 10 ? CustomSettings->LargeMedalSize : CustomSettings->FirstMedalSize;
 		TestTrue(TEXT("Medal size comes from its data asset"), FirstBox &&
@@ -231,7 +257,63 @@ bool FKillMedalAutomaticAwardsTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Medal anchor comes from the data asset"), StreakSlot && StreakSlot->GetAnchors().Minimum.Equals(CustomSettings->MedalAnchor));
 	TestTrue(TEXT("Medal position comes from the data asset"), StreakSlot && StreakSlot->GetPosition().Equals(CustomSettings->MedalPosition));
 	TestEqual(TEXT("Text size comes from the data asset"), StreakHUD->StreakCountLabel->GetFont().Size, 31.0f);
-	TestTrue(TEXT("Text position comes from the data asset"), StreakHUD->StreakCountLabel->GetRenderTransform().Translation.Equals(CustomSettings->CountPosition));
+	const UHorizontalBox* CountRow = Cast<UHorizontalBox>(StreakHUD->StreakCountLabel->GetParent());
+	if (!TestNotNull(TEXT("Count has a horizontal accent row"), CountRow)) return false;
+	TestEqual(TEXT("Count is above the medal icons"), StreakHUD->StreakPanel->GetChildIndex(CountRow), 0);
+	TestEqual(TEXT("Two accents surround the count"), CountRow->GetChildrenCount(), 3);
+	TestTrue(TEXT("Number stays between the accents"), CountRow->GetChildAt(1) == StreakHUD->StreakCountLabel);
+	for (int32 Side : {0, 2})
+	{
+		const UImage* Accent = Cast<UImage>(CountRow->GetChildAt(Side));
+		TestTrue(TEXT("Accents reuse the CompShooter glow texture and the configured count color"), Accent
+			&& GetPathNameSafe(Accent->GetBrush().GetResourceObject()) == TEXT("/Game/CompShooterHUD/Textures/Highlights/T_Highlight2_1920x500.T_Highlight2_1920x500")
+			&& Accent->GetColorAndOpacity().Equals(CustomSettings->CountColor));
+	}
+	TestTrue(TEXT("Count color comes from the data asset"), StreakHUD->StreakCountLabel->GetColorAndOpacity().GetSpecifiedColor().Equals(CustomSettings->CountColor));
+	TestTrue(TEXT("Count and accents move together using the data asset"), CountRow->GetRenderTransform().Translation.Equals(CustomSettings->CountPosition));
+	CustomSettings->LargeMedalMinKills = 5;
+	CustomSettings->LargeMedalTexture = LoadObject<UTexture2D>(nullptr,
+		TEXT("/Game/QuakeLike_1_0/UI/PlayerUI/KillMedals/T_KillMedal_DoubleKill.T_KillMedal_DoubleKill"));
+	if (!TestNotNull(TEXT("Distinct artwork for the large medal"), CustomSettings->LargeMedalTexture.Get())) return false;
+	for (int32 Count : {4, 5, 6})
+	{
+		StreakHUD->RefreshStreakMedals(Count);
+		TestEqual(TEXT("Designer threshold controls the exact switch boundary"), StreakHUD->StreakIcons->GetChildrenCount(), Count < 5 ? Count : 1);
+		TestEqual(TEXT("Count visibility uses the same designer threshold"), StreakHUD->StreakCountLabel->GetVisibility(),
+			Count < 5 ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+		TestTrue(TEXT("Images switch at the configured threshold"), FirstImage() && FirstImage()->GetBrush().GetResourceObject() ==
+			(Count < 5 ? CustomSettings->MedalTexture.Get() : CustomSettings->LargeMedalTexture.Get()));
+	}
+	CustomSettings->LargeMedalMinKills = 0;
+	StreakHUD->RefreshStreakMedals(1);
+	TestEqual(TEXT("Invalid thresholds clamp to the first kill"), StreakHUD->StreakCountLabel->GetText().ToString(), FString(TEXT("1")));
+	UCompetitiveRankingHUD* LargeOnlyHUD = CreateWidget<UCompetitiveRankingHUD>(PC);
+	LargeOnlyHUD->WidgetTree = NewObject<UWidgetTree>(LargeOnlyHUD);
+	LargeOnlyHUD->WidgetTree->RootWidget = LargeOnlyHUD->WidgetTree->ConstructWidget<UCanvasPanel>();
+	LargeOnlyHUD->ActiveStreakSettings = DuplicateObject<UKillMedalUISettings>(CustomSettings, LargeOnlyHUD);
+	LargeOnlyHUD->ActiveStreakSettings->MedalTexture = nullptr;
+	LargeOnlyHUD->RefreshStreakMedals(1);
+	TestNotNull(TEXT("A configured large image works without the optional fallback image"), LargeOnlyHUD->StreakPanel.Get());
+	CustomSettings->DisplayDuration = 1.0f;
+	StreakHUD->RefreshStreakMedals(2);
+	UUserWidget* PreviousHighlight = StreakHUD->StreakHighlight;
+	++GFrameCounter;
+	World->GetTimerManager().Tick(0.0f);
+	++GFrameCounter;
+	World->GetTimerManager().Tick(0.6f);
+	StreakHUD->RefreshStreakMedals(3);
+	TestTrue(TEXT("A quick next kill restarts the highlight"), StreakHUD->StreakHighlight && StreakHUD->StreakHighlight != PreviousHighlight);
+	++GFrameCounter;
+	World->GetTimerManager().Tick(0.6f);
+	TestEqual(TEXT("Previous kill timeout cannot hide a newer award"), StreakHUD->StreakPanel->GetVisibility(), ESlateVisibility::HitTestInvisible);
+	++GFrameCounter;
+	World->GetTimerManager().Tick(0.5f);
+	TestEqual(TEXT("Medals disappear after the last kill display duration"), StreakHUD->StreakPanel->GetVisibility(), ESlateVisibility::Collapsed);
+	TestEqual(TEXT("Hiding the medal retains the displayed streak"), StreakHUD->DisplayedStreak, 3);
+	StreakHUD->RefreshStreakMedals(3);
+	TestEqual(TEXT("Unchanged streak cannot reopen a timed-out medal"), StreakHUD->StreakPanel->GetVisibility(), ESlateVisibility::Collapsed);
+	StreakHUD->RefreshStreakMedals(4);
+	TestEqual(TEXT("The next kill shows the updated medal again"), StreakHUD->StreakPanel->GetVisibility(), ESlateVisibility::HitTestInvisible);
 	Voice->NotifyOwnerDeath();
 	StreakHUD->RefreshStreakMedals(Voice->GetCurrentStreakCount());
 	TestEqual(TEXT("Death resets the streak"), Voice->GetCurrentStreakCount(), 0);

@@ -4,9 +4,9 @@
 		"BuffTag": "(TagName=\"Buff.Atk\")",
 		"Mesh": "/Script/Engine.StaticMesh'/Game/QuakeLike_Base/SDM/Symbol/Buff_03.Buff_03'",
 		"PickupSound": "/Script/Engine.SoundCue'/Game/ParagonSteel/Audio/Cues/Steel_Emote_110.Steel_Emote_110'",
-		"PickupVolume": 2,
-		"Duration": 30,
-		"StatValue": 3,
+		"PickupVolume": 1,
+		"Duration": 20,
+		"StatValue": 2.5,
 		"BuffType": "Damage_Increase",
 		"ModifierType": "Multiply",
 		"NiagaraVFX": "None",
@@ -18,14 +18,15 @@
 		"WarningWorldEnabled": false,
 		"WarningLocalVolume": 1,
 		"WarningWorldVolume": 1,
-		"WarningAttenuation": "None"
+		"WarningAttenuation": "None",
+		"attributes": "(GameplayTags=((TagName=\"AITargetable.DropItem.Buff\")))"
 	},
 	{
 		"Name": "Buff.Multi.Def",
 		"BuffTag": "(TagName=\"Buff.Def\")",
 		"Mesh": "/Script/Engine.StaticMesh'/Game/CompShooterHUD/DemoContent/DemoRoom/Meshes/SM_UE4_Logo.SM_UE4_Logo'",
 		"PickupSound": "/Script/Engine.SoundCue'/Game/ParagonSteel/Audio/Cues/Steel_Emote_110.Steel_Emote_110'",
-		"PickupVolume": 2,
+		"PickupVolume": 1,
 		"Duration": 30,
 		"StatValue": 0.59999999999999998,
 		"BuffType": "Damage_Reduction",
@@ -39,7 +40,8 @@
 		"WarningWorldEnabled": false,
 		"WarningLocalVolume": 1,
 		"WarningWorldVolume": 1,
-		"WarningAttenuation": "None"
+		"WarningAttenuation": "None",
+		"attributes": "(GameplayTags=((TagName=\"AITargetable.DropItem.Buff\")))"
 	},
 	{
 		"Name": "Buff.Add.Atk",
@@ -60,7 +62,8 @@
 		"WarningWorldEnabled": false,
 		"WarningLocalVolume": 1,
 		"WarningWorldVolume": 1,
-		"WarningAttenuation": "None"
+		"WarningAttenuation": "None",
+		"attributes": "(GameplayTags=((TagName=\"AITargetable.DropItem.Buff\")))"
 	},
 	{
 		"Name": "Buff.Add.Def",
@@ -81,6 +84,7 @@
 		"WarningWorldEnabled": false,
 		"WarningLocalVolume": 1,
 		"WarningWorldVolume": 1,
-		"WarningAttenuation": "None"
+		"WarningAttenuation": "None",
+		"attributes": "(GameplayTags=((TagName=\"AITargetable.DropItem.Buff\")))"
 	}
 ]

@@ -37,7 +37,7 @@
 	"chHitSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/ETC/Quake3_Hit.Quake3_Hit'",
 	"fireVolumeMultiplier": 1,
 	"emptyAmmoVolumeMultiplier": 1,
-	"chHitVolumeMultiplier": 2.5,
+	"chHitVolumeMultiplier": 1,
 	"projectileVisualForwardOffset": 100,
 	"projectileDestroyVolumeMultiplier": 1,
 	"selfDamage": 40,

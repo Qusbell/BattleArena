@@ -7,6 +7,7 @@
 #include "PlayerDefaultNameSettings.h"
 #include "LocalDedicatedServerLibrary.h"
 #include "UObject/UObjectGlobals.h"
+#include "UObject/UnrealType.h"
 
 void UShootingArenaGameInstance::Init()
 {
@@ -73,7 +74,18 @@ void UShootingArenaGameInstance::HandlePreLoadMap(const FString& MapName)
 	BaseName.Split(TEXT("?"), &BaseName, nullptr);
 	if (BaseName.EndsWith(TEXT("MainMenu_Level")))
 	{
-		ULocalDedicatedServerLibrary::StopLocalDedicatedServer();
+		// 결과창 "레벨 선택"으로 돌아오는 경우(bOpenMapSelectDirectly)에는 로컬 서버를 유지합니다.
+		// 이 플래그는 BP_QuakeGameInstance 변수라 리플렉션으로 읽고, 메인 메뉴 Construct 에서 소비됩니다.
+		bool bKeepLocalServer = false;
+		if (const FBoolProperty* KeepProp = FindFProperty<FBoolProperty>(GetClass(), TEXT("bOpenMapSelectDirectly")))
+		{
+			bKeepLocalServer = KeepProp->GetPropertyValue_InContainer(this);
+		}
+
+		if (!bKeepLocalServer || !ULocalDedicatedServerLibrary::IsLocalDedicatedServerRunning())
+		{
+			ULocalDedicatedServerLibrary::StopLocalDedicatedServer();
+		}
 
 		// 메인 메뉴로 돌아오면 로비 접속은 끝난 것입니다. 접속 화면에 보여줄 메시지(PendingConnectMessage)는 남깁니다.
 		ConnectState = ELobbyConnectState::Idle;

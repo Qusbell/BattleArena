@@ -12,6 +12,9 @@ class SHOOTINGARENA_API AMyAIController : public AAIController
 public:
     virtual void UpdateControlRotation(float DeltaTime, bool bUpdatePawn = true) override;
 
+    void RequestDamageLook(const FVector& WorldDirection);
+    void ResetDamageLook();
+
     // Pawn-based entry points keep the Blueprint interface independent of the controller class.
     UFUNCTION(BlueprintCallable, Category = "AI|Orbital Look")
     static void ConfigureOrbitalLook(APawn* Observer, float RotationThreshold, float InterpSpeed, float MaxChange);
@@ -43,4 +46,8 @@ private:
     float OrbitalInterpSpeed = 5.0f;
     float OrbitalMaxChange = 180.0f;
     bool bOrbitalLookActive = false;
+    FVector DamageLookDirection = FVector::ZeroVector;
+    FVector PendingDamageLookDirection = FVector::ZeroVector;
+    bool bDamageLookActive = false;
+    bool bPendingDamageLook = false;
 };

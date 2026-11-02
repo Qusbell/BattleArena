@@ -4,6 +4,7 @@
 #include "AI/PathLink/Internal/PathLinkRouteFinder.h"
 #include "AI/PathLink/Internal/PathLinkNavigation.h"
 #include "AI/PathLink/Internal/PathLinkNavSnapshot.h"
+#include "AI/PathLink/Internal/PathLinkRuntimeCache.h"
 #include "AI/PathLink/PathLinkRoutingCache.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
@@ -18,10 +19,12 @@
 #include "ProfilingDebugging/CpuProfilerTrace.h"
 #include "HAL/IConsoleManager.h"
 #include "UObject/Stack.h"
+#include "Async/Async.h"
 
 #if WITH_EDITOR
 #include "Editor.h"
 #include "AssetCompilingManager.h"
+#include "Detour/DetourNavMesh.h"
 #include "UObject/UObjectGlobals.h"
 #include "Misc/MessageDialog.h"
 #endif
@@ -30,14 +33,163 @@ DEFINE_LOG_CATEGORY_STATIC(LogPathLinkSubsystem, Log, All);
 
 static TAutoConsoleVariable<int32> CVarPathLinkEstimateDebug(TEXT("PathLink.EstimateDebug"), 0,
     TEXT("Log actual estimated-distance calls (at most once per second per subsystem), including Blueprint stack. 0=off, 1=on, 2=inspect missing polygon references."));
+static TAutoConsoleVariable<float> CVarPathLinkRuntimeBuildBudget(TEXT("PathLink.RuntimeBuildBudgetMs"), 2.0f,
+    TEXT("Runtime routing cache work budget per frame in milliseconds; a single navigation query may exceed it."));
+#if !UE_BUILD_SHIPPING
+static TAutoConsoleVariable<int32> CVarPathLinkRuntimeCacheTest(TEXT("PathLink.RuntimeCacheTest"), 0,
+    TEXT("Test runtime cache recovery: 1 bypasses the map bake, 2 also ignores the saved runtime file. Never enable for ordinary play."));
+#endif
+static int32 RuntimeCacheTestMode()
+{
+#if !UE_BUILD_SHIPPING
+    return CVarPathLinkRuntimeCacheTest.GetValueOnGameThread();
+#else
+    return 0;
+#endif
+}
 
 void UPathLinkSubsystem::Tick(float DeltaTime)
 {
     MaxFrameMilliseconds = FMath::Max(MaxFrameMilliseconds, FApp::GetDeltaTime() * 1000.0);
+    TickRuntimeCache();
     // Reclaim dead context graphs outside route requests, once per second.
     if (GetWorld() && FMath::FloorToInt(GetWorld()->GetTimeSeconds()) != FMath::FloorToInt(GetWorld()->GetTimeSeconds() - DeltaTime))
         for (auto It = ContextRouteGraphs.CreateIterator(); It; ++It)
             if (!It.Key().IsValid()) It.RemoveCurrent();
+}
+
+void UPathLinkSubsystem::TickRuntimeCache()
+{
+    UWorld* World = GetWorld();
+    if (!World || !World->HasBegunPlay() || World->GetNetMode() == NM_Client
+        || RuntimeCacheState == EPathLinkRuntimeCacheState::Failed) return;
+    if (RuntimeCacheFinalizeStage == 1)
+    {
+        const double ValidateStart = FPlatformTime::Seconds();
+        InvalidateRouteGraphCache();
+        if (!GetValidatedRoutingCache())
+        {
+            RuntimeCacheFinalizeStage = 0;
+            RuntimeCacheState = EPathLinkRuntimeCacheState::Failed; RuntimeCacheDetail = RoutingCacheStatus;
+            UE_LOG(LogPathLinkSubsystem, Error, TEXT("Generated runtime cache failed validation: %s"), *RuntimeCacheDetail); return;
+        }
+        RuntimeCacheState = EPathLinkRuntimeCacheState::Ready;
+        RuntimeCacheDetail = TEXT("Generated runtime cache ready; preparing to save.");
+        RuntimeCacheFinalizeStage = 2;
+        UE_LOG(LogPathLinkSubsystem, Display, TEXT("%s Slices=%d MaxSlice=%.3fms Budget=%.3fms Validation=%.3fms"),
+            *RuntimeCacheDetail, RuntimeCacheBuildSlices, RuntimeCacheMaxSliceMs, CVarPathLinkRuntimeBuildBudget.GetValueOnGameThread(),
+            (FPlatformTime::Seconds() - ValidateStart) * 1000.0);
+        return;
+    }
+    if (RuntimeCacheFinalizeStage == 2)
+    {
+        RuntimeCacheFinalizeStage = 0;
+        const double SerializeStart = FPlatformTime::Seconds();
+        FString SaveError;
+        PathLinkRuntimeCache::FCapturedCache SaveData;
+        if (PathLinkRuntimeCache::CaptureSave(*RuntimeRoutingData, SaveData, SaveError))
+        {
+            RuntimeCacheDetail = TEXT("Generated runtime cache ready; saving file.");
+            const FString SavePath = PathLinkRuntimeCache::FilePath(World);
+            const TWeakObjectPtr<UPathLinkSubsystem> WeakThis(this);
+            Async(EAsyncExecution::ThreadPool, [WeakThis, SavePath, Data = MoveTemp(SaveData)]() mutable
+            {
+                FString Error;
+                const bool bSaved = PathLinkRuntimeCache::WriteCaptured(SavePath, Data, Error);
+                AsyncTask(ENamedThreads::GameThread, [WeakThis, bSaved, Error = MoveTemp(Error)]()
+                {
+                    if (UPathLinkSubsystem* Self = WeakThis.Get())
+                    {
+                        Self->RuntimeCacheDetail = bSaved ? TEXT("Generated runtime cache ready and saved.")
+                            : TEXT("Generated runtime cache ready; save failed: ") + Error;
+                        if (bSaved) { UE_LOG(LogPathLinkSubsystem, Display, TEXT("%s"), *Self->RuntimeCacheDetail); }
+                        else { UE_LOG(LogPathLinkSubsystem, Warning, TEXT("%s"), *Self->RuntimeCacheDetail); }
+                    }
+                });
+            });
+        }
+        else
+        {
+            RuntimeCacheDetail = TEXT("Generated runtime cache ready; save failed: ") + SaveError;
+            UE_LOG(LogPathLinkSubsystem, Warning, TEXT("%s"), *RuntimeCacheDetail);
+        }
+        UE_LOG(LogPathLinkSubsystem, Display, TEXT("%s SaveSnapshot=%.3fms"), *RuntimeCacheDetail,
+            (FPlatformTime::Seconds() - SerializeStart) * 1000.0);
+        return;
+    }
+    if (RuntimeCacheState == EPathLinkRuntimeCacheState::Ready) return;
+    if (RuntimeCacheState == EPathLinkRuntimeCacheState::Building)
+    {
+        FString Error;
+        if (PendingRuntimeSnapshot.IsValid())
+        {
+            const double BeginStart = FPlatformTime::Seconds();
+            RuntimeCacheJob = MakeShared<FPathLinkRuntimeCacheJob>();
+            const bool bBegun = PendingRuntimeNavigation.IsValid() && RuntimeRoutingData
+                && RuntimeCacheJob->Begin(World, PendingRuntimeNavigation.Get(), RuntimeRoutingData,
+                    MoveTemp(*PendingRuntimeSnapshot), Error);
+            PendingRuntimeSnapshot.Reset(); PendingRuntimeNavigation.Reset();
+            if (!bBegun)
+            {
+                RuntimeCacheState = EPathLinkRuntimeCacheState::Failed;
+                RuntimeCacheDetail = Error.IsEmpty() ? TEXT("Navigation disappeared during runtime cache preparation.") : Error;
+                RuntimeCacheJob.Reset(); UE_LOG(LogPathLinkSubsystem, Error, TEXT("Runtime routing cache failed: %s"), *RuntimeCacheDetail); return;
+            }
+            RuntimeCacheDetail = TEXT("Generating runtime routing cache.");
+            UE_LOG(LogPathLinkSubsystem, Display, TEXT("%s JobSetup=%.3fms"), *RuntimeCacheDetail,
+                (FPlatformTime::Seconds() - BeginStart) * 1000.0);
+            return;
+        }
+        if (!RuntimeCacheJob.IsValid() || !RuntimeCacheJob->Tick(CVarPathLinkRuntimeBuildBudget.GetValueOnGameThread(), Error))
+        {
+            RuntimeCacheState = EPathLinkRuntimeCacheState::Failed;
+            RuntimeCacheDetail = Error.IsEmpty() ? TEXT("Runtime cache job is unavailable.") : Error;
+            RuntimeCacheJob.Reset(); UE_LOG(LogPathLinkSubsystem, Error, TEXT("Runtime routing cache failed: %s"), *RuntimeCacheDetail); return;
+        }
+        if (!RuntimeCacheJob->IsComplete()) return;
+        RuntimeCacheBuildSlices = RuntimeCacheJob->GetSliceCount();
+        RuntimeCacheMaxSliceMs = RuntimeCacheJob->GetMaxSliceMilliseconds();
+        RuntimeCacheJob.Reset(); RuntimeCacheFinalizeStage = 1;
+        return;
+    }
+    const double Now = FPlatformTime::Seconds();
+    if (Now < NextRuntimeCacheCheck) return;
+    NextRuntimeCacheCheck = Now + 0.5;
+    UNavigationSystemV1* NavSystem = UNavigationSystemV1::GetCurrent(World);
+    ARecastNavMesh* Nav = NavSystem ? Cast<ARecastNavMesh>(NavSystem->GetDefaultNavDataInstance(FNavigationSystem::DontCreate)) : nullptr;
+    // Static game worlds can retain queued dirty areas or a build lock indefinitely.
+    // Wait for active work, then validate the committed mesh rather than that queue.
+    if (!Nav || NavSystem->IsNavigationBuildInProgress())
+    { RuntimeCacheDetail = TEXT("Waiting for navigation to become ready."); return; }
+    // Revalidate after initial navigation becomes ready, even if an early request failed.
+    bBakeValidationPending = true;
+    if (GetValidatedRoutingCache())
+    {
+        RuntimeCacheState = EPathLinkRuntimeCacheState::Ready; RuntimeCacheDetail = TEXT("Map routing cache ready.");
+        UE_LOG(LogPathLinkSubsystem, Display, TEXT("%s"), *RuntimeCacheDetail); return;
+    }
+    FPathLinkNavSnapshot Snapshot; FString Error;
+    if (!PathLinkBake::ReadNavigation(Nav, Snapshot, Error))
+    { RuntimeCacheDetail = TEXT("Waiting for navigation: ") + Error; return; }
+    RuntimeRoutingData = NewObject<UPathLinkRoutingCacheData>(this, NAME_None, RF_Transient);
+    if (RuntimeCacheTestMode() != 2 && PathLinkRuntimeCache::Load(World, Nav, Snapshot, *RuntimeRoutingData, Error))
+    {
+        InvalidateRouteGraphCache();
+        if (GetValidatedRoutingCache())
+        {
+            RuntimeCacheState = EPathLinkRuntimeCacheState::Ready; RuntimeCacheDetail = TEXT("Saved runtime cache ready.");
+            UE_LOG(LogPathLinkSubsystem, Display, TEXT("%s"), *RuntimeCacheDetail); return;
+        }
+    }
+    else if (!Error.IsEmpty() && Error != TEXT("No saved runtime cache."))
+        UE_LOG(LogPathLinkSubsystem, Warning, TEXT("Saved runtime cache rejected: %s"), *Error);
+    RuntimeRoutingData = NewObject<UPathLinkRoutingCacheData>(this, NAME_None, RF_Transient);
+    PendingRuntimeNavigation = Nav;
+    PendingRuntimeSnapshot = MakeShared<FPathLinkNavSnapshot>(MoveTemp(Snapshot));
+    RuntimeCacheState = EPathLinkRuntimeCacheState::Building;
+    RuntimeCacheDetail = TEXT("Preparing runtime routing cache generation.");
+    UE_LOG(LogPathLinkSubsystem, Display, TEXT("%s Preparation=%.3fms"), *RuntimeCacheDetail,
+        (FPlatformTime::Seconds() - Now) * 1000.0);
 }
 
 bool UPathLinkSubsystem::IsTickable() const
@@ -66,6 +218,7 @@ double UPathLinkSubsystem::GetRuntimeCacheMiB() const
     for (const auto& Pair : ContextRouteGraphs)
         Bytes += Pair.Value.Traversals.GetAllocatedSize() + Pair.Value.Transitions.GetAllocatedSize();
     if (const auto* Bake = ValidatedRoutingCache.Get()) Bytes += Bake->GetCacheAllocatedSize();
+    if (RuntimeRoutingData && RuntimeRoutingData != ValidatedRoutingCache.Get()) Bytes += RuntimeRoutingData->GetCacheAllocatedSize();
     return double(Bytes) / (1024.0 * 1024.0);
 }
 
@@ -126,8 +279,9 @@ const UPathLinkRoutingCacheData* UPathLinkSubsystem::GetValidatedRoutingCache() 
         UPathLinkRoutingCacheData* Bake = nullptr;
         const auto* Settings = World->GetWorldSettings();
         const auto* Storage = Settings ? Settings->FindComponentByClass<UPathLinkCacheStorageComponent>() : nullptr;
-        if (Storage) Bake = Storage->Cache;
-        else // Never fall back over invalid managed data.
+        if (RuntimeRoutingData && RuntimeRoutingData->IsBaked()) Bake = RuntimeRoutingData;
+        else if (Storage) Bake = RuntimeCacheTestMode() ? nullptr : Storage->Cache;
+        else if (!RuntimeCacheTestMode()) // Never fall back over invalid managed data.
         {
             auto* Self = const_cast<UPathLinkSubsystem*>(this);
             for (TActorIterator<APathLinkRoutingCache> It(World); It; ++It)
@@ -261,11 +415,14 @@ void UPathLinkSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
     Super::Initialize(Collection);
     RegisteredLinks.Reset();
+    RuntimeCacheState = EPathLinkRuntimeCacheState::WaitingForNavigation;
+    RuntimeCacheDetail = TEXT("Waiting for world and navigation.");
     InvalidateRouteGraphCache();
 }
 
 void UPathLinkSubsystem::Deinitialize()
 {
+    RuntimeCacheJob.Reset(); PendingRuntimeSnapshot.Reset(); PendingRuntimeNavigation.Reset(); RuntimeRoutingData = nullptr;
     for (auto& Weak : ObservedNavMeshes)
         if (ARecastNavMesh* Nav = Weak.Get()) Nav->OnNavMeshUpdate.RemoveAll(this);
     ObservedNavMeshes.Reset();
@@ -1271,6 +1428,55 @@ bool UPathLinkSubsystem::PrepareRoutingCacheForEditor(bool bForceRebuild)
         RoutingCacheStatus = Error.IsEmpty() ? TEXT("Editor navigation is not ready; routing cache preparation failed.") : Error;
         UE_LOG(LogPathLinkSubsystem, Error, TEXT("%s"), *RoutingCacheStatus);
         return false;
+    }
+    // Static non-partitioned Recast serialization discards tiles outside the loaded
+    // levels' bounds. Remove those tiles before taking paths or polygon indices.
+    // A full rebuild is not enough: the generator can recreate out-of-bounds layers.
+    if (Nav->SupportsStreaming() && !Nav->bIsWorldPartitioned)
+    {
+        TArray<FBox> Bounds;
+        // Other loaded levels may own navigation chunks even when this nav actor
+        // lives in the persistent level; do not remove their valid tiles.
+        for (ULevel* Level : World->GetLevels())
+            if (Level) Bounds.Append(Nav->GetNavigableBoundsInLevel(Level));
+        if (Bounds.IsEmpty())
+        {
+            NotifyRoutingCacheChanged(); RoutingCacheStatus = TEXT("No registered navigation bounds; editor routing cache preparation deferred.");
+            UE_LOG(LogPathLinkSubsystem, Warning, TEXT("%s"), *RoutingCacheStatus); return false;
+        }
+        auto FindExcludedTiles = [&Bounds](ARecastNavMesh* MeshOwner)
+        {
+            TArray<FNavTileRef> Excluded;
+            const dtNavMesh* Mesh = MeshOwner->GetRecastMesh();
+            if (!Mesh) return Excluded;
+            for (int32 I = 0; I < Mesh->getMaxTiles(); ++I)
+                if (const dtMeshTile* Tile = Mesh->getTile(I); Tile && Tile->header && Tile->dataSize > 0)
+                {
+                    const FNavTileRef Ref(Mesh->getTileRef(Tile));
+                    const FBox TileBounds = MeshOwner->GetNavMeshTileBounds(Ref);
+                    if (!Bounds.ContainsByPredicate([&TileBounds](const FBox& B) { return B.Intersect(TileBounds); })) Excluded.Add(Ref);
+                }
+            return Excluded;
+        };
+        const TArray<FNavTileRef> Excluded = FindExcludedTiles(Nav);
+        if (!Excluded.IsEmpty())
+        {
+            dtNavMesh* Mesh = Nav->GetRecastMesh();
+            for (FNavTileRef Ref : Excluded)
+            {
+                if (dtStatusFailed(Mesh->removeTile(static_cast<dtTileRef>(Ref), nullptr, nullptr)))
+                { NotifyRoutingCacheChanged(); RoutingCacheStatus = TEXT("Could not remove an unserializable navigation tile."); return false; }
+            }
+            Nav->OnNavMeshTilesUpdated(Excluded);
+            Nav->RequestDrawingUpdate();
+            NotifyRoutingCacheChanged();
+            UE_LOG(LogPathLinkSubsystem, Display, TEXT("Removed %d navigation tiles excluded by level bounds before routing bake."), Excluded.Num());
+            if (!PathLinkBake::ReadNavigation(Nav, Snapshot, Error) || !FindExcludedTiles(Nav).IsEmpty())
+            {
+                RoutingCacheStatus = TEXT("Could not prepare serializable editor navigation: ") + Error;
+                UE_LOG(LogPathLinkSubsystem, Error, TEXT("%s"), *RoutingCacheStatus); return false;
+            }
+        }
     }
     if (!Storage)
     {

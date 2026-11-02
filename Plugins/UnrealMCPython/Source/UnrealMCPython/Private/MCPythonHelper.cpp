@@ -48,6 +48,7 @@
 #include "K2Node_VariableGet.h"
 #include "K2Node_VariableSet.h"
 #include "K2Node_Self.h"
+#include "K2Node_Knot.h"
 #include "K2Node_MacroInstance.h"
 #include "K2Node_DynamicCast.h"
 #include "K2Node_InputKey.h"
@@ -593,6 +594,16 @@ static UEdGraphNode* CreateBPNodeFromJson(UEdGraph* Graph, UBlueprint* Blueprint
         Creator.Finalize();
         NewNode = SelfNode;
     }
+    else if (NodeType == TEXT("Knot"))
+    {
+        // Reroute node: pins are InputPin / OutputPin and take their type from the first connection.
+        FGraphNodeCreator<UK2Node_Knot> Creator(*Graph);
+        UK2Node_Knot* KnotNode = Creator.CreateNode(false);
+        KnotNode->NodePosX = PosX;
+        KnotNode->NodePosY = PosY;
+        Creator.Finalize();
+        NewNode = KnotNode;
+    }
     else if (NodeType == TEXT("VariableGet"))
     {
         FString VarName;
@@ -910,7 +921,7 @@ static UEdGraphNode* CreateBPNodeFromJson(UEdGraph* Graph, UBlueprint* Blueprint
     }
     else
     {
-        OutError = FString::Printf(TEXT("Unknown node type '%s'. Supported: CallFunction, Event, CustomEvent, CastTo, Branch, Sequence, Self, VariableGet, VariableSet, MacroInstance, InputKey, SpawnActor."), *NodeType);
+        OutError = FString::Printf(TEXT("Unknown node type '%s'. Supported: CallFunction, Event, CustomEvent, CastTo, Branch, Sequence, Self, Knot, VariableGet, VariableSet, MacroInstance, InputKey, SpawnActor."), *NodeType);
         return nullptr;
     }
 

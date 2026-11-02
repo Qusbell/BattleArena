@@ -222,6 +222,10 @@ namespace
 
 					// bAbsolute=false: 서버 시작 시 붙은 URL 옵션(?Game= 등)을 그대로 유지합니다.
 					World->ServerTravel(TargetMap, false);
+
+					// 엔진 기본 ServerTravelPause(4초)는 접속 중인 클라이언트가 마지막 RPC를 받을 시간을 주는 값입니다.
+					// 싱글플레이 로컬 서버는 기다릴 다른 클라이언트가 없으므로 즉시 전환합니다.
+					World->NextSwitchCountdown = 0.0f;
 				}
 
 				return true;

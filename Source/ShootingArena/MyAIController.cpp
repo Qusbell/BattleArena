@@ -1,8 +1,52 @@
 #include "MyAIController.h"
 #include "AISystem.h"
+#include "BehaviorTree/BlackboardComponent.h"
+
+namespace
+{
+    bool IsInVisibleCombat(const AMyAIController* Controller)
+    {
+        const UBlackboardComponent* Blackboard = Controller->GetBlackboardComponent();
+        return Blackboard && IsValid(Blackboard->GetValueAsObject(TEXT("Enemy"))) &&
+            Blackboard->GetValueAsBool(TEXT("Is Enemy Visible"));
+    }
+}
+
+void AMyAIController::ResetDamageLook()
+{
+    bDamageLookActive = false;
+    bPendingDamageLook = false;
+    DamageLookDirection = FVector::ZeroVector;
+    PendingDamageLookDirection = FVector::ZeroVector;
+}
+
+void AMyAIController::RequestDamageLook(const FVector& WorldDirection)
+{
+    if (!HasAuthority() || IsInVisibleCombat(this))
+    {
+        return;
+    }
+    const FVector Direction = WorldDirection.GetSafeNormal();
+    if (Direction.IsNearlyZero())
+    {
+        return;
+    }
+    if (bDamageLookActive)
+    {
+        PendingDamageLookDirection = Direction;
+        bPendingDamageLook = true;
+    }
+    else
+    {
+        DamageLookDirection = Direction;
+        bDamageLookActive = true;
+        OrbitalCurrentRotation = GetControlRotation();
+    }
+}
 
 void AMyAIController::OnPossess(APawn* InPawn)
 {
+    ResetDamageLook();
     // Initialize before Super can dispatch the Blueprint possession event or start the BT.
     OrbitalLookTarget.Reset();
     OrbitalAimOffset = FVector::ZeroVector;
@@ -17,6 +61,7 @@ void AMyAIController::OnPossess(APawn* InPawn)
 
 void AMyAIController::OnUnPossess()
 {
+    ResetDamageLook();
     bOrbitalLookActive = false;
     OrbitalLookTarget.Reset();
     Super::OnUnPossess();
@@ -88,7 +133,12 @@ void AMyAIController::UpdateControlRotation(float DeltaTime, bool bUpdatePawn)
     {
         FRotator NewControlRotation = GetControlRotation();
 
-        if (bOrbitalLookActive && HasAuthority())
+        if (bDamageLookActive && IsInVisibleCombat(this))
+        {
+            ResetDamageLook();
+        }
+
+        if ((bOrbitalLookActive || bDamageLookActive) && HasAuthority())
         {
             if (const AActor* Target = OrbitalLookTarget.Get())
             {
@@ -98,7 +148,8 @@ void AMyAIController::UpdateControlRotation(float DeltaTime, bool bUpdatePawn)
             FVector ViewLocation;
             FRotator ViewRotation;
             MyPawn->GetActorEyesViewPoint(ViewLocation, ViewRotation);
-            const FVector TargetDelta = OrbitalNextAimTarget - ViewLocation;
+            const FVector TargetDelta = bDamageLookActive
+                ? DamageLookDirection : OrbitalNextAimTarget - ViewLocation;
             const FRotator TargetRotation = TargetDelta.Rotation();
             // A zero delta previously produced zero rotation, whose forward vector is +X.
             const FVector TargetDirection = TargetDelta.GetSafeNormal(0.0, FVector::ForwardVector);
@@ -106,6 +157,19 @@ void AMyAIController::UpdateControlRotation(float DeltaTime, bool bUpdatePawn)
                 OrbitalCurrentRotation.Vector(), TargetDirection), -1.0, 1.0);
             const float Speed = Dot < OrbitalRotationThresholdCos ? OrbitalMaxChange : OrbitalInterpSpeed;
             OrbitalCurrentRotation = FMath::RInterpConstantTo(OrbitalCurrentRotation, TargetRotation, DeltaTime, Speed);
+
+            if (bDamageLookActive && OrbitalCurrentRotation.Equals(TargetRotation, 0.1f))
+            {
+                if (bPendingDamageLook)
+                {
+                    DamageLookDirection = PendingDamageLookDirection;
+                    bPendingDamageLook = false;
+                }
+                else
+                {
+                    bDamageLookActive = false;
+                }
+            }
 
             // Preserve the old drone's EyesViewPoint origin and the controller's PawnViewLocation origin.
             // No Actor transform update is needed to represent this virtual focus point.

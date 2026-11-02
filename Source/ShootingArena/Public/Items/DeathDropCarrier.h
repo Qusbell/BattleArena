@@ -6,6 +6,7 @@
 #include "DeathDropCarrier.generated.h"
 
 class USphereComponent;
+class USceneComponent;
 
 /** Replicated physical body for a death pickup. Map pickups never use this actor. */
 UCLASS()
@@ -35,8 +36,14 @@ private:
 	UPROPERTY(ReplicatedUsing=OnRep_Pickup) bool bBuffPickup = false;
 	UPROPERTY(ReplicatedUsing=OnRep_Settled) bool bSettled = false;
 	UPROPERTY(ReplicatedUsing=OnRep_Settled) FVector SettledLocation = FVector::ZeroVector;
+	// Absolute server times also let late/relevant clients join the current shrink progress.
+	UPROPERTY(Replicated) double DespawnShrinkStartServerTime = -1.0;
+	UPROPERTY(Replicated) double DespawnServerTime = 0.0;
 	UPROPERTY() TSubclassOf<AActor> PickupActorClass;
 
+	TArray<TWeakObjectPtr<USceneComponent>> DespawnScalePivots;
+	TWeakObjectPtr<AActor> DespawnVisualOwner;
+	bool bDespawnVisualsInitialized = false;
 	FDeathDropSettings DropSettings;
 	FVector InitialHorizontalVelocity = FVector::ZeroVector;
 	double LaunchTime = 0.0;
@@ -52,4 +59,7 @@ private:
 	bool ConfigurePickup(AActor* Item, bool bUpdateMesh);
 	void SpawnPickup();
 	void FinishPickup();
+	double GetServerTimeSeconds() const;
+	void UpdateDespawnVisuals();
+	void RestoreDespawnScale();
 };

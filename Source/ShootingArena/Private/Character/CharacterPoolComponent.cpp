@@ -3,6 +3,7 @@
 #include "Character/CharacterPoolSubsystem.h"
 #include "CharacterPoolReflection.h"
 #include "AIController.h"
+#include "../../MyAIController.h"
 #include "AI/QuakeAIFireCycleComponent.h"
 #include "AI/Area/AreaManagerSubsystem.h"
 #include "BehaviorTree/BlackboardComponent.h"
@@ -208,6 +209,7 @@ void UCharacterPoolComponent::ResetAIForLife(AController* Controller, APawn* Paw
 	auto* AI = Cast<AAIController>(Controller);
 	if (!AI) return;
 	if (auto* FireCycle = AI->FindComponentByClass<UQuakeAIFireCycleComponent>()) FireCycle->ResetForLife();
+	if (auto* LookController = Cast<AMyAIController>(AI)) LookController->ResetDamageLook();
 	DetachControllerLife(AI, Pawn);
 	AI->StopMovement(); AI->ClearFocus(EAIFocusPriority::Gameplay);
 	if (AI->GetBrainComponent()) AI->GetBrainComponent()->StopLogic(TEXT("Pawn lifecycle changed"));

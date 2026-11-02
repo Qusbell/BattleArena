@@ -216,6 +216,8 @@ private:
         FString Equipped;
     };
     TMap<TWeakObjectPtr<APawn>, FPendingLoadout> PendingLoadouts;
+    /** Weapon equipped while the pawn had no open life (loadout granted before possession); becomes the initial weapon. */
+    TMap<TWeakObjectPtr<APawn>, FString> PendingEquipByPawn;
     TMap<int32, FPendingLoadout> LastLoadoutByParticipant;
     TMap<TWeakObjectPtr<AActor>, FArenaLifeSnapshot> PickupBefore;
     TMap<TWeakObjectPtr<AActor>, uint64> PickupFrame;

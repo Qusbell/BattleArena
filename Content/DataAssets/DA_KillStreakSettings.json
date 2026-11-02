@@ -1,7 +1,7 @@
 {
 	"killEventBatchDelay": 0.20000000298023224,
 	"killVoiceOverlapTime": 0,
-	"revengeSound": "/Script/Engine.SoundWave'/Game/QuakeLike_1_0/SoundAssets/Revenge.Revenge'",
+	"revengeSound": "/Script/Engine.SoundCue'/Game/QuakeLike_1_0/SoundAssets/Revenge_Cue.Revenge_Cue'",
 	"firstBloodSounds": [
 		"/Script/Engine.SoundWave'/Game/QuakeLike_1_0/SoundAssets/FirstBlood.FirstBlood'",
 		"/Script/Engine.SoundWave'/Game/QuakeLike_1_0/SoundAssets/FirstBlood_02.FirstBlood_02'"
@@ -10,22 +10,22 @@
 		{
 			"requiredKillCount": 2,
 			"sounds": [
-				"/Script/Engine.SoundWave'/Game/QuakeLike_1_0/SoundAssets/DoubleKill.DoubleKill'",
-				"/Script/Engine.SoundWave'/Game/QuakeLike_1_0/SoundAssets/DoubleTab.DoubleTab'"
+				"/Script/Engine.SoundCue'/Game/QuakeLike_1_0/SoundAssets/DoubleKill_Cue.DoubleKill_Cue'",
+				"/Script/Engine.SoundCue'/Game/QuakeLike_1_0/SoundAssets/DoubleTab_Cue.DoubleTab_Cue'"
 			]
 		},
 		{
 			"requiredKillCount": 3,
 			"sounds": [
-				"/Script/Engine.SoundWave'/Game/QuakeLike_1_0/SoundAssets/TripleKill.TripleKill'"
+				"/Script/Engine.SoundCue'/Game/QuakeLike_1_0/SoundAssets/TripleKill_Cue.TripleKill_Cue'"
 			]
 		},
 		{
 			"requiredKillCount": 4,
 			"sounds": [
-				"/Script/Engine.SoundWave'/Game/QuakeLike_1_0/SoundAssets/Dominated.Dominated'",
-				"/Script/Engine.SoundWave'/Game/QuakeLike_1_0/SoundAssets/Unstopable.Unstopable'",
-				"/Script/Engine.SoundWave'/Game/QuakeLike_1_0/SoundAssets/Rampage.Rampage'"
+				"/Script/Engine.SoundCue'/Game/QuakeLike_1_0/SoundAssets/Dominated_Cue.Dominated_Cue'",
+				"/Script/Engine.SoundCue'/Game/QuakeLike_1_0/SoundAssets/Unstopable_Cue.Unstopable_Cue'",
+				"/Script/Engine.SoundCue'/Game/QuakeLike_1_0/SoundAssets/Rampage_Cue.Rampage_Cue'"
 			]
 		}
 	],
