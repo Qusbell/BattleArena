@@ -1,9 +1,9 @@
 {
 	"weaponType": "HitScan",
-	"damage": 16,
+	"damage": 18,
 	"range": 10000,
 	"fireRate": 1.3,
-	"spread": 18,
+	"spread": 35,
 	"projectileClass": "None",
 	"projectileSpeed": 0,
 	"damageJudgmentOffset": 0,
