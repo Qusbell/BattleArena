@@ -12,8 +12,11 @@ class UParticleSystemComponent;
 class USoundAttenuation;
 class USoundBase;
 class UTextBlock;
+class UImage;
 class UDataTable;
 class UAudioComponent;
+class UBuffScreenEffectSettings;
+class UBuffScreenEffectWidget;
 
 /** Attachment settings only. Niagara and Cascade assets come from the acquired Buff DT row. */
 USTRUCT(BlueprintType)
@@ -99,6 +102,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Buff|Presentation")
 	TObjectPtr<UDataTable> BuffDataTable;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Buff|Presentation", meta = (DisplayName = "버프 화면 효과 설정"))
+	TObjectPtr<UBuffScreenEffectSettings> ScreenEffectSettings;
+
 	/** Reads currentBuffRowName from the existing grant path and publishes that DT row's VFX and deadline. */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Buff|Presentation")
 	void SetBuffPresentation(FGameplayTag BuffTag, double EndServerTime);
@@ -120,7 +126,7 @@ public:
 
 	/** Safe for missing/unpossessed pawns. Uses the replicated server deadline, not a HUD timer. */
 	UFUNCTION(BlueprintCallable, Category = "Buff|Presentation")
-	static void UpdateBuffRemainingTimeText(AActor* BuffOwner, UTextBlock* TimeText);
+	static void UpdateBuffRemainingTimeText(AActor* BuffOwner, UTextBlock* TimeText, UImage* BuffIcon = nullptr);
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	virtual void BeginPlay() override;
@@ -149,6 +155,9 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UAudioComponent> WarningWorldAudio;
 
+	UPROPERTY(Transient)
+	TObjectPtr<UBuffScreenEffectWidget> ScreenEffect;
+
 	uint32 ObservedWarningRevision = MAX_uint32;
 	int32 NextWarningSecond = 6;
 	int32 LastWarningPlayedSecond = 0;
@@ -170,6 +179,7 @@ private:
 	void ClientPlayBuffPickupSound(USoundBase* Sound, float Volume);
 
 	void StopEffects();
+	void UpdateScreenEffect();
 	void UpdateWarningPlayback();
 	int32 ConsumeWarningSecond(double Remaining);
 	int32 GetWarningOutputMask() const;
@@ -182,4 +192,5 @@ private:
 	const FBuffVisualEffects* GetEffects() const;
 
 	friend class FBuffWarningSoundTest;
+	friend class FBuffScreenEffectTest;
 };

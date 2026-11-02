@@ -57,7 +57,7 @@ bool FBuffPresentationTest::RunTest(const FString& Parameters)
 	Grant(TEXT("ApplyBuff"), TEXT("rowName"), TEXT("Buff.Multi.Atk"));
 	TestTrue(TEXT("Normal grant publishes its actual 30-second deadline"), FMath::IsNearlyEqual(Buff->GetPresentationRemainingTime(), 30.0, 0.01));
 	UBuffPresentationComponent::UpdateBuffRemainingTimeText(Owner, Text);
-	TestEqual(TEXT("Quad label and numeric seconds"), Text->GetText().ToString(), FString(TEXT("Quad 30s")));
+	TestEqual(TEXT("Numeric seconds without the buff name"), Text->GetText().ToString(), FString(TEXT("30s")));
 	Context.TickTestWorld(2.0f);
 	TestTrue(TEXT("Remaining time decreases with server game time"), Buff->GetPresentationRemainingTime() < 30.0);
 	Grant(TEXT("ApplyBuff"), TEXT("rowName"), TEXT("Buff.Multi.Atk"));
@@ -66,7 +66,7 @@ bool FBuffPresentationTest::RunTest(const FString& Parameters)
 	Grant(TEXT("ApplyDroppedBuff"), TEXT("Row Name"), TEXT("Buff.Multi.Def"), DroppedEnd);
 	TestTrue(TEXT("Dropped grant displays the inherited remaining time"), FMath::IsNearlyEqual(Buff->GetPresentationRemainingTime(), 12.0, 0.01));
 	UBuffPresentationComponent::UpdateBuffRemainingTimeText(Owner, Text);
-	TestEqual(TEXT("Protection label"), Text->GetText().ToString(), FString(TEXT("Protection 12s")));
+	TestEqual(TEXT("Protection also displays only the remaining time"), Text->GetText().ToString(), FString(TEXT("12s")));
 
 	UNiagaraSystem* Niagara = LoadObject<UNiagaraSystem>(nullptr, TEXT("/Game/QuakeLike_1_0/HeldItem/NiagaraSystem/MuzzleFlashMG/NS_MuzzleFlash_MG_Stylized.NS_MuzzleFlash_MG_Stylized"));
 	UParticleSystem* Cascade = LoadObject<UParticleSystem>(nullptr, TEXT("/Game/ParagonSteel/FX/Particles/Steel/Abilities/AbilityArmor/FX/P_Steel_AbilityArmor_Looping.P_Steel_AbilityArmor_Looping"));

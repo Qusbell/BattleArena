@@ -1,13 +1,19 @@
 #include "Buff/BuffPresentationComponent.h"
+#include "UI/BuffScreenEffect.h"
 
 #include "Components/AudioComponent.h"
+#include "Components/CanvasPanelSlot.h"
+#include "Components/Image.h"
+#include "Components/PanelWidget.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/TextBlock.h"
+#include "Components/VerticalBoxSlot.h"
 #include "Engine/DataTable.h"
 #include "DataTableUtils.h"
 #include "Engine/World.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/Pawn.h"
+#include "GameFramework/PlayerController.h"
 #include "GameFramework/GameStateBase.h"
 #include "HAL/IConsoleManager.h"
 #include "Kismet/GameplayStatics.h"
@@ -408,6 +414,7 @@ void UBuffPresentationComponent::OnRep_Presentation()
 	}
 	UpdateWarningPlayback();
 	if (!GetWorld() || GetWorld()->GetNetMode() == NM_DedicatedServer) return;
+	UpdateScreenEffect();
 	const FBuffVisualEffects* Effects = GetEffects();
 	if (!Effects || GetPresentationRemainingTime() <= 0.0)
 	{
@@ -460,16 +467,39 @@ void UBuffPresentationComponent::StopEffects()
 	PresentedTag = FGameplayTag();
 }
 
+void UBuffPresentationComponent::UpdateScreenEffect()
+{
+	const APawn* Pawn = Cast<APawn>(GetOwner());
+	APlayerController* PC = Pawn ? Cast<APlayerController>(Pawn->GetController()) : nullptr;
+	const bool bLocal = PC && PC->IsLocalController() && PC->GetLocalPlayer() && Pawn->IsLocallyControlled();
+	if (ScreenEffect && (!bLocal || ScreenEffect->GetOwningPlayer() != PC || ScreenEffect->HasFinished()))
+	{
+		ScreenEffect->RemoveFromParent();
+		ScreenEffect = nullptr;
+	}
+	if (!bLocal || ScreenEffect || !ScreenEffectSettings || !ScreenEffectSettings->bEnabled || GetPresentationRemainingTime() <= 0.0) return;
+	ScreenEffect = CreateWidget<UBuffScreenEffectWidget>(PC);
+	if (ScreenEffect && ScreenEffect->InitializeEffect(this, ScreenEffectSettings))
+	{
+		// Keep the tint behind HUD text and the separate red damage effect.
+		if (ScreenEffect->AddToPlayerScreen(-10)) return;
+	}
+	ScreenEffect = nullptr;
+}
+
 void UBuffPresentationComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 	UpdateWarningPlayback();
+	UpdateScreenEffect();
 	// Clients also stop at the deadline if the server's removal update arrives later.
 	if (PresentedTag.IsValid() && GetPresentationRemainingTime() <= 0.0) StopEffects();
 }
 
 void UBuffPresentationComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	if (ScreenEffect) ScreenEffect->RemoveFromParent();
+	ScreenEffect = nullptr;
 	if (UActorComponent* Life = LifeComponent.Get())
 	{
 		if (const FMulticastDelegateProperty* Death = FindFProperty<FMulticastDelegateProperty>(Life->GetClass(), TEXT("OnDeath")))
@@ -490,21 +520,43 @@ void UBuffPresentationComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProp
 	DOREPLIFETIME(UBuffPresentationComponent, Presentation);
 }
 
-void UBuffPresentationComponent::UpdateBuffRemainingTimeText(AActor* BuffOwner, UTextBlock* TimeText)
+void UBuffPresentationComponent::UpdateBuffRemainingTimeText(AActor* BuffOwner, UTextBlock* TimeText, UImage* BuffIcon)
 {
-	if (!IsValid(TimeText)) return;
+	if (!IsValid(TimeText))
+	{
+		if (IsValid(BuffIcon)) BuffIcon->SetVisibility(ESlateVisibility::Collapsed);
+		return;
+	}
 	const UBuffPresentationComponent* Buff = IsValid(BuffOwner) ? BuffOwner->FindComponentByClass<UBuffPresentationComponent>() : nullptr;
 	const double Remaining = Buff ? Buff->GetPresentationRemainingTime() : 0.0;
 	if (Remaining <= 0.0)
 	{
 		TimeText->SetVisibility(ESlateVisibility::Collapsed);
+		if (IsValid(BuffIcon)) BuffIcon->SetVisibility(ESlateVisibility::Collapsed);
 		return;
 	}
+	const UBuffScreenEffectSettings* Settings = Buff->ScreenEffectSettings;
+	UPanelWidget* Group = TimeText->GetParent();
+	if (Settings && Group && IsValid(BuffIcon) && BuffIcon->GetParent() == Group)
+	{
+		if (UCanvasPanelSlot* Slot = Cast<UCanvasPanelSlot>(Group->Slot))
+			if (Slot->GetPosition() != Settings->StatusPosition) Slot->SetPosition(Settings->StatusPosition);
+		if (UVerticalBoxSlot* Slot = Cast<UVerticalBoxSlot>(TimeText->Slot))
+		{
+			const FMargin Padding(0.0f, 0.0f, 0.0f, FMath::Max(0.0f, Settings->StatusGap));
+			if (Slot->GetPadding() != Padding) Slot->SetPadding(Padding);
+		}
+	}
 	const bool bQuad = IsQuad(Buff->Presentation.Tag);
-	const FText Name = bQuad ? NSLOCTEXT("Buff", "Quad", "Quad") : NSLOCTEXT("Buff", "Protection", "Protection");
-	const FText Text = FText::Format(NSLOCTEXT("Buff", "RemainingTime", "{0} {1}s"),
-		Name, FText::AsNumber(FMath::CeilToInt(Remaining)));
+	const FText Text = FText::Format(NSLOCTEXT("Buff", "SecondsRemaining", "{0}s"),
+		FText::AsNumber(FMath::CeilToInt(Remaining)));
 	if (!TimeText->GetText().EqualTo(Text)) TimeText->SetText(Text);
-	TimeText->SetColorAndOpacity(FSlateColor(bQuad ? FLinearColor(0.2f, 0.65f, 1.0f) : FLinearColor(0.4f, 1.0f, 0.4f)));
+	const FLinearColor Color = bQuad ? FLinearColor(0.2f, 0.65f, 1.0f) : FLinearColor(0.4f, 1.0f, 0.4f);
+	TimeText->SetColorAndOpacity(FSlateColor(Color));
 	TimeText->SetVisibility(ESlateVisibility::HitTestInvisible);
+	if (IsValid(BuffIcon))
+	{
+		BuffIcon->SetColorAndOpacity(Color);
+		BuffIcon->SetVisibility(ESlateVisibility::HitTestInvisible);
+	}
 }
