@@ -23,7 +23,7 @@
 	"traceChannel": "TraceTypeQuery1",
 	"projectileSound": "None",
 	"nSProjectileDestroyEffect": "None",
-	"projectileDestroyEffect": "/Script/Engine.ParticleSystem'/Game/ParagonWraith/FX/Particles/Abilities/Primary/FX/P_Wraith_Primary_HitWorld.P_Wraith_Primary_HitWorld'",
+	"projectileDestroyEffect": "/Script/Engine.ParticleSystem'/Game/ParagonWraith/FX/Particles/Abilities/Primary/FX/P_Wraith_Primary_HitWorld1.P_Wraith_Primary_HitWorld1'",
 	"emptyAmmoSound": "None",
 	"fallOffStart": 0,
 	"minDamageMultiplier": 0,
@@ -73,7 +73,7 @@
 	"railGunBeamLifeTime": 0.20000000000000001,
 	"crosshairRecoilSpreadAmount": 20,
 	"useSeparatePlayerProjectileDestroyEffects": true,
-	"projectilePlayerDestroyEffect": "/Script/Engine.ParticleSystem'/Game/ParagonWraith/FX/Particles/Abilities/Primary/FX/P_Wraith_Primary_HitWorld.P_Wraith_Primary_HitWorld'",
+	"projectilePlayerDestroyEffect": "/Script/Engine.ParticleSystem'/Game/ParagonWraith/FX/Particles/Abilities/Primary/FX/P_Wraith_Primary_HitWorld2.P_Wraith_Primary_HitWorld2'",
 	"nSProjectilePlayerDestroyEffect": "None",
 	"attributes":
 	{

@@ -83,7 +83,7 @@
 	"fpAnim": "/Script/Engine.AnimBlueprintGeneratedClass'/Game/QuakeLike_1_0/Animation/Steel/ABP/Steel_ABP_FP_BGH_Pistol.Steel_ABP_FP_BGH_Pistol_C'",
 	"tpAnim": "/Script/Engine.AnimBlueprintGeneratedClass'/Game/QuakeLike_1_0/Animation/Steel/ABP/Steel_ABP_TP_BGH_Pistol.Steel_ABP_TP_BGH_Pistol_C'",
 	"skeletalMesh": "/Script/Engine.SkeletalMesh'/Game/Scifi_Arsenal_Vol2/Skeletal_Meshes/Sci-fi_Pistol_02/SK_Sci-fi_Pistol_02_NoIronsight_NoAttachment.SK_Sci-fi_Pistol_02_NoIronsight_NoAttachment'",
-	"useMontage": "/Script/Engine.AnimMontage'/Game/Variant_Shooter/Anims/FP_Rifle_Shoot_Montage.FP_Rifle_Shoot_Montage'",
+	"useMontage": "/Script/Engine.AnimMontage'/Game/QuakeLike_1_0/Animation/Steel/Anim/AM_FP_Pistol_Fire_Short.AM_FP_Pistol_Fire_Short'",
 	"equipMontage": "/Script/Engine.AnimMontage'/Game/QuakeLike_1_0/Animation/Steel/Anim/Steel_PistolAnim_Weapon_Up_Montage.Steel_PistolAnim_Weapon_Up_Montage'",
 	"equipSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/PickUp_Weapon.PickUp_Weapon'",
 	"equipVolumeMultiplier": 1,
