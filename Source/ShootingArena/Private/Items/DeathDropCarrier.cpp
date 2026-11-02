@@ -1,7 +1,10 @@
 #include "Items/DeathDropCarrier.h"
 
 #include "Components/SphereComponent.h"
+#include "Components/MeshComponent.h"
+#include "Components/SceneComponent.h"
 #include "Engine/World.h"
+#include "GameFramework/GameStateBase.h"
 #include "Net/UnrealNetwork.h"
 #include "UObject/UnrealType.h"
 
@@ -11,6 +14,7 @@ namespace
 {
 	bool SetBool(UObject* Object, const TCHAR* Name, bool Value)
 	{
+		if (!IsValid(Object)) return false;
 		FBoolProperty* Property = FindFProperty<FBoolProperty>(Object->GetClass(), Name);
 		if (!Property) return false;
 		Property->SetPropertyValue_InContainer(Object, Value);
@@ -19,15 +23,17 @@ namespace
 
 	bool IsPickedUp(const AActor* Actor)
 	{
+		if (!IsValid(Actor)) return false;
 		const FBoolProperty* Property = FindFProperty<FBoolProperty>(Actor->GetClass(), TEXT("IsPickedUp"));
 		return Property && Property->GetPropertyValue_InContainer(Actor);
 	}
 
 	void CenterPickupSphere(AActor* Item)
 	{
+		if (!IsValid(Item) || Item->IsActorBeingDestroyed()) return;
 		TArray<USphereComponent*> Spheres;
 		Item->GetComponents(Spheres);
-		if (!Spheres.IsEmpty() && Spheres[0] != Item->GetRootComponent())
+		if (!Spheres.IsEmpty() && IsValid(Spheres[0]) && Spheres[0] != Item->GetRootComponent())
 		{
 			// Sight and navigation use GetActorLocation(). Keep the actor at the
 			// carrier center and align its child pickup sphere instead of lowering it.
@@ -73,6 +79,13 @@ void ADeathDropCarrier::Initialize(const FDeathDropSettings& Settings, UClass* P
 void ADeathDropCarrier::BeginPlay()
 {
 	Super::BeginPlay();
+	if (!IsValid(PhysicsBody))
+	{
+		UE_LOG(LogDeathDropCarrier, Warning, TEXT("Death drop %s has no valid physics body."), *GetName());
+		SetActorTickEnabled(false);
+		if (HasAuthority()) Destroy();
+		return;
+	}
 	// Keep the pickup upright when the physical sphere hits slopes or walls.
 	// The pickup Blueprint can still animate its mesh around the vertical axis.
 	PhysicsBody->BodyInstance.bLockXRotation = true;
@@ -84,7 +97,8 @@ void ADeathDropCarrier::BeginPlay()
 
 bool ADeathDropCarrier::ConfigurePickup(AActor* Item, bool bUpdateMesh)
 {
-	if (!IsValid(Item) || !PickupItem.DataTable || PickupItem.RowName.IsNone()) return false;
+	if (!IsValid(Item) || Item->IsActorBeingDestroyed() || !IsValid(PickupItem.DataTable)
+		|| PickupItem.RowName.IsNone()) return false;
 	FStructProperty* Handle = FindFProperty<FStructProperty>(Item->GetClass(), TEXT("DataTable Handle"));
 	if (!Handle || Handle->Struct != FDataTableRowHandle::StaticStruct()
 		|| !SetBool(Item, TEXT("IsSnapToGround"), false)) return false;
@@ -99,10 +113,11 @@ bool ADeathDropCarrier::ConfigurePickup(AActor* Item, bool bUpdateMesh)
 	{
 		CenterPickupSphere(Item);
 		UFunction* Setup = Item->FindFunction(TEXT("Setup Mesh"));
-		if (!Setup) return false;
+		// ProcessEvent with a null parameter buffer is only safe for a parameterless function.
+		if (!Setup || Setup->ParmsSize != 0) return false;
 		Item->ProcessEvent(Setup, nullptr);
 	}
-	return true;
+	return IsValid(Item) && !Item->IsActorBeingDestroyed();
 }
 
 void ADeathDropCarrier::SpawnPickup()
@@ -132,13 +147,131 @@ void ADeathDropCarrier::SpawnPickup()
 void ADeathDropCarrier::Launch(const FVector& Impulse)
 {
 	if (!HasAuthority() || !IsValid(PickupActor) || bLaunched) return;
+	UWorld* World = GetWorld();
+	if (!IsValid(World) || World->bIsTearingDown || IsActorBeingDestroyed()) return;
+	if (!IsValid(PhysicsBody) || Impulse.ContainsNaN())
+	{
+		UE_LOG(LogDeathDropCarrier, Warning, TEXT("Skipping invalid death drop launch for %s."), *GetName());
+		Destroy();
+		return;
+	}
 	PhysicsBody->SetMassOverrideInKg(NAME_None, 1.0f, true);
 	PhysicsBody->SetPhysicsLinearVelocity(FVector::ZeroVector);
 	PhysicsBody->AddImpulse(Impulse); // One impulse, one kilogram; force settings have a consistent scale.
 	InitialHorizontalVelocity = FVector(Impulse.X, Impulse.Y, 0.0f);
-	LaunchTime = GetWorld()->GetTimeSeconds();
+	LaunchTime = World->GetTimeSeconds();
 	bLaunched = true;
-	SetLifeSpan(FMath::Max(DropSettings.DespawnTime, 0.01f));
+	// Invalid imported values must never reach TimerManager or produce NaN transforms.
+	const float Lifetime = FMath::IsFinite(DropSettings.DespawnTime)
+		? FMath::Max(DropSettings.DespawnTime, 0.01f) : 30.0f;
+	const double Now = GetServerTimeSeconds();
+	DespawnShrinkStartServerTime = -1.0;
+	DespawnServerTime = 0.0;
+	if (DropSettings.DespawnShrinkEnabled && FMath::IsFinite(DropSettings.DespawnShrinkDuration)
+		&& DropSettings.DespawnShrinkDuration > 0.0f && Now >= 0.0)
+	{
+		DespawnServerTime = Now + Lifetime;
+		DespawnShrinkStartServerTime = DespawnServerTime - FMath::Min(DropSettings.DespawnShrinkDuration, Lifetime);
+	}
+	SetLifeSpan(Lifetime);
+	ForceNetUpdate();
+}
+
+double ADeathDropCarrier::GetServerTimeSeconds() const
+{
+	const UWorld* World = GetWorld();
+	if (!IsValid(World) || World->bIsTearingDown) return -1.0;
+	const AGameStateBase* State = World->GetGameState();
+	// A client's local world clock is not interchangeable with the replicated server clock.
+	if (!IsValid(State) && !HasAuthority()) return -1.0;
+	const double Now = IsValid(State) ? State->GetServerWorldTimeSeconds() : World->GetTimeSeconds();
+	return FMath::IsFinite(Now) ? Now : -1.0;
+}
+
+void ADeathDropCarrier::UpdateDespawnVisuals()
+{
+	UWorld* World = GetWorld();
+	if (!IsValid(World) || World->bIsTearingDown || IsActorBeingDestroyed()
+		|| !IsValid(PickupActor) || PickupActor->IsActorBeingDestroyed()) return;
+	if (GetNetMode() == NM_DedicatedServer) return;
+	if (IsPickedUp(PickupActor)) { RestoreDespawnScale(); return; }
+	if (!FMath::IsFinite(DespawnShrinkStartServerTime) || !FMath::IsFinite(DespawnServerTime)
+		|| DespawnShrinkStartServerTime < 0.0) return;
+	const double Duration = DespawnServerTime - DespawnShrinkStartServerTime;
+	if (!FMath::IsFinite(Duration) || Duration <= UE_SMALL_NUMBER) return;
+	const double Now = GetServerTimeSeconds();
+	if (Now < 0.0 || Now < DespawnShrinkStartServerTime) return;
+
+	if (DespawnVisualOwner.Get() != PickupActor.Get())
+	{
+		RestoreDespawnScale();
+		DespawnScalePivots.Reset();
+		DespawnVisualOwner = PickupActor.Get();
+		bDespawnVisualsInitialized = false;
+	}
+	if (!bDespawnVisualsInitialized)
+	{
+		// Attachment/registration failure is a graceful fallback to instant despawn,
+		// not a reason to create and destroy components every frame.
+		bDespawnVisualsInitialized = true;
+		AActor* Item = PickupActor.Get();
+		TArray<UMeshComponent*> Meshes;
+		Item->GetComponents(Meshes);
+		for (UMeshComponent* Mesh : Meshes)
+		{
+			if (!IsValid(Item) || Item->IsActorBeingDestroyed() || IsActorBeingDestroyed()) return;
+			if (!IsValid(Mesh) || !Mesh->IsRegistered() || Mesh->GetOwner() != Item
+				|| Mesh->Mobility != EComponentMobility::Movable || Mesh->IsSimulatingPhysics()
+				|| Mesh->GetIsReplicated()) continue;
+			USceneComponent* Parent = Mesh->GetAttachParent();
+			if (!IsValid(Parent) || !Parent->IsRegistered() || Mesh == Item->GetRootComponent()) continue;
+			// Nested meshes inherit their ancestor's scale; do not shrink them twice.
+			bool bHasMeshAncestor = false;
+			for (USceneComponent* Ancestor = Parent; IsValid(Ancestor); Ancestor = Ancestor->GetAttachParent())
+			{
+				if (Ancestor->IsA<UMeshComponent>()) { bHasMeshAncestor = true; break; }
+			}
+			if (bHasMeshAncestor) continue;
+
+			// BP_DropItem.Spin writes the mesh transform every frame. Scale an
+			// independent visual parent so its animation and pickup collision stay intact.
+			USceneComponent* Pivot = NewObject<USceneComponent>(Item, NAME_None, RF_Transient);
+			if (!IsValid(Pivot)) continue;
+			Pivot->SetMobility(Mesh->Mobility);
+			Pivot->SetupAttachment(Parent);
+			Item->AddInstanceComponent(Pivot);
+			Pivot->RegisterComponent();
+			if (!IsValid(Item) || Item->IsActorBeingDestroyed() || IsActorBeingDestroyed()
+				|| !IsValid(Mesh) || !IsValid(Parent) || !IsValid(Pivot))
+			{
+				if (IsValid(Pivot)) Pivot->DestroyComponent();
+				return;
+			}
+			if (!Pivot->IsRegistered() || !Mesh->AttachToComponent(Pivot, FAttachmentTransformRules::KeepRelativeTransform))
+			{
+				Pivot->DestroyComponent();
+				continue;
+			}
+			if (IsValid(Pivot)) DespawnScalePivots.Add(Pivot);
+		}
+		if (DespawnScalePivots.IsEmpty())
+			UE_LOG(LogDeathDropCarrier, Warning, TEXT("No supported visual mesh for death drop shrink on %s; using instant despawn."),
+				*GetNameSafe(Item));
+	}
+
+	// Avoid singular zero-scale transforms while the destruction packet is in flight.
+	const float Scale = float(FMath::Clamp(
+		(DespawnServerTime - Now) / Duration, 0.001, 1.0));
+	for (const TWeakObjectPtr<USceneComponent>& Pivot : DespawnScalePivots)
+		if (Pivot.IsValid() && Pivot->IsRegistered()) Pivot->SetRelativeScale3D(FVector(Scale));
+}
+
+void ADeathDropCarrier::RestoreDespawnScale()
+{
+	const UWorld* World = GetWorld();
+	if (!IsValid(World) || World->bIsTearingDown) return;
+	for (const TWeakObjectPtr<USceneComponent>& Pivot : DespawnScalePivots)
+		if (Pivot.IsValid() && Pivot->IsRegistered()) Pivot->SetRelativeScale3D(FVector::OneVector);
 }
 
 void ADeathDropCarrier::OnRep_Pickup()
@@ -149,7 +282,7 @@ void ADeathDropCarrier::OnRep_Pickup()
 
 void ADeathDropCarrier::OnRep_Settled()
 {
-	if (!bSettled) return;
+	if (!bSettled || !IsValid(PhysicsBody) || SettledLocation.ContainsNaN()) return;
 	PhysicsBody->SetPhysicsLinearVelocity(FVector::ZeroVector);
 	PhysicsBody->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
 	PhysicsBody->SetSimulatePhysics(false);
@@ -160,7 +293,8 @@ void ADeathDropCarrier::OnRep_Settled()
 void ADeathDropCarrier::OnBodyHit(UPrimitiveComponent* HitComponent, AActor* OtherActor,
 	UPrimitiveComponent* OtherComponent, FVector NormalImpulse, const FHitResult& Hit)
 {
-	if (!HasAuthority() || !bLaunched || bSettled) return;
+	if (!HasAuthority() || !bLaunched || bSettled || !IsValid(PhysicsBody)
+		|| Hit.ImpactPoint.ContainsNaN() || Hit.ImpactNormal.ContainsNaN()) return;
 	if (Hit.ImpactNormal.Z >= 0.6f)
 	{
 		// Reconstruct the sphere's resting center from the contact point instead of
@@ -169,6 +303,7 @@ void ADeathDropCarrier::OnBodyHit(UPrimitiveComponent* HitComponent, AActor* Oth
 			? FMath::Max(0.0f, DropSettings.SettlementHeightOffset) : 0.0f;
 		SettledLocation = Hit.ImpactPoint + Hit.ImpactNormal * PhysicsBody->GetScaledSphereRadius()
 			+ FVector::UpVector * HeightOffset;
+		if (SettledLocation.ContainsNaN()) return;
 		bSettled = true;
 		OnRep_Settled();
 		ForceNetUpdate();
@@ -191,20 +326,28 @@ void ADeathDropCarrier::FinishPickup()
 void ADeathDropCarrier::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	const UWorld* World = GetWorld();
+	if (!IsValid(World) || World->bIsTearingDown || IsActorBeingDestroyed()) return;
 	if (!HasAuthority())
 	{
 		if (!bPickupConfigured && IsValid(PickupActor))
 			bPickupConfigured = ConfigurePickup(PickupActor, true);
+		if (bPickupConfigured) UpdateDespawnVisuals();
 		return;
 	}
 	if (!IsValid(PickupActor)) { Destroy(); return; }
 	if (IsPickedUp(PickupActor)) { FinishPickup(); return; }
-	if (!bLaunched || bSettled) return;
+	UpdateDespawnVisuals();
+	if (!bLaunched || bSettled || World->bIsTearingDown || IsActorBeingDestroyed() || !IsValid(PhysicsBody)) return;
+	const float DecelTime = FMath::IsFinite(DropSettings.HorizontalDecelTime)
+		? FMath::Max(DropSettings.HorizontalDecelTime, 0.01f) : 1.2f;
+	const float Exponent = FMath::IsFinite(DropSettings.HorizontalDecelExponent)
+		? FMath::Max(DropSettings.HorizontalDecelExponent, 1.01f) : 2.0f;
 	const float Progress = FMath::Clamp(
-		float(GetWorld()->GetTimeSeconds() - LaunchTime) / FMath::Max(DropSettings.HorizontalDecelTime, 0.01f),
+		float(World->GetTimeSeconds() - LaunchTime) / DecelTime,
 		0.0f, 1.0f);
 	const float Ratio = bHorizontalBlocked ? 0.0f :
-		1.0f - FMath::Pow(Progress, FMath::Max(DropSettings.HorizontalDecelExponent, 1.01f));
+		1.0f - FMath::Pow(Progress, Exponent);
 	const FVector Velocity = PhysicsBody->GetPhysicsLinearVelocity();
 	PhysicsBody->SetPhysicsLinearVelocity(FVector(
 		InitialHorizontalVelocity.X * Ratio, InitialHorizontalVelocity.Y * Ratio, Velocity.Z));
@@ -212,6 +355,11 @@ void ADeathDropCarrier::Tick(float DeltaSeconds)
 
 void ADeathDropCarrier::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	// Restore a collected buff, but do not flash an expired pickup back to full
+	// size while its destruction is still being replicated to the client.
+	if (bWasPickedUp || IsPickedUp(PickupActor) || DespawnServerTime <= 0.0
+		|| GetServerTimeSeconds() < DespawnServerTime)
+		RestoreDespawnScale();
 	if (HasAuthority() && !bWasPickedUp && IsValid(PickupActor) && !IsPickedUp(PickupActor))
 		PickupActor->Destroy();
 	Super::EndPlay(EndPlayReason);
@@ -226,4 +374,6 @@ void ADeathDropCarrier::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	DOREPLIFETIME(ADeathDropCarrier, bBuffPickup);
 	DOREPLIFETIME(ADeathDropCarrier, bSettled);
 	DOREPLIFETIME(ADeathDropCarrier, SettledLocation);
+	DOREPLIFETIME(ADeathDropCarrier, DespawnShrinkStartServerTime);
+	DOREPLIFETIME(ADeathDropCarrier, DespawnServerTime);
 }
