@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "Camera/ShooterNicknameSettings.h"
+#include "TimerManager.h"
 #include "ShooterNicknameComponent.generated.h"
 
 class UShooterNicknameWidget;
@@ -33,6 +34,14 @@ public:
 	void SetNicknameSphereTraceEnabled(bool bEnabled);
 	UFUNCTION(BlueprintCallable, Category = "Shooter Nickname")
 	void SetNicknameSphereTraceRadius(float Radius);
+	UFUNCTION(BlueprintCallable, Category = "Shooter Nickname|Performance")
+	void SetNicknameTimerSearchEnabled(bool bEnabled);
+	UFUNCTION(BlueprintCallable, Category = "Shooter Nickname|Performance")
+	void SetNicknameSearchInterval(float Seconds);
+	UFUNCTION(BlueprintPure, Category = "Shooter Nickname|Performance")
+	bool IsNicknameTimerSearchEnabled() const { return bUseTimerBasedSearch; }
+	UFUNCTION(BlueprintPure, Category = "Shooter Nickname|Performance")
+	float GetNicknameSearchInterval() const { return TargetSearchInterval; }
 	UFUNCTION(BlueprintPure, Category = "Shooter Nickname")
 	bool IsNicknameSphereTraceEnabled() const { return bUseSphereTraceFallback; }
 	UFUNCTION(BlueprintPure, Category = "Shooter Nickname")
@@ -54,6 +63,8 @@ public:
 	FVector2D GetCrosshairViewportPosition() const { return CrosshairViewportPosition; }
 protected:
 	virtual void BeginPlay() override;
+	virtual void OnRegister() override;
+	virtual void OnUnregister() override;
 	virtual void EndPlay(const EEndPlayReason::Type Reason) override;
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* TickFunction) override;
 	/** Future name providers can override this without changing targeting or the overlay. */
@@ -63,6 +74,7 @@ private:
 #if WITH_DEV_AUTOMATION_TESTS
 	friend class FCharacterDisplayRegressionTest;
 	friend class FCharacterNicknameSphereTraceTest;
+	friend class FCharacterDisplayPerformanceTest;
 #endif
 	UPROPERTY(Transient)
 	FShooterNicknameStyle Style;
@@ -82,10 +94,20 @@ private:
 	float MaxDistance = 20000.0f;
 	bool bUseSphereTraceFallback = true;
 	float SphereTraceRadius = 15.0f;
+	bool bUseTimerBasedSearch = false;
+	float TargetSearchInterval = 0.05f;
+	FTimerHandle TargetSearchTimer;
+	FTimerHandle NicknameLingerTimer;
+	// Capacity is reused, but actor pointers are reset immediately after each query.
+	TArray<AActor*> AttachedActorsScratch;
 	double LostAimTime = -1.0;
 	bool bEndingPlay = false;
 	bool ResolveAimRay(FVector& Origin, FVector& Direction);
 	APawn* FindAimTarget(const FVector& Origin, const FVector& Direction);
 	void UpdateTarget(APawn* Target);
 	void ClearDisplay();
+	void ConfigureSearchSchedule();
+	void UpdateNicknameDisplay();
+	void ScheduleLingerExpiry();
+	void HandleLingerExpiry();
 };

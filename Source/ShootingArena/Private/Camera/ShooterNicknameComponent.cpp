@@ -40,6 +40,20 @@ void UShooterNicknameComponent::BeginPlay()
 	}
 }
 
+void UShooterNicknameComponent::OnRegister()
+{
+	Super::OnRegister();
+	if (HasBegunPlay()) ConfigureSearchSchedule();
+}
+
+void UShooterNicknameComponent::OnUnregister()
+{
+	if (UWorld* World = GetWorld()) World->GetTimerManager().ClearTimer(TargetSearchTimer);
+	AimTarget.Reset();
+	ClearDisplay();
+	Super::OnUnregister();
+}
+
 void UShooterNicknameComponent::ApplyNicknameSettings(UShooterNicknameSettings* NewSettings)
 {
 	if (bEndingPlay || IsBeingDestroyed()) return;
@@ -56,15 +70,19 @@ void UShooterNicknameComponent::ApplyNicknameSettings(UShooterNicknameSettings* 
 	ShooterClass = NewSettings->ShooterClass.LoadSynchronous();
 	TraceChannel = NewSettings->TraceChannel < ECC_MAX ? NewSettings->TraceChannel.GetValue() : ECC_GameTraceChannel2;
 	MaxDistance = ShooterDisplayValidation::FiniteClamp(NewSettings->MaxDistance, 1.0f, MAX_flt, 20000.0f);
+	bUseTimerBasedSearch = NewSettings->bUseTimerBasedSearch;
+	TargetSearchInterval = ShooterDisplayValidation::FiniteClamp(NewSettings->TargetSearchInterval, 0.01f, 1.0f, 0.05f);
 	SetNicknameSphereTraceEnabled(NewSettings->bUseSphereTraceFallback);
 	SetNicknameSphereTraceRadius(NewSettings->SphereTraceRadius);
 	SetCrosshairUV(NewSettings->CrosshairUV);
 	SetNicknameStyle(NewSettings->Style);
+	ConfigureSearchSchedule();
 }
 
 void UShooterNicknameComponent::SetNicknameStyle(const FShooterNicknameStyle& NewStyle)
 {
 	if (bEndingPlay || IsBeingDestroyed()) return;
+	const bool bWasEnabled = Style.bEnabled;
 	Style = NewStyle;
 	Style.LingerTime = ShooterDisplayValidation::FiniteClamp(Style.LingerTime, 0.0f, MAX_flt, 0.0f);
 	Style.Font.Size = ShooterDisplayValidation::FiniteClamp(Style.Font.Size, 1.0f, 200.0f, 20.0f);
@@ -84,6 +102,8 @@ void UShooterNicknameComponent::SetNicknameStyle(const FShooterNicknameStyle& Ne
 	{
 		ClearDisplay();
 	}
+	if (bWasEnabled != Style.bEnabled) ConfigureSearchSchedule();
+	else ScheduleLingerExpiry();
 }
 
 void UShooterNicknameComponent::SetNicknameEnabled(bool bEnabled)
@@ -115,6 +135,70 @@ void UShooterNicknameComponent::SetNicknameSphereTraceRadius(float Radius)
 {
 	if (!bEndingPlay && !IsBeingDestroyed())
 		SphereTraceRadius = ShooterDisplayValidation::FiniteClamp(Radius, 0.0f, 1000.0f, 0.0f);
+}
+
+void UShooterNicknameComponent::SetNicknameTimerSearchEnabled(bool bEnabled)
+{
+	if (bEndingPlay || IsBeingDestroyed() || bUseTimerBasedSearch == bEnabled) return;
+	bUseTimerBasedSearch = bEnabled;
+	ConfigureSearchSchedule();
+}
+
+void UShooterNicknameComponent::SetNicknameSearchInterval(float Seconds)
+{
+	if (bEndingPlay || IsBeingDestroyed()) return;
+	const float Interval = ShooterDisplayValidation::FiniteClamp(Seconds, 0.01f, 1.0f, 0.05f);
+	if (Interval == TargetSearchInterval) return;
+	TargetSearchInterval = Interval;
+	if (bUseTimerBasedSearch) ConfigureSearchSchedule();
+}
+
+void UShooterNicknameComponent::ConfigureSearchSchedule()
+{
+	if (!HasBegunPlay()) return;
+	UWorld* World = GetWorld();
+	if (World)
+	{
+		World->GetTimerManager().ClearTimer(TargetSearchTimer);
+		World->GetTimerManager().ClearTimer(NicknameLingerTimer);
+	}
+	const APlayerController* PC = Cast<APlayerController>(GetOwner());
+	const bool bCanRun = !bEndingPlay && !IsBeingDestroyed() && IsRegistered() && World && !World->bIsTearingDown
+		&& IsValid(PC) && !PC->IsActorBeingDestroyed() && PC->IsLocalController() && GetNetMode() != NM_DedicatedServer;
+	SetComponentTickEnabled(bCanRun && !bUseTimerBasedSearch);
+	if (bCanRun && bUseTimerBasedSearch && Style.bEnabled)
+	{
+		FTimerManagerTimerParameters Parameters;
+		Parameters.bLoop = true;
+		Parameters.bMaxOncePerFrame = true;
+		Parameters.FirstDelay = 0.0f;
+		World->GetTimerManager().SetTimer(TargetSearchTimer, this, &ThisClass::UpdateNicknameDisplay,
+			TargetSearchInterval, Parameters);
+		ScheduleLingerExpiry();
+	}
+}
+
+void UShooterNicknameComponent::ScheduleLingerExpiry()
+{
+	UWorld* World = GetWorld();
+	if (!World) return;
+	World->GetTimerManager().ClearTimer(NicknameLingerTimer);
+	if (!bUseTimerBasedSearch || !HasBegunPlay() || bEndingPlay || IsBeingDestroyed() || !IsRegistered() || World->bIsTearingDown
+		|| !Style.bEnabled || LostAimTime < 0.0 || AimTarget.IsValid() || DisplayedName.IsEmpty()) return;
+	const double Remaining = Style.LingerTime - (World->GetTimeSeconds() - LostAimTime);
+	if (Remaining <= 0.0) { ClearDisplay(); return; }
+	World->GetTimerManager().SetTimer(NicknameLingerTimer, this, &ThisClass::HandleLingerExpiry,
+		FMath::Max(static_cast<float>(Remaining), 0.001f), false);
+}
+
+void UShooterNicknameComponent::HandleLingerExpiry()
+{
+	if (bEndingPlay || IsBeingDestroyed() || !IsRegistered() || !GetWorld() || GetWorld()->bIsTearingDown) return;
+	if (!AimTarget.IsValid() && LostAimTime >= 0.0)
+	{
+		if (GetWorld()->GetTimeSeconds() - LostAimTime >= Style.LingerTime) ClearDisplay();
+		else ScheduleLingerExpiry();
+	}
 }
 
 void UShooterNicknameComponent::ResetNicknameStyle()
@@ -160,9 +244,18 @@ APawn* UShooterNicknameComponent::FindAimTarget(const FVector& Origin, const FVe
 	Query.AddIgnoredActor(PC->GetViewTarget());
 	if (APawn* LocalPawn = PC->GetPawn())
 	{
-		TArray<AActor*> Attached;
-		LocalPawn->GetAttachedActors(Attached, true, true);
-		Query.AddIgnoredActors(Attached);
+		if (bUseTimerBasedSearch)
+		{
+			LocalPawn->GetAttachedActors(AttachedActorsScratch, true, true);
+			Query.AddIgnoredActors(AttachedActorsScratch);
+			AttachedActorsScratch.Reset();
+		}
+		else
+		{
+			TArray<AActor*> Attached;
+			LocalPawn->GetAttachedActors(Attached, true, true);
+			Query.AddIgnoredActors(Attached);
+		}
 	}
 	TArray<FHitResult> Hits;
 	auto IsTarget = [this, World](APawn* Shooter)
@@ -238,9 +331,14 @@ APawn* UShooterNicknameComponent::FindAimTarget(const FVector& Origin, const FVe
 void UShooterNicknameComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* TickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, TickFunction);
+	if (!bUseTimerBasedSearch) UpdateNicknameDisplay();
+}
+
+void UShooterNicknameComponent::UpdateNicknameDisplay()
+{
 	APlayerController* PC = Cast<APlayerController>(GetOwner());
 	UWorld* World = GetWorld();
-	if (bEndingPlay || IsBeingDestroyed() || !IsValid(PC) || PC->IsActorBeingDestroyed() || !World
+	if (bEndingPlay || IsBeingDestroyed() || !IsRegistered() || !IsValid(PC) || PC->IsActorBeingDestroyed() || !World
 		|| World->bIsTearingDown || !Style.bEnabled || !ShooterClass || Cast<ADeathCamActor>(PC->GetViewTarget()))
 	{
 		UpdateTarget(nullptr);
@@ -257,7 +355,7 @@ void UShooterNicknameComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 	APawn* Target = FindAimTarget(Origin, Direction);
 	UpdateTarget(Target);
 	// Blueprint target-change listeners can disable or destroy this component/pawn.
-	if (bEndingPlay || IsBeingDestroyed() || !Style.bEnabled || !ShooterClass
+	if (bEndingPlay || IsBeingDestroyed() || !IsRegistered() || !Style.bEnabled || !ShooterClass
 		|| !IsValid(PC) || PC->IsActorBeingDestroyed() || World->bIsTearingDown
 		|| AimTarget.Get() != Target)
 	{
@@ -268,7 +366,7 @@ void UShooterNicknameComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 	{
 		DisplayedTarget = Target;
 		DisplayedName = ResolveNickname(Target);
-		if (bEndingPlay || IsBeingDestroyed() || !Style.bEnabled || !ShooterClass
+		if (bEndingPlay || IsBeingDestroyed() || !IsRegistered() || !Style.bEnabled || !ShooterClass
 			|| !IsValid(PC) || PC->IsActorBeingDestroyed() || World->bIsTearingDown
 			|| !IsValid(Target) || Target->IsActorBeingDestroyed() || AimTarget.Get() != Target)
 		{
@@ -284,6 +382,7 @@ void UShooterNicknameComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 			|| World->GetTimeSeconds() - LostAimTime >= Style.LingerTime)
 			ClearDisplay();
 	}
+	ScheduleLingerExpiry();
 	if (IsValid(Widget)) Widget->RefreshDisplay();
 }
 
@@ -298,6 +397,7 @@ void UShooterNicknameComponent::UpdateTarget(APawn* Target)
 
 void UShooterNicknameComponent::ClearDisplay()
 {
+	if (UWorld* World = GetWorld()) World->GetTimerManager().ClearTimer(NicknameLingerTimer);
 	DisplayedTarget.Reset();
 	DisplayedName = FText::GetEmpty();
 	LostAimTime = -1.0;
@@ -319,6 +419,9 @@ FLinearColor UShooterNicknameComponent::GetDisplayedNicknameColor() const
 void UShooterNicknameComponent::EndPlay(const EEndPlayReason::Type Reason)
 {
 	bEndingPlay = true;
+	SetComponentTickEnabled(false);
+	if (UWorld* World = GetWorld()) World->GetTimerManager().ClearTimer(TargetSearchTimer);
+	AttachedActorsScratch.Empty();
 	AimTarget.Reset();
 	ClearDisplay();
 	if (IsValid(Widget)) Widget->RemoveFromParent();

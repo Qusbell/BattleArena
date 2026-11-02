@@ -24,5 +24,6 @@
 	"shooterClass": "/Game/QuakeLike_1_0/Character/BP_ShooterBase.BP_ShooterBase_C",
 	"stencilValue": 2,
 	"revengeStencilValue": 3,
-	"refreshInterval": 0.20000000298023224
+	"refreshInterval": 0.20000000298023224,
+	"bUseCharacterStateCache": true
 }
