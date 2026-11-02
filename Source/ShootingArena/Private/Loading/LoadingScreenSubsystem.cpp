@@ -42,6 +42,19 @@ void ULoadingScreenSubsystem::HandlePreLoadMap(const FWorldContext& WorldContext
 {
 	if (IsRunningDedicatedServer() || WorldContext.OwningGameInstance != GetGameInstance()) return;
 	UE_LOG(LogTemp, Log, TEXT("[Loading] PreLoadMap: %s"), *MapName);
+
+	// 프로세스 시작 직후 처음 로드되는 메인 메뉴에는 로딩 화면을 띄우지 않습니다.
+	// (이후 로비/게임 전환과 메인 메뉴 복귀는 기존대로 표시합니다.)
+	const bool bFirstMapLoad = !bStartupMapHandled;
+	bStartupMapHandled = true;
+	FString BaseMapName = MapName;
+	BaseMapName.Split(TEXT("?"), &BaseMapName, nullptr);
+	if (bFirstMapLoad && BaseMapName.EndsWith(TEXT("MainMenu_Level")))
+	{
+		bSkipStartupOverlay = true;
+		return;
+	}
+
 	bTransitionActive = true;
 	bSawCoordinator = false;
 	SecondsSincePostLoad = 0.0f;
@@ -51,6 +64,16 @@ void ULoadingScreenSubsystem::HandlePreLoadMap(const FWorldContext& WorldContext
 
 void ULoadingScreenSubsystem::HandlePostLoadMap(UWorld* LoadedWorld)
 {
+	if (bSkipStartupOverlay)
+	{
+		// 오버레이가 없으므로 BGMSubsystem 이 PreLoadMap 에서 켠 로딩 볼륨 상태를 직접 되돌립니다.
+		bSkipStartupOverlay = false;
+		if (UGameInstance* GameInstance = GetGameInstance())
+		{
+			if (UBGMSubsystem* BGM = GameInstance->GetSubsystem<UBGMSubsystem>()) BGM->EndLoadingBGM();
+		}
+		return;
+	}
 	if (!bTransitionActive || IsRunningDedicatedServer() || !LoadedWorld || LoadedWorld->GetGameInstance() != GetGameInstance()) return;
 	UE_LOG(LogTemp, Log, TEXT("[Loading] PostLoadMap: %s"), LoadedWorld ? *LoadedWorld->GetName() : TEXT("None"));
 	SecondsSincePostLoad = 0.0f;
@@ -111,6 +134,15 @@ void ULoadingScreenSubsystem::UpdateLoadingState()
 	// 서버 생성 대기 중에는 아직 메뉴 월드에 남아 있습니다. 그 월드의 기존
 	// Coordinator가 Ready여도 새 서버가 준비된 것은 아니므로 무시합니다.
 	const bool bStillInExternalStartWorld = bExternalLoadingRequested && ExternalLoadingStartWorld.Get() == World;
+
+	// 메인 메뉴 레벨은 서버/참가자 동기화가 필요 없습니다. Coordinator 의 Initializing(약 2초 폴백)을
+	// 기다리면 "게임 환경을 준비하는 중..." 이 메인 메뉴 진입 때 보이므로 도착 즉시 닫습니다.
+	if (!bStillInExternalStartWorld && World->GetMapName().EndsWith(TEXT("MainMenu_Level")))
+	{
+		HideLoadingScreen();
+		return;
+	}
+
 	for (TActorIterator<ALoadingCoordinator> It(World); It; ++It)
 	{
 		if (bStillInExternalStartWorld)
