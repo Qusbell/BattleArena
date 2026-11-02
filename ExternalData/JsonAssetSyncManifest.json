@@ -244,7 +244,7 @@
 							"displayName": "Data Table",
 							"cppType": "TObjectPtr<UDataTable>",
 							"order": 0,
-							"tooltip": "Pointer to table we want a row from",
+							"tooltip": "데이터 테이블 – 가로 테이블을 가리키는 포인터입니다.",
 							"advancedDisplay": false,
 							"type": "object",
 							"objectClass": "/Script/Engine.DataTable"
@@ -254,7 +254,7 @@
 							"displayName": "Row Name",
 							"cppType": "FName",
 							"order": 1,
-							"tooltip": "Name of row in the table that we want",
+							"tooltip": "행 이름 – 테이블의 행 이름입니다.",
 							"advancedDisplay": false,
 							"type": "name"
 						}
@@ -408,10 +408,33 @@
 					"type": "float"
 				},
 				{
+					"name": "despawnShrinkEnabled",
+					"displayName": "Despawn Shrink Enabled",
+					"cppType": "bool",
+					"order": 14,
+					"tooltip": "미획득 사망 드롭이 시간 만료로 사라지기 직전에 메시를 서서히 축소한다. 끄면 기존처럼 DespawnTime에 즉시 제거한다. 획득 연출에는 적용하지 않는다.",
+					"advancedDisplay": false,
+					"type": "bool"
+				},
+				{
+					"name": "despawnShrinkDuration",
+					"displayName": "Despawn Shrink Duration",
+					"cppType": "float",
+					"order": 15,
+					"tooltip": "소멸 몇 초 전부터 축소할지 지정한다(초). 예: DespawnTime=3, 이 값=0.1이면 발사 후 2.9초부터 3초까지 축소한다. 생존 시간보다 길면 발사 직후부터 축소하며, 0이면 축소하지 않는다. 변경값은 새 드롭부터 적용한다.",
+					"advancedDisplay": false,
+					"constraints":
+					{
+						"clampMin": "0",
+						"units": "s"
+					},
+					"type": "float"
+				},
+				{
 					"name": "settlementHeightOffset",
 					"displayName": "Settlement Height Offset",
 					"cppType": "float",
-					"order": 14,
+					"order": 16,
 					"tooltip": "바닥 충돌 후 드롭 전체를 월드 위쪽으로 추가로 띄우는 높이(cm). 물리 구체가 지면에 닿는 위치에 더한다. 0이면 추가 높이 없음. 메시 크기와 상하 움직임을 고려해 값을 높이면 묻힘을 줄일 수 있다. 사망 드롭에만 적용하며 새로 생성하는 드롭부터 사용한다.",
 					"advancedDisplay": false,
 					"constraints":
@@ -425,7 +448,7 @@
 					"name": "smallHealthItem",
 					"displayName": "Small Health Item",
 					"cppType": "FDataTableRowHandle",
-					"order": 15,
+					"order": 17,
 					"tooltip": "소형 힐팩의 데이터 테이블과 행 이름. 실제 회복량과 아이템 정보는 이 행에 지정된 기존 설정을 사용한다.",
 					"advancedDisplay": false,
 					"type": "struct",
@@ -437,7 +460,7 @@
 							"displayName": "Data Table",
 							"cppType": "TObjectPtr<UDataTable>",
 							"order": 0,
-							"tooltip": "Pointer to table we want a row from",
+							"tooltip": "데이터 테이블 – 가로 테이블을 가리키는 포인터입니다.",
 							"advancedDisplay": false,
 							"type": "object",
 							"objectClass": "/Script/Engine.DataTable"
@@ -447,7 +470,7 @@
 							"displayName": "Row Name",
 							"cppType": "FName",
 							"order": 1,
-							"tooltip": "Name of row in the table that we want",
+							"tooltip": "행 이름 – 테이블의 행 이름입니다.",
 							"advancedDisplay": false,
 							"type": "name"
 						}
@@ -457,7 +480,7 @@
 					"name": "smallArmorItem",
 					"displayName": "Small Armor Item",
 					"cppType": "FDataTableRowHandle",
-					"order": 16,
+					"order": 18,
 					"tooltip": "소형 아머의 데이터 테이블과 행 이름. 실제 아머 획득량과 아이템 정보는 이 행에 지정된 기존 설정을 사용한다.",
 					"advancedDisplay": false,
 					"type": "struct",
@@ -469,7 +492,7 @@
 							"displayName": "Data Table",
 							"cppType": "TObjectPtr<UDataTable>",
 							"order": 0,
-							"tooltip": "Pointer to table we want a row from",
+							"tooltip": "데이터 테이블 – 가로 테이블을 가리키는 포인터입니다.",
 							"advancedDisplay": false,
 							"type": "object",
 							"objectClass": "/Script/Engine.DataTable"
@@ -479,7 +502,7 @@
 							"displayName": "Row Name",
 							"cppType": "FName",
 							"order": 1,
-							"tooltip": "Name of row in the table that we want",
+							"tooltip": "행 이름 – 테이블의 행 이름입니다.",
 							"advancedDisplay": false,
 							"type": "name"
 						}
@@ -489,7 +512,7 @@
 					"name": "weaponTable",
 					"displayName": "Weapon Table",
 					"cppType": "TSoftObjectPtr<UDataTable>",
-					"order": 17,
+					"order": 19,
 					"tooltip": "장착 무기 또는 기본 지급 무기에 대응하는 픽업 행을 찾을 테이블. 무기 데이터 에셋을 우선 비교하고, 무기 클래스 일치를 보조로 사용한다.",
 					"advancedDisplay": false,
 					"type": "softObject",
@@ -499,7 +522,7 @@
 					"name": "buffTable",
 					"displayName": "Buff Table",
 					"cppType": "TSoftObjectPtr<UDataTable>",
-					"order": 18,
+					"order": 20,
 					"tooltip": "활성 버프의 currentBuffRowName으로 드롭할 버프 정보를 조회하는 테이블.",
 					"advancedDisplay": false,
 					"type": "softObject",
@@ -509,7 +532,7 @@
 					"name": "weaponPickupClass",
 					"displayName": "Weapon Pickup Class",
 					"cppType": "TSoftClassPtr<AActor> ",
-					"order": 19,
+					"order": 21,
 					"tooltip": "총기 드롭에 사용할 기존 픽업 액터 클래스(현재 BP_HoldableItem). 실제 무기 종류는 WeaponTable에서 찾은 행으로 설정한다.",
 					"advancedDisplay": false,
 					"type": "softClass",
@@ -519,7 +542,7 @@
 					"name": "buffPickupClass",
 					"displayName": "Buff Pickup Class",
 					"cppType": "TSoftClassPtr<AActor> ",
-					"order": 20,
+					"order": 22,
 					"tooltip": "버프 드롭에 사용할 기존 픽업 액터 클래스(현재 BP_BuffItem). 버프 행과 원래 종료 시각을 전달한다.",
 					"advancedDisplay": false,
 					"type": "softClass",
@@ -529,7 +552,7 @@
 					"name": "lifePickupClass",
 					"displayName": "Life Pickup Class",
 					"cppType": "TSoftClassPtr<AActor> ",
-					"order": 21,
+					"order": 23,
 					"tooltip": "힐팩과 아머가 함께 사용하는 기존 픽업 액터 클래스(현재 BP_LifeItem). 각 아이템의 종류와 효과는 SmallHealthItem/SmallArmorItem 행으로 구분한다.",
 					"advancedDisplay": false,
 					"type": "softClass",
@@ -712,6 +735,23 @@
 						"type": "object",
 						"objectClass": "/Script/Engine.Texture2D"
 					}
+				},
+				{
+					"name": "character_Light_Channels",
+					"displayName": "Character_Light_Channels",
+					"cppType": "TArray",
+					"order": 12,
+					"advancedDisplay": false,
+					"type": "array",
+					"element":
+					{
+						"name": "character_Light_Channels",
+						"displayName": "Character Light Channels",
+						"cppType": "bool",
+						"order": 0,
+						"advancedDisplay": false,
+						"type": "bool"
+					}
 				}
 			]
 		},
@@ -739,7 +779,7 @@
 							"displayName": "Tag Name",
 							"cppType": "FName",
 							"order": 0,
-							"tooltip": "This Tags Name",
+							"tooltip": "태그의 이름입니다.",
 							"advancedDisplay": false,
 							"type": "name"
 						}
@@ -776,7 +816,7 @@
 							"displayName": "Tag Name",
 							"cppType": "FName",
 							"order": 0,
-							"tooltip": "This Tags Name",
+							"tooltip": "태그의 이름입니다.",
 							"advancedDisplay": false,
 							"type": "name"
 						}
@@ -818,7 +858,7 @@
 											"displayName": "Keys",
 											"cppType": "TArray",
 											"order": 0,
-											"tooltip": "Sorted array of keys",
+											"tooltip": "정렬된 키 배열입니다.",
 											"advancedDisplay": false,
 											"type": "array",
 											"element":
@@ -837,7 +877,7 @@
 														"displayName": "Interp Mode",
 														"cppType": "TEnumAsByte<ERichCurveInterpMode>",
 														"order": 0,
-														"tooltip": "Interpolation mode between this key and the next",
+														"tooltip": "이 키와 다음 키 사이의 보간 모드입니다.",
 														"advancedDisplay": false,
 														"type": "enum",
 														"enumValues": [
@@ -860,7 +900,7 @@
 														"displayName": "Tangent Mode",
 														"cppType": "TEnumAsByte<ERichCurveTangentMode>",
 														"order": 1,
-														"tooltip": "Mode for tangents at this key",
+														"tooltip": "이 키의 탄젠트 모드입니다.",
 														"advancedDisplay": false,
 														"type": "enum",
 														"enumValues": [
@@ -887,7 +927,7 @@
 														"displayName": "Tangent Weight Mode",
 														"cppType": "TEnumAsByte<ERichCurveTangentWeightMode>",
 														"order": 2,
-														"tooltip": "If either tangent at this key is 'weighted'",
+														"tooltip": "이 키의 탄젠트 중 하나가 ‘웨이트'를 가지는 경우의 웨이트 모드입니다.",
 														"advancedDisplay": false,
 														"type": "enum",
 														"enumValues": [
@@ -914,7 +954,7 @@
 														"displayName": "Time",
 														"cppType": "float",
 														"order": 3,
-														"tooltip": "Time at this key",
+														"tooltip": "이 키의 시간입니다.",
 														"advancedDisplay": false,
 														"type": "float"
 													},
@@ -923,7 +963,7 @@
 														"displayName": "Value",
 														"cppType": "float",
 														"order": 4,
-														"tooltip": "Value at this key",
+														"tooltip": "이 키의 값입니다.",
 														"advancedDisplay": false,
 														"type": "float"
 													},
@@ -932,7 +972,7 @@
 														"displayName": "Arrive Tangent",
 														"cppType": "float",
 														"order": 5,
-														"tooltip": "If RCIM_Cubic, the arriving tangent at this key",
+														"tooltip": "RCIM_Cubic 인 경우, 이 키에 도착하는 접선입니다.",
 														"advancedDisplay": false,
 														"type": "float"
 													},
@@ -941,7 +981,7 @@
 														"displayName": "Arrive Tangent Weight",
 														"cppType": "float",
 														"order": 6,
-														"tooltip": "If RCTWM_WeightedArrive or RCTWM_WeightedBoth, the weight of the left tangent",
+														"tooltip": "RCTWM_WeightedArrive 또는 RCTWM_WeightedBoth 인 경우, 왼쪽 접선의 웨이트입니다.",
 														"advancedDisplay": false,
 														"type": "float"
 													},
@@ -950,7 +990,7 @@
 														"displayName": "Leave Tangent",
 														"cppType": "float",
 														"order": 7,
-														"tooltip": "If RCIM_Cubic, the leaving tangent at this key",
+														"tooltip": "RCIM_Cubic 인 경우, 이 키에서 떠나는 접선입니다.",
 														"advancedDisplay": false,
 														"type": "float"
 													},
@@ -959,7 +999,7 @@
 														"displayName": "Leave Tangent Weight",
 														"cppType": "float",
 														"order": 8,
-														"tooltip": "If RCTWM_WeightedLeave or RCTWM_WeightedBoth, the weight of the right tangent",
+														"tooltip": "RCTWM_WeightedLeave 또는 RCTWM_WeightedBoth 인 경우 오른쪽 탄젠트의 웨이트입니다.",
 														"advancedDisplay": false,
 														"type": "float"
 													}
@@ -971,7 +1011,7 @@
 											"displayName": "Default Value",
 											"cppType": "float",
 											"order": 1,
-											"tooltip": "Default value",
+											"tooltip": "기본값입니다.",
 											"advancedDisplay": false,
 											"type": "float"
 										},
@@ -980,7 +1020,7 @@
 											"displayName": "Pre Infinity Extrap",
 											"cppType": "TEnumAsByte<ERichCurveExtrapolation>",
 											"order": 2,
-											"tooltip": "Pre-infinity extrapolation state",
+											"tooltip": "후 무한 추론 상태",
 											"advancedDisplay": false,
 											"type": "enum",
 											"enumValues": [
@@ -1015,7 +1055,7 @@
 											"displayName": "Post Infinity Extrap",
 											"cppType": "TEnumAsByte<ERichCurveExtrapolation>",
 											"order": 3,
-											"tooltip": "Post-infinity extrapolation state",
+											"tooltip": "전 무한 추론 상태",
 											"advancedDisplay": false,
 											"type": "enum",
 											"enumValues": [
@@ -1099,7 +1139,7 @@
 							"displayName": "Tag Name",
 							"cppType": "FName",
 							"order": 0,
-							"tooltip": "This Tags Name",
+							"tooltip": "태그의 이름입니다.",
 							"advancedDisplay": false,
 							"type": "name"
 						}
@@ -1157,7 +1197,7 @@
 											"displayName": "Keys",
 											"cppType": "TArray",
 											"order": 0,
-											"tooltip": "Sorted array of keys",
+											"tooltip": "정렬된 키 배열입니다.",
 											"advancedDisplay": false,
 											"type": "array",
 											"element":
@@ -1176,7 +1216,7 @@
 														"displayName": "Interp Mode",
 														"cppType": "TEnumAsByte<ERichCurveInterpMode>",
 														"order": 0,
-														"tooltip": "Interpolation mode between this key and the next",
+														"tooltip": "이 키와 다음 키 사이의 보간 모드입니다.",
 														"advancedDisplay": false,
 														"type": "enum",
 														"enumValues": [
@@ -1199,7 +1239,7 @@
 														"displayName": "Tangent Mode",
 														"cppType": "TEnumAsByte<ERichCurveTangentMode>",
 														"order": 1,
-														"tooltip": "Mode for tangents at this key",
+														"tooltip": "이 키의 탄젠트 모드입니다.",
 														"advancedDisplay": false,
 														"type": "enum",
 														"enumValues": [
@@ -1226,7 +1266,7 @@
 														"displayName": "Tangent Weight Mode",
 														"cppType": "TEnumAsByte<ERichCurveTangentWeightMode>",
 														"order": 2,
-														"tooltip": "If either tangent at this key is 'weighted'",
+														"tooltip": "이 키의 탄젠트 중 하나가 ‘웨이트'를 가지는 경우의 웨이트 모드입니다.",
 														"advancedDisplay": false,
 														"type": "enum",
 														"enumValues": [
@@ -1253,7 +1293,7 @@
 														"displayName": "Time",
 														"cppType": "float",
 														"order": 3,
-														"tooltip": "Time at this key",
+														"tooltip": "이 키의 시간입니다.",
 														"advancedDisplay": false,
 														"type": "float"
 													},
@@ -1262,7 +1302,7 @@
 														"displayName": "Value",
 														"cppType": "float",
 														"order": 4,
-														"tooltip": "Value at this key",
+														"tooltip": "이 키의 값입니다.",
 														"advancedDisplay": false,
 														"type": "float"
 													},
@@ -1271,7 +1311,7 @@
 														"displayName": "Arrive Tangent",
 														"cppType": "float",
 														"order": 5,
-														"tooltip": "If RCIM_Cubic, the arriving tangent at this key",
+														"tooltip": "RCIM_Cubic 인 경우, 이 키에 도착하는 접선입니다.",
 														"advancedDisplay": false,
 														"type": "float"
 													},
@@ -1280,7 +1320,7 @@
 														"displayName": "Arrive Tangent Weight",
 														"cppType": "float",
 														"order": 6,
-														"tooltip": "If RCTWM_WeightedArrive or RCTWM_WeightedBoth, the weight of the left tangent",
+														"tooltip": "RCTWM_WeightedArrive 또는 RCTWM_WeightedBoth 인 경우, 왼쪽 접선의 웨이트입니다.",
 														"advancedDisplay": false,
 														"type": "float"
 													},
@@ -1289,7 +1329,7 @@
 														"displayName": "Leave Tangent",
 														"cppType": "float",
 														"order": 7,
-														"tooltip": "If RCIM_Cubic, the leaving tangent at this key",
+														"tooltip": "RCIM_Cubic 인 경우, 이 키에서 떠나는 접선입니다.",
 														"advancedDisplay": false,
 														"type": "float"
 													},
@@ -1298,7 +1338,7 @@
 														"displayName": "Leave Tangent Weight",
 														"cppType": "float",
 														"order": 8,
-														"tooltip": "If RCTWM_WeightedLeave or RCTWM_WeightedBoth, the weight of the right tangent",
+														"tooltip": "RCTWM_WeightedLeave 또는 RCTWM_WeightedBoth 인 경우 오른쪽 탄젠트의 웨이트입니다.",
 														"advancedDisplay": false,
 														"type": "float"
 													}
@@ -1310,7 +1350,7 @@
 											"displayName": "Default Value",
 											"cppType": "float",
 											"order": 1,
-											"tooltip": "Default value",
+											"tooltip": "기본값입니다.",
 											"advancedDisplay": false,
 											"type": "float"
 										},
@@ -1319,7 +1359,7 @@
 											"displayName": "Pre Infinity Extrap",
 											"cppType": "TEnumAsByte<ERichCurveExtrapolation>",
 											"order": 2,
-											"tooltip": "Pre-infinity extrapolation state",
+											"tooltip": "후 무한 추론 상태",
 											"advancedDisplay": false,
 											"type": "enum",
 											"enumValues": [
@@ -1354,7 +1394,7 @@
 											"displayName": "Post Infinity Extrap",
 											"cppType": "TEnumAsByte<ERichCurveExtrapolation>",
 											"order": 3,
-											"tooltip": "Post-infinity extrapolation state",
+											"tooltip": "전 무한 추론 상태",
 											"advancedDisplay": false,
 											"type": "enum",
 											"enumValues": [
@@ -1435,7 +1475,7 @@
 											"displayName": "Keys",
 											"cppType": "TArray",
 											"order": 0,
-											"tooltip": "Sorted array of keys",
+											"tooltip": "정렬된 키 배열입니다.",
 											"advancedDisplay": false,
 											"type": "array",
 											"element":
@@ -1454,7 +1494,7 @@
 														"displayName": "Interp Mode",
 														"cppType": "TEnumAsByte<ERichCurveInterpMode>",
 														"order": 0,
-														"tooltip": "Interpolation mode between this key and the next",
+														"tooltip": "이 키와 다음 키 사이의 보간 모드입니다.",
 														"advancedDisplay": false,
 														"type": "enum",
 														"enumValues": [
@@ -1477,7 +1517,7 @@
 														"displayName": "Tangent Mode",
 														"cppType": "TEnumAsByte<ERichCurveTangentMode>",
 														"order": 1,
-														"tooltip": "Mode for tangents at this key",
+														"tooltip": "이 키의 탄젠트 모드입니다.",
 														"advancedDisplay": false,
 														"type": "enum",
 														"enumValues": [
@@ -1504,7 +1544,7 @@
 														"displayName": "Tangent Weight Mode",
 														"cppType": "TEnumAsByte<ERichCurveTangentWeightMode>",
 														"order": 2,
-														"tooltip": "If either tangent at this key is 'weighted'",
+														"tooltip": "이 키의 탄젠트 중 하나가 ‘웨이트'를 가지는 경우의 웨이트 모드입니다.",
 														"advancedDisplay": false,
 														"type": "enum",
 														"enumValues": [
@@ -1531,7 +1571,7 @@
 														"displayName": "Time",
 														"cppType": "float",
 														"order": 3,
-														"tooltip": "Time at this key",
+														"tooltip": "이 키의 시간입니다.",
 														"advancedDisplay": false,
 														"type": "float"
 													},
@@ -1540,7 +1580,7 @@
 														"displayName": "Value",
 														"cppType": "float",
 														"order": 4,
-														"tooltip": "Value at this key",
+														"tooltip": "이 키의 값입니다.",
 														"advancedDisplay": false,
 														"type": "float"
 													},
@@ -1549,7 +1589,7 @@
 														"displayName": "Arrive Tangent",
 														"cppType": "float",
 														"order": 5,
-														"tooltip": "If RCIM_Cubic, the arriving tangent at this key",
+														"tooltip": "RCIM_Cubic 인 경우, 이 키에 도착하는 접선입니다.",
 														"advancedDisplay": false,
 														"type": "float"
 													},
@@ -1558,7 +1598,7 @@
 														"displayName": "Arrive Tangent Weight",
 														"cppType": "float",
 														"order": 6,
-														"tooltip": "If RCTWM_WeightedArrive or RCTWM_WeightedBoth, the weight of the left tangent",
+														"tooltip": "RCTWM_WeightedArrive 또는 RCTWM_WeightedBoth 인 경우, 왼쪽 접선의 웨이트입니다.",
 														"advancedDisplay": false,
 														"type": "float"
 													},
@@ -1567,7 +1607,7 @@
 														"displayName": "Leave Tangent",
 														"cppType": "float",
 														"order": 7,
-														"tooltip": "If RCIM_Cubic, the leaving tangent at this key",
+														"tooltip": "RCIM_Cubic 인 경우, 이 키에서 떠나는 접선입니다.",
 														"advancedDisplay": false,
 														"type": "float"
 													},
@@ -1576,7 +1616,7 @@
 														"displayName": "Leave Tangent Weight",
 														"cppType": "float",
 														"order": 8,
-														"tooltip": "If RCTWM_WeightedLeave or RCTWM_WeightedBoth, the weight of the right tangent",
+														"tooltip": "RCTWM_WeightedLeave 또는 RCTWM_WeightedBoth 인 경우 오른쪽 탄젠트의 웨이트입니다.",
 														"advancedDisplay": false,
 														"type": "float"
 													}
@@ -1588,7 +1628,7 @@
 											"displayName": "Default Value",
 											"cppType": "float",
 											"order": 1,
-											"tooltip": "Default value",
+											"tooltip": "기본값입니다.",
 											"advancedDisplay": false,
 											"type": "float"
 										},
@@ -1597,7 +1637,7 @@
 											"displayName": "Pre Infinity Extrap",
 											"cppType": "TEnumAsByte<ERichCurveExtrapolation>",
 											"order": 2,
-											"tooltip": "Pre-infinity extrapolation state",
+											"tooltip": "후 무한 추론 상태",
 											"advancedDisplay": false,
 											"type": "enum",
 											"enumValues": [
@@ -1632,7 +1672,7 @@
 											"displayName": "Post Infinity Extrap",
 											"cppType": "TEnumAsByte<ERichCurveExtrapolation>",
 											"order": 3,
-											"tooltip": "Post-infinity extrapolation state",
+											"tooltip": "전 무한 추론 상태",
 											"advancedDisplay": false,
 											"type": "enum",
 											"enumValues": [
@@ -1711,7 +1751,7 @@
 							"displayName": "Gameplay Tags",
 							"cppType": "TArray",
 							"order": 0,
-							"tooltip": "Array of gameplay tags",
+							"tooltip": "게임플레이 태그의 배열입니다.",
 							"advancedDisplay": false,
 							"type": "array",
 							"element":
@@ -1730,7 +1770,7 @@
 										"displayName": "Tag Name",
 										"cppType": "FName",
 										"order": 0,
-										"tooltip": "This Tags Name",
+										"tooltip": "태그의 이름입니다.",
 										"advancedDisplay": false,
 										"type": "name"
 									}
@@ -1754,7 +1794,7 @@
 							"displayName": "Tag Name",
 							"cppType": "FName",
 							"order": 0,
-							"tooltip": "This Tags Name",
+							"tooltip": "태그의 이름입니다.",
 							"advancedDisplay": false,
 							"type": "name"
 						}
@@ -1845,7 +1885,7 @@
 							"displayName": "Tag Name",
 							"cppType": "FName",
 							"order": 0,
-							"tooltip": "This Tags Name",
+							"tooltip": "태그의 이름입니다.",
 							"advancedDisplay": false,
 							"type": "name"
 						}
@@ -2050,7 +2090,7 @@
 							"displayName": "Gameplay Tags",
 							"cppType": "TArray",
 							"order": 0,
-							"tooltip": "Array of gameplay tags",
+							"tooltip": "게임플레이 태그의 배열입니다.",
 							"advancedDisplay": false,
 							"type": "array",
 							"element":
@@ -2069,7 +2109,7 @@
 										"displayName": "Tag Name",
 										"cppType": "FName",
 										"order": 0,
-										"tooltip": "This Tags Name",
+										"tooltip": "태그의 이름입니다.",
 										"advancedDisplay": false,
 										"type": "name"
 									}
@@ -2187,7 +2227,7 @@
 							"displayName": "Gameplay Tags",
 							"cppType": "TArray",
 							"order": 0,
-							"tooltip": "Array of gameplay tags",
+							"tooltip": "게임플레이 태그의 배열입니다.",
 							"advancedDisplay": false,
 							"type": "array",
 							"element":
@@ -2206,7 +2246,7 @@
 										"displayName": "Tag Name",
 										"cppType": "FName",
 										"order": 0,
-										"tooltip": "This Tags Name",
+										"tooltip": "태그의 이름입니다.",
 										"advancedDisplay": false,
 										"type": "name"
 									}
@@ -2461,7 +2501,7 @@
 					"displayName": "NSFire FX",
 					"cppType": "UNiagaraSystem*",
 					"order": 14,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -2560,7 +2600,7 @@
 					"displayName": "Environment Projectile Destroy Effect (Niagara)",
 					"cppType": "UNiagaraSystem*",
 					"order": 23,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -2570,7 +2610,7 @@
 					"displayName": "Environment Projectile Destroy Effect (Cascade)",
 					"cppType": "UParticleSystem*",
 					"order": 24,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Engine.ParticleSystem"
@@ -2608,7 +2648,7 @@
 					"displayName": "Hitscan Beam Effect",
 					"cppType": "UNiagaraSystem*",
 					"order": 28,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -2618,7 +2658,7 @@
 					"displayName": "NSHitscan Hit Effect",
 					"cppType": "UNiagaraSystem*",
 					"order": 29,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -2628,7 +2668,7 @@
 					"displayName": "Hitscan Hit Effect",
 					"cppType": "UParticleSystem*",
 					"order": 30,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Engine.ParticleSystem"
@@ -2656,7 +2696,7 @@
 					"displayName": "Rail Gun Sonic Bomb Effect",
 					"cppType": "UNiagaraSystem*",
 					"order": 33,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -2666,7 +2706,7 @@
 					"displayName": "Rail Gun Trail Effect",
 					"cppType": "UNiagaraSystem*",
 					"order": 34,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -2767,7 +2807,7 @@
 					"displayName": "NSAfter Smoke Effect",
 					"cppType": "UNiagaraSystem*",
 					"order": 45,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -2777,7 +2817,7 @@
 					"displayName": "After Smoke Effect",
 					"cppType": "UParticleSystem*",
 					"order": 46,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Engine.ParticleSystem"
@@ -2787,7 +2827,7 @@
 					"displayName": "Smoke Effect Socket Name",
 					"cppType": "FName",
 					"order": 47,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "name"
 				},
@@ -3051,7 +3091,7 @@
 					"displayName": "Attributes",
 					"cppType": "FGameplayTagContainer",
 					"order": 59,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "struct",
 					"structType": "GameplayTagContainer",
@@ -3062,7 +3102,7 @@
 							"displayName": "Gameplay Tags",
 							"cppType": "TArray",
 							"order": 0,
-							"tooltip": "Array of gameplay tags",
+							"tooltip": "게임플레이 태그의 배열입니다.",
 							"advancedDisplay": false,
 							"type": "array",
 							"element":
@@ -3081,7 +3121,7 @@
 										"displayName": "Tag Name",
 										"cppType": "FName",
 										"order": 0,
-										"tooltip": "This Tags Name",
+										"tooltip": "태그의 이름입니다.",
 										"advancedDisplay": false,
 										"type": "name"
 									}
@@ -3095,7 +3135,7 @@
 					"displayName": "Start Usage Count",
 					"cppType": "int32",
 					"order": 60,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "int32"
 				},
@@ -3104,7 +3144,7 @@
 					"displayName": "Max Usage Count",
 					"cppType": "int32",
 					"order": 61,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "int32"
 				},
@@ -3113,7 +3153,7 @@
 					"displayName": "Fp Anim",
 					"cppType": "UClass*",
 					"order": 62,
-					"category": "Anim",
+					"category": "애님",
 					"advancedDisplay": false,
 					"type": "class",
 					"metaClass": "/Script/Engine.AnimInstance"
@@ -3123,7 +3163,7 @@
 					"displayName": "Tp Anim",
 					"cppType": "UClass*",
 					"order": 63,
-					"category": "Anim",
+					"category": "애님",
 					"advancedDisplay": false,
 					"type": "class",
 					"metaClass": "/Script/Engine.AnimInstance"
@@ -3133,7 +3173,7 @@
 					"displayName": "Skeletal Mesh",
 					"cppType": "USkeletalMesh*",
 					"order": 64,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Engine.SkeletalMesh"
@@ -3153,7 +3193,7 @@
 					"displayName": "Equip Montage",
 					"cppType": "UAnimMontage*",
 					"order": 66,
-					"category": "Anim",
+					"category": "애님",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Engine.AnimMontage"
@@ -3192,7 +3232,7 @@
 					"displayName": "Slot Number",
 					"cppType": "int32",
 					"order": 70,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "int32"
 				},
@@ -3210,7 +3250,7 @@
 					"displayName": "FOV90Grip Offset",
 					"cppType": "FVector",
 					"order": 72,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "struct",
 					"structType": "Vector",
@@ -3247,7 +3287,7 @@
 					"displayName": "FOV110Grip Offset",
 					"cppType": "FVector",
 					"order": 73,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "struct",
 					"structType": "Vector",
@@ -3284,7 +3324,7 @@
 					"displayName": "FOV120Grip Offset",
 					"cppType": "FVector",
 					"order": 74,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "struct",
 					"structType": "Vector",
@@ -3471,7 +3511,7 @@
 					"displayName": "NSFire FX",
 					"cppType": "UNiagaraSystem*",
 					"order": 14,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -3570,7 +3610,7 @@
 					"displayName": "Environment Projectile Destroy Effect (Niagara)",
 					"cppType": "UNiagaraSystem*",
 					"order": 23,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -3580,7 +3620,7 @@
 					"displayName": "Environment Projectile Destroy Effect (Cascade)",
 					"cppType": "UParticleSystem*",
 					"order": 24,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Engine.ParticleSystem"
@@ -3618,7 +3658,7 @@
 					"displayName": "Hitscan Beam Effect",
 					"cppType": "UNiagaraSystem*",
 					"order": 28,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -3628,7 +3668,7 @@
 					"displayName": "NSHitscan Hit Effect",
 					"cppType": "UNiagaraSystem*",
 					"order": 29,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -3638,7 +3678,7 @@
 					"displayName": "Hitscan Hit Effect",
 					"cppType": "UParticleSystem*",
 					"order": 30,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Engine.ParticleSystem"
@@ -3666,7 +3706,7 @@
 					"displayName": "Rail Gun Sonic Bomb Effect",
 					"cppType": "UNiagaraSystem*",
 					"order": 33,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -3676,7 +3716,7 @@
 					"displayName": "Rail Gun Trail Effect",
 					"cppType": "UNiagaraSystem*",
 					"order": 34,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -3777,7 +3817,7 @@
 					"displayName": "NSAfter Smoke Effect",
 					"cppType": "UNiagaraSystem*",
 					"order": 45,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -3787,7 +3827,7 @@
 					"displayName": "After Smoke Effect",
 					"cppType": "UParticleSystem*",
 					"order": 46,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Engine.ParticleSystem"
@@ -3797,7 +3837,7 @@
 					"displayName": "Smoke Effect Socket Name",
 					"cppType": "FName",
 					"order": 47,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "name"
 				},
@@ -4061,7 +4101,7 @@
 					"displayName": "Attributes",
 					"cppType": "FGameplayTagContainer",
 					"order": 59,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "struct",
 					"structType": "GameplayTagContainer",
@@ -4072,7 +4112,7 @@
 							"displayName": "Gameplay Tags",
 							"cppType": "TArray",
 							"order": 0,
-							"tooltip": "Array of gameplay tags",
+							"tooltip": "게임플레이 태그의 배열입니다.",
 							"advancedDisplay": false,
 							"type": "array",
 							"element":
@@ -4091,7 +4131,7 @@
 										"displayName": "Tag Name",
 										"cppType": "FName",
 										"order": 0,
-										"tooltip": "This Tags Name",
+										"tooltip": "태그의 이름입니다.",
 										"advancedDisplay": false,
 										"type": "name"
 									}
@@ -4105,7 +4145,7 @@
 					"displayName": "Start Usage Count",
 					"cppType": "int32",
 					"order": 60,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "int32"
 				},
@@ -4114,7 +4154,7 @@
 					"displayName": "Max Usage Count",
 					"cppType": "int32",
 					"order": 61,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "int32"
 				},
@@ -4123,7 +4163,7 @@
 					"displayName": "Fp Anim",
 					"cppType": "UClass*",
 					"order": 62,
-					"category": "Anim",
+					"category": "애님",
 					"advancedDisplay": false,
 					"type": "class",
 					"metaClass": "/Script/Engine.AnimInstance"
@@ -4133,7 +4173,7 @@
 					"displayName": "Tp Anim",
 					"cppType": "UClass*",
 					"order": 63,
-					"category": "Anim",
+					"category": "애님",
 					"advancedDisplay": false,
 					"type": "class",
 					"metaClass": "/Script/Engine.AnimInstance"
@@ -4143,7 +4183,7 @@
 					"displayName": "Skeletal Mesh",
 					"cppType": "USkeletalMesh*",
 					"order": 64,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Engine.SkeletalMesh"
@@ -4163,7 +4203,7 @@
 					"displayName": "Equip Montage",
 					"cppType": "UAnimMontage*",
 					"order": 66,
-					"category": "Anim",
+					"category": "애님",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Engine.AnimMontage"
@@ -4202,7 +4242,7 @@
 					"displayName": "Slot Number",
 					"cppType": "int32",
 					"order": 70,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "int32"
 				},
@@ -4220,7 +4260,7 @@
 					"displayName": "FOV90Grip Offset",
 					"cppType": "FVector",
 					"order": 72,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "struct",
 					"structType": "Vector",
@@ -4257,7 +4297,7 @@
 					"displayName": "FOV110Grip Offset",
 					"cppType": "FVector",
 					"order": 73,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "struct",
 					"structType": "Vector",
@@ -4294,7 +4334,7 @@
 					"displayName": "FOV120Grip Offset",
 					"cppType": "FVector",
 					"order": 74,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "struct",
 					"structType": "Vector",
@@ -4481,7 +4521,7 @@
 					"displayName": "NSFire FX",
 					"cppType": "UNiagaraSystem*",
 					"order": 14,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -4580,7 +4620,7 @@
 					"displayName": "Environment Projectile Destroy Effect (Niagara)",
 					"cppType": "UNiagaraSystem*",
 					"order": 23,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -4590,7 +4630,7 @@
 					"displayName": "Environment Projectile Destroy Effect (Cascade)",
 					"cppType": "UParticleSystem*",
 					"order": 24,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Engine.ParticleSystem"
@@ -4628,7 +4668,7 @@
 					"displayName": "Hitscan Beam Effect",
 					"cppType": "UNiagaraSystem*",
 					"order": 28,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -4638,7 +4678,7 @@
 					"displayName": "NSHitscan Hit Effect",
 					"cppType": "UNiagaraSystem*",
 					"order": 29,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -4648,7 +4688,7 @@
 					"displayName": "Hitscan Hit Effect",
 					"cppType": "UParticleSystem*",
 					"order": 30,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Engine.ParticleSystem"
@@ -4676,7 +4716,7 @@
 					"displayName": "Rail Gun Sonic Bomb Effect",
 					"cppType": "UNiagaraSystem*",
 					"order": 33,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -4686,7 +4726,7 @@
 					"displayName": "Rail Gun Trail Effect",
 					"cppType": "UNiagaraSystem*",
 					"order": 34,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -4787,7 +4827,7 @@
 					"displayName": "NSAfter Smoke Effect",
 					"cppType": "UNiagaraSystem*",
 					"order": 45,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -4797,7 +4837,7 @@
 					"displayName": "After Smoke Effect",
 					"cppType": "UParticleSystem*",
 					"order": 46,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Engine.ParticleSystem"
@@ -4807,7 +4847,7 @@
 					"displayName": "Smoke Effect Socket Name",
 					"cppType": "FName",
 					"order": 47,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "name"
 				},
@@ -5071,7 +5111,7 @@
 					"displayName": "Attributes",
 					"cppType": "FGameplayTagContainer",
 					"order": 59,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "struct",
 					"structType": "GameplayTagContainer",
@@ -5082,7 +5122,7 @@
 							"displayName": "Gameplay Tags",
 							"cppType": "TArray",
 							"order": 0,
-							"tooltip": "Array of gameplay tags",
+							"tooltip": "게임플레이 태그의 배열입니다.",
 							"advancedDisplay": false,
 							"type": "array",
 							"element":
@@ -5101,7 +5141,7 @@
 										"displayName": "Tag Name",
 										"cppType": "FName",
 										"order": 0,
-										"tooltip": "This Tags Name",
+										"tooltip": "태그의 이름입니다.",
 										"advancedDisplay": false,
 										"type": "name"
 									}
@@ -5115,7 +5155,7 @@
 					"displayName": "Start Usage Count",
 					"cppType": "int32",
 					"order": 60,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "int32"
 				},
@@ -5124,7 +5164,7 @@
 					"displayName": "Max Usage Count",
 					"cppType": "int32",
 					"order": 61,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "int32"
 				},
@@ -5133,7 +5173,7 @@
 					"displayName": "Fp Anim",
 					"cppType": "UClass*",
 					"order": 62,
-					"category": "Anim",
+					"category": "애님",
 					"advancedDisplay": false,
 					"type": "class",
 					"metaClass": "/Script/Engine.AnimInstance"
@@ -5143,7 +5183,7 @@
 					"displayName": "Tp Anim",
 					"cppType": "UClass*",
 					"order": 63,
-					"category": "Anim",
+					"category": "애님",
 					"advancedDisplay": false,
 					"type": "class",
 					"metaClass": "/Script/Engine.AnimInstance"
@@ -5153,7 +5193,7 @@
 					"displayName": "Skeletal Mesh",
 					"cppType": "USkeletalMesh*",
 					"order": 64,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Engine.SkeletalMesh"
@@ -5173,7 +5213,7 @@
 					"displayName": "Equip Montage",
 					"cppType": "UAnimMontage*",
 					"order": 66,
-					"category": "Anim",
+					"category": "애님",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Engine.AnimMontage"
@@ -5212,7 +5252,7 @@
 					"displayName": "Slot Number",
 					"cppType": "int32",
 					"order": 70,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "int32"
 				},
@@ -5230,7 +5270,7 @@
 					"displayName": "FOV90Grip Offset",
 					"cppType": "FVector",
 					"order": 72,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "struct",
 					"structType": "Vector",
@@ -5267,7 +5307,7 @@
 					"displayName": "FOV110Grip Offset",
 					"cppType": "FVector",
 					"order": 73,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "struct",
 					"structType": "Vector",
@@ -5304,7 +5344,7 @@
 					"displayName": "FOV120Grip Offset",
 					"cppType": "FVector",
 					"order": 74,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "struct",
 					"structType": "Vector",
@@ -5491,7 +5531,7 @@
 					"displayName": "NSFire FX",
 					"cppType": "UNiagaraSystem*",
 					"order": 14,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -5590,7 +5630,7 @@
 					"displayName": "Environment Projectile Destroy Effect (Niagara)",
 					"cppType": "UNiagaraSystem*",
 					"order": 23,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -5600,7 +5640,7 @@
 					"displayName": "Environment Projectile Destroy Effect (Cascade)",
 					"cppType": "UParticleSystem*",
 					"order": 24,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Engine.ParticleSystem"
@@ -5638,7 +5678,7 @@
 					"displayName": "Hitscan Beam Effect",
 					"cppType": "UNiagaraSystem*",
 					"order": 28,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -5648,7 +5688,7 @@
 					"displayName": "NSHitscan Hit Effect",
 					"cppType": "UNiagaraSystem*",
 					"order": 29,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -5658,7 +5698,7 @@
 					"displayName": "Hitscan Hit Effect",
 					"cppType": "UParticleSystem*",
 					"order": 30,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Engine.ParticleSystem"
@@ -5686,7 +5726,7 @@
 					"displayName": "Rail Gun Sonic Bomb Effect",
 					"cppType": "UNiagaraSystem*",
 					"order": 33,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -5696,7 +5736,7 @@
 					"displayName": "Rail Gun Trail Effect",
 					"cppType": "UNiagaraSystem*",
 					"order": 34,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -5797,7 +5837,7 @@
 					"displayName": "NSAfter Smoke Effect",
 					"cppType": "UNiagaraSystem*",
 					"order": 45,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -5807,7 +5847,7 @@
 					"displayName": "After Smoke Effect",
 					"cppType": "UParticleSystem*",
 					"order": 46,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Engine.ParticleSystem"
@@ -5817,7 +5857,7 @@
 					"displayName": "Smoke Effect Socket Name",
 					"cppType": "FName",
 					"order": 47,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "name"
 				},
@@ -6081,7 +6121,7 @@
 					"displayName": "Attributes",
 					"cppType": "FGameplayTagContainer",
 					"order": 59,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "struct",
 					"structType": "GameplayTagContainer",
@@ -6092,7 +6132,7 @@
 							"displayName": "Gameplay Tags",
 							"cppType": "TArray",
 							"order": 0,
-							"tooltip": "Array of gameplay tags",
+							"tooltip": "게임플레이 태그의 배열입니다.",
 							"advancedDisplay": false,
 							"type": "array",
 							"element":
@@ -6111,7 +6151,7 @@
 										"displayName": "Tag Name",
 										"cppType": "FName",
 										"order": 0,
-										"tooltip": "This Tags Name",
+										"tooltip": "태그의 이름입니다.",
 										"advancedDisplay": false,
 										"type": "name"
 									}
@@ -6125,7 +6165,7 @@
 					"displayName": "Start Usage Count",
 					"cppType": "int32",
 					"order": 60,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "int32"
 				},
@@ -6134,7 +6174,7 @@
 					"displayName": "Max Usage Count",
 					"cppType": "int32",
 					"order": 61,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "int32"
 				},
@@ -6143,7 +6183,7 @@
 					"displayName": "Fp Anim",
 					"cppType": "UClass*",
 					"order": 62,
-					"category": "Anim",
+					"category": "애님",
 					"advancedDisplay": false,
 					"type": "class",
 					"metaClass": "/Script/Engine.AnimInstance"
@@ -6153,7 +6193,7 @@
 					"displayName": "Tp Anim",
 					"cppType": "UClass*",
 					"order": 63,
-					"category": "Anim",
+					"category": "애님",
 					"advancedDisplay": false,
 					"type": "class",
 					"metaClass": "/Script/Engine.AnimInstance"
@@ -6163,7 +6203,7 @@
 					"displayName": "Skeletal Mesh",
 					"cppType": "USkeletalMesh*",
 					"order": 64,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Engine.SkeletalMesh"
@@ -6183,7 +6223,7 @@
 					"displayName": "Equip Montage",
 					"cppType": "UAnimMontage*",
 					"order": 66,
-					"category": "Anim",
+					"category": "애님",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Engine.AnimMontage"
@@ -6222,7 +6262,7 @@
 					"displayName": "Slot Number",
 					"cppType": "int32",
 					"order": 70,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "int32"
 				},
@@ -6240,7 +6280,7 @@
 					"displayName": "FOV90Grip Offset",
 					"cppType": "FVector",
 					"order": 72,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "struct",
 					"structType": "Vector",
@@ -6277,7 +6317,7 @@
 					"displayName": "FOV110Grip Offset",
 					"cppType": "FVector",
 					"order": 73,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "struct",
 					"structType": "Vector",
@@ -6314,7 +6354,7 @@
 					"displayName": "FOV120Grip Offset",
 					"cppType": "FVector",
 					"order": 74,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "struct",
 					"structType": "Vector",
@@ -6501,7 +6541,7 @@
 					"displayName": "NSFire FX",
 					"cppType": "UNiagaraSystem*",
 					"order": 14,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -6600,7 +6640,7 @@
 					"displayName": "Environment Projectile Destroy Effect (Niagara)",
 					"cppType": "UNiagaraSystem*",
 					"order": 23,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -6610,7 +6650,7 @@
 					"displayName": "Environment Projectile Destroy Effect (Cascade)",
 					"cppType": "UParticleSystem*",
 					"order": 24,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Engine.ParticleSystem"
@@ -6648,7 +6688,7 @@
 					"displayName": "Hitscan Beam Effect",
 					"cppType": "UNiagaraSystem*",
 					"order": 28,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -6658,7 +6698,7 @@
 					"displayName": "NSHitscan Hit Effect",
 					"cppType": "UNiagaraSystem*",
 					"order": 29,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -6668,7 +6708,7 @@
 					"displayName": "Hitscan Hit Effect",
 					"cppType": "UParticleSystem*",
 					"order": 30,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Engine.ParticleSystem"
@@ -6696,7 +6736,7 @@
 					"displayName": "Rail Gun Sonic Bomb Effect",
 					"cppType": "UNiagaraSystem*",
 					"order": 33,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -6706,7 +6746,7 @@
 					"displayName": "Rail Gun Trail Effect",
 					"cppType": "UNiagaraSystem*",
 					"order": 34,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -6807,7 +6847,7 @@
 					"displayName": "NSAfter Smoke Effect",
 					"cppType": "UNiagaraSystem*",
 					"order": 45,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -6817,7 +6857,7 @@
 					"displayName": "After Smoke Effect",
 					"cppType": "UParticleSystem*",
 					"order": 46,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Engine.ParticleSystem"
@@ -6827,7 +6867,7 @@
 					"displayName": "Smoke Effect Socket Name",
 					"cppType": "FName",
 					"order": 47,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "name"
 				},
@@ -7091,7 +7131,7 @@
 					"displayName": "Attributes",
 					"cppType": "FGameplayTagContainer",
 					"order": 59,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "struct",
 					"structType": "GameplayTagContainer",
@@ -7102,7 +7142,7 @@
 							"displayName": "Gameplay Tags",
 							"cppType": "TArray",
 							"order": 0,
-							"tooltip": "Array of gameplay tags",
+							"tooltip": "게임플레이 태그의 배열입니다.",
 							"advancedDisplay": false,
 							"type": "array",
 							"element":
@@ -7121,7 +7161,7 @@
 										"displayName": "Tag Name",
 										"cppType": "FName",
 										"order": 0,
-										"tooltip": "This Tags Name",
+										"tooltip": "태그의 이름입니다.",
 										"advancedDisplay": false,
 										"type": "name"
 									}
@@ -7135,7 +7175,7 @@
 					"displayName": "Start Usage Count",
 					"cppType": "int32",
 					"order": 60,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "int32"
 				},
@@ -7144,7 +7184,7 @@
 					"displayName": "Max Usage Count",
 					"cppType": "int32",
 					"order": 61,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "int32"
 				},
@@ -7153,7 +7193,7 @@
 					"displayName": "Fp Anim",
 					"cppType": "UClass*",
 					"order": 62,
-					"category": "Anim",
+					"category": "애님",
 					"advancedDisplay": false,
 					"type": "class",
 					"metaClass": "/Script/Engine.AnimInstance"
@@ -7163,7 +7203,7 @@
 					"displayName": "Tp Anim",
 					"cppType": "UClass*",
 					"order": 63,
-					"category": "Anim",
+					"category": "애님",
 					"advancedDisplay": false,
 					"type": "class",
 					"metaClass": "/Script/Engine.AnimInstance"
@@ -7173,7 +7213,7 @@
 					"displayName": "Skeletal Mesh",
 					"cppType": "USkeletalMesh*",
 					"order": 64,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Engine.SkeletalMesh"
@@ -7193,7 +7233,7 @@
 					"displayName": "Equip Montage",
 					"cppType": "UAnimMontage*",
 					"order": 66,
-					"category": "Anim",
+					"category": "애님",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Engine.AnimMontage"
@@ -7232,7 +7272,7 @@
 					"displayName": "Slot Number",
 					"cppType": "int32",
 					"order": 70,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "int32"
 				},
@@ -7250,7 +7290,7 @@
 					"displayName": "FOV90Grip Offset",
 					"cppType": "FVector",
 					"order": 72,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "struct",
 					"structType": "Vector",
@@ -7287,7 +7327,7 @@
 					"displayName": "FOV110Grip Offset",
 					"cppType": "FVector",
 					"order": 73,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "struct",
 					"structType": "Vector",
@@ -7324,7 +7364,7 @@
 					"displayName": "FOV120Grip Offset",
 					"cppType": "FVector",
 					"order": 74,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "struct",
 					"structType": "Vector",
@@ -7511,7 +7551,7 @@
 					"displayName": "NSFire FX",
 					"cppType": "UNiagaraSystem*",
 					"order": 14,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -7610,7 +7650,7 @@
 					"displayName": "Environment Projectile Destroy Effect (Niagara)",
 					"cppType": "UNiagaraSystem*",
 					"order": 23,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -7620,7 +7660,7 @@
 					"displayName": "Environment Projectile Destroy Effect (Cascade)",
 					"cppType": "UParticleSystem*",
 					"order": 24,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Engine.ParticleSystem"
@@ -7658,7 +7698,7 @@
 					"displayName": "Hitscan Beam Effect",
 					"cppType": "UNiagaraSystem*",
 					"order": 28,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -7668,7 +7708,7 @@
 					"displayName": "NSHitscan Hit Effect",
 					"cppType": "UNiagaraSystem*",
 					"order": 29,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -7678,7 +7718,7 @@
 					"displayName": "Hitscan Hit Effect",
 					"cppType": "UParticleSystem*",
 					"order": 30,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Engine.ParticleSystem"
@@ -7706,7 +7746,7 @@
 					"displayName": "Rail Gun Sonic Bomb Effect",
 					"cppType": "UNiagaraSystem*",
 					"order": 33,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -7716,7 +7756,7 @@
 					"displayName": "Rail Gun Trail Effect",
 					"cppType": "UNiagaraSystem*",
 					"order": 34,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -7817,7 +7857,7 @@
 					"displayName": "NSAfter Smoke Effect",
 					"cppType": "UNiagaraSystem*",
 					"order": 45,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Niagara.NiagaraSystem"
@@ -7827,7 +7867,7 @@
 					"displayName": "After Smoke Effect",
 					"cppType": "UParticleSystem*",
 					"order": 46,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Engine.ParticleSystem"
@@ -7837,7 +7877,7 @@
 					"displayName": "Smoke Effect Socket Name",
 					"cppType": "FName",
 					"order": 47,
-					"category": "Effect",
+					"category": "이펙트",
 					"advancedDisplay": false,
 					"type": "name"
 				},
@@ -8101,7 +8141,7 @@
 					"displayName": "Attributes",
 					"cppType": "FGameplayTagContainer",
 					"order": 59,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "struct",
 					"structType": "GameplayTagContainer",
@@ -8112,7 +8152,7 @@
 							"displayName": "Gameplay Tags",
 							"cppType": "TArray",
 							"order": 0,
-							"tooltip": "Array of gameplay tags",
+							"tooltip": "게임플레이 태그의 배열입니다.",
 							"advancedDisplay": false,
 							"type": "array",
 							"element":
@@ -8131,7 +8171,7 @@
 										"displayName": "Tag Name",
 										"cppType": "FName",
 										"order": 0,
-										"tooltip": "This Tags Name",
+										"tooltip": "태그의 이름입니다.",
 										"advancedDisplay": false,
 										"type": "name"
 									}
@@ -8145,7 +8185,7 @@
 					"displayName": "Start Usage Count",
 					"cppType": "int32",
 					"order": 60,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "int32"
 				},
@@ -8154,7 +8194,7 @@
 					"displayName": "Max Usage Count",
 					"cppType": "int32",
 					"order": 61,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "int32"
 				},
@@ -8163,7 +8203,7 @@
 					"displayName": "Fp Anim",
 					"cppType": "UClass*",
 					"order": 62,
-					"category": "Anim",
+					"category": "애님",
 					"advancedDisplay": false,
 					"type": "class",
 					"metaClass": "/Script/Engine.AnimInstance"
@@ -8173,7 +8213,7 @@
 					"displayName": "Tp Anim",
 					"cppType": "UClass*",
 					"order": 63,
-					"category": "Anim",
+					"category": "애님",
 					"advancedDisplay": false,
 					"type": "class",
 					"metaClass": "/Script/Engine.AnimInstance"
@@ -8183,7 +8223,7 @@
 					"displayName": "Skeletal Mesh",
 					"cppType": "USkeletalMesh*",
 					"order": 64,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Engine.SkeletalMesh"
@@ -8203,7 +8243,7 @@
 					"displayName": "Equip Montage",
 					"cppType": "UAnimMontage*",
 					"order": 66,
-					"category": "Anim",
+					"category": "애님",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Engine.AnimMontage"
@@ -8242,7 +8282,7 @@
 					"displayName": "Slot Number",
 					"cppType": "int32",
 					"order": 70,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "int32"
 				},
@@ -8260,7 +8300,7 @@
 					"displayName": "FOV90Grip Offset",
 					"cppType": "FVector",
 					"order": 72,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "struct",
 					"structType": "Vector",
@@ -8297,7 +8337,7 @@
 					"displayName": "FOV110Grip Offset",
 					"cppType": "FVector",
 					"order": 73,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "struct",
 					"structType": "Vector",
@@ -8334,7 +8374,7 @@
 					"displayName": "FOV120Grip Offset",
 					"cppType": "FVector",
 					"order": 74,
-					"category": "Info",
+					"category": "정보",
 					"advancedDisplay": false,
 					"type": "struct",
 					"structType": "Vector",
@@ -8382,7 +8422,7 @@
 					"cppType": "double",
 					"order": 0,
 					"tooltip": "목표 게임 플레이 시간 (sec)",
-					"category": "Default",
+					"category": "디폴트",
 					"advancedDisplay": false,
 					"type": "double"
 				},
@@ -8391,7 +8431,7 @@
 					"displayName": "Max Score",
 					"cppType": "int32",
 					"order": 1,
-					"category": "Default",
+					"category": "디폴트",
 					"advancedDisplay": false,
 					"type": "int32"
 				}
@@ -8410,7 +8450,7 @@
 					"displayName": "Respawn Time",
 					"cppType": "double",
 					"order": 0,
-					"category": "Default",
+					"category": "디폴트",
 					"advancedDisplay": false,
 					"type": "double"
 				}
@@ -8558,7 +8598,7 @@
 					"displayName": "Base Respawn Time",
 					"cppType": "double",
 					"order": 0,
-					"category": "Default",
+					"category": "디폴트",
 					"advancedDisplay": false,
 					"type": "double"
 				},
@@ -8568,7 +8608,7 @@
 					"cppType": "FText",
 					"order": 1,
 					"tooltip": "UI에 띄워질 이름",
-					"category": "Default",
+					"category": "디폴트",
 					"advancedDisplay": false,
 					"type": "text"
 				},
@@ -8577,7 +8617,7 @@
 					"displayName": "Character ID",
 					"cppType": "FName",
 					"order": 2,
-					"category": "Default",
+					"category": "디폴트",
 					"advancedDisplay": false,
 					"type": "name"
 				},
@@ -8586,7 +8626,7 @@
 					"displayName": "Character Class",
 					"cppType": "APawn*",
 					"order": 3,
-					"category": "Default",
+					"category": "디폴트",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Engine.Pawn"
@@ -9098,7 +9138,7 @@
 									"displayName": "Font Family",
 									"cppType": "TObjectPtr<UObject>",
 									"order": 0,
-									"tooltip": "The font object (valid when used from UMG or a Slate widget style asset)",
+									"tooltip": "폰트 오브젝트입니다. (UMG 나 슬레이트 위젯 스타일을 사용하는 경우 유효합니다.)",
 									"advancedDisplay": false,
 									"type": "object",
 									"objectClass": "/Script/CoreUObject.Object"
@@ -9108,7 +9148,7 @@
 									"displayName": "Font Material",
 									"cppType": "TObjectPtr<UObject>",
 									"order": 1,
-									"tooltip": "The material to use when rendering",
+									"tooltip": "렌더링에 사용되는 머티리얼입니다.",
 									"advancedDisplay": false,
 									"type": "object",
 									"objectClass": "/Script/CoreUObject.Object"
@@ -9118,7 +9158,7 @@
 									"displayName": "Outline Settings",
 									"cppType": "FFontOutlineSettings",
 									"order": 2,
-									"tooltip": "Settings for applying an outline to a font",
+									"tooltip": "폰트에 외곽선을 주는 데 필요한 설정들입니다.",
 									"advancedDisplay": false,
 									"type": "struct",
 									"structType": "FontOutlineSettings",
@@ -9126,10 +9166,10 @@
 									"properties": [
 										{
 											"name": "outlineSize",
-											"displayName": "Outline Size",
+											"displayName": "윤곽선 크기",
 											"cppType": "int32",
 											"order": 0,
-											"tooltip": "Size of the outline in slate units (at 1.0 font scale this unit is a pixel)",
+											"tooltip": "아웃라인의 크기입니다 (슬레이트의 단위를 사용합니다. 1.0 폰트 스케일에서 이 값 1은 1픽셀이 됩니다).",
 											"advancedDisplay": false,
 											"constraints":
 											{
@@ -9140,47 +9180,47 @@
 										},
 										{
 											"name": "bMiteredCorners",
-											"displayName": "Mitered Corners",
+											"displayName": "연귀이음 모서리",
 											"cppType": "bool",
 											"order": 1,
-											"tooltip": "When enabled, outlines have sharp mitered corners, otherwise they are rounded.",
+											"tooltip": "활성화하면 윤곽선의 모서리가 날카롭게 연귀이음 처리되고, 그렇지 않으면 둥글게 처리됩니다.",
 											"advancedDisplay": false,
 											"type": "bool"
 										},
 										{
 											"name": "bSeparateFillAlpha",
-											"displayName": "Separate Fill Alpha",
+											"displayName": "별도 알파 채우기",
 											"cppType": "bool",
 											"order": 2,
-											"tooltip": "When enabled the outline will be completely translucent where the filled area will be.  This allows for a separate fill alpha value\nThe trade off when enabling this is slightly worse quality for completely opaque fills where the inner outline border meets the fill area",
+											"tooltip": "활성화된 경우, 외곽선의 안쪽에 있는 원래 글자 부분이 완전히 반투명하게 됩니다.  이 기능을 사용하면 외곽선과 그 안쪽에 있는 글자가\n서로 분리된 알파 값을 가질 수 있습니다. 하지만 외곽선이 완전히 불투명한 경우, 내부 윤곽선 테두리와 원래 글자 부분이 만나는 곳에 약간의 품질 저하가 발생할 수 있습니다.",
 											"advancedDisplay": false,
 											"type": "bool"
 										},
 										{
 											"name": "bApplyOutlineToDropShadows",
-											"displayName": "Apply Outline to Drop Shadows",
+											"displayName": "윤곽선을 적용하여 섀도 드롭",
 											"cppType": "bool",
 											"order": 3,
-											"tooltip": "When enabled the outline will be applied to any drop shadow that uses this font",
+											"tooltip": "활성화하면 이 폰트를 사용하는 모든 드롭 섀도에 외곽선이 적용됩니다.",
 											"advancedDisplay": false,
 											"type": "bool"
 										},
 										{
 											"name": "outlineMaterial",
-											"displayName": "Outline Material",
+											"displayName": "윤곽선 머티리얼",
 											"cppType": "TObjectPtr<UObject>",
 											"order": 4,
-											"tooltip": "Optional material to apply to the outline",
+											"tooltip": "아웃라인에 적용할 머티리얼입니다.",
 											"advancedDisplay": false,
 											"type": "object",
 											"objectClass": "/Script/CoreUObject.Object"
 										},
 										{
 											"name": "outlineColor",
-											"displayName": "Outline Color",
+											"displayName": "윤곽선 컬러",
 											"cppType": "FLinearColor",
 											"order": 5,
-											"tooltip": "The color of the outline for any character in this font",
+											"tooltip": "외곽선의 색상입니다.",
 											"advancedDisplay": false,
 											"type": "struct",
 											"structType": "LinearColor",
@@ -9227,7 +9267,7 @@
 									"displayName": "Typeface",
 									"cppType": "FName",
 									"order": 3,
-									"tooltip": "The name of the font to use from the default typeface (None will use the first entry)",
+									"tooltip": "기본 타입페이스 중 사용할 폰트의 이름입니다. None 인 경우 첫 항목을 사용합니다.",
 									"advancedDisplay": false,
 									"type": "name"
 								},
@@ -9236,7 +9276,7 @@
 									"displayName": "Size",
 									"cppType": "float",
 									"order": 4,
-									"tooltip": "The font size is a measure in point values. The conversion of points to Slate Units is done at 96 DPI.\nSo if you're using a tool like Photoshop to prototype layouts and UI mock ups, you can change the UMG Font settings\nto ensure that UMG font size is displayed in its 72 DPI equivalent, even if Slate will still use 96 DPI internally.",
+									"tooltip": "폰트 크기는 포인트 값으로 측정됩니다. 포인트의 슬레이트 유닛 변환은 96DPI에서 이뤄집니다.\n따라서 Photoshop 같은 툴을 사용하여 레이아웃 및 UI 모형 작업의 프로토타입을 제작하는 경우, UMG 폰트 세팅을 변경하여\n슬레이트가 내부적으로 96DPI를 사용하더라도 UMG 폰트 크기가 72DPI로 표시되게 할 수 있습니다.",
 									"advancedDisplay": false,
 									"constraints":
 									{
@@ -9250,7 +9290,7 @@
 									"displayName": "Letter Spacing",
 									"cppType": "int32",
 									"order": 5,
-									"tooltip": "The uniform spacing (or tracking) between all characters in the text.",
+									"tooltip": "텍스트 내 모든 글자 사이의 균등한 간격(또는 트래킹)입니다.",
 									"advancedDisplay": false,
 									"constraints":
 									{
@@ -9264,7 +9304,7 @@
 									"displayName": "Skew Amount",
 									"cppType": "float",
 									"order": 6,
-									"tooltip": "A skew amount to apply to the text.",
+									"tooltip": "텍스트에 적용할 왜곡량입니다.",
 									"advancedDisplay": false,
 									"constraints":
 									{
@@ -9278,7 +9318,7 @@
 									"displayName": "Monospacing",
 									"cppType": "bool",
 									"order": 7,
-									"tooltip": "Enable pseudo-monospaced font.",
+									"tooltip": "의사 고정 폭 폰트를 활성화합니다.",
 									"advancedDisplay": false,
 									"type": "bool"
 								},
@@ -9287,7 +9327,7 @@
 									"displayName": "Material Is Stencil",
 									"cppType": "bool",
 									"order": 8,
-									"tooltip": "When enabled, whole quads are filled by the material without automatically stenciling the text - this needs to be done within the material (using Font Signed Distance node).",
+									"tooltip": "활성화한 경우, 텍스트를 자동으로 스텐실하지 않고 전체 쿼드가 머티리얼로 채워집니다. 이 작업은 머티리얼 내에서 Font Signed Distance 노드를 사용하여 수행해야 합니다.",
 									"advancedDisplay": false,
 									"type": "bool"
 								},
@@ -9296,7 +9336,7 @@
 									"displayName": "Monospaced Width",
 									"cppType": "float",
 									"order": 9,
-									"tooltip": "The uniform width to apply to all characters when bForceMonospaced is enabled, proportional of the font Size.",
+									"tooltip": "bForceMonospaced가 활성화되어 있는 경우 모든 문자에 적용할 균등한 너비로, 폰트 크기에 비례합니다.",
 									"advancedDisplay": false,
 									"constraints":
 									{
@@ -9553,7 +9593,7 @@
 					"cppType": "double",
 					"order": 6,
 					"tooltip": "추가 체력 틱당 감소량",
-					"category": "Default",
+					"category": "디폴트",
 					"advancedDisplay": false,
 					"type": "double"
 				},
@@ -9562,7 +9602,7 @@
 					"displayName": "Health Sound",
 					"cppType": "USoundBase*",
 					"order": 7,
-					"category": "Sound",
+					"category": "사운드",
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Engine.SoundBase"
@@ -10079,7 +10119,7 @@
 					"displayName": "Aim Boundary",
 					"cppType": "FVector",
 					"order": 0,
-					"category": "Default",
+					"category": "디폴트",
 					"advancedDisplay": false,
 					"type": "struct",
 					"structType": "Vector",
@@ -10117,7 +10157,7 @@
 					"cppType": "double",
 					"order": 1,
 					"tooltip": "사격 시, 한 틱당(틱의 간격은 따로 설정) 최대 이동 거리",
-					"category": "Default",
+					"category": "디폴트",
 					"advancedDisplay": false,
 					"type": "double"
 				},
@@ -10166,7 +10206,7 @@
 					"displayName": "DA Interp Speed",
 					"cppType": "double",
 					"order": 0,
-					"category": "Default",
+					"category": "디폴트",
 					"advancedDisplay": false,
 					"type": "double"
 				},
@@ -10175,7 +10215,7 @@
 					"displayName": "DA Rotation Threshold",
 					"cppType": "double",
 					"order": 1,
-					"category": "Default",
+					"category": "디폴트",
 					"advancedDisplay": false,
 					"type": "double"
 				},
@@ -10184,7 +10224,7 @@
 					"displayName": "DA Jump Timer",
 					"cppType": "double",
 					"order": 2,
-					"category": "Default",
+					"category": "디폴트",
 					"advancedDisplay": false,
 					"type": "double"
 				}
