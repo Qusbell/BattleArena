@@ -52,6 +52,14 @@ struct SHOOTINGARENA_API FDeathDropSettings : public FTableRowBase
 	/** 미획득 드롭의 최대 생존 시간(초). 발사 시점부터 계산하므로 공중에 있는 시간도 포함한다. 획득 후 버프 지속 시간과는 별개다. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta=(ClampMin="0.01")) float DespawnTime = 30.0f;
 
+	/** 미획득 사망 드롭이 시간 만료로 사라지기 직전에 메시를 서서히 축소한다. 끄면 기존처럼 DespawnTime에 즉시 제거한다. 획득 연출에는 적용하지 않는다. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Despawn Effects")
+	bool DespawnShrinkEnabled = false;
+
+	/** 소멸 몇 초 전부터 축소할지 지정한다(초). 예: DespawnTime=3, 이 값=0.1이면 발사 후 2.9초부터 3초까지 축소한다. 생존 시간보다 길면 발사 직후부터 축소하며, 0이면 축소하지 않는다. 변경값은 새 드롭부터 적용한다. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Despawn Effects", meta=(ClampMin="0", Units="s", EditCondition="DespawnShrinkEnabled"))
+	float DespawnShrinkDuration = 0.1f;
+
 	/** 바닥 충돌 후 드롭 전체를 월드 위쪽으로 추가로 띄우는 높이(cm). 물리 구체가 지면에 닿는 위치에 더한다. 0이면 추가 높이 없음. 메시 크기와 상하 움직임을 고려해 값을 높이면 묻힘을 줄일 수 있다. 사망 드롭에만 적용하며 새로 생성하는 드롭부터 사용한다. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Ground Settlement", meta=(ClampMin="0", Units="cm"))
 	float SettlementHeightOffset = 20.0f;
