@@ -45,6 +45,8 @@ private:
 	bool bInputLocked = false;
 	FString CurrentStatus;
 	float SecondsSincePostLoad = 0.0f;
+	bool bStartupMapHandled = false;
+	bool bSkipStartupOverlay = false;
 	bool bTransitionActive = false;
 	bool bExternalLoadingRequested = false;
 	bool bSawCoordinator = false;
