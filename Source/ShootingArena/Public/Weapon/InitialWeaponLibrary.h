@@ -19,6 +19,18 @@ public:
 	UFUNCTION(BlueprintPure, Category="Initial Weapons")
 	static bool CanSelectInventoryWeapon(UActorComponent* Inventory, int32 Index);
 
+	/** One-based HUD/hotkey number; empty regular weapons stay visible. Only restricted defaults close the numbering gap. */
+	UFUNCTION(BlueprintPure, Category="Initial Weapons")
+	static int32 GetInventoryWeaponSlotNumber(UActorComponent* Inventory, int32 Index);
+
+	/** Maps a one-based numeric-key input to the real inventory index; slot zero is unused. Wheel swaps keep raw indices. */
+	UFUNCTION(BlueprintPure, Category="Initial Weapons")
+	static int32 ResolveInventoryWeaponShortcut(UActorComponent* Inventory, int32 ShortcutIndex);
+
+	/** Keep slot ammo updates connected after a weapon swap; unbind when the HUD changes its displayed pawn. */
+	UFUNCTION(BlueprintCallable, Category="Initial Weapons", meta=(DefaultToSelf="HUD"))
+	static void SetWeaponSlotConsumptionBinding(UObject* HUD, AActor* Weapon, bool bBind);
+
 	/** Keeps the current regular weapon when a restricted default is requested. */
 	UFUNCTION(BlueprintPure, Category="Initial Weapons")
 	static int32 ResolveInventoryWeaponSelection(UActorComponent* Inventory, int32 RequestedIndex);

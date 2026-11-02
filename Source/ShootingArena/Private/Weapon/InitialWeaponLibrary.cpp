@@ -78,6 +78,41 @@ bool UInitialWeaponLibrary::CanSelectInventoryWeapon(UActorComponent* Inventory,
 	return !Weapons.ContainsByPredicate([Loadout](AActor* Weapon) { return IsRegularWeapon(Weapon, Loadout); });
 }
 
+int32 UInitialWeaponLibrary::GetInventoryWeaponSlotNumber(UActorComponent* Inventory, int32 Index)
+{
+	const TArray<AActor*> Weapons = InventoryWeapons(Inventory);
+	if (Index <= 0 || !Weapons.IsValidIndex(Index) || !IsValid(Weapons[Index])) return 0;
+	int32 Number = Index;
+	if (const auto* Loadout = RestrictedLoadout(Inventory))
+	{
+		if (Loadout->IsDefaultWeapon(Weapons[Index]) && !CanSelectInventoryWeapon(Inventory, Index)) return 0;
+		for (int32 Before = 0; Before < Index; ++Before)
+			if (IsValid(Weapons[Before]) && Loadout->IsDefaultWeapon(Weapons[Before])
+				&& !CanSelectInventoryWeapon(Inventory, Before)) --Number;
+	}
+	return Number;
+}
+
+int32 UInitialWeaponLibrary::ResolveInventoryWeaponShortcut(UActorComponent* Inventory, int32 ShortcutIndex)
+{
+	const TArray<AActor*> Weapons = InventoryWeapons(Inventory);
+	if (ShortcutIndex <= 0 || ShortcutIndex >= Weapons.Num()) return INDEX_NONE;
+	for (int32 Index = 1; Index < Weapons.Num(); ++Index)
+		if (GetInventoryWeaponSlotNumber(Inventory, Index) == ShortcutIndex) return Index;
+	return INDEX_NONE;
+}
+
+void UInitialWeaponLibrary::SetWeaponSlotConsumptionBinding(UObject* HUD, AActor* Weapon, bool bBind)
+{
+	if (!IsValid(HUD) || !IsValid(Weapon) || !HUD->FindFunction(TEXT("RF_HandleAmmoConsumed"))) return;
+	const auto* Event = FindFProperty<FMulticastDelegateProperty>(Weapon->GetClass(), TEXT("OnUsableConsum"));
+	if (!Event) return;
+	FScriptDelegate Callback;
+	Callback.BindUFunction(HUD, TEXT("RF_HandleAmmoConsumed"));
+	if (bBind) Event->AddDelegate(Callback, Weapon);
+	else Event->RemoveDelegate(Callback, Weapon);
+}
+
 int32 UInitialWeaponLibrary::ResolveInventoryWeaponSelection(UActorComponent* Inventory, int32 RequestedIndex)
 {
 	const auto* Loadout = RestrictedLoadout(Inventory);
