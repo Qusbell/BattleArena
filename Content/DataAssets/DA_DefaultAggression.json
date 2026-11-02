@@ -8,5 +8,5 @@
 	"weaponBaseMax": 1000,
 	"chaseMaxTime": 5,
 	"reatreatMaxAngle": 90,
-	"isBuffWeightAffectedByAggression": true
+	"isBuffWeightAffectedByAggression": false
 }
