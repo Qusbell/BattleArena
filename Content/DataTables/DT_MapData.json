@@ -28,7 +28,7 @@
 			"/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Icon/JumpPad.JumpPad'",
 			"/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Icon/Portal.Portal'"
 		],
-		"Character_Light_Channels": [ false, true, true ]
+		"Character_Light_Channels": [ true ]
 	},
 	{
 		"Name": "Map_06",
@@ -48,7 +48,7 @@
 		"Map_ID": "Map_06",
 		"Map_Feature": [],
 		"Feature_Icon": [],
-		"Character_Light_Channels": [ false, false, true ]
+		"Character_Light_Channels": [ false ]
 	},
 	{
 		"Name": "Map_04",
