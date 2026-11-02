@@ -383,17 +383,17 @@ bool UArenaMatchLogSubsystem::OpenDatabase()
 	}
 	else
 	{
-		// Databases created before match.StartAtKst existed get the column so the match insert keeps working.
-		int64 HasStartAtKst = 0;
-		Db->Execute(TEXT("SELECT COUNT(*) FROM pragma_table_info('match') WHERE name='StartAtKst'"),
-			[&HasStartAtKst](const FSQLitePreparedStatement& Row)
+		// Databases created before match.StartedAtKst existed get the column so the match insert keeps working.
+		int64 HasStartedAtKst = 0;
+		Db->Execute(TEXT("SELECT COUNT(*) FROM pragma_table_info('match') WHERE name='StartedAtKst'"),
+			[&HasStartedAtKst](const FSQLitePreparedStatement& Row)
 			{
-				Row.GetColumnValueByIndex(0, HasStartAtKst);
+				Row.GetColumnValueByIndex(0, HasStartedAtKst);
 				return ESQLitePreparedStatementExecuteRowResult::Stop;
 			});
-		if (HasStartAtKst == 0 && !Db->Execute(TEXT("ALTER TABLE match ADD COLUMN StartAtKst TEXT")))
+		if (HasStartedAtKst == 0 && !Db->Execute(TEXT("ALTER TABLE match ADD COLUMN StartedAtKst TEXT")))
 		{
-			UE_LOG(LogArenaMatchLog, Error, TEXT("Could not add match.StartAtKst: %s"), *Db->GetLastError());
+			UE_LOG(LogArenaMatchLog, Error, TEXT("Could not add match.StartedAtKst: %s"), *Db->GetLastError());
 			++FailedWrites;
 		}
 	}
@@ -541,9 +541,9 @@ void UArenaMatchLogSubsystem::EnsureMatchStarted()
 
 	const int32 Seq = NextEventSeq++;
 	Enqueue(FString::Printf(TEXT("INSERT INTO event (MatchId,EventSequence,ElapsedSeconds,EventType,CauseEventSequence) VALUES (%s,%d,0,'MatchStarted',NULL)"), *Q(MatchId), Seq));
-	const FString StartAtKst = (FDateTime::UtcNow() + FTimespan::FromHours(9)).ToString(TEXT("%y.%m.%d_%H:%M"));
-	Enqueue(FString::Printf(TEXT("INSERT INTO match (MatchId,EventSequence,MapId,GameBuildVersion,SettingsVersion,TimeLimitSeconds,KillTarget,StartAtKst) VALUES (%s,%d,%s,%s,%s,%d,%d,%s)"),
-		*Q(MatchId), Seq, *Q(MapId), *Q(FApp::GetBuildVersion()), *Q(SettingsVersion), TimeLimit, KillTarget, *Q(StartAtKst)));
+	const FString StartedAtKst = (FDateTime::UtcNow() + FTimespan::FromHours(9)).ToString(TEXT("%y-%m-%d_%H:%M:%S"));
+	Enqueue(FString::Printf(TEXT("INSERT INTO match (MatchId,EventSequence,MapId,GameBuildVersion,SettingsVersion,TimeLimitSeconds,KillTarget,StartedAtKst) VALUES (%s,%d,%s,%s,%s,%d,%d,%s)"),
+		*Q(MatchId), Seq, *Q(MapId), *Q(FApp::GetBuildVersion()), *Q(SettingsVersion), TimeLimit, KillTarget, *Q(StartedAtKst)));
 
 	World->GetTimerManager().SetTimer(TickHandle, this, &UArenaMatchLogSubsystem::Tick, 0.25f, true);
 	UE_LOG(LogArenaMatchLog, Log, TEXT("Match %s started on %s (time limit %d s, kill target %d)"), *MatchId, *MapId, TimeLimit, KillTarget);
