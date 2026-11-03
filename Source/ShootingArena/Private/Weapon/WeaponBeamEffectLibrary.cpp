@@ -1,11 +1,14 @@
 #include "Weapon/WeaponBeamEffectLibrary.h"
+#include "Weapon/BeamEffectPlaybackData.h"
 
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
 #include "NiagaraComponent.h"
+#include "NiagaraEmitterHandle.h"
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraSystem.h"
+#include "NiagaraSystemInstanceController.h"
 #include "NiagaraTypes.h"
 #include "Particles/ParticleEmitter.h"
 #include "Particles/ParticleLODLevel.h"
@@ -19,6 +22,36 @@
 #include "UObject/ConstructorHelpers.h"
 #include "Weapon/RailBeamWaveMath.h"
 #include "Weapon/FirstPersonRenderingMath.h"
+
+#if WITH_EDITOR && WITH_DEV_AUTOMATION_TESTS
+#include "Misc/App.h"
+#include "Misc/AutomationTest.h"
+#include "Misc/ScopeExit.h"
+#include "UObject/UObjectIterator.h"
+#endif
+
+UMaterialInstanceDynamic* UBeamEffectPlaybackData::GetOrCreateMaterial(FName Parameter, UMaterialInterface* Parent)
+{
+	TObjectPtr<UMaterialInstanceDynamic>& Material = Materials.FindOrAdd(Parameter);
+	if (!IsValid(Material) || Material->Parent != Parent)
+	{
+		Material = UMaterialInstanceDynamic::Create(Parent, GetOuter());
+	}
+	return Material;
+}
+
+void UBeamEffectPlaybackData::EnableFirstPerson(UNiagaraComponent* Component)
+{
+	Component->OnSystemFinished.AddUniqueDynamic(this, &ThisClass::OnSystemFinished);
+	Component->SetFirstPersonPrimitiveType(EFirstPersonPrimitiveType::FirstPerson);
+}
+
+void UBeamEffectPlaybackData::OnSystemFinished(UNiagaraComponent* Component)
+{
+	// The pool does not reset the primitive type when another caller acquires this component.
+	Component->OnSystemFinished.RemoveDynamic(this, &ThisClass::OnSystemFinished);
+	Component->SetFirstPersonPrimitiveType(EFirstPersonPrimitiveType::None);
+}
 
 UWeaponBeamEffectLibrary::UWeaponBeamEffectLibrary(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -62,6 +95,38 @@ namespace
 		}
 	}
 
+	UNiagaraComponent* AcquireNiagaraBeam(UWorld* World, UNiagaraSystem* System,
+		const FVector& Location, const FRotator& Rotation)
+	{
+		UNiagaraComponent* Component = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			World, System, Location, Rotation, FVector::OneVector, true, false, ENCPoolMethod::AutoRelease, false);
+		if (Component)
+		{
+			Component->SetFirstPersonPrimitiveType(EFirstPersonPrimitiveType::None);
+			if (const auto Controller = Component->GetSystemInstanceController(); Controller && Controller->IsValid())
+			{
+				for (const FNiagaraEmitterHandle& Emitter : System->GetEmitterHandles())
+				{
+					if (Emitter.GetIsEnabled())
+						Controller->SetEmitterEnable(Emitter.GetName(), true);
+				}
+			}
+		}
+		return Component;
+	}
+
+	void SuppressNiagaraEmitter(UNiagaraComponent* Component, FName Emitter)
+	{
+		Component->SetEmitterEnable(Emitter, false);
+		// SetEmitterEnable only records the override on a completed instance. An existing
+		// pooled controller also needs the flag before activation and any warmup tick.
+		if (const auto Controller = Component->GetSystemInstanceController();
+			Controller && Controller->IsValid() && Controller->IsComplete())
+		{
+			Controller->SetEmitterEnable(Emitter, false);
+		}
+	}
+
 	void ConfigureNearWaves(UNiagaraComponent* Component, const UNiagaraSystem* System,
 		const TArray<FBeamWaveEmitterBinding>& Bindings, const FNearWavePlayback* Playback,
 		const FTransform& Transform, FVector OriginalEnd)
@@ -83,7 +148,7 @@ namespace
 			if (!Binding.CountParameter.IsNone()
 				&& HasNiagaraParameter(System, FNiagaraTypeDefinition::GetIntDef(), Binding.CountParameter))
 				Component->SetVariableInt(Binding.CountParameter, Count);
-			if (Count == 0 && !Binding.Emitter.IsNone()) Component->SetEmitterEnable(Binding.Emitter, false);
+			if (Count == 0 && !Binding.Emitter.IsNone()) SuppressNiagaraEmitter(Component, Binding.Emitter);
 		}
 	}
 
@@ -100,10 +165,15 @@ namespace
 
 		const bool bFirstPerson = FirstPersonVariant && IsValid(FirstPersonVariant->System)
 			&& !FirstPersonVariant->Materials.IsEmpty();
+		if (bFirstPerson && FirstPersonVariant->Materials.ContainsByPredicate([](const FBeamFirstPersonMaterialBinding& Binding)
+		{
+			return !IsValid(Binding.Material) || Binding.Parameter.IsNone();
+		}))
+		{
+			return false;
+		}
 		UNiagaraSystem* PlaybackSystem = bFirstPerson ? FirstPersonVariant->System.Get() : System;
-		UNiagaraComponent* Niagara = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-			World, PlaybackSystem, BeamStart, BeamRotation, FVector::OneVector,
-			true, false, ENCPoolMethod::None, false);
+		UNiagaraComponent* Niagara = AcquireNiagaraBeam(World, PlaybackSystem, BeamStart, BeamRotation);
 		if (!Niagara)
 		{
 			return false;
@@ -112,7 +182,7 @@ namespace
 		{
 			// Older rail-gun beam/trail systems also contain this emitter. Suppress it
 			// for the machine gun or when a dedicated sonic-boom system is supplied.
-			Niagara->SetEmitterEnable(TEXT("SonicBomb"), false);
+			SuppressNiagaraEmitter(Niagara, TEXT("SonicBomb"));
 		}
 
 		// Simulate one full-size beam in its original space. The material transforms
@@ -120,22 +190,25 @@ namespace
 		// at the real endpoint. Non-beam renderers in the variant opt out of FPR.
 		const FTransform EffectTransform(BeamRotation, BeamStart);
 		SetNiagaraPositionIfPresent(Niagara, PlaybackSystem, TEXT("User.BeamStart"), FVector::ZeroVector);
-		SetNiagaraPositionIfPresent(Niagara, PlaybackSystem, TEXT("User.BeamEnd"), EffectTransform.InverseTransformPosition(BeamEnd));
-		if (bFirstPerson)
-			ConfigureNearWaves(Niagara, PlaybackSystem, FirstPersonVariant->Waves, NearWaves, EffectTransform, BeamEnd);
+		const FVector LocalEnd = EffectTransform.InverseTransformPosition(BeamEnd);
+		SetNiagaraPositionIfPresent(Niagara, PlaybackSystem, TEXT("User.BeamEnd"), LocalEnd);
 		if (bFirstPerson)
 		{
-			const FVector LocalEnd = EffectTransform.InverseTransformPosition(BeamEnd);
+			ConfigureNearWaves(Niagara, PlaybackSystem, FirstPersonVariant->Waves, NearWaves, EffectTransform, BeamEnd);
+			auto* PlaybackData = Cast<UBeamEffectPlaybackData>(Niagara->GetAssetUserDataOfClass(UBeamEffectPlaybackData::StaticClass()));
+			if (!PlaybackData)
+			{
+				PlaybackData = NewObject<UBeamEffectPlaybackData>(Niagara);
+				Niagara->AddAssetUserData(PlaybackData);
+			}
 			for (const FBeamFirstPersonMaterialBinding& Binding : FirstPersonVariant->Materials)
 			{
-				if (!IsValid(Binding.Material) || Binding.Parameter.IsNone()) { Niagara->DestroyComponent(); return false; }
-				UMaterialInstanceDynamic* Material = UMaterialInstanceDynamic::Create(Binding.Material, Niagara);
-				if (!Material) { Niagara->DestroyComponent(); return false; }
+				UMaterialInstanceDynamic* Material = PlaybackData->GetOrCreateMaterial(Binding.Parameter, Binding.Material);
 				Material->SetVectorParameterValue(TEXT("FPRBeamStartLocal"), FLinearColor::Black);
 				Material->SetVectorParameterValue(TEXT("FPRBeamEndLocal"), FLinearColor(LocalEnd.X, LocalEnd.Y, LocalEnd.Z));
 				Niagara->SetVariableMaterial(Binding.Parameter, Material);
 			}
-			Niagara->SetFirstPersonPrimitiveType(EFirstPersonPrimitiveType::FirstPerson);
+			PlaybackData->EnableFirstPerson(Niagara);
 		}
 
 		if (!bTrail)
@@ -160,9 +233,7 @@ namespace
 
 		// The sonic boom is a separate world-space emitter. Keeping the system near
 		// the beam midpoint also keeps its initial component bounds near the effect.
-		UNiagaraComponent* Niagara = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-			World, System, FMath::Lerp(BeamStart, BeamEnd, 0.5), BeamRotation,
-			FVector::OneVector, true, false, ENCPoolMethod::None, false);
+		UNiagaraComponent* Niagara = AcquireNiagaraBeam(World, System, FMath::Lerp(BeamStart, BeamEnd, 0.5), BeamRotation);
 		if (!Niagara)
 		{
 			return false;
@@ -274,7 +345,7 @@ bool UWeaponBeamEffectLibrary::PlayHitScanBeam(
 	{
 		UParticleSystemComponent* Cascade = UGameplayStatics::SpawnEmitterAtLocation(
 			World, CascadeEffect, BeamStart, BeamRotation, FVector::OneVector,
-			true, EPSCPoolMethod::None, false);
+			true, EPSCPoolMethod::AutoRelease, false);
 		if (Cascade)
 		{
 			// Cascade distributions can read these named instance parameters when authored to do so.
@@ -304,3 +375,70 @@ bool UWeaponBeamEffectLibrary::PlayHitScanBeam(
 
 	return bSpawnedAny;
 }
+
+#if WITH_EDITOR && WITH_DEV_AUTOMATION_TESTS
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FWeaponBeamPoolReuseTest, "ShootingArena.Weapon.BeamPoolReuse",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FWeaponBeamPoolReuseTest::RunTest(const FString&)
+{
+	if (!FApp::CanEverRender())
+	{
+		AddInfo(TEXT("Beam pool reuse requires a rendering-enabled editor."));
+		return true;
+	}
+
+	const auto* Assets = LoadObject<UBeamFirstPersonAssets>(nullptr,
+		TEXT("/Game/QuakeLike_1_0/HeldItem/NiagaraSystem/FPR/DA_BeamFirstPersonAssets"));
+	if (!TestNotNull(TEXT("Authored first-person beam assets"), Assets)) return false;
+	const FBeamFirstPersonSystemVariant* Variant = Assets->Systems.FindByPredicate([](const FBeamFirstPersonSystemVariant& Entry)
+	{
+		return Entry.Source && Entry.System && !Entry.Materials.IsEmpty();
+	});
+	if (!TestNotNull(TEXT("Beam variant to replay"), Variant)) return false;
+	Variant->System->WaitForCompilationComplete(true, false);
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, false);
+	if (!TestNotNull(TEXT("Isolated Niagara test world"), World)) return false;
+	ON_SCOPE_EXIT { World->DestroyWorld(false); };
+
+	auto FindBeam = [World, Variant]()
+	{
+		for (UNiagaraComponent* Component : TObjectRange<UNiagaraComponent>())
+			if (Component->GetWorld() == World && Component->GetAsset() == Variant->System
+				&& Component->PoolingMethod == ENCPoolMethod::AutoRelease) return Component;
+		return static_cast<UNiagaraComponent*>(nullptr);
+	};
+	const FBeamFirstPersonMaterialBinding& Binding = Variant->Materials[0];
+	const FNiagaraVariable MaterialParameter(FNiagaraTypeDefinition::GetUMaterialDef(), Binding.Parameter);
+	const FVector FirstEnd(500, 0, 0), SecondEnd(1500, 0, 0);
+	if (!TestTrue(TEXT("First-person beam starts"), SpawnNiagaraBeam(World, Variant->Source, FVector::ZeroVector,
+		FirstEnd, FRotator::ZeroRotator, FirstEnd.X, 0.2f, false, false, Variant, nullptr))) return false;
+	UNiagaraComponent* First = FindBeam();
+	if (!TestNotNull(TEXT("First shot has an active pooled component"), First)) return false;
+	UMaterialInstanceDynamic* FirstMaterial = Cast<UMaterialInstanceDynamic>(First->GetOverrideParameters().GetUObject(MaterialParameter));
+	if (!TestNotNull(TEXT("First shot bound its dynamic material"), FirstMaterial)) return false;
+	TestTrue(TEXT("First shot uses first-person rendering"), First->FirstPersonPrimitiveType == EFirstPersonPrimitiveType::FirstPerson);
+	First->DeactivateImmediate();
+	if (!TestTrue(TEXT("The same component returned to the engine pool"), First->PoolingMethod == ENCPoolMethod::FreeInPool)) return false;
+	TestTrue(TEXT("First-person type clears on return"), First->FirstPersonPrimitiveType == EFirstPersonPrimitiveType::None);
+
+	if (!TestTrue(TEXT("World-space playback can borrow the same system"), SpawnNiagaraBeam(World, Variant->System,
+		FVector::ZeroVector, SecondEnd, FRotator::ZeroRotator, SecondEnd.X, 0.2f, false, false, nullptr, nullptr))) return false;
+	UNiagaraComponent* WorldBeam = FindBeam();
+	if (!TestEqual(TEXT("World shot reuses the first component"), WorldBeam, First)) return false;
+	TestTrue(TEXT("World shot has no previous first-person override"), WorldBeam->FirstPersonPrimitiveType == EFirstPersonPrimitiveType::None
+		&& WorldBeam->GetOverrideParameters().GetUObject(MaterialParameter).Get() != FirstMaterial);
+	WorldBeam->DeactivateImmediate();
+
+	if (!TestTrue(TEXT("Second first-person beam starts"), SpawnNiagaraBeam(World, Variant->Source, FVector::ZeroVector,
+		SecondEnd, FRotator::ZeroRotator, SecondEnd.X, 0.2f, false, false, Variant, nullptr))) return false;
+	UNiagaraComponent* Second = FindBeam();
+	if (!TestEqual(TEXT("Second first-person shot reuses the same component"), Second, First)) return false;
+	TestTrue(TEXT("The dynamic material is reused and carries the new endpoint"),
+		Second->GetOverrideParameters().GetUObject(MaterialParameter).Get() == FirstMaterial
+		&& FMath::IsNearlyEqual(FirstMaterial->K2_GetVectorParameterValue(TEXT("FPRBeamEndLocal")).R, static_cast<float>(SecondEnd.X)));
+	Second->DeactivateImmediate();
+	return !HasAnyErrors();
+}
+#endif
