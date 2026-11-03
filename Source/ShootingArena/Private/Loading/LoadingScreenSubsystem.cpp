@@ -2,6 +2,7 @@
 
 #include "Audio/BGMSubsystem.h"
 #include "Loading/LoadingCoordinator.h"
+#include "MyPlayerController.h"
 #include "Containers/Ticker.h"
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
@@ -57,6 +58,7 @@ void ULoadingScreenSubsystem::HandlePreLoadMap(const FWorldContext& WorldContext
 
 	bTransitionActive = true;
 	bSawCoordinator = false;
+	GameplayReadyTransitionWorld.Reset();
 	SecondsSincePostLoad = 0.0f;
 	ShowLoadingScreen(TEXT("맵을 불러오는 중..."));
 	ApplyInputLock();
@@ -91,6 +93,7 @@ void ULoadingScreenSubsystem::BeginExternalLoading(const FString& StatusText)
 	UE_LOG(LogTemp, Log, TEXT("[Loading] External loading requested."));
 	bTransitionActive = true;
 	bExternalLoadingRequested = true;
+	GameplayReadyTransitionWorld.Reset();
 	bSawCoordinator = false;
 	SecondsSincePostLoad = 0.0f;
 	ExternalLoadingStartWorld = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
@@ -157,6 +160,7 @@ void ULoadingScreenSubsystem::UpdateLoadingState()
 		case ELoadingCoordinatorPhase::WaitingForPlayers:
 			CurrentStatus = FString::Printf(TEXT("참가자 준비 대기 중... (%d / %d)"), It->GetConnectedHumanPlayers(), It->GetExpectedHumanPlayers()); return;
 		case ELoadingCoordinatorPhase::ReadyToPlay:
+			GameplayReadyTransitionWorld = World;
 			HideLoadingScreen(); return;
 		default:
 			CurrentStatus = TEXT("전환을 완료하지 못했습니다."); return;
@@ -236,6 +240,10 @@ void ULoadingScreenSubsystem::HideLoadingScreen()
 
 void ULoadingScreenSubsystem::RemoveLoadingScreen(bool bRestoreBGM)
 {
+	UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
+	const bool bReportReady = bRestoreBGM && World && !World->bIsTearingDown
+		&& GameplayReadyTransitionWorld.Get() == World;
+	GameplayReadyTransitionWorld.Reset();
 	bTransitionActive = false;
 	bExternalLoadingRequested = false;
 	ExternalLoadingStartWorld.Reset();
@@ -247,6 +255,11 @@ void ULoadingScreenSubsystem::RemoveLoadingScreen(bool bRestoreBGM)
 	if (ViewportClient && LoadingOverlay.IsValid()) ViewportClient->RemoveViewportWidgetContent(LoadingOverlay.ToSharedRef());
 	bOverlayAddedToViewport = false;
 	ReleaseInputLock();
+	if (bReportReady)
+	{
+		if (auto* Player = Cast<AMyPlayerController>(World->GetFirstPlayerController()))
+			Player->ReportGameplayReadyAfterLoading();
+	}
 	if (bRestoreBGM)
 	{
 		if (UGameInstance* GameInstance = GetGameInstance())

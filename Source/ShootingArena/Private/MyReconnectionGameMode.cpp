@@ -3,10 +3,23 @@
 #include "ShootingArenaGameInstance.h"
 #include "MyPlayerState.h"
 #include "GameFramework/PlayerController.h"
+#include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerState.h"
 #include "GameFramework/GameStateBase.h"
 #include "Engine/World.h"
 #include "TimerManager.h"
+
+void AMyReconnectionGameMode::NotifyClientGameplayReady(APlayerController* Player)
+{
+	if (!HasAuthority() || !IsValid(Player) || Player->GetWorld() != GetWorld()
+		|| !IsValid(Player->GetPawn()) || GameplayReadyPlayers.Contains(Player)) return;
+	GameplayReadyPlayers.Add(Player);
+	const bool bFirst = !bFirstClientGameplayReady;
+	bFirstClientGameplayReady = true;
+	UE_LOG(LogTemp, Log, TEXT("[Loading] Server received gameplay ready: %s (first=%d)"), *Player->GetName(), bFirst);
+	if (bFirst) OnFirstClientGameplayReady(Player);
+	OnClientGameplayReady(Player);
+}
 
 FString AMyReconnectionGameMode::InitNewPlayer(APlayerController* NewPlayerController,
     const FUniqueNetIdRepl& UniqueId,

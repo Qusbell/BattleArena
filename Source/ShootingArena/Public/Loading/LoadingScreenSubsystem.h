@@ -23,7 +23,7 @@ public:
 	/** Includes the fade-out; BGM restores full volume only after the overlay is removed. */
 	bool IsLoadingScreenActive() const { return bTransitionActive || bOverlayAddedToViewport || bFadingIn || bFadingOut; }
 	/** BeginExternalLoading 으로 띄운 로딩 화면을 호출자가 직접 닫습니다 (대기 실패/타임아웃용). */
-	void EndExternalLoading() { HideLoadingScreen(); }
+	void EndExternalLoading() { GameplayReadyTransitionWorld.Reset(); HideLoadingScreen(); }
 
 private:
 	void HandlePreLoadMap(const FWorldContext& WorldContext, const FString& MapName);
@@ -55,4 +55,6 @@ private:
 	bool bFadingIn = false;
 	bool bFadingOut = false;
 	float FadeElapsedSeconds = 0.0f;
+	/** Only a coordinator-approved transition may report gameplay readiness. */
+	TWeakObjectPtr<UWorld> GameplayReadyTransitionWorld;
 };
