@@ -32,7 +32,7 @@
 	"hitscanHitEffect": "/Script/Engine.ParticleSystem'/Game/Realistic_Starter_VFX_Pack_Vol2/Particles/Hit/P_Rubber.P_Rubber'",
 	"reloadTime": 0,
 	"explosionEffectScale": 0,
-	"railGunSonicBombEffect": "/Script/Niagara.NiagaraSystem'/Game/QuakeLike_1_0/HeldItem/NiagaraSystem/NS_RailGunEffect_Handmade_DUp.NS_RailGunEffect_Handmade_DUp'",
+	"railGunSonicBombEffect": "None",
 	"railGunTrailEffect": "None",
 	"chHitSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/ETC/Quake3_Hit.Quake3_Hit'",
 	"fireVolumeMultiplier": 1,
