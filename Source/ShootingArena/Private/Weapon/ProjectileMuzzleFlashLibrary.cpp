@@ -71,13 +71,13 @@ bool UProjectileMuzzleFlashLibrary::SpawnProjectileMuzzleFlash(AActor* Weapon,
 	{
 		Effect = UGameplayStatics::SpawnEmitterAttached(Template, SelectedMesh, TEXT("Muzzle"),
 			FVector::ZeroVector, FRotator::ZeroRotator, FVector::OneVector,
-			EAttachLocation::SnapToTarget, true, EPSCPoolMethod::None, false);
+			EAttachLocation::SnapToTarget, true, EPSCPoolMethod::AutoRelease, false);
 	}
 	else if (UNiagaraSystem* NiagaraTemplate = Cast<UNiagaraSystem>(ObjectField(Data, TEXT("NSFireFX"))))
 	{
 		Effect = UNiagaraFunctionLibrary::SpawnSystemAttached(NiagaraTemplate, SelectedMesh, TEXT("Muzzle"),
 			FVector::ZeroVector, FRotator::ZeroRotator, EAttachLocation::SnapToTarget,
-			true, false, ENCPoolMethod::None, false);
+			true, false, ENCPoolMethod::AutoRelease, false);
 	}
 	if (!IsValid(Effect)) return false;
 	// Set before activation so even the first emitted particles use the shot direction.
