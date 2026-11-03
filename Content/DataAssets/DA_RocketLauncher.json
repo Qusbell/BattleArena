@@ -1,6 +1,6 @@
 {
 	"weaponType": "Projectile",
-	"damage": 55,
+	"damage": 60,
 	"range": 100000,
 	"fireRate": 0.90000000000000002,
 	"spread": 0,
@@ -8,7 +8,7 @@
 	"projectileSpeed": 4800,
 	"damageJudgmentOffset": 0.80000000000000004,
 	"explosionRadius": 400,
-	"explosionDamage": 85,
+	"explosionDamage": 90,
 	"selfDamageMultiplier": 0.5,
 	"selfKnockbackMultiplier": 1,
 	"otherKnockbackMultiplier": 0.29999999999999999,

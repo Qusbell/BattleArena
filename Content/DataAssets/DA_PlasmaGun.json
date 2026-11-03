@@ -1,6 +1,6 @@
 {
 	"weaponType": "Projectile",
-	"damage": 18,
+	"damage": 16,
 	"range": 5000,
 	"fireRate": 0.10000000000000001,
 	"spread": 0,
