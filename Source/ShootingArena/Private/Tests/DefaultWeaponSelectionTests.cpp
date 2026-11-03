@@ -107,9 +107,9 @@ bool FDefaultWeaponSelectionTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Default becomes available after all regular ammo is exhausted"), UInitialWeaponLibrary::CanSelectInventoryWeapon(Inventory, 1));
 	TestFalse(TEXT("Empty regular gun is skipped"), UInitialWeaponLibrary::CanSelectInventoryWeapon(Inventory, 2));
 	TestEqual(TEXT("Pistol reappears as shortcut one after depletion"), UInitialWeaponLibrary::GetInventoryWeaponSlotNumber(Inventory, 1), 1);
-	TestEqual(TEXT("Depleted regular gun keeps its action slot"), UInitialWeaponLibrary::GetInventoryWeaponSlotNumber(Inventory, 2), 2);
-	TestEqual(TEXT("Visible empty gun keeps its hotkey mapping while selection remains blocked"),
-		UInitialWeaponLibrary::ResolveInventoryWeaponShortcut(Inventory, 2), 2);
+	TestEqual(TEXT("Only-default fallback hides the depleted regular action slot"), UInitialWeaponLibrary::GetInventoryWeaponSlotNumber(Inventory, 2), 0);
+	TestEqual(TEXT("Hidden depleted gun has no numeric shortcut"),
+		UInitialWeaponLibrary::ResolveInventoryWeaponShortcut(Inventory, 2), INDEX_NONE);
 	TestEqual(TEXT("Key one falls back to the pistol"), UInitialWeaponLibrary::ResolveInventoryWeaponShortcut(Inventory, 1), 1);
 	FInitialWeaponEntry ShotgunSelection, ShotgunEntry;
 	ShotgunSelection.WeaponName = TEXT("ID.ShotGun");
@@ -132,6 +132,14 @@ bool FDefaultWeaponSelectionTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Empty machinegun keeps its shifted slot beside a usable shotgun"), UInitialWeaponLibrary::GetInventoryWeaponSlotNumber(Inventory, 2), 1);
 	TestEqual(TEXT("Usable shotgun keeps its shifted shortcut"), UInitialWeaponLibrary::ResolveInventoryWeaponShortcut(Inventory, 2), 3);
 	TestFalse(TEXT("Keeping an empty slot never enables selecting it"), UInitialWeaponLibrary::CanSelectInventoryWeapon(Inventory, 2));
+	SetAmmo(Shotgun, 0);
+	TestEqual(TEXT("Exhausting every regular weapon leaves only the pistol slot"), UInitialWeaponLibrary::GetInventoryWeaponSlotNumber(Inventory, 1), 1);
+	TestEqual(TEXT("Exhausted machinegun disappears in pistol-only mode"), UInitialWeaponLibrary::GetInventoryWeaponSlotNumber(Inventory, 2), 0);
+	TestEqual(TEXT("Exhausted shotgun disappears in pistol-only mode"), UInitialWeaponLibrary::GetInventoryWeaponSlotNumber(Inventory, 3), 0);
+	SetAmmo(Shotgun, 1);
+	TestEqual(TEXT("Recovering a regular weapon hides the pistol"), UInitialWeaponLibrary::GetInventoryWeaponSlotNumber(Inventory, 1), 0);
+	TestEqual(TEXT("Recovery restores the empty regular slot"), UInitialWeaponLibrary::GetInventoryWeaponSlotNumber(Inventory, 2), 1);
+	TestEqual(TEXT("Recovery restores the usable regular shortcut"), UInitialWeaponLibrary::ResolveInventoryWeaponShortcut(Inventory, 2), 3);
 	Item->SetObjectPropertyValue(Array.GetRawPtr(3), nullptr);
 	SetAmmo(Gun, 1);
 	TestFalse(TEXT("Recovered ammo locks default again"), UInitialWeaponLibrary::CanSelectInventoryWeapon(Inventory, 1));
@@ -164,6 +172,9 @@ bool FDefaultWeaponSelectionTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("DA off keeps the pistol's original slot number"), UInitialWeaponLibrary::GetInventoryWeaponSlotNumber(Inventory, 1), 1);
 	TestEqual(TEXT("DA off keeps the regular gun's original slot number"), UInitialWeaponLibrary::GetInventoryWeaponSlotNumber(Inventory, 2), 2);
 	TestEqual(TEXT("DA off leaves numeric-key mapping unchanged"), UInitialWeaponLibrary::ResolveInventoryWeaponShortcut(Inventory, 2), 2);
+	SetAmmo(Gun, 0);
+	TestEqual(TEXT("DA off preserves empty regular slots even when only the pistol is usable"),
+		UInitialWeaponLibrary::GetInventoryWeaponSlotNumber(Inventory, 2), 2);
 	TestEqual(TEXT("Reserved slot zero is not a shortcut"), UInitialWeaponLibrary::ResolveInventoryWeaponShortcut(Inventory, 0), INDEX_NONE);
 	TestEqual(TEXT("Invalid slot is hidden"), UInitialWeaponLibrary::GetInventoryWeaponSlotNumber(Inventory, -1), 0);
 	TestEqual(TEXT("Negative shortcut is rejected"), UInitialWeaponLibrary::ResolveInventoryWeaponShortcut(Inventory, -1), INDEX_NONE);

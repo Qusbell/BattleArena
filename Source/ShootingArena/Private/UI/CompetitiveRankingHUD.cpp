@@ -39,6 +39,8 @@ namespace
 	constexpr float PanelHeight = 56.0f;
 	constexpr float RankingScale = 0.975f;
 	constexpr float TimerGap = 5.0f;
+	constexpr float StampImpactTime = 0.10f;
+	constexpr float StampDuration = 0.18f;
 
 	int32 ReadInt(const UObject* Object, FName Name)
 	{
@@ -57,7 +59,45 @@ UCompetitiveRankingHUD::UCompetitiveRankingHUD(const FObjectInitializer& ObjectI
 
 void UCompetitiveRankingHUD::HideStreakMedals()
 {
+	UpdateMedalStamps(StampDuration);
 	if (StreakPanel) StreakPanel->SetVisibility(ESlateVisibility::Collapsed);
+}
+
+void UCompetitiveRankingHUD::StartMedalStamp(UWidget* Medal)
+{
+	if (!Medal) return;
+	MedalStamps.RemoveAll([Medal](const FMedalStamp& Stamp) { return Stamp.Medal.Get() == Medal; });
+	Medal->SetRenderTransformPivot(FVector2D(0.5f, 0.5f));
+	Medal->SetRenderScale(FVector2D(2.0f));
+	Medal->SetRenderOpacity(1.0f);
+	FMedalStamp& Stamp = MedalStamps.AddDefaulted_GetRef();
+	Stamp.Medal = Medal;
+}
+
+void UCompetitiveRankingHUD::UpdateMedalStamps(float DeltaTime)
+{
+	for (int32 Index = MedalStamps.Num() - 1; Index >= 0; --Index)
+	{
+		FMedalStamp& Stamp = MedalStamps[Index];
+		UWidget* Medal = Stamp.Medal.Get();
+		if (!Medal) { MedalStamps.RemoveAtSwap(Index); continue; }
+		const float Previous = Stamp.Elapsed;
+		Stamp.Elapsed += FMath::Max(0.0f, DeltaTime);
+		const float Down = FMath::Clamp(Stamp.Elapsed / StampImpactTime, 0.0f, 1.0f);
+		const float Settle = FMath::Clamp((Stamp.Elapsed - StampImpactTime) / (StampDuration - StampImpactTime), 0.0f, 1.0f);
+		const float Scale = Stamp.Elapsed < StampImpactTime ? FMath::Lerp(2.0f, 0.92f, Down * Down)
+			: FMath::InterpEaseOut(0.92f, 1.0f, Settle, 2.0f);
+		Medal->SetRenderScale(FVector2D(Scale));
+		if (Previous < StampImpactTime && Stamp.Elapsed >= StampImpactTime)
+		{
+			if (UUserWidget* Highlight = Stamp.Highlight.Get(); Highlight && Highlight->GetParent())
+			{
+				Highlight->SetVisibility(ESlateVisibility::HitTestInvisible);
+				if (UFunction* Play = Highlight->FindFunction(TEXT("PlayHighlight"))) Highlight->ProcessEvent(Play, nullptr);
+			}
+		}
+		if (Stamp.Elapsed >= StampDuration) MedalStamps.RemoveAtSwap(Index);
+	}
 }
 
 void UCompetitiveRankingHUD::RefreshStreakMedals(int32 Count)
@@ -110,15 +150,26 @@ void UCompetitiveRankingHUD::RefreshStreakMedals(int32 Count)
 		CountSlot->SetPadding(FMargin(0, 0, 0, 8));
 		StreakPanel->AddChildToVerticalBox(StreakIcons)->SetHorizontalAlignment(HAlign_Center);
 	}
-	DisplayedStreak = Count;
-	if (!StreakPanel) return;
-	if (StreakHighlight) StreakHighlight->StopAnimationsAndLatentActions();
+	if (!StreakPanel) { DisplayedStreak = Count; return; }
+	if (StreakHighlight)
+	{
+		StreakHighlight->StopAnimationsAndLatentActions();
+		StreakHighlight->RemoveFromParent();
+	}
 	StreakHighlight = nullptr;
 	StreakPanel->SetVisibility(Count > 0 ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-	StreakIcons->ClearChildren();
-	const int32 IconCount = bLargeMedal ? 1 : Count;
+	// Append in-place so previously earned medals keep their instances and animation progress.
+	if (Count < DisplayedStreak || bLargeMedal != bDisplayedLargeMedal)
+	{
+		MedalStamps.Reset();
+		StreakIcons->ClearChildren();
+	}
+	DisplayedStreak = Count;
+	bDisplayedLargeMedal = bLargeMedal;
+	const int32 IconCount = Count > 0 ? (bLargeMedal ? 1 : Count) : 0;
+	const int32 FirstNewIcon = StreakIcons->GetChildrenCount();
 	UTexture2D* Texture = bLargeMedal && Settings->LargeMedalTexture ? Settings->LargeMedalTexture.Get() : Settings->MedalTexture.Get();
-	for (int32 Index = 0; Index < IconCount; ++Index)
+	for (int32 Index = FirstNewIcon; Index < IconCount; ++Index)
 	{
 		const FVector2D Size = bLargeMedal ? Settings->LargeMedalSize : Index == 0 ? Settings->FirstMedalSize : Settings->AdditionalMedalSize;
 		USizeBox* Box = WidgetTree->ConstructWidget<USizeBox>();
@@ -129,31 +180,36 @@ void UCompetitiveRankingHUD::RefreshStreakMedals(int32 Count)
 		Box->SetContent(Scale);
 		UImage* Image = WidgetTree->ConstructWidget<UImage>();
 		Image->SetBrushFromTexture(Texture, true);
-		Scale->SetContent(Image);
-		if (Index == IconCount - 1 && StreakHighlightClass)
+		UOverlay* Award = WidgetTree->ConstructWidget<UOverlay>();
+		Scale->SetContent(Award);
+		Award->AddChildToOverlay(Image);
+		UHorizontalBoxSlot* IconSlot = StreakIcons->AddChildToHorizontalBox(Box);
+		IconSlot->SetVerticalAlignment(VAlign_Center);
+		IconSlot->SetPadding(FMargin(FMath::Max(0.0f, Settings->MedalGap) * 0.5f, 0.0f));
+		StartMedalStamp(Box);
+	}
+	if (IconCount > 0)
+	{
+		USizeBox* Newest = Cast<USizeBox>(StreakIcons->GetChildAt(IconCount - 1));
+		if (bLargeMedal && FirstNewIcon == IconCount) StartMedalStamp(Newest);
+		UScaleBox* Scale = Newest ? Cast<UScaleBox>(Newest->GetContent()) : nullptr;
+		UOverlay* Award = Scale ? Cast<UOverlay>(Scale->GetContent()) : nullptr;
+		if (Award && StreakHighlightClass)
 		{
 			StreakHighlight = CreateWidget<UUserWidget>(this, StreakHighlightClass);
 			if (StreakHighlight)
 			{
-				Scale->SetContent(nullptr);
-				UOverlay* Award = WidgetTree->ConstructWidget<UOverlay>();
-				Scale->SetContent(Award);
-				Award->AddChildToOverlay(Image);
 				UOverlaySlot* HighlightSlot = Award->AddChildToOverlay(StreakHighlight);
 				HighlightSlot->SetHorizontalAlignment(HAlign_Center);
 				HighlightSlot->SetVerticalAlignment(VAlign_Center);
-				StreakHighlight->SetVisibility(ESlateVisibility::HitTestInvisible);
+				StreakHighlight->SetVisibility(ESlateVisibility::Hidden);
 				// CompShooter's 1024-wide highlight surrounds a 128-wide medal.
 				StreakHighlight->SetRenderTransformPivot(FVector2D(0.5f, 0.5f));
 				StreakHighlight->SetRenderScale(FVector2D(8.0f, 8.0f));
 				StreakHighlight->SetRenderOpacity(FMath::Clamp(Settings->HighlightOpacity, 0.0f, 1.0f));
-				if (UFunction* Play = StreakHighlight->FindFunction(TEXT("PlayHighlight")))
-					StreakHighlight->ProcessEvent(Play, nullptr);
+				MedalStamps.Last().Highlight = StreakHighlight;
 			}
 		}
-		UHorizontalBoxSlot* IconSlot = StreakIcons->AddChildToHorizontalBox(Box);
-		IconSlot->SetVerticalAlignment(VAlign_Center);
-		IconSlot->SetPadding(FMargin(FMath::Max(0.0f, Settings->MedalGap) * 0.5f, 0.0f));
 	}
 	StreakCountLabel->SetVisibility(bLargeMedal ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	StreakCountLabel->GetParent()->SetVisibility(StreakCountLabel->GetVisibility());
@@ -411,6 +467,8 @@ void UCompetitiveRankingHUD::NativeTick(const FGeometry& MyGeometry, float InDel
 	const APlayerController* Owner = GetOwningPlayer();
 	const UKillStreakVoiceComponent* Streak = Owner && Owner->PlayerState
 		? Owner->PlayerState->FindComponentByClass<UKillStreakVoiceComponent>() : nullptr;
+	// A new medal must render once before consuming any time from the previous frame.
+	UpdateMedalStamps(InDeltaTime);
 	RefreshStreakMedals(Streak ? Streak->GetCurrentStreakCount() : 0);
 	if (!RankingPanel) return;
 	PositionBesideTimer(MyGeometry);
@@ -470,6 +528,8 @@ void UCompetitiveRankingHUD::NativeDestruct()
 	if (UWorld* World = GetWorld()) World->GetTimerManager().ClearTimer(StreakDisplayTimer);
 	if (StreakHighlight) StreakHighlight->StopAnimationsAndLatentActions();
 	StreakHighlight = nullptr;
+	MedalStamps.Reset();
+	bDisplayedLargeMedal = false;
 	if (StreakPanel) StreakPanel->RemoveFromParent();
 	StreakPanel = nullptr;
 	StreakIcons = nullptr;

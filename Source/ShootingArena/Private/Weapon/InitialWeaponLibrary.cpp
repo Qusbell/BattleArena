@@ -86,6 +86,8 @@ int32 UInitialWeaponLibrary::GetInventoryWeaponSlotNumber(UActorComponent* Inven
 	if (const auto* Loadout = RestrictedLoadout(Inventory))
 	{
 		if (Loadout->IsDefaultWeapon(Weapons[Index]) && !CanSelectInventoryWeapon(Inventory, Index)) return 0;
+		if (!Loadout->IsDefaultWeapon(Weapons[Index])
+			&& !Weapons.ContainsByPredicate([Loadout](AActor* Weapon) { return IsRegularWeapon(Weapon, Loadout); })) return 0;
 		for (int32 Before = 0; Before < Index; ++Before)
 			if (IsValid(Weapons[Before]) && Loadout->IsDefaultWeapon(Weapons[Before])
 				&& !CanSelectInventoryWeapon(Inventory, Before)) --Number;
