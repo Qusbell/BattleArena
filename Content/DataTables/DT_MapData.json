@@ -34,15 +34,17 @@
 		"Map_Image": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Map_Image/01_Map.01_Map'",
 		"Map_Asset": "(WorldAsset=\"/Game/QuakeLike_Base/Lvl_02Map.Lvl_02Map\")",
 		"Character_List": [
-			"f@@k",
-			"s@@t",
-			"b@@@yh@@l"
+			"C01",
+			"C02",
+			"C03",
+			"C04",
+			"C05"
 		],
-		"Max_Player_Count": 3,
+		"Max_Player_Count": 5,
 		"Map_Size": 1,
 		"Map_Explain": "",
 		"WinKillCount": -1,
-		"GameTimer": "(X=-1.000000,Y=0.000000)",
+		"GameTimer": "(X=5.000000,Y=0.000000)",
 		"Map_ID": "Map_06",
 		"Map_Feature": [],
 		"Feature_Icon": [],
