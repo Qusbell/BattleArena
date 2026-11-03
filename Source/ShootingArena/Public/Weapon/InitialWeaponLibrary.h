@@ -19,7 +19,7 @@ public:
 	UFUNCTION(BlueprintPure, Category="Initial Weapons")
 	static bool CanSelectInventoryWeapon(UActorComponent* Inventory, int32 Index);
 
-	/** One-based HUD/hotkey number; empty regular weapons stay visible. Only restricted defaults close the numbering gap. */
+	/** One-based HUD/hotkey number; show only defaults when regular ammo is exhausted, otherwise retain empty regular slots. */
 	UFUNCTION(BlueprintPure, Category="Initial Weapons")
 	static int32 GetInventoryWeaponSlotNumber(UActorComponent* Inventory, int32 Index);
 

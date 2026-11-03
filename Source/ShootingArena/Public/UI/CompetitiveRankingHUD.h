@@ -37,6 +37,16 @@ private:
 	void PositionBesideTimer(const FGeometry& Geometry);
 	void RefreshStreakMedals(int32 Count);
 	void HideStreakMedals();
+	void StartMedalStamp(UWidget* Medal);
+	void UpdateMedalStamps(float DeltaTime);
+	struct FMedalStamp
+	{
+		TWeakObjectPtr<UWidget> Medal;
+		TWeakObjectPtr<UUserWidget> Highlight;
+		float Elapsed = 0.0f;
+	};
+	TArray<FMedalStamp> MedalStamps;
+	bool bDisplayedLargeMedal = false;
 
 	UPROPERTY() TSubclassOf<UUserWidget> StreakHighlightClass;
 	UPROPERTY(Transient) TObjectPtr<UUserWidget> StreakHighlight;

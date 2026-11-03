@@ -214,6 +214,35 @@ bool FKillMedalAutomaticAwardsTest::RunTest(const FString& Parameters)
 	CustomSettings->LargeMedalMinKills = 11;
 	CustomSettings->LargeMedalTexture = nullptr;
 	StreakHUD->ActiveStreakSettings = CustomSettings;
+	StreakHUD->RefreshStreakMedals(1);
+	UWidget* FirstMedal = StreakHUD->StreakIcons->GetChildAt(0);
+	TestTrue(TEXT("A new medal starts at double size and fully visible"), FirstMedal->GetRenderTransform().Scale.Equals(FVector2D(2.0f))
+		&& FirstMedal->GetRenderOpacity() == 1.0f);
+	StreakHUD->UpdateMedalStamps(0.04f);
+	const FVector2D FirstInFlight = FirstMedal->GetRenderTransform().Scale;
+	StreakHUD->RefreshStreakMedals(2);
+	UWidget* SecondMedal = StreakHUD->StreakIcons->GetChildAt(1);
+	TestTrue(TEXT("Rapid kills retain the first medal and its in-flight animation"),
+		StreakHUD->StreakIcons->GetChildAt(0) == FirstMedal && FirstMedal->GetRenderTransform().Scale.Equals(FirstInFlight));
+	TestEqual(TEXT("Rapidly earned medals animate independently"), StreakHUD->MedalStamps.Num(), 2);
+	UUserWidget* SecondHighlight = StreakHUD->StreakHighlight;
+	StreakHUD->RefreshStreakMedals(2);
+	TestTrue(TEXT("An unchanged count cannot restart the stamp or highlight"), StreakHUD->StreakHighlight == SecondHighlight
+		&& StreakHUD->MedalStamps.Num() == 2);
+	StreakHUD->UpdateMedalStamps(0.10f);
+	TestTrue(TEXT("The new medal reaches the small impact scale"), SecondMedal->GetRenderTransform().Scale.Equals(FVector2D(0.92f)));
+	TestEqual(TEXT("Existing rays play when the stamp lands"), SecondHighlight->GetVisibility(), ESlateVisibility::HitTestInvisible);
+	StreakHUD->UpdateMedalStamps(0.18f);
+	TestTrue(TEXT("Every stamp settles to its configured size and full opacity"),
+		FirstMedal->GetRenderTransform().Scale.Equals(FVector2D(1.0f)) && SecondMedal->GetRenderTransform().Scale.Equals(FVector2D(1.0f))
+		&& FirstMedal->GetRenderOpacity() == 1.0f && SecondMedal->GetRenderOpacity() == 1.0f && StreakHUD->MedalStamps.IsEmpty());
+	StreakHUD->RefreshStreakMedals(3);
+	TestTrue(TEXT("A later stamp never restarts already settled medals"), StreakHUD->StreakIcons->GetChildAt(0) == FirstMedal
+		&& StreakHUD->StreakIcons->GetChildAt(1) == SecondMedal && FirstMedal->GetRenderTransform().Scale.Equals(FVector2D(1.0f))
+		&& SecondMedal->GetRenderTransform().Scale.Equals(FVector2D(1.0f)) && StreakHUD->MedalStamps.Num() == 1);
+	StreakHUD->RefreshStreakMedals(0);
+	TestTrue(TEXT("Death/reset clears active stamps and the old icons"), StreakHUD->MedalStamps.IsEmpty()
+		&& StreakHUD->StreakIcons->GetChildrenCount() == 0);
 	auto FirstImage = [StreakHUD]() -> UImage*
 	{
 		const USizeBox* Box = Cast<USizeBox>(StreakHUD->StreakIcons->GetChildAt(0));
@@ -223,7 +252,11 @@ bool FKillMedalAutomaticAwardsTest::RunTest(const FString& Parameters)
 	};
 	for (int32 Count : {1, 2, 10, 11, 25})
 	{
+		UWidget* PreviousLarge = StreakHUD->bDisplayedLargeMedal ? StreakHUD->StreakIcons->GetChildAt(0) : nullptr;
 		StreakHUD->RefreshStreakMedals(Count);
+		if (PreviousLarge && Count > 10)
+			TestTrue(TEXT("Numeric awards stamp only their single retained large medal"), StreakHUD->StreakIcons->GetChildAt(0) == PreviousLarge
+				&& StreakHUD->MedalStamps.Num() == 1 && PreviousLarge->GetRenderTransform().Scale.Equals(FVector2D(2.0f)));
 		TestNotNull(TEXT("Every award includes the existing CompShooter highlight"), StreakHUD->StreakHighlight.Get());
 		TestTrue(TEXT("Highlight rays extend beyond the medal from the first kill through the large-medal stage"),
 			StreakHUD->StreakHighlight && StreakHUD->StreakHighlight->GetRenderTransform().Scale.Equals(FVector2D(8, 8))
@@ -314,6 +347,17 @@ bool FKillMedalAutomaticAwardsTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Unchanged streak cannot reopen a timed-out medal"), StreakHUD->StreakPanel->GetVisibility(), ESlateVisibility::Collapsed);
 	StreakHUD->RefreshStreakMedals(4);
 	TestEqual(TEXT("The next kill shows the updated medal again"), StreakHUD->StreakPanel->GetVisibility(), ESlateVisibility::HitTestInvisible);
+	PC->PlayerState = State;
+	Voice->NotifyOwnerDeath();
+	Voice->QueueKillEvent();
+	StreakHUD->NativeTick(FGeometry(), 0.5f);
+	UWidget* HitchMedal = StreakHUD->StreakIcons->GetChildAt(0);
+	TestTrue(TEXT("A slow kill frame still renders the full-size stamp before advancing it"),
+		HitchMedal->GetRenderTransform().Scale.Equals(FVector2D(2.0f)) && HitchMedal->GetRenderOpacity() == 1.0f
+		&& StreakHUD->MedalStamps.Num() == 1 && StreakHUD->MedalStamps[0].Elapsed == 0.0f);
+	StreakHUD->NativeTick(FGeometry(), 1.0f / 60.0f);
+	TestTrue(TEXT("The stamp advances on the next rendered frame"), HitchMedal->GetRenderTransform().Scale.X < 2.0f
+		&& HitchMedal->GetRenderTransform().Scale.X > 1.0f);
 	Voice->NotifyOwnerDeath();
 	StreakHUD->RefreshStreakMedals(Voice->GetCurrentStreakCount());
 	TestEqual(TEXT("Death resets the streak"), Voice->GetCurrentStreakCount(), 0);
