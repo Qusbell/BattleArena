@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Engine/GameInstance.h"
 #include "Engine/EngineBaseTypes.h"
+#include "Containers/Ticker.h"
 #include "LobbyTypes.h"
 #include "ShootingArenaGameInstance.generated.h"
 
@@ -105,6 +106,11 @@ public:
 	ELobbyConnectState GetConnectState() const { return ConnectState; }
 
 private:
+	bool LogServerFrameRate(float DeltaTime);
+	FTSTicker::FDelegateHandle ServerFrameRateTickerHandle;
+	double ServerFrameRateLastLogTime = 0.0;
+	uint32 ServerFrameCount = 0;
+
 	void HandleNetworkFailure(UWorld* World, UNetDriver* NetDriver, ENetworkFailure::Type FailureType, const FString& ErrorString);
 	void HandleTravelFailure(UWorld* World, ETravelFailure::Type FailureType, const FString& ErrorString);
 

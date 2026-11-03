@@ -4,6 +4,7 @@
 #include "Engine/World.h"
 #include "GameFramework/GameStateBase.h"
 #include "GameFramework/PlayerState.h"
+#include "HAL/PlatformTime.h"
 #include "PlayerDefaultNameSettings.h"
 #include "LocalDedicatedServerLibrary.h"
 #include "UObject/UObjectGlobals.h"
@@ -32,11 +33,20 @@ void UShootingArenaGameInstance::Init()
 	else
 	{
 		ULocalDedicatedServerLibrary::InitServerCommandWatcher();
+		ServerFrameRateLastLogTime = FPlatformTime::Seconds();
+		ServerFrameRateTickerHandle = FTSTicker::GetCoreTicker().AddTicker(
+			FTickerDelegate::CreateUObject(this, &UShootingArenaGameInstance::LogServerFrameRate));
 	}
 }
 
 void UShootingArenaGameInstance::Shutdown()
 {
+	if (ServerFrameRateTickerHandle.IsValid())
+	{
+		FTSTicker::GetCoreTicker().RemoveTicker(ServerFrameRateTickerHandle);
+		ServerFrameRateTickerHandle.Reset();
+	}
+
 	if (PostLoadMapHandle.IsValid())
 	{
 		FCoreUObjectDelegates::PreLoadMap.Remove(PostLoadMapHandle);
@@ -66,6 +76,21 @@ void UShootingArenaGameInstance::Shutdown()
 	}
 
 	Super::Shutdown();
+}
+
+bool UShootingArenaGameInstance::LogServerFrameRate(float DeltaTime)
+{
+	++ServerFrameCount;
+	const double Now = FPlatformTime::Seconds();
+	const double Elapsed = Now - ServerFrameRateLastLogTime;
+	if (Elapsed >= 1.0)
+	{
+		UE_LOG(LogTemp, Log, TEXT("Server FPS: %.1f (%.2f ms/frame)"),
+			ServerFrameCount / Elapsed, Elapsed * 1000.0 / ServerFrameCount);
+		ServerFrameCount = 0;
+		ServerFrameRateLastLogTime = Now;
+	}
+	return true;
 }
 
 void UShootingArenaGameInstance::HandlePreLoadMap(const FString& MapName)
