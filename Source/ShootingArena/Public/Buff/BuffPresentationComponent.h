@@ -173,6 +173,9 @@ private:
 	/** Weapon and body meshes currently carrying a glow overlay, with the overlay this component set. */
 	TMap<TWeakObjectPtr<UMeshComponent>, UMaterialInstanceDynamic*> GlowingWeaponMeshes;
 
+	/** Buff the glow instances were built for; another buff rebuilds them from its own profile. */
+	FGameplayTag GlowTag;
+
 	uint32 ObservedWarningRevision = MAX_uint32;
 	int32 NextWarningSecond = 6;
 	int32 LastWarningPlayedSecond = 0;

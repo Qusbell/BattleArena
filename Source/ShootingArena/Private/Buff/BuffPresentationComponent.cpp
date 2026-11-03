@@ -60,6 +60,17 @@ namespace
 		return IsValid(Mesh) && !Mesh->IsBeingDestroyed() ? Mesh : nullptr;
 	}
 
+	/** Gives the gun overlay its muzzle-to-grip axis (Custom Primitive Data 0-2); guns without both sockets keep the DA direction. */
+	void SetGunWaveAxis(UMeshComponent* Gun)
+	{
+		static const FName Muzzle(TEXT("Muzzle"));
+		static const FName Grip(TEXT("GripPoint"));
+		if (!Gun->DoesSocketExist(Muzzle) || !Gun->DoesSocketExist(Grip)) return;
+		const FVector Axis = (Gun->GetSocketTransform(Grip, RTS_Component).GetLocation()
+			- Gun->GetSocketTransform(Muzzle, RTS_Component).GetLocation()).GetSafeNormal();
+		if (!Axis.IsZero()) Gun->SetCustomPrimitiveDataVector3(0, Axis);
+	}
+
 	const FProperty* FindBuffRowProperty(const UScriptStruct* RowStruct, const TCHAR* ExportName)
 	{
 		if (!RowStruct) return nullptr;
@@ -502,57 +513,68 @@ void UBuffPresentationComponent::UpdateWeaponGlow()
 {
 	AActor* Owner = GetOwner();
 	const UWorld* World = GetWorld();
-	const bool bActive = Owner && World && World->GetNetMode() != NM_DedicatedServer && WeaponGlowSettings && WeaponGlowSettings->bEnabled
-		&& WeaponGlowSettings->OverlayMaterial && GetEffects() && GetPresentationRemainingTime() > 0.0;
+	const FBuffGlowProfile* Profile = Owner && World && World->GetNetMode() != NM_DedicatedServer && WeaponGlowSettings
+		&& WeaponGlowSettings->bEnabled && GetEffects() && GetPresentationRemainingTime() > 0.0
+		? WeaponGlowSettings->FindProfile(Presentation.Tag) : nullptr;
 	// Every pawn runs this each tick; unbuffed ones with nothing lit leave before any allocation.
-	if (!bActive && GlowingWeaponMeshes.IsEmpty()) return;
+	if (!Profile && GlowingWeaponMeshes.IsEmpty()) return;
 	TMap<TWeakObjectPtr<UMeshComponent>, UMaterialInstanceDynamic*> Wanted;
-	if (bActive)
+	if (Profile)
 	{
+		// Another buff brings its own looks, so rebuild both instances from its profile.
+		if (GlowTag != Presentation.Tag)
+		{
+			GlowTag = Presentation.Tag;
+			WeaponGlowMaterial = nullptr;
+			BodyGlowMaterial = nullptr;
+		}
 		// Parameters are pushed once when the instance is created, not every tick (each set dirties render state).
-		auto Ensure = [this](TObjectPtr<UMaterialInstanceDynamic>& Material, float Tint) -> bool
+		auto Ensure = [this](TObjectPtr<UMaterialInstanceDynamic>& Material, const FBuffGlowLook& Look) -> UMaterialInstanceDynamic*
 		{
-			if (Material && Material->Parent == WeaponGlowSettings->OverlayMaterial) return false;
-			Material = UMaterialInstanceDynamic::Create(WeaponGlowSettings->OverlayMaterial, this);
-			if (ScreenEffectSettings)
-			{
-				Material->SetVectorParameterValue(TEXT("Color1"), ScreenEffectSettings->Color1);
-				Material->SetVectorParameterValue(TEXT("Color2"), ScreenEffectSettings->Color2);
-			}
-			Material->SetScalarParameterValue(TEXT("TintStrength"), Tint);
-			Material->SetScalarParameterValue(TEXT("RimStrength"), WeaponGlowSettings->RimStrength);
-			Material->SetScalarParameterValue(TEXT("RimPower"), WeaponGlowSettings->RimPower);
-			Material->SetScalarParameterValue(TEXT("PulseMinimum"), FMath::Clamp(WeaponGlowSettings->PulseMinimum, 0.0f, 1.0f));
-			Material->SetScalarParameterValue(TEXT("PulsePeriod"), FMath::Max(0.1f, WeaponGlowSettings->PulsePeriod));
-			Material->SetScalarParameterValue(TEXT("MaxBrightness"), FMath::Max(0.0f, WeaponGlowSettings->MaxBrightness));
-			return true;
+			if (!Look.bEnabled || !Look.OverlayMaterial) return nullptr;
+			if (Material && Material->Parent == Look.OverlayMaterial) return Material;
+			Material = UMaterialInstanceDynamic::Create(Look.OverlayMaterial, this);
+			const bool bScreenColors = Look.bUseScreenEffectColors && ScreenEffectSettings;
+			Material->SetVectorParameterValue(TEXT("Color1"), bScreenColors ? ScreenEffectSettings->Color1 : Look.Color1);
+			Material->SetVectorParameterValue(TEXT("Color2"), bScreenColors ? ScreenEffectSettings->Color2 : Look.Color2);
+			Material->SetScalarParameterValue(TEXT("TintStrength"), Look.TintStrength);
+			Material->SetScalarParameterValue(TEXT("RimStrength"), Look.RimStrength);
+			Material->SetScalarParameterValue(TEXT("RimPower"), Look.RimPower);
+			Material->SetScalarParameterValue(TEXT("PulseMinimum"), FMath::Clamp(Look.PulseMinimum, 0.0f, 1.0f));
+			Material->SetScalarParameterValue(TEXT("PulsePeriod"), FMath::Max(0.1f, Look.PulsePeriod));
+			Material->SetScalarParameterValue(TEXT("MaxBrightness"), FMath::Max(0.0f, Look.MaxBrightness));
+			Material->SetScalarParameterValue(TEXT("ShimmerStrength"), FMath::Max(0.0f, Look.WaveStrength));
+			Material->SetScalarParameterValue(TEXT("ShimmerSpeed"), Look.WaveSpeed);
+			Material->SetScalarParameterValue(TEXT("WaveFrequency"), Look.WaveFrequency);
+			Material->SetScalarParameterValue(TEXT("WaveWidth"), Look.WaveWidth);
+			Material->SetScalarParameterValue(TEXT("WaveColorShift"), FMath::Clamp(Look.WaveColorShift, 0.0f, 1.0f));
+			Material->SetVectorParameterValue(TEXT("WaveDirection"), FLinearColor(Look.WaveDirection));
+			return Material;
 		};
-		Ensure(WeaponGlowMaterial, WeaponGlowSettings->TintStrength);
-		// Held weapons hang off this pawn's attach tree, so rescanning it follows weapon swaps and drops.
-		TInlineComponentArray<USceneComponent*> Scenes(Owner);
-		for (const USceneComponent* Scene : Scenes)
+		if (UMaterialInstanceDynamic* GunGlow = Ensure(WeaponGlowMaterial, Profile->Gun))
 		{
-			for (USceneComponent* Child : Scene->GetAttachChildren())
+			// Held weapons hang off this pawn's attach tree, so rescanning it follows weapon swaps and drops.
+			TInlineComponentArray<USceneComponent*> Scenes(Owner);
+			for (const USceneComponent* Scene : Scenes)
 			{
-				const AActor* Weapon = Child ? Child->GetOwner() : nullptr;
-				if (!IsValid(Weapon) || Weapon == Owner || Weapon->IsActorBeingDestroyed()) continue;
-				for (const FName Name : {FName(TEXT("FP_Mesh")), FName(TEXT("TP_Mesh"))})
+				for (USceneComponent* Child : Scene->GetAttachChildren())
 				{
-					if (UMeshComponent* Mesh = WeaponMesh(Weapon, Name)) Wanted.Add(Mesh, WeaponGlowMaterial);
+					const AActor* Weapon = Child ? Child->GetOwner() : nullptr;
+					if (!IsValid(Weapon) || Weapon == Owner || Weapon->IsActorBeingDestroyed()) continue;
+					for (const FName Name : {FName(TEXT("FP_Mesh")), FName(TEXT("TP_Mesh"))})
+					{
+						if (UMeshComponent* Mesh = WeaponMesh(Weapon, Name)) Wanted.Add(Mesh, GunGlow);
+					}
 				}
 			}
 		}
-		if (WeaponGlowSettings->bGlowCharacter)
+		if (UMaterialInstanceDynamic* BodyGlow = Ensure(BodyGlowMaterial, Profile->Body))
 		{
-			// A fainter body tint keeps the character's own mesh readable under the rim glow.
-			// The sweeping wave is a first-person cue on the gun; the body keeps just the pulse.
-			if (Ensure(BodyGlowMaterial, WeaponGlowSettings->BodyTintStrength))
-				BodyGlowMaterial->SetScalarParameterValue(TEXT("ShimmerStrength"), 0.0f);
 			// Visible body parts only (death meshes stay hidden); FP_Mesh arms are skipped so first person shows just the gun.
 			TInlineComponentArray<UMeshComponent*> Meshes(Owner);
 			for (UMeshComponent* Mesh : Meshes)
 			{
-				if (Mesh->GetFName() != TEXT("FP_Mesh") && Mesh->IsVisible() && !Mesh->bHiddenInGame) Wanted.Add(Mesh, BodyGlowMaterial);
+				if (Mesh->GetFName() != TEXT("FP_Mesh") && Mesh->IsVisible() && !Mesh->bHiddenInGame) Wanted.Add(Mesh, BodyGlow);
 			}
 		}
 	}
@@ -563,7 +585,9 @@ void UBuffPresentationComponent::UpdateWeaponGlow()
 	}
 	for (const TPair<TWeakObjectPtr<UMeshComponent>, UMaterialInstanceDynamic*>& New : Wanted)
 	{
-		if (New.Key->GetOverlayMaterial() != New.Value) New.Key->SetOverlayMaterial(New.Value);
+		if (New.Key->GetOverlayMaterial() == New.Value) continue;
+		New.Key->SetOverlayMaterial(New.Value);
+		if (New.Value == WeaponGlowMaterial) SetGunWaveAxis(New.Key.Get());
 	}
 	GlowingWeaponMeshes = MoveTemp(Wanted);
 }
