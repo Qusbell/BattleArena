@@ -246,20 +246,9 @@ void AMatchRulesInfo::ServerTick()
 	AGameModeBase* GameMode = World ? World->GetAuthGameMode() : nullptr;
 	if (GameState && GameMode && MatchStartServerTime <= 0.0)
 	{
-		// 전원 접속(LoadingCoordinator: ReadyToPlay)이 끝나는 순간을 매치 시작으로 삼습니다.
-		// 로딩 장벽이 없는 월드라면 서버의 bMatchStarted 로 대신합니다.
-		bool bStart = false;
-		bool bHasCoordinator = false;
-		for (TActorIterator<ALoadingCoordinator> It(World); It; ++It)
-		{
-			bHasCoordinator = true;
-			bStart = It->GetPhase() == ELoadingCoordinatorPhase::ReadyToPlay;
-			break;
-		}
-		if (!bHasCoordinator)
-		{
-			bStart = ReadBool(GameMode, TEXT("bMatchStarted"), false);
-		}
+		// BP_QuakeGameMode starts the clock on the first client's gameplay-ready report.
+		// Coordinator ReadyToPlay only permits closing the loading screen; it is too early here.
+		const bool bStart = ReadBool(GameMode, TEXT("bMatchStarted"), false);
 
 		if (bStart)
 		{
@@ -267,7 +256,7 @@ void AMatchRulesInfo::ServerTick()
 			SetNumber(GameState, TEXT("ElapsedMatchTime"), 0.0);
 			MatchStartServerTime = FMath::Max(GameState->GetServerWorldTimeSeconds(), 0.001);
 			MARK_PROPERTY_DIRTY_FROM_NAME(AMatchRulesInfo, MatchStartServerTime, this);
-			UE_LOG(LogTemp, Log, TEXT("[MatchRules] 전원 접속 완료 -> 매치 시작 (서버 시간 %.2f)"), MatchStartServerTime);
+			UE_LOG(LogTemp, Log, TEXT("[MatchRules] Gameplay ready -> match clock started (server time %.2f)"), MatchStartServerTime);
 			if (GetNetMode() != NM_DedicatedServer)
 			{
 				// 싱글/리슨 서버는 복제 신호(OnRep)를 받지 않으므로 직접 HUD 타이머를 다시 맞춥니다.

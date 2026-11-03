@@ -11,6 +11,8 @@ class USkeletalMeshComponent;
 class APlayerController;
 class APawn;
 class FSceneViewExtensionBase;
+class UNiagaraComponent;
+class UParticleSystemComponent;
 struct FMinimalViewInfo;
 
 /** One per pawn; owns camera/arm rendering state so weapon switches cannot accumulate overrides. */
@@ -60,6 +62,12 @@ private:
 	float CalculateRenderScale(const APawn* Pawn, const USkeletalMeshComponent* Arms,
 		const UPrimitiveComponent* Gun, const FMinimalViewInfo& View) const;
 	void Track(UPrimitiveComponent* Primitive);
+	void RestoreTrackedType(UPrimitiveComponent* Primitive, EFirstPersonPrimitiveType PreviousType);
+	void OnTrackedEffectFinished(UPrimitiveComponent* Primitive);
+	UFUNCTION()
+	void OnTrackedNiagaraFinished(UNiagaraComponent* Effect);
+	UFUNCTION()
+	void OnTrackedCascadeFinished(UParticleSystemComponent* Effect);
 	void Restore();
 	void RestoreView();
 	void PrepareWeapons(USkeletalMeshComponent* Arms);

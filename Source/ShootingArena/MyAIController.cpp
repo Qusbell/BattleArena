@@ -1,9 +1,33 @@
 #include "MyAIController.h"
 #include "AISystem.h"
+#include "BehaviorTree/BehaviorTree.h"
+#include "BehaviorTree/BehaviorTreeComponent.h"
+#include "BehaviorTree/BTCompositeNode.h"
 #include "BehaviorTree/BlackboardComponent.h"
 
 namespace
 {
+    bool IsInRetreatBranch(const AMyAIController* Controller)
+    {
+        const UBehaviorTreeComponent* BehaviorTree = Cast<UBehaviorTreeComponent>(Controller->GetBrainComponent());
+        if (!BehaviorTree || !BehaviorTree->IsRunning())
+        {
+            return false;
+        }
+
+        // Follow the active task's ancestors, including the main task of a Simple Parallel.
+        // Keep this in sync with the retreat composite's name in BT_QuakeTree.
+        for (const UBTNode* Node = BehaviorTree->GetActiveNode(); Node; Node = Node->GetParentNode())
+        {
+            if (Node->GetNodeName() == TEXT("후퇴 Sequence") && Node->GetTreeAsset() &&
+                Node->GetTreeAsset()->GetPathName() == TEXT("/Game/QuakeLike_1_0/AI/AIC/BT_QuakeTree.BT_QuakeTree"))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     bool IsInVisibleCombat(const AMyAIController* Controller)
     {
         const UBlackboardComponent* Blackboard = Controller->GetBlackboardComponent();
@@ -22,8 +46,13 @@ void AMyAIController::ResetDamageLook()
 
 void AMyAIController::RequestDamageLook(const FVector& WorldDirection)
 {
-    if (!HasAuthority() || IsInVisibleCombat(this))
+    if (!HasAuthority())
     {
+        return;
+    }
+    if (IsInVisibleCombat(this) || IsInRetreatBranch(this))
+    {
+        ResetDamageLook();
         return;
     }
     const FVector Direction = WorldDirection.GetSafeNormal();
@@ -133,7 +162,7 @@ void AMyAIController::UpdateControlRotation(float DeltaTime, bool bUpdatePawn)
     {
         FRotator NewControlRotation = GetControlRotation();
 
-        if (bDamageLookActive && IsInVisibleCombat(this))
+        if (bDamageLookActive && (IsInVisibleCombat(this) || IsInRetreatBranch(this)))
         {
             ResetDamageLook();
         }

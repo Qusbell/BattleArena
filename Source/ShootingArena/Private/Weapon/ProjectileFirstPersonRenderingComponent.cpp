@@ -9,6 +9,9 @@
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
 #include "Engine/Engine.h"
+#include "NiagaraComponent.h"
+#include "NiagaraComponentPoolMethodEnum.h"
+#include "Particles/ParticleSystemComponent.h"
 #include "SceneViewExtension.h"
 #include "UObject/UnrealType.h"
 #include "Weapon/FirstPersonRenderingMath.h"
@@ -173,9 +176,44 @@ bool UProjectileFirstPersonRenderingComponent::TryGetOccludedEffectView(const AA
 void UProjectileFirstPersonRenderingComponent::Track(UPrimitiveComponent* Primitive)
 {
 	if (!LiveComponent(Primitive)) return;
-	if (!PreviousTypes.Contains(Primitive)) PreviousTypes.Add(Primitive, Primitive->FirstPersonPrimitiveType);
+	if (!PreviousTypes.Contains(Primitive))
+	{
+		PreviousTypes.Add(Primitive, Primitive->FirstPersonPrimitiveType);
+		// Completion fires before the engine returns these components to the shared pool.
+		if (auto* Niagara = Cast<UNiagaraComponent>(Primitive); Niagara && Niagara->PoolingMethod == ENCPoolMethod::AutoRelease)
+			Niagara->OnSystemFinished.AddUniqueDynamic(this, &ThisClass::OnTrackedNiagaraFinished);
+		if (auto* Cascade = Cast<UParticleSystemComponent>(Primitive); Cascade && Cascade->PoolingMethod == EPSCPoolMethod::AutoRelease)
+			Cascade->OnSystemFinished.AddUniqueDynamic(this, &ThisClass::OnTrackedCascadeFinished);
+	}
 	if (Primitive->FirstPersonPrimitiveType != EFirstPersonPrimitiveType::FirstPerson)
 		Primitive->SetFirstPersonPrimitiveType(EFirstPersonPrimitiveType::FirstPerson);
+}
+
+void UProjectileFirstPersonRenderingComponent::RestoreTrackedType(UPrimitiveComponent* Primitive, EFirstPersonPrimitiveType PreviousType)
+{
+	if (!LiveComponent(Primitive)) return;
+	if (auto* Niagara = Cast<UNiagaraComponent>(Primitive))
+		Niagara->OnSystemFinished.RemoveDynamic(this, &ThisClass::OnTrackedNiagaraFinished);
+	if (auto* Cascade = Cast<UParticleSystemComponent>(Primitive))
+		Cascade->OnSystemFinished.RemoveDynamic(this, &ThisClass::OnTrackedCascadeFinished);
+	Primitive->SetFirstPersonPrimitiveType(PreviousType);
+}
+
+void UProjectileFirstPersonRenderingComponent::OnTrackedEffectFinished(UPrimitiveComponent* Primitive)
+{
+	EFirstPersonPrimitiveType PreviousType;
+	if (PreviousTypes.RemoveAndCopyValue(Primitive, PreviousType))
+		RestoreTrackedType(Primitive, PreviousType);
+}
+
+void UProjectileFirstPersonRenderingComponent::OnTrackedNiagaraFinished(UNiagaraComponent* Effect)
+{
+	OnTrackedEffectFinished(Effect);
+}
+
+void UProjectileFirstPersonRenderingComponent::OnTrackedCascadeFinished(UParticleSystemComponent* Effect)
+{
+	OnTrackedEffectFinished(Effect);
 }
 
 void UProjectileFirstPersonRenderingComponent::RestoreView()
@@ -183,7 +221,7 @@ void UProjectileFirstPersonRenderingComponent::RestoreView()
 	// Reject late spawn callbacks before releasing or restoring any render state.
 	bAcceptMuzzleEffects = false;
 	for (const auto& Pair : PreviousTypes)
-		if (UPrimitiveComponent* Primitive = Pair.Key.Get(); LiveComponent(Primitive)) Primitive->SetFirstPersonPrimitiveType(Pair.Value);
+		RestoreTrackedType(Pair.Key.Get(), Pair.Value);
 	PreviousTypes.Reset();
 	if (UCameraComponent* SavedCamera = Camera.Get(); LiveComponent(SavedCamera))
 	{
@@ -314,7 +352,7 @@ void UProjectileFirstPersonRenderingComponent::TickComponent(float DeltaTime, EL
 		UPrimitiveComponent* Primitive = It.Key().Get();
 		if (!LiveComponent(Primitive) || (Primitive != Arms && !Primitive->IsAttachedTo(Gun)))
 		{
-			if (LiveComponent(Primitive)) Primitive->SetFirstPersonPrimitiveType(It.Value());
+			RestoreTrackedType(Primitive, It.Value());
 			It.RemoveCurrent();
 		}
 	}

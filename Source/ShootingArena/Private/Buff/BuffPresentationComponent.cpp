@@ -1,4 +1,5 @@
 #include "Buff/BuffPresentationComponent.h"
+#include "Buff/BuffWeaponGlow.h"
 #include "UI/BuffScreenEffect.h"
 
 #include "Components/AudioComponent.h"
@@ -17,6 +18,7 @@
 #include "GameFramework/GameStateBase.h"
 #include "HAL/IConsoleManager.h"
 #include "Kismet/GameplayStatics.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "Net/UnrealNetwork.h"
 #include "NiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
@@ -48,6 +50,14 @@ namespace
 	bool IsQuad(FGameplayTag Tag)
 	{
 		return Tag.MatchesTag(FGameplayTag::RequestGameplayTag(TEXT("Buff.Atk"), false));
+	}
+
+	/** BP_HeldItem exposes FP_Mesh/TP_Mesh only as Blueprint variables. */
+	UMeshComponent* WeaponMesh(const AActor* Weapon, FName Name)
+	{
+		const FObjectPropertyBase* Property = FindFProperty<FObjectPropertyBase>(Weapon->GetClass(), Name);
+		UMeshComponent* Mesh = Property ? Cast<UMeshComponent>(Property->GetObjectPropertyValue_InContainer(Weapon)) : nullptr;
+		return IsValid(Mesh) && !Mesh->IsBeingDestroyed() ? Mesh : nullptr;
 	}
 
 	const FProperty* FindBuffRowProperty(const UScriptStruct* RowStruct, const TCHAR* ExportName)
@@ -415,6 +425,7 @@ void UBuffPresentationComponent::OnRep_Presentation()
 	UpdateWarningPlayback();
 	if (!GetWorld() || GetWorld()->GetNetMode() == NM_DedicatedServer) return;
 	UpdateScreenEffect();
+	UpdateWeaponGlow();
 	const FBuffVisualEffects* Effects = GetEffects();
 	if (!Effects || GetPresentationRemainingTime() <= 0.0)
 	{
@@ -487,11 +498,82 @@ void UBuffPresentationComponent::UpdateScreenEffect()
 	ScreenEffect = nullptr;
 }
 
+void UBuffPresentationComponent::UpdateWeaponGlow()
+{
+	AActor* Owner = GetOwner();
+	const UWorld* World = GetWorld();
+	const bool bActive = Owner && World && World->GetNetMode() != NM_DedicatedServer && WeaponGlowSettings && WeaponGlowSettings->bEnabled
+		&& WeaponGlowSettings->OverlayMaterial && GetEffects() && GetPresentationRemainingTime() > 0.0;
+	// Every pawn runs this each tick; unbuffed ones with nothing lit leave before any allocation.
+	if (!bActive && GlowingWeaponMeshes.IsEmpty()) return;
+	TMap<TWeakObjectPtr<UMeshComponent>, UMaterialInstanceDynamic*> Wanted;
+	if (bActive)
+	{
+		// Parameters are pushed once when the instance is created, not every tick (each set dirties render state).
+		auto Ensure = [this](TObjectPtr<UMaterialInstanceDynamic>& Material, float Tint) -> bool
+		{
+			if (Material && Material->Parent == WeaponGlowSettings->OverlayMaterial) return false;
+			Material = UMaterialInstanceDynamic::Create(WeaponGlowSettings->OverlayMaterial, this);
+			if (ScreenEffectSettings)
+			{
+				Material->SetVectorParameterValue(TEXT("Color1"), ScreenEffectSettings->Color1);
+				Material->SetVectorParameterValue(TEXT("Color2"), ScreenEffectSettings->Color2);
+			}
+			Material->SetScalarParameterValue(TEXT("TintStrength"), Tint);
+			Material->SetScalarParameterValue(TEXT("RimStrength"), WeaponGlowSettings->RimStrength);
+			Material->SetScalarParameterValue(TEXT("RimPower"), WeaponGlowSettings->RimPower);
+			Material->SetScalarParameterValue(TEXT("PulseMinimum"), FMath::Clamp(WeaponGlowSettings->PulseMinimum, 0.0f, 1.0f));
+			Material->SetScalarParameterValue(TEXT("PulsePeriod"), FMath::Max(0.1f, WeaponGlowSettings->PulsePeriod));
+			Material->SetScalarParameterValue(TEXT("MaxBrightness"), FMath::Max(0.0f, WeaponGlowSettings->MaxBrightness));
+			return true;
+		};
+		Ensure(WeaponGlowMaterial, WeaponGlowSettings->TintStrength);
+		// Held weapons hang off this pawn's attach tree, so rescanning it follows weapon swaps and drops.
+		TInlineComponentArray<USceneComponent*> Scenes(Owner);
+		for (const USceneComponent* Scene : Scenes)
+		{
+			for (USceneComponent* Child : Scene->GetAttachChildren())
+			{
+				const AActor* Weapon = Child ? Child->GetOwner() : nullptr;
+				if (!IsValid(Weapon) || Weapon == Owner || Weapon->IsActorBeingDestroyed()) continue;
+				for (const FName Name : {FName(TEXT("FP_Mesh")), FName(TEXT("TP_Mesh"))})
+				{
+					if (UMeshComponent* Mesh = WeaponMesh(Weapon, Name)) Wanted.Add(Mesh, WeaponGlowMaterial);
+				}
+			}
+		}
+		if (WeaponGlowSettings->bGlowCharacter)
+		{
+			// A fainter body tint keeps the character's own mesh readable under the rim glow.
+			// The sweeping wave is a first-person cue on the gun; the body keeps just the pulse.
+			if (Ensure(BodyGlowMaterial, WeaponGlowSettings->BodyTintStrength))
+				BodyGlowMaterial->SetScalarParameterValue(TEXT("ShimmerStrength"), 0.0f);
+			// Visible body parts only (death meshes stay hidden); FP_Mesh arms are skipped so first person shows just the gun.
+			TInlineComponentArray<UMeshComponent*> Meshes(Owner);
+			for (UMeshComponent* Mesh : Meshes)
+			{
+				if (Mesh->GetFName() != TEXT("FP_Mesh") && Mesh->IsVisible() && !Mesh->bHiddenInGame) Wanted.Add(Mesh, BodyGlowMaterial);
+			}
+		}
+	}
+	for (const TPair<TWeakObjectPtr<UMeshComponent>, UMaterialInstanceDynamic*>& Old : GlowingWeaponMeshes)
+	{
+		UMeshComponent* Mesh = Old.Key.Get();
+		if (Mesh && !Wanted.Contains(Old.Key) && Mesh->GetOverlayMaterial() == Old.Value) Mesh->SetOverlayMaterial(nullptr);
+	}
+	for (const TPair<TWeakObjectPtr<UMeshComponent>, UMaterialInstanceDynamic*>& New : Wanted)
+	{
+		if (New.Key->GetOverlayMaterial() != New.Value) New.Key->SetOverlayMaterial(New.Value);
+	}
+	GlowingWeaponMeshes = MoveTemp(Wanted);
+}
+
 void UBuffPresentationComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 	UpdateWarningPlayback();
 	UpdateScreenEffect();
+	UpdateWeaponGlow();
 	// Clients also stop at the deadline if the server's removal update arrives later.
 	if (PresentedTag.IsValid() && GetPresentationRemainingTime() <= 0.0) StopEffects();
 }
@@ -511,6 +593,12 @@ void UBuffPresentationComponent::EndPlay(const EEndPlayReason::Type EndPlayReaso
 	}
 	StopEffects();
 	StopWarningSounds();
+	for (const TPair<TWeakObjectPtr<UMeshComponent>, UMaterialInstanceDynamic*>& Glowing : GlowingWeaponMeshes)
+	{
+		UMeshComponent* Mesh = Glowing.Key.Get();
+		if (Mesh && Mesh->GetOverlayMaterial() == Glowing.Value) Mesh->SetOverlayMaterial(nullptr);
+	}
+	GlowingWeaponMeshes.Reset();
 	Super::EndPlay(EndPlayReason);
 }
 

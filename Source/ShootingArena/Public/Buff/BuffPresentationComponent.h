@@ -17,6 +17,9 @@ class UDataTable;
 class UAudioComponent;
 class UBuffScreenEffectSettings;
 class UBuffScreenEffectWidget;
+class UBuffWeaponGlowSettings;
+class UMaterialInstanceDynamic;
+class UMeshComponent;
 
 /** Attachment settings only. Niagara and Cascade assets come from the acquired Buff DT row. */
 USTRUCT(BlueprintType)
@@ -105,6 +108,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Buff|Presentation", meta = (DisplayName = "버프 화면 효과 설정"))
 	TObjectPtr<UBuffScreenEffectSettings> ScreenEffectSettings;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Buff|Presentation", meta = (DisplayName = "버프 총기 발광 설정"))
+	TObjectPtr<UBuffWeaponGlowSettings> WeaponGlowSettings;
+
 	/** Reads currentBuffRowName from the existing grant path and publishes that DT row's VFX and deadline. */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Buff|Presentation")
 	void SetBuffPresentation(FGameplayTag BuffTag, double EndServerTime);
@@ -158,6 +164,15 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UBuffScreenEffectWidget> ScreenEffect;
 
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> WeaponGlowMaterial;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> BodyGlowMaterial;
+
+	/** Weapon and body meshes currently carrying a glow overlay, with the overlay this component set. */
+	TMap<TWeakObjectPtr<UMeshComponent>, UMaterialInstanceDynamic*> GlowingWeaponMeshes;
+
 	uint32 ObservedWarningRevision = MAX_uint32;
 	int32 NextWarningSecond = 6;
 	int32 LastWarningPlayedSecond = 0;
@@ -180,6 +195,7 @@ private:
 
 	void StopEffects();
 	void UpdateScreenEffect();
+	void UpdateWeaponGlow();
 	void UpdateWarningPlayback();
 	int32 ConsumeWarningSecond(double Remaining);
 	int32 GetWarningOutputMask() const;
@@ -193,4 +209,5 @@ private:
 
 	friend class FBuffWarningSoundTest;
 	friend class FBuffScreenEffectTest;
+	friend class FBuffWeaponGlowTest;
 };

@@ -12,6 +12,7 @@
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Engine/LocalPlayer.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "Engine/World.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
@@ -53,6 +54,9 @@ bool FBuffScreenEffectTest::RunTest(const FString& Parameters)
 	Settings->FadeOutSeconds = 0.4f;
 	Settings->PulsePeriod = 4.0f;
 	Settings->Color1 = FLinearColor(0.05f, 0.3f, 0.9f);
+	Settings->ElectricIntensity = 0.3f;
+	Settings->BurstIntensity = 1.0f;
+	Settings->BurstSeconds = 0.5f;
 	Buff->Presentation.Tag = FGameplayTag::RequestGameplayTag(TEXT("Buff.Atk"));
 	Buff->Presentation.EndServerTime = World->GetTimeSeconds() + 30.0;
 	UTextBlock* TimeText = NewObject<UTextBlock>(Pawn);
@@ -90,20 +94,28 @@ bool FBuffScreenEffectTest::RunTest(const FString& Parameters)
 	if (!TestNotNull(TEXT("CompShooter pulse timing"), Pulse)) return false;
 	TestEqual(TEXT("Designer period reaches the real effect"),
 		Pulse->GetFloatingPointPropertyValue(Pulse->ContainerPtrToValuePtr<void>(Widget->Effect)), static_cast<double>(Settings->PulsePeriod * 0.5f));
+	if (!TestNotNull(TEXT("Electric layer is built from the DA material"), Widget->ElectricMID.Get())) return false;
+	auto Burst = [Widget] { return Widget->ElectricMID->K2_GetScalarParameterValue(TEXT("Burst")); };
+	auto Intensity = [Widget] { return Widget->ElectricMID->K2_GetScalarParameterValue(TEXT("Intensity")); };
 	TestEqual(TEXT("New effect starts transparent"), Widget->GetRenderOpacity(), 0.0f);
 	Widget->NativeTick(FGeometry(), Settings->FadeInSeconds * 0.5f);
-	TestTrue(TEXT("Fade in is gradual"), FMath::IsNearlyEqual(Widget->GetRenderOpacity(), Settings->Opacity * 0.5f));
+	TestTrue(TEXT("Fade in is gradual"), FMath::IsNearlyEqual(Widget->GetRenderOpacity(), 0.5f));
+	TestTrue(TEXT("Pickup starts with a strong flash"), FMath::IsNearlyEqual(Burst(), 0.7f, 0.01f));
 	Widget->NativeTick(FGeometry(), Settings->FadeInSeconds);
-	TestTrue(TEXT("Designer strength caps the whole effect"), FMath::IsNearlyEqual(Widget->GetRenderOpacity(), Settings->Opacity));
+	TestTrue(TEXT("Fade in reaches full"), FMath::IsNearlyEqual(Widget->GetRenderOpacity(), 1.0f));
+	TestTrue(TEXT("Designer strength dims only the gradient"), FMath::IsNearlyEqual(Widget->Effect->GetRenderOpacity(), Settings->Opacity));
 	Buff->Presentation.EndServerTime += 30.0;
 	Widget->NativeTick(FGeometry(), 0.1f);
 	TestFalse(TEXT("Refreshing a buff does not remove its effect"), Widget->HasFinished());
+	TestTrue(TEXT("Refreshing a buff flashes again"), FMath::IsNearlyEqual(Burst(), 0.8f, 0.01f));
+	Widget->NativeTick(FGeometry(), Settings->BurstSeconds);
+	TestTrue(TEXT("Flash settles to the sustained crackle"), Burst() == 0.0f && FMath::IsNearlyEqual(Intensity(), Settings->ElectricIntensity));
 	Buff->Presentation.EndServerTime = World->GetTimeSeconds();
 	UBuffPresentationComponent::UpdateBuffRemainingTimeText(Pawn, TimeText, Icon);
 	TestTrue(TEXT("Expiry hides the icon and the time together"), Icon->GetVisibility() == ESlateVisibility::Collapsed
 		&& TimeText->GetVisibility() == ESlateVisibility::Collapsed);
 	Widget->NativeTick(FGeometry(), Settings->FadeOutSeconds * 0.5f);
-	TestTrue(TEXT("Expiry starts a gradual fade out"), Widget->GetRenderOpacity() > 0.0f && Widget->GetRenderOpacity() < Settings->Opacity);
+	TestTrue(TEXT("Expiry starts a gradual fade out"), Widget->GetRenderOpacity() > 0.0f && Widget->GetRenderOpacity() < 1.0f);
 	Widget->NativeTick(FGeometry(), Settings->FadeOutSeconds);
 	TestTrue(TEXT("Expiry finishes with zero residual tint"), Widget->HasFinished() && Widget->GetRenderOpacity() == 0.0f);
 

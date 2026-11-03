@@ -5,18 +5,16 @@
 		"Map_Image": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Map_Image/04_Map.04_Map'",
 		"Map_Asset": "(WorldAsset=\"/Game/QuakeLike_Base/Lvl_PortalMap.Lvl_PortalMap\")",
 		"Character_List": [
-			"C01",
 			"C02",
 			"C03",
 			"C04",
-			"C05",
-			"C06"
+			"C05"
 		],
 		"Max_Player_Count": 6,
 		"Map_Size": 2,
 		"Map_Explain": "NSLOCTEXT(\"[9702DEC0DEE0E3E2145DB69F1E91813C]\", \"06081D044470066631CB1FB2FC087DD8\", \"포탈맵입니다.\")",
-		"WinKillCount": 10,
-		"GameTimer": "(X=3.000000,Y=0.000000)",
+		"WinKillCount": 25,
+		"GameTimer": "(X=5.000000,Y=0.000000)",
 		"Map_ID": "Map_03",
 		"Map_Feature": [
 			"NSLOCTEXT(\"[9702DEC0DEE0E3E2145DB69F1E91813C]\", \"D3C5F41C4FF6E7DED27C4080EB9A93D0\", \"AI\")",
@@ -55,7 +53,7 @@
 	{
 		"Name": "Map_04",
 		"Map_Name": "Lvl_QuakeMap_04",
-		"Map_Image": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Map_Image/04_Map.04_Map'",
+		"Map_Image": "None",
 		"Map_Asset": "(WorldAsset=\"/Game/QuakeLike_Base/Lvl_QuakeMap_04.Lvl_QuakeMap_04\")",
 		"Character_List": [
 			"C06",
