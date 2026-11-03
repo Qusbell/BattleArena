@@ -1,6 +1,6 @@
 {
 	"weaponType": "HitScan",
-	"damage": 140,
+	"damage": 170,
 	"range": 100000,
 	"fireRate": 1,
 	"spread": 0,
