@@ -1,8 +1,8 @@
 {
 	"weaponType": "Projectile",
-	"damage": 20,
+	"damage": 18,
 	"range": 5000,
-	"fireRate": 0.070000000000000007,
+	"fireRate": 0.10000000000000001,
 	"spread": 0,
 	"projectileClass": "/Script/Engine.BlueprintGeneratedClass'/Game/QuakeLike_1_0/HeldItem/Projectile/BP_PlasmaProjectile.BP_PlasmaProjectile_C'",
 	"projectileSpeed": 10000,

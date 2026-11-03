@@ -3,7 +3,7 @@
 	"damage": 18,
 	"range": 10000,
 	"fireRate": 1.3,
-	"spread": 35,
+	"spread": 30,
 	"projectileClass": "None",
 	"projectileSpeed": 0,
 	"damageJudgmentOffset": 0,
