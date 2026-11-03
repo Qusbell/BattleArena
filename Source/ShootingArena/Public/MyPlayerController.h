@@ -19,6 +19,9 @@ class SHOOTINGARENA_API AMyPlayerController : public APlayerController
 public:
 	AMyPlayerController();
 
+	/** Called locally after a successful loading-screen transition. Retries until a pawn exists. */
+	void ReportGameplayReadyAfterLoading();
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "HUD|Kill Medal", meta = (ClampMin = "0.01"))
 	double KillMedalDisplayTime = 1.2;
 
@@ -90,6 +93,11 @@ protected:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 private:
+	void TryReportGameplayReady();
+	UFUNCTION(Server, Reliable)
+	void ServerReportGameplayReady(APawn* ReadyPawn);
+	FTimerHandle GameplayReadyRetryTimer;
+	TWeakObjectPtr<UWorld> GameplayReadyReportedWorld;
 	friend class FKillMedalBridgeTest;
 	friend class FKillMedalAutomaticAwardsTest;
 	friend class UKillStreakVoiceComponent;

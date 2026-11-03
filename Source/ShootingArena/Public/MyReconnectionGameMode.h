@@ -65,4 +65,22 @@ public:
 	// ?AIEasy=/?AINormal=/?AIHard= 값을 블루프린트에서 Parse Option으로 읽으려면 필요합니다.
 	UFUNCTION(BlueprintPure, Category = "Server")
 	FString GetLevelOptionsString() const { return OptionsString; }
+
+public:
+	/** Server-side entry point; duplicate reports from the same controller are ignored. */
+	void NotifyClientGameplayReady(APlayerController* Player);
+
+	/** Runs on the server for each player's first successful loading completion in this world. */
+	UFUNCTION(BlueprintImplementableEvent, Category = "Loading", meta = (DisplayName = "On Client Gameplay Ready"))
+	void OnClientGameplayReady(APlayerController* Player);
+
+	/** Runs once per GameMode when the first human client reports ready. */
+	UFUNCTION(BlueprintImplementableEvent, Category = "Loading", meta = (DisplayName = "On First Client Gameplay Ready"))
+	void OnFirstClientGameplayReady(APlayerController* Player);
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Loading")
+	bool bFirstClientGameplayReady = false;
+
+private:
+	TSet<TWeakObjectPtr<APlayerController>> GameplayReadyPlayers;
 };

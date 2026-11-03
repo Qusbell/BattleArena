@@ -1,4 +1,8 @@
 #include "MyPlayerController.h"
+#include "MyReconnectionGameMode.h"
+#include "Loading/LoadingScreenSubsystem.h"
+#include "Engine/GameInstance.h"
+#include "GameFramework/Pawn.h"
 #include "Blueprint/UserWidget.h"
 #include "Character/CharacterPoolComponent.h"
 #include "Animation/WidgetAnimation.h"
@@ -204,6 +208,7 @@ void AMyPlayerController::UpdateKillMedalQueue()
 
 void AMyPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	if (UWorld* World = GetWorld()) World->GetTimerManager().ClearTimer(GameplayReadyRetryTimer);
 	if (UWorld* World = GetWorld()) World->GetTimerManager().ClearTimer(KillMedalQueueTimer);
 	PendingKillMedals.Reset();
 	ActiveKillMedal = FKillMedalRequest();
@@ -211,6 +216,43 @@ void AMyPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	ActiveMedalHUD.Reset();
 	bHasActiveKillMedal = false;
 	Super::EndPlay(EndPlayReason);
+}
+
+void AMyPlayerController::ReportGameplayReadyAfterLoading()
+{
+	if (!IsLocalController() || !GetWorld() || GameplayReadyReportedWorld.Get() == GetWorld()) return;
+	TryReportGameplayReady();
+}
+
+void AMyPlayerController::TryReportGameplayReady()
+{
+	UWorld* World = GetWorld();
+	if (!World || World->bIsTearingDown || !IsLocalController()) return;
+	const auto* Loading = GetGameInstance()->GetSubsystem<ULoadingScreenSubsystem>();
+	// Cancel rather than carrying an old report across a new loading transition.
+	if (Loading && Loading->IsLoadingScreenActive())
+	{
+		World->GetTimerManager().ClearTimer(GameplayReadyRetryTimer);
+		return;
+	}
+	APawn* ReadyPawn = GetPawn();
+	if (!IsValid(ReadyPawn) || ReadyPawn->GetController() != this)
+	{
+		World->GetTimerManager().SetTimer(GameplayReadyRetryTimer, this,
+			&ThisClass::TryReportGameplayReady, 0.1f, false);
+		return;
+	}
+	World->GetTimerManager().ClearTimer(GameplayReadyRetryTimer);
+	GameplayReadyReportedWorld = World;
+	UE_LOG(LogTemp, Log, TEXT("[Loading] Client gameplay ready: %s / %s"), *GetName(), *GetNameSafe(ReadyPawn));
+	ServerReportGameplayReady(ReadyPawn);
+}
+
+void AMyPlayerController::ServerReportGameplayReady_Implementation(APawn* ReadyPawn)
+{
+	if (!IsValid(ReadyPawn) || ReadyPawn != GetPawn() || ReadyPawn->GetController() != this) return;
+	if (auto* Mode = GetWorld()->GetAuthGameMode<AMyReconnectionGameMode>())
+		Mode->NotifyClientGameplayReady(this);
 }
 
 void AMyPlayerController::OnUnPossess()

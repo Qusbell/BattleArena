@@ -6,6 +6,8 @@
 #include "BuffScreenEffect.generated.h"
 
 class UBuffPresentationComponent;
+class UMaterialInterface;
+class UMaterialInstanceDynamic;
 
 UCLASS(BlueprintType)
 class SHOOTINGARENA_API UBuffScreenEffectSettings : public UDataAsset
@@ -44,6 +46,19 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "버프 화면 효과", meta = (DisplayName = "사라지는 시간", ClampMin = "0.0", Units = "s"))
 	float FadeOutSeconds = 0.4f;
 
+	/** UI material with Color1/Color2/Intensity/Burst parameters; empty keeps the gradient only. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "버프 화면 효과|전기", meta = (DisplayName = "전기 머티리얼"))
+	TObjectPtr<UMaterialInterface> ElectricMaterial;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "버프 화면 효과|전기", meta = (DisplayName = "평상시 지직거림 세기", ClampMin = "0.0"))
+	float ElectricIntensity = 0.35f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "버프 화면 효과|전기", meta = (DisplayName = "획득 순간 세기", ClampMin = "0.0"))
+	float BurstIntensity = 1.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "버프 화면 효과|전기", meta = (DisplayName = "번쩍임 지속 시간", ClampMin = "0.0", Units = "s"))
+	float BurstSeconds = 0.5f;
+
 	/** Hard reference to CompShooter's existing effect, assigned in DA_BuffScreenEffect. */
 	UPROPERTY(EditDefaultsOnly, Category = "연결", meta = (DisplayName = "CompShooter 효과 위젯"))
 	TSubclassOf<UUserWidget> EffectClass;
@@ -68,8 +83,14 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UUserWidget> Effect;
 
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> ElectricMID;
+
 	TWeakObjectPtr<UBuffPresentationComponent> Source;
 	float Fade = 0.0f;
+	float BurstTime = 0.0f;
+	float AppliedBurst = -1.0f;
+	double LastRemaining = 0.0;
 	bool bFinished = false;
 
 	friend class FBuffScreenEffectTest;

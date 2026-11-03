@@ -5,7 +5,6 @@
 		"Map_Image": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Map_Image/04_Map.04_Map'",
 		"Map_Asset": "(WorldAsset=\"/Game/QuakeLike_Base/Lvl_PortalMap.Lvl_PortalMap\")",
 		"Character_List": [
-			"C01",
 			"C02",
 			"C03",
 			"C04",
@@ -52,7 +51,7 @@
 	{
 		"Name": "Map_04",
 		"Map_Name": "Lvl_QuakeMap_04",
-		"Map_Image": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Map_Image/04_Map.04_Map'",
+		"Map_Image": "None",
 		"Map_Asset": "(WorldAsset=\"/Game/QuakeLike_Base/Lvl_QuakeMap_04.Lvl_QuakeMap_04\")",
 		"Character_List": [
 			"C06",
