@@ -40,10 +40,10 @@
 			"C04",
 			"C05"
 		],
-		"Max_Player_Count": 5,
+		"Max_Player_Count": 6,
 		"Map_Size": 1,
 		"Map_Explain": "",
-		"WinKillCount": -1,
+		"WinKillCount": 25,
 		"GameTimer": "(X=5.000000,Y=0.000000)",
 		"Map_ID": "Map_06",
 		"Map_Feature": [],
