@@ -5,13 +5,14 @@
 		"Map_Image": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Map_Image/04_Map.04_Map'",
 		"Map_Asset": "(WorldAsset=\"/Game/QuakeLike_Base/Lvl_PortalMap.Lvl_PortalMap\")",
 		"Character_List": [
+			"C01",
 			"C02",
 			"C03",
 			"C04",
 			"C05"
 		],
 		"Max_Player_Count": 6,
-		"Map_Size": 2,
+		"Map_Size": 1,
 		"Map_Explain": "NSLOCTEXT(\"[9702DEC0DEE0E3E2145DB69F1E91813C]\", \"06081D044470066631CB1FB2FC087DD8\", \"포탈맵입니다.\")",
 		"WinKillCount": 25,
 		"GameTimer": "(X=5.000000,Y=0.000000)",
