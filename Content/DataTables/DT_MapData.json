@@ -6,10 +6,10 @@
 		"Map_Asset": "(WorldAsset=\"/Game/QuakeLike_Base/Lvl_PortalMap.Lvl_PortalMap\")",
 		"Character_List": [
 			"C01",
-			"C02",
 			"C03",
 			"C04",
-			"C05"
+			"C05",
+			"C06"
 		],
 		"Max_Player_Count": 6,
 		"Map_Size": 1,
