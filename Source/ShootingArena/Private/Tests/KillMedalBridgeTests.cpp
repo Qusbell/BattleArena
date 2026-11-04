@@ -213,6 +213,10 @@ bool FKillMedalAutomaticAwardsTest::RunTest(const FString& Parameters)
 	CustomSettings->CountColor = FLinearColor(0.8f, 0.4f, 0.05f, 1.0f);
 	CustomSettings->LargeMedalMinKills = 11;
 	CustomSettings->LargeMedalTexture = nullptr;
+	CustomSettings->StampStartScale = 2.0f;
+	CustomSettings->StampImpactTime = 0.10f;
+	CustomSettings->StampImpactScale = 0.92f;
+	CustomSettings->StampSettleTime = 0.08f;
 	StreakHUD->ActiveStreakSettings = CustomSettings;
 	StreakHUD->RefreshStreakMedals(1);
 	UWidget* FirstMedal = StreakHUD->StreakIcons->GetChildAt(0);
@@ -243,6 +247,43 @@ bool FKillMedalAutomaticAwardsTest::RunTest(const FString& Parameters)
 	StreakHUD->RefreshStreakMedals(0);
 	TestTrue(TEXT("Death/reset clears active stamps and the old icons"), StreakHUD->MedalStamps.IsEmpty()
 		&& StreakHUD->StreakIcons->GetChildrenCount() == 0);
+	{
+		TGuardValue<float> StartScale(CustomSettings->StampStartScale, 3.0f);
+		TGuardValue<float> ImpactTime(CustomSettings->StampImpactTime, 0.05f);
+		TGuardValue<float> ImpactScale(CustomSettings->StampImpactScale, 0.8f);
+		TGuardValue<float> SettleTime(CustomSettings->StampSettleTime, 0.20f);
+		StreakHUD->RefreshStreakMedals(1);
+		UWidget* ConfiguredMedal = StreakHUD->StreakIcons->GetChildAt(0);
+		TestTrue(TEXT("DA controls stamp starting size"), ConfiguredMedal->GetRenderTransform().Scale.Equals(FVector2D(3.0f)));
+		CustomSettings->StampStartScale = 4.0f;
+		StreakHUD->UpdateMedalStamps(0.025f);
+		TestTrue(TEXT("DA controls descent timing and editing the DA cannot jump an active stamp"),
+			ConfiguredMedal->GetRenderTransform().Scale.Equals(FVector2D(2.45f)));
+		StreakHUD->UpdateMedalStamps(0.025f);
+		TestTrue(TEXT("DA controls impact size and highlight timing"), ConfiguredMedal->GetRenderTransform().Scale.Equals(FVector2D(0.8f))
+			&& StreakHUD->StreakHighlight->GetVisibility() == ESlateVisibility::HitTestInvisible);
+		StreakHUD->UpdateMedalStamps(0.10f);
+		TestTrue(TEXT("DA controls recovery timing"), ConfiguredMedal->GetRenderTransform().Scale.Equals(FVector2D(0.95f))
+			&& StreakHUD->MedalStamps.Num() == 1);
+		StreakHUD->UpdateMedalStamps(0.11f);
+		TestTrue(TEXT("Configured stamps finish at the designer's final size"), ConfiguredMedal->GetRenderTransform().Scale.Equals(FVector2D(1.0f))
+			&& StreakHUD->MedalStamps.IsEmpty());
+		CustomSettings->StampStartScale = std::numeric_limits<float>::quiet_NaN();
+		CustomSettings->StampImpactTime = 0.0f;
+		CustomSettings->StampImpactScale = std::numeric_limits<float>::quiet_NaN();
+		CustomSettings->StampSettleTime = std::numeric_limits<float>::infinity();
+		StreakHUD->RefreshStreakMedals(2);
+		UWidget* InvalidSettingsMedal = StreakHUD->StreakIcons->GetChildAt(1);
+		StreakHUD->UpdateMedalStamps(1.0f);
+		TestTrue(TEXT("Invalid DA values cannot leave a malformed or unfinished stamp"),
+			InvalidSettingsMedal->GetRenderTransform().Scale.Equals(FVector2D(1.0f)) && StreakHUD->MedalStamps.IsEmpty());
+		StreakHUD->RefreshStreakMedals(3);
+		UWidget* HiddenMedal = StreakHUD->StreakIcons->GetChildAt(2);
+		StreakHUD->HideStreakMedals();
+		TestTrue(TEXT("Hiding during a configurable stamp restores its size and clears the animation"),
+			HiddenMedal->GetRenderTransform().Scale.Equals(FVector2D(1.0f)) && StreakHUD->MedalStamps.IsEmpty());
+		StreakHUD->RefreshStreakMedals(0);
+	}
 	auto FirstImage = [StreakHUD]() -> UImage*
 	{
 		const USizeBox* Box = Cast<USizeBox>(StreakHUD->StreakIcons->GetChildAt(0));

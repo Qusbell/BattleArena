@@ -44,6 +44,10 @@ private:
 		TWeakObjectPtr<UWidget> Medal;
 		TWeakObjectPtr<UUserWidget> Highlight;
 		float Elapsed = 0.0f;
+		float StartScale = 2.0f;
+		float ImpactTime = 0.10f;
+		float ImpactScale = 0.92f;
+		float SettleTime = 0.08f;
 	};
 	TArray<FMedalStamp> MedalStamps;
 	bool bDisplayedLargeMedal = false;

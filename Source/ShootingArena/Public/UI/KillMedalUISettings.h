@@ -53,6 +53,18 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "메달|효과", meta = (DisplayName = "반짝임 불투명도", ClampMin = "0.0", ClampMax = "1.0"))
 	float HighlightOpacity = 0.25f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "메달|도장 애니메이션", meta = (DisplayName = "등장 시작 크기 배율", ToolTip = "최종 메달 크기에 곱하는 배율입니다. 2는 2배 크기이며, 높일수록 등장 동작이 커집니다.", ClampMin = "0.01"))
+	float StampStartScale = 2.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "메달|도장 애니메이션", meta = (DisplayName = "착지까지 걸리는 시간", ToolTip = "등장 크기에서 착지 크기까지 줄어드는 시간입니다. 짧을수록 빠르게 찍힙니다.", ClampMin = "0.01", Units = "s"))
+	float StampImpactTime = 0.10f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "메달|도장 애니메이션", meta = (DisplayName = "착지 순간 압축 배율", ToolTip = "1은 압축 없음, 0.8은 최종 크기의 80%입니다. 작을수록 착지 후 반동이 커집니다.", ClampMin = "0.01", ClampMax = "1.0"))
+	float StampImpactScale = 0.92f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "메달|도장 애니메이션", meta = (DisplayName = "착지 후 복원 시간", ToolTip = "착지 크기에서 최종 크기로 돌아오는 시간입니다. 짧을수록 반동이 빠릅니다.", ClampMin = "0.01", Units = "s"))
+	float StampSettleTime = 0.08f;
+
 	/** Expand this field to edit the font family, typeface, size and outline. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "문구", meta = (DisplayName = "킬 수 문구 폰트 및 크기"))
 	FSlateFontInfo CountFont;
