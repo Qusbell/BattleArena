@@ -18,7 +18,7 @@
 	"fireSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/SFX_ShotGun2_Cue.SFX_ShotGun2_Cue'",
 	"pierceMultiplier": 0,
 	"zoomFov": 50,
-	"interpSpeed": 160,
+	"interpSpeed": 500,
 	"pierceMax": 0,
 	"traceChannel": "TraceTypeQuery2",
 	"projectileSound": "None",

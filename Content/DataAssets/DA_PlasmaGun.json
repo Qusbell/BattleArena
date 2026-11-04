@@ -18,7 +18,7 @@
 	"fireSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/Fire_Plasma.Fire_Plasma'",
 	"pierceMultiplier": 0,
 	"zoomFov": 50,
-	"interpSpeed": 160,
+	"interpSpeed": 500,
 	"pierceMax": 0,
 	"traceChannel": "TraceTypeQuery1",
 	"projectileSound": "None",
