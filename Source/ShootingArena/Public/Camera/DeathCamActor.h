@@ -12,14 +12,7 @@ class UMaterialInterface;
 /**
  * 실제 DeathCam 시점을 담당하는 CameraActor입니다.
  *
- * 최종 기획 기준:
- * - 기준점(Center) = 사망 위치 + Z Offset
- * - 기본 관계는 Camera - Center - Killer가 같은 선상
- * - Camera는 Center를 기준으로 Killer의 반대편에 위치
- * - Killer 이동 시 새 기본 위치를 계산하고 부드럽게 이동
- * - 지형 충돌 시 Hit Normal을 기준으로 벽면을 따라 Slide
-	 * - 기본 Camera는 Center를 바라봄
-	 * - 모서리에서 뒤쪽 공간이 부족한 경우에만 사망 위치에 고정하고 Killer를 바라봄
+ * 사망 위치 주변의 제한된 범위에서 벽을 따라 이동하며 사망 위치와 Killer를 함께 담습니다.
  *
  * 네트워크 / ViewTarget / Spawn / Destroy는 DeathCamComponent가 담당합니다.
  */
@@ -61,11 +54,11 @@ public:
 	UFUNCTION(BlueprintPure, Category = "DeathCam")
 	FVector GetDeathLocation() const { return deathLocation; }
 
-	/** 최종 기획의 기준점: DeathLocation + Offset(Z). */
+	/** 후보 위치의 높이 기준: 사망 위치 + Offset(Z). */
 	UFUNCTION(BlueprintPure, Category = "DeathCam")
 	FVector GetCenterLocation() const { return centerLocation; }
 
-	/** DeathCam 진입 시 확정되고 유지되는 최대 카메라 거리. */
+	/** 사망 위치를 중심으로 하는 최대 카메라 이동 반경. */
 	UFUNCTION(BlueprintPure, Category = "DeathCam")
 	float GetMaxDistance() const { return maxDistance; }
 
@@ -83,22 +76,42 @@ private:
 	/** 실제 사망 위치. */
 	FVector deathLocation = FVector::ZeroVector;
 
-	/** 기준점 = deathLocation + FVector::UpVector * centerOffset. */
+	/** 후보 높이 기준 = deathLocation + FVector::UpVector * centerOffset. */
 	FVector centerLocation = FVector::ZeroVector;
 
-	/** DeathCam 시작 시 정해지고 이후 증가하지 않는 최대 이동 거리. */
+	/** 사망 위치를 중심으로 한 카메라 이동 반경. */
 	float maxDistance = 600.0f;
 
 	bool bDeathCamActive = false;
 
-	/** 사망 시 한 번 결정합니다. 모서리 예외 시점과 기본 시점을 매 프레임 오가지 않게 합니다. */
-	bool bUseDeathLocationCamera = false;
+	/** 후보 위치를 자주 바꾸지 않아 장애물 경계에서 시점이 흔들리는 것을 방지합니다. */
+	FVector cameraTargetLocation = FVector::ZeroVector;
+	float baseCameraFov = 90.0f;
+
+	/** -2: 공통 출발점 확인, -1: 현재 목표 평가, 0 이상: 방향별 후보 평가입니다. */
+	int32 nextCameraSearchDirection = -2;
+	bool bCameraSearchInProgress = false;
+	bool bSearchHasKiller = false;
+	bool bCameraMovementBlocked = false;
+	float timeSinceCameraSearch = 0.0f;
+	FVector searchKillerDirection = FVector::ForwardVector;
+	FVector searchKillerLocation = FVector::ZeroVector;
+	FVector searchSweepStart = FVector::ZeroVector;
+	FVector searchBestLocation = FVector::ZeroVector;
+	float searchBestScore = -1.0e9f;
+	float searchCurrentTargetScore = -1.0e9f;
 
 	// DataAsset 값을 런타임에 복사합니다.
 	// DataAsset이 비어 있어도 아래 기본값으로 안전하게 동작합니다.
 	float centerOffset = 0.0f;
 	float initialCameraDistance = 600.0f;
 	float cameraMoveInterpSpeed = 5.0f;
+	float cameraSearchInterval = 0.35f;
+	int32 cameraSearchDirectionCount = 12;
+	int32 cameraSearchCandidatesPerFrame = 1;
+	float cameraSearchKillerMoveThreshold = 50.0f;
+	float cameraSearchForceRefreshInterval = 1.0f;
+	float cameraTargetSwitchMargin = 40.0f;
 	bool bEnableKillerHighlight = true;
 	int32 killerHighlightStencilValue = 1;
 
@@ -120,8 +133,8 @@ private:
 	// 남은 이동량을 다시 투영할 수 있도록 제한된 횟수만 반복합니다.
 	static constexpr int32 maxSlideIterations = 3;
 
-	// 뒤쪽 카메라 거리와 주변 벽을 검사하는 모서리 예외 기준(cm)입니다.
-	static constexpr float cornerCameraDistance = 100.0f;
+	static constexpr float maxFramingFov = 150.0f;
+	static constexpr float minDeathLocationCameraDistance = 60.0f;
 
 	/** Killer Highlight 종료 시 원래 CustomDepth 상태로 되돌리기 위한 백업입니다. */
 	struct FHighlightComponentState
@@ -139,26 +152,29 @@ private:
 	/** Center -> Killer 방향. Killer가 유효하지 않으면 안전한 fallback 방향을 반환합니다. */
 	FVector CalculateKillerDirection() const;
 
-	/** 기획의 기본 Camera 위치: Center - KillerDirection * MaxDistance. */
+	/** Killer 반대편을 선호 위치로 삼되, 충돌에 따라 다른 위치도 탐색합니다. */
 	FVector CalculateBaseCameraLocation(const FVector& killerDirection) const;
 
-	/** DeathCam 첫 프레임 위치를 지형 안에 생성하지 않도록 Center -> 초기 위치 Sweep을 수행합니다. */
-	FVector ResolveInitialCameraLocation(const FVector& desiredCameraLocation) const;
+	/** 후보들의 공통 출발점을 한 번 검사해 같은 Overlap 검사를 반복하지 않습니다. */
+	FVector FindCameraSweepStart() const;
 
-	/** 뒤쪽 공간이 부족하고 서로 다른 방향의 벽이 가까이 있는 사망인지 확인합니다. */
-	bool ShouldUseDeathLocationCamera(const FVector& initialCameraLocation) const;
+	/** 안전한 공통 출발점에서 후보 위치까지 Sweep합니다. */
+	FVector ResolveCameraCandidateLocation(const FVector& desiredCameraLocation, const FVector& sweepStart) const;
 
-	/** 모서리 예외 시점에서만 Killer를 직접 바라봅니다. */
-	FRotator CalculateLookAtKillerRotation(const FVector& cameraLocation) const;
+	/** 방향/위치를 저장한 뒤 프레임별 예산 안에서 탐색을 진행합니다. */
+	void BeginCameraSearch(const FVector& killerDirection);
+	void AdvanceCameraSearch();
+	bool ShouldBeginCameraSearch() const;
+	float ScoreCameraTarget(const FVector& candidate) const;
+
+	/** 두 대상의 방향을 기준으로 회전과 필요한 시야각을 계산합니다. */
+	FRotator CalculateFramingRotation(const FVector& cameraLocation, float& outFov) const;
 
 	/** 현재 위치에서 원하는 이동량만큼 움직이되, 충돌하면 Hit Normal 기준으로 벽면 Slide를 적용합니다. */
-	FVector MoveCameraWithCollision(const FVector& cameraMove, const FVector& killerDirection) const;
+	FVector MoveCameraWithCollision(const FVector& cameraMove) const;
 
-	/** MaxDistance와 'Center를 넘어 Killer 방향으로 이동 금지' 규칙을 Sweep 목표에 적용합니다. */
-	FVector ClampCameraLocation(const FVector& candidateLocation, const FVector& killerDirection) const;
-
-	/** Camera가 어느 위치에 있든 Center를 바라보도록 회전을 갱신합니다. */
-	FRotator CalculateLookAtCenterRotation(const FVector& cameraLocation) const;
+	/** 고정된 사망 위치를 중심으로 한 이동 반경을 Sweep 목표에 적용합니다. */
+	FVector ClampCameraLocation(const FVector& candidateLocation) const;
 
 	/** DataAsset의 Highlight Type에 따라 선택된 Post Process Material을 이 DeathCam 카메라에만 적용합니다. */
 	void ApplyKillerHighlightPostProcess();
