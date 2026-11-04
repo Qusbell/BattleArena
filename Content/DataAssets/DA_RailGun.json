@@ -18,7 +18,7 @@
 	"fireSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/_레일건후보_0161_qk_wpn_railgun_q3_shot__Cue._레일건후보_0161_qk_wpn_railgun_q3_shot__Cue'",
 	"pierceMultiplier": 0.80000000000000004,
 	"zoomFov": 50,
-	"interpSpeed": 200,
+	"interpSpeed": 500,
 	"pierceMax": 1,
 	"traceChannel": "TraceTypeQuery3",
 	"projectileSound": "None",
@@ -59,7 +59,7 @@
 		},
 		"crosshairScale": 1
 	},
-	"zoomAimSpeedMultiplier": 0.17000000000000001,
+	"zoomAimSpeedMultiplier": 4,
 	"name": "RailGun",
 	"icon": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/Assets/WeaponIMG/railgunV2.railgunV2'",
 	"weaponHUDColor":
