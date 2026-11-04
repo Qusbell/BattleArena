@@ -694,53 +694,10 @@
 					]
 				},
 				{
-					"name": "map_Id",
-					"displayName": "Map_ID",
-					"cppType": "FName",
-					"order": 9,
-					"advancedDisplay": false,
-					"type": "name"
-				},
-				{
-					"name": "map_Feature",
-					"displayName": "Map_Feature",
-					"cppType": "TArray",
-					"order": 10,
-					"advancedDisplay": false,
-					"type": "array",
-					"element":
-					{
-						"name": "map_Feature",
-						"displayName": "Map Feature",
-						"cppType": "FText",
-						"order": 0,
-						"advancedDisplay": false,
-						"type": "text"
-					}
-				},
-				{
-					"name": "feature_Icon",
-					"displayName": "Feature_Icon",
-					"cppType": "TArray",
-					"order": 11,
-					"advancedDisplay": false,
-					"type": "array",
-					"element":
-					{
-						"name": "feature_Icon",
-						"displayName": "Feature Icon",
-						"cppType": "UTexture2D*",
-						"order": 0,
-						"advancedDisplay": false,
-						"type": "object",
-						"objectClass": "/Script/Engine.Texture2D"
-					}
-				},
-				{
 					"name": "character_Light_Channels",
 					"displayName": "Character_Light_Channels",
 					"cppType": "TArray",
-					"order": 12,
+					"order": 9,
 					"advancedDisplay": false,
 					"type": "array",
 					"element":
