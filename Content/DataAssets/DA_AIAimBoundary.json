@@ -5,8 +5,8 @@
 		"y": 500,
 		"z": 150
 	},
-	"clampAimDistance": 25,
+	"clampAimDistance": 108,
 	"near Distance": 150,
-	"near Angle": 25,
-	"far Angle": 5
+	"near Angle": 60,
+	"far Angle": 10
 }
