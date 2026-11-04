@@ -14,7 +14,7 @@
 		"MaxLaunchForce": 550,
 		"HorizontalDecelTime": 1.2,
 		"HorizontalDecelExponent": 2,
-		"DespawnTime": 3,
+		"DespawnTime": 5,
 		"DespawnShrinkEnabled": true,
 		"DespawnShrinkDuration": 0.1,
 		"SettlementHeightOffset": 50,

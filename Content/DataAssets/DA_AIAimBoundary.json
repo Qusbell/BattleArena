@@ -6,7 +6,7 @@
 		"z": 150
 	},
 	"clampAimDistance": 25,
-	"near Distance": 250,
-	"near Angle": 120,
-	"far Angle": 40
+	"near Distance": 150,
+	"near Angle": 25,
+	"far Angle": 5
 }
