@@ -1,8 +1,8 @@
 {
 	"weaponType": "Projectile",
-	"damage": 16,
-	"range": 5000,
-	"fireRate": 0.10000000000000001,
+	"damage": 14,
+	"range": 100000,
+	"fireRate": 0.059999999999999998,
 	"spread": 0,
 	"projectileClass": "/Script/Engine.BlueprintGeneratedClass'/Game/QuakeLike_1_0/HeldItem/Projectile/BP_PlasmaProjectile.BP_PlasmaProjectile_C'",
 	"projectileSpeed": 10000,
@@ -78,8 +78,8 @@
 	"attributes":
 	{
 	},
-	"startUsageCount": 50,
-	"maxUsageCount": 50,
+	"startUsageCount": 70,
+	"maxUsageCount": 70,
 	"fpAnim": "/Script/Engine.AnimBlueprintGeneratedClass'/Game/QuakeLike_1_0/Animation/Steel/ABP/Steel_ABP_FP_BGH_Pistol.Steel_ABP_FP_BGH_Pistol_C'",
 	"tpAnim": "/Script/Engine.AnimBlueprintGeneratedClass'/Game/QuakeLike_1_0/Animation/Steel/ABP/Steel_ABP_TP_BGH_PlasmaGun_AimAligned.Steel_ABP_TP_BGH_PlasmaGun_AimAligned_C'",
 	"skeletalMesh": "/Script/Engine.SkeletalMesh'/Game/Plasma_Buy/SKM_plasmacannon_low.SKM_plasmacannon_low'",
