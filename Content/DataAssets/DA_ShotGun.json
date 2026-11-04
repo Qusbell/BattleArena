@@ -75,6 +75,7 @@
 	"useSeparatePlayerProjectileDestroyEffects": false,
 	"projectilePlayerDestroyEffect": "None",
 	"nSProjectilePlayerDestroyEffect": "None",
+	"minDamageDistance": 600,
 	"attributes":
 	{
 	},
