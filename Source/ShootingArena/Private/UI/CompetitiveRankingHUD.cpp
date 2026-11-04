@@ -39,8 +39,6 @@ namespace
 	constexpr float PanelHeight = 56.0f;
 	constexpr float RankingScale = 0.975f;
 	constexpr float TimerGap = 5.0f;
-	constexpr float StampImpactTime = 0.10f;
-	constexpr float StampDuration = 0.18f;
 
 	int32 ReadInt(const UObject* Object, FName Name)
 	{
@@ -59,7 +57,9 @@ UCompetitiveRankingHUD::UCompetitiveRankingHUD(const FObjectInitializer& ObjectI
 
 void UCompetitiveRankingHUD::HideStreakMedals()
 {
-	UpdateMedalStamps(StampDuration);
+	for (const FMedalStamp& Stamp : MedalStamps)
+		if (UWidget* Medal = Stamp.Medal.Get()) Medal->SetRenderScale(FVector2D(1.0f));
+	MedalStamps.Reset();
 	if (StreakPanel) StreakPanel->SetVisibility(ESlateVisibility::Collapsed);
 }
 
@@ -67,11 +67,17 @@ void UCompetitiveRankingHUD::StartMedalStamp(UWidget* Medal)
 {
 	if (!Medal) return;
 	MedalStamps.RemoveAll([Medal](const FMedalStamp& Stamp) { return Stamp.Medal.Get() == Medal; });
-	Medal->SetRenderTransformPivot(FVector2D(0.5f, 0.5f));
-	Medal->SetRenderScale(FVector2D(2.0f));
-	Medal->SetRenderOpacity(1.0f);
+	const UKillMedalUISettings* Settings = ActiveStreakSettings ? ActiveStreakSettings.Get() : GetDefault<UKillMedalUISettings>();
 	FMedalStamp& Stamp = MedalStamps.AddDefaulted_GetRef();
 	Stamp.Medal = Medal;
+	// Capture each award's settings so editing the DA cannot jump an in-flight stamp.
+	Stamp.StartScale = FMath::IsFinite(Settings->StampStartScale) ? FMath::Max(0.01f, Settings->StampStartScale) : 2.0f;
+	Stamp.ImpactTime = FMath::IsFinite(Settings->StampImpactTime) ? FMath::Max(0.01f, Settings->StampImpactTime) : 0.10f;
+	Stamp.ImpactScale = FMath::IsFinite(Settings->StampImpactScale) ? FMath::Clamp(Settings->StampImpactScale, 0.01f, 1.0f) : 0.92f;
+	Stamp.SettleTime = FMath::IsFinite(Settings->StampSettleTime) ? FMath::Max(0.01f, Settings->StampSettleTime) : 0.08f;
+	Medal->SetRenderTransformPivot(FVector2D(0.5f, 0.5f));
+	Medal->SetRenderScale(FVector2D(Stamp.StartScale));
+	Medal->SetRenderOpacity(1.0f);
 }
 
 void UCompetitiveRankingHUD::UpdateMedalStamps(float DeltaTime)
@@ -83,12 +89,12 @@ void UCompetitiveRankingHUD::UpdateMedalStamps(float DeltaTime)
 		if (!Medal) { MedalStamps.RemoveAtSwap(Index); continue; }
 		const float Previous = Stamp.Elapsed;
 		Stamp.Elapsed += FMath::Max(0.0f, DeltaTime);
-		const float Down = FMath::Clamp(Stamp.Elapsed / StampImpactTime, 0.0f, 1.0f);
-		const float Settle = FMath::Clamp((Stamp.Elapsed - StampImpactTime) / (StampDuration - StampImpactTime), 0.0f, 1.0f);
-		const float Scale = Stamp.Elapsed < StampImpactTime ? FMath::Lerp(2.0f, 0.92f, Down * Down)
-			: FMath::InterpEaseOut(0.92f, 1.0f, Settle, 2.0f);
+		const float Down = FMath::Clamp(Stamp.Elapsed / Stamp.ImpactTime, 0.0f, 1.0f);
+		const float Settle = FMath::Clamp((Stamp.Elapsed - Stamp.ImpactTime) / Stamp.SettleTime, 0.0f, 1.0f);
+		const float Scale = Stamp.Elapsed < Stamp.ImpactTime ? FMath::Lerp(Stamp.StartScale, Stamp.ImpactScale, Down * Down)
+			: FMath::InterpEaseOut(Stamp.ImpactScale, 1.0f, Settle, 2.0f);
 		Medal->SetRenderScale(FVector2D(Scale));
-		if (Previous < StampImpactTime && Stamp.Elapsed >= StampImpactTime)
+		if (Previous < Stamp.ImpactTime && Stamp.Elapsed >= Stamp.ImpactTime)
 		{
 			if (UUserWidget* Highlight = Stamp.Highlight.Get(); Highlight && Highlight->GetParent())
 			{
@@ -96,7 +102,7 @@ void UCompetitiveRankingHUD::UpdateMedalStamps(float DeltaTime)
 				if (UFunction* Play = Highlight->FindFunction(TEXT("PlayHighlight"))) Highlight->ProcessEvent(Play, nullptr);
 			}
 		}
-		if (Stamp.Elapsed >= StampDuration) MedalStamps.RemoveAtSwap(Index);
+		if (Stamp.Elapsed >= Stamp.ImpactTime + Stamp.SettleTime) MedalStamps.RemoveAtSwap(Index);
 	}
 }
 
