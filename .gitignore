@@ -93,6 +93,7 @@ DerivedDataCache/*
 *.log
 *.codex
 AGENTS.md
+!/AGENTS.md
 
 # Graphify local cache and state
 graphify-out/cache/

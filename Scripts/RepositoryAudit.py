@@ -7,10 +7,14 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import runpy as _audit_runpy
+_audit_paths = _audit_runpy.run_path(str(Path(__file__).with_name('AuditPaths.py')))
+resolve_audit_path = _audit_paths['resolve_audit_path']
+recorded_hash_matches = _audit_paths['recorded_hash_matches']
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
-GENERATED = ROOT / "docs/audit/generated"
+GENERATED = ROOT / "docs/repository-audit/audit/generated"
 
 
 def now():
@@ -146,9 +150,9 @@ def inventory():
 
 
 def finalize(run):
-    run = Path(run).resolve()
+    run = resolve_audit_path(run)
     if not run.is_relative_to(GENERATED.resolve()):
-        raise ValueError("Run must be inside docs/audit/generated")
+        raise ValueError("Run must be inside docs/repository-audit/audit/generated")
     data = json.loads((run / "run.json").read_text(encoding="utf-8"))
     registry_summary = run / "asset-registry-summary.json"
     if registry_summary.exists():
@@ -168,7 +172,7 @@ def finalize(run):
     data["collector_sha256"] = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in [Path(__file__), ROOT / "Scripts/RepositoryAuditUnreal.py"]}
     data["artifacts"] = {p.name: {"bytes": p.stat().st_size, "sha256": hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(run.iterdir()) if p.is_file() and p.name != "run.json"}
     write_json(run / "run.json", data)
-    write_json(ROOT / "docs/audit/baseline.json", data)
+    write_json(ROOT / "docs/repository-audit/audit/baseline.json", data)
     def table(filename, limit):
         with (run / filename).open(encoding="utf-8-sig", newline="") as f:
             rows = list(csv.DictReader(f))[:limit]
@@ -209,21 +213,21 @@ def finalize(run):
 용량은 압축/중복 제거를 고려한 실제 디스크 점유량이 아니며, 수집 중 Editor가
 기록하는 로그 등은 변경될 수 있습니다. 제외 경로와 오류는 실행 데이터에 기록합니다.
 """
-    (ROOT / "docs/audit/BASELINE.md").write_text(report, encoding="utf-8")
+    (ROOT / "docs/repository-audit/audit/BASELINE.md").write_text(report, encoding="utf-8")
     print(json.dumps({"stages": data["stages"], "comparison": data.get("comparison"), "artifacts": len(data["artifacts"])}, ensure_ascii=False))
 
 
 def verify(run):
-    run = Path(run).resolve()
+    run = resolve_audit_path(run)
     if not run.is_relative_to(GENERATED.resolve()):
-        raise ValueError("Run must be inside docs/audit/generated")
+        raise ValueError("Run must be inside docs/repository-audit/audit/generated")
     data = json.loads((run / "run.json").read_text(encoding="utf-8"))
     for name, expected in data["artifacts"].items():
         path = run / name
         if path.stat().st_size != expected["bytes"] or hashlib.sha256(path.read_bytes()).hexdigest() != expected["sha256"]:
             raise ValueError("Artifact changed: " + name)
     for name, expected in data["collector_sha256"].items():
-        if hashlib.sha256((ROOT / "Scripts" / name).read_bytes()).hexdigest() != expected:
+        if not recorded_hash_matches(ROOT / "Scripts" / name, expected):
             raise ValueError("Collector changed since finalize: " + name)
     with (run / "files.csv").open(encoding="utf-8-sig", newline="") as f:
         rows = list(csv.DictReader(f))

@@ -8,14 +8,18 @@ import datetime
 import hashlib
 import json
 from pathlib import Path
+import runpy as _audit_runpy
+_audit_paths = _audit_runpy.run_path(str(Path(__file__).with_name('AuditPaths.py')))
+resolve_audit_path = _audit_paths['resolve_audit_path']
+recorded_hash_matches = _audit_paths['recorded_hash_matches']
 import unreal
 
 
 def collect(run_directory):
     root = Path(unreal.Paths.project_dir()).resolve()
-    run = Path(run_directory).resolve()
-    if not run.is_relative_to(root / "docs/audit/generated"):
-        raise ValueError("Output must be in this project's docs/audit/generated")
+    run = resolve_audit_path(run_directory)
+    if not run.is_relative_to(root / "docs/repository-audit/audit/generated"):
+        raise ValueError("Output must be in this project's docs/repository-audit/audit/generated")
     manifest = json.loads((run / "run.json").read_text(encoding="utf-8"))
     if Path(manifest["project_root"]).resolve() != root:
         raise ValueError("MCP is connected to a different project")

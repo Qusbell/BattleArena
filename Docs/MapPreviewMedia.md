@@ -1,3 +1,8 @@
+<!-- repository-audit-20261105:start -->
+> 2026-11-05 저장소 조사: 현재 소스·에셋과 연결을 정적 대조한 참고 문서입니다. 아래 과거 빌드·자동 테스트·실행 결과를 이번 검증 결과로 해석하지 않습니다.
+> 현행 연결과 미확인 사항은 [시스템 지도](repository-audit/architecture/SystemMap.md), [데이터 원본 정책](repository-audit/architecture/DataAuthority.md)를 확인합니다.
+<!-- repository-audit-20261105:end -->
+
 # 맵 미리보기 이미지·영상 설정
 
 콘텐츠 브라우저에서 다음 데이터 테이블을 엽니다.
@@ -26,4 +31,8 @@
 
 구현은 `Source/ShootingArena/Public/UI/MapPreviewMedia.h` 및 `Private/UI/MapPreviewMedia.cpp`에 있습니다. 위젯 그래프 연결을 재구성해야 할 때는 C++ 빌드 후 에디터 Python에서 `Tools/UI/setup_map_preview.py`를 실행할 수 있습니다.
 
-자동 테스트: `ShootingArena.UI.MapPreview.HoverResumeAndHandoff`. 기존 `Content/Movies/MainMenuPreview.mp4`를 임시 테스트 소스로 사용하며 실제 맵의 영상 설정은 변경하지 않습니다.
+자동 테스트: `ShootingArena.UI.MapPreview.HoverResumeAndHandoff`는 `Content/Movies/MainMenuPreview.mp4`를 임시 테스트 소스로 사용하며 실제 맵의 영상 설정은 변경하지 않습니다.
+
+2026-11-05 조사 시 해당 영상 파일과 `Content/Movies` 폴더는 없었습니다. 테스트 소스는 파일이 없으면
+경고를 남기고 `true`를 반환합니다. 따라서 이 조건의 성공 결과는 영상 재생 검증을 의미하지 않습니다.
+실제 재생을 확인하려면 테스트 소스 파일을 준비하고 경고·재생 단계를 함께 확인해야 합니다. 이번 조사에서 테스트는 실행하지 않았습니다.

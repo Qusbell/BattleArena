@@ -1,0 +1,13 @@
+{
+  "verified": true,
+  "packages": 28198,
+  "assets": 28211,
+  "typed_edges": 87375,
+  "blueprints": 923,
+  "json_graphs": 2605,
+  "text_graphs": 4158,
+  "input_hashes": 594,
+  "document_links": 509,
+  "runtime_validation": "not_run",
+  "cleanup": "not_started"
+}

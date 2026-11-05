@@ -1,0 +1,175 @@
+{
+  "schema_version": 1,
+  "policy": "Archive preserves historical context; it does not assert that all historical measurements were false.",
+  "documents": [
+    {
+      "source": "docs/PathLink27PlacementCheck.md",
+      "target": "docs/history/experiments/PathLink27PlacementCheck.md",
+      "category": "experiments",
+      "reason": "과거 측정·배치·원인 분석 기록; 현재 조건에서 재실행하지 않았습니다.",
+      "sha256_before_archive": "a24af5aa03f340bc196370ae7e8ddfeec859e1b1f6eb8eb63b1b757c42ac66c7",
+      "sha256_after_archive": "4c3ff17c2d4cf89526120053acc95c4bbb1d040228469ee02090d2bd10c1b56e"
+    },
+    {
+      "source": "docs/PathLinkAccuracyNextSteps.md",
+      "target": "docs/history/plans/PathLinkAccuracyNextSteps.md",
+      "category": "plans",
+      "reason": "과거 개선 계획입니다. 현재 적용 완료 여부를 보장하는 문서가 아닙니다.",
+      "sha256_before_archive": "c6630a4d75b6f2b3779508832f0a45c2b94034664dc26170aa101ae9cd0eba19",
+      "sha256_after_archive": "bdcd66228a2115b6d9cc85c4e538dc738bde8d5df9ca5236afecea550fc71ac2"
+    },
+    {
+      "source": "docs/PathLinkBlendResults.md",
+      "target": "docs/history/experiments/PathLinkBlendResults.md",
+      "category": "experiments",
+      "reason": "과거 측정·배치·원인 분석 기록; 현재 조건에서 재실행하지 않았습니다.",
+      "sha256_before_archive": "ac47c0c27b5b1c76ac90101be16434984adf778d1734e6293ab24d699e59a6d0",
+      "sha256_after_archive": "d465ecdd7a64d1f3ae7a18aec5f9aafd563d3f68714f7b1981696c2de48e2fab"
+    },
+    {
+      "source": "docs/PathLinkBotAPIIntegration.md",
+      "target": "docs/history/plans/PathLinkBotAPIIntegration.md",
+      "category": "plans",
+      "reason": "당시 설계·적용 제안이며 이후 코드/캐시 구조/적용 상태와 차이가 있을 수 있습니다.",
+      "sha256_before_archive": "2ecf44243cc073db702b35e65fa39b8bf11dbbd0664ccc3d58e427ed7642f103",
+      "sha256_after_archive": "d021373f45f32b61152b353618bb260ed494b083bb68d31540aa138ca3bcc33d"
+    },
+    {
+      "source": "docs/PathLinkCacheConsistencySpecification.md",
+      "target": "docs/history/plans/PathLinkCacheConsistencySpecification.md",
+      "category": "plans",
+      "reason": "당시 설계·적용 제안이며 이후 코드/캐시 구조/적용 상태와 차이가 있을 수 있습니다.",
+      "sha256_before_archive": "49af8972928721925ef60521b35f498af5a530f96846018e86c6598c0eb41f0a",
+      "sha256_after_archive": "9b3df8584e37462684667a079dcec190d8a5cca9e24c36a2e0f417476b40174d"
+    },
+    {
+      "source": "docs/PathLinkDirectionCorrectionResults.md",
+      "target": "docs/history/experiments/PathLinkDirectionCorrectionResults.md",
+      "category": "experiments",
+      "reason": "과거 측정·배치·원인 분석 기록; 현재 조건에서 재실행하지 않았습니다.",
+      "sha256_before_archive": "8c4429499c7c698c255d05e1fc1535bd164e3b1af909c5e124bd5479cdbdf884",
+      "sha256_after_archive": "c64666b6bc90ec2aad0972cefb1808bab4034367c43e9096920acf6d585dcbf4"
+    },
+    {
+      "source": "docs/PathLinkLargePolygons.md",
+      "target": "docs/history/experiments/PathLinkLargePolygons.md",
+      "category": "experiments",
+      "reason": "과거 측정·배치·원인 분석 기록; 현재 조건에서 재실행하지 않았습니다.",
+      "sha256_before_archive": "3b524a8295562caf321054b66a815854c21993b4141ab538800636bba72139a4",
+      "sha256_after_archive": "a44cdec7ce56627e78ac8503e926a6c7f52c518f8324d355982546d3b64c27d8"
+    },
+    {
+      "source": "docs/PathLinkLazySearchResults.md",
+      "target": "docs/history/experiments/PathLinkLazySearchResults.md",
+      "category": "experiments",
+      "reason": "과거 측정·배치·원인 분석 기록; 현재 조건에서 재실행하지 않았습니다.",
+      "sha256_before_archive": "5fb974cfb1c144a0ebabd5f9adbd3748d7105d15d00a19246ca673a4084917e5",
+      "sha256_after_archive": "f2937b441935147d887d8e1b429ee0fe7a437a0f01b6ca94faca02e2429f241b"
+    },
+    {
+      "source": "docs/PathLinkOutlierRootCause.md",
+      "target": "docs/history/experiments/PathLinkOutlierRootCause.md",
+      "category": "experiments",
+      "reason": "과거 측정·배치·원인 분석 기록; 현재 조건에서 재실행하지 않았습니다.",
+      "sha256_before_archive": "d94d084554783a5a45df0e7280cdb818991c198c4a4d31a61c2c96a18f7bf80d",
+      "sha256_after_archive": "65bfce878eb8545a704a3c9305df5a39dc14ff0fa74f933f4caa2567caf63ca5"
+    },
+    {
+      "source": "docs/PathLinkPlayableBlendSweep.md",
+      "target": "docs/history/experiments/PathLinkPlayableBlendSweep.md",
+      "category": "experiments",
+      "reason": "과거 측정·배치·원인 분석 기록; 현재 조건에서 재실행하지 않았습니다.",
+      "sha256_before_archive": "151e4b1d51001aee9ae3c7ddd9eae7f64a227b88ead7fa9bd565b7c25cda74a6",
+      "sha256_after_archive": "e2f8ee9bc98deba82a1733b1e409bd60b29b6062ac9468bd47c10cfc01c1be1a"
+    },
+    {
+      "source": "docs/PathLinkPlayableResults.md",
+      "target": "docs/history/experiments/PathLinkPlayableResults.md",
+      "category": "experiments",
+      "reason": "과거 측정·배치·원인 분석 기록; 현재 조건에서 재실행하지 않았습니다.",
+      "sha256_before_archive": "26a77b742e1c6b9c4ff07af98914b57006337d5ec2cf7f4803338dfe173708e5",
+      "sha256_after_archive": "17ea619e75040579aeb86dbf260a0ea6d43b3fe3bcc062bccb4b8eb4d97fa76f"
+    },
+    {
+      "source": "docs/PathLinkRandomResults.md",
+      "target": "docs/history/experiments/PathLinkRandomResults.md",
+      "category": "experiments",
+      "reason": "과거 측정·배치·원인 분석 기록; 현재 조건에서 재실행하지 않았습니다.",
+      "sha256_before_archive": "4ca56cd95f16b3e317257c209ecbcfa814dba8b1f5d79198853efc96b3152ca0",
+      "sha256_after_archive": "8118c68b2a8bec1a206332e358637403462f776bc606313004b15b8bdefa5309"
+    },
+    {
+      "source": "docs/PathLinkRoutingCache.md",
+      "target": "docs/history/plans/PathLinkRoutingCache.md",
+      "category": "plans",
+      "reason": "당시 설계·적용 제안이며 이후 코드/캐시 구조/적용 상태와 차이가 있을 수 있습니다.",
+      "sha256_before_archive": "8fd24b9f6279169fa921de21672f06193a245efc7a7b52bcc1d6d21eaf9c47ba",
+      "sha256_after_archive": "0a164e574f943de79f7c8317f950a5dc19111ec4a08d634d59a7458c390fef62"
+    },
+    {
+      "source": "docs/PathLinkRoutingCacheResults.md",
+      "target": "docs/history/experiments/PathLinkRoutingCacheResults.md",
+      "category": "experiments",
+      "reason": "과거 측정·배치·원인 분석 기록; 현재 조건에서 재실행하지 않았습니다.",
+      "sha256_before_archive": "2c08d26723abdf128a6e3af42a7530092566ab497c7310ddbb998716db8aa479",
+      "sha256_after_archive": "3a02f4f75d3fca6850861172ee1d053816dca37a2c51ed2d00ecca13f0c66383"
+    },
+    {
+      "source": "docs/PathLinkRuntimeCacheFix.md",
+      "target": "docs/history/changes/PathLinkRuntimeCacheFix.md",
+      "category": "changes",
+      "reason": "과거 구현 변경·수정 이력; 현행 동작 규범으로 사용하지 않습니다.",
+      "sha256_before_archive": "dd0ac12df951282c6e54ff2d2e045efae95732ed8d417921321a4561e3a4dcb9",
+      "sha256_after_archive": "fa02c8df1d40de7bdd14141020948f9462f3d5ea457bdc1431538c60971a13b4"
+    },
+    {
+      "source": "docs/PathLinkSTGInlineLTG.md",
+      "target": "docs/history/changes/PathLinkSTGInlineLTG.md",
+      "category": "changes",
+      "reason": "과거 구현 변경·수정 이력; 현행 동작 규범으로 사용하지 않습니다.",
+      "sha256_before_archive": "3d7d89da66bd5e42c7413b1e9737d0e091488f79e9df82b1cf0933acc0035e91",
+      "sha256_after_archive": "81d45976250bd0e04e722192aaee16a66e17f8fa6ea60d5ff165a7101ec2b8e5"
+    },
+    {
+      "source": "docs/BuffWarningSound_ImplementationNotes.md",
+      "target": "docs/history/changes/BuffWarningSound_ImplementationNotes.md",
+      "category": "changes",
+      "reason": "버프 예고음의 구현·임시 설정·당시 검증 이력입니다. 현행 사용법은 BuffWarningSound.md를 읽습니다.",
+      "sha256_before_archive": "f59af14ec0b4d687556cf2fc8ace1a6e97e84e0f3b375465f8869ac5205d3c60",
+      "sha256_after_archive": "05d21c434a10b64548d0850a780c294dc3f952cd37e31493b9cd1e64fe66222a"
+    },
+    {
+      "source": "docs/Buff_Stabilization_Checklist.md",
+      "target": "docs/history/plans/Buff_Stabilization_Checklist.md",
+      "category": "plans",
+      "reason": "과거 안정화 점검 계획이며 현재 완료 상태나 테스트 통과를 보장하지 않습니다.",
+      "sha256_before_archive": "8b455d38b8f853016019b9e8b1e12db53f230f338dceb219da0985aeba3c58fe",
+      "sha256_after_archive": "beaef99a6762f2e754cdc14dad8148a7c85b1aece68a29096184b4f84d930cf6"
+    },
+    {
+      "source": "docs/PortalMapCollisionRepair.md",
+      "target": "docs/history/changes/PortalMapCollisionRepair.md",
+      "category": "changes",
+      "reason": "맵 충돌·내비메시 수정 이력입니다. 현행 맵 전체를 다시 검증하지 않았습니다.",
+      "sha256_before_archive": "82df228ed2abd092ef8369e918325ba2868d8e9710b61c98f6e387f59cae6cca",
+      "sha256_after_archive": "ee3a72d7f9a91ae1c079c5ddec740b1d9e47bd4153ce5816b2d89f63e020d342"
+    },
+    {
+      "source": "docs/TextureOptimizationReview.md",
+      "target": "docs/history/experiments/TextureOptimizationReview.md",
+      "category": "experiments",
+      "reason": "과거 텍스처 최적화 측정 기록입니다. 연결된 백업/비교 자료가 현재 워크스페이스에 없어 재검증 근거가 불완전합니다.",
+      "sha256_before_archive": "085850257b52bda2132835b2d0c037acf151bba6abe4f4069830474717f859ab",
+      "sha256_after_archive": "7d8078d815512fcd8c41a23dd38d59cd19e66a2c056d3dd398dddfd3bc0ddd88"
+    },
+    {
+      "source": "Manual/Life관련 사용 설명서.txt",
+      "target": "docs/history/legacy/Life관련 사용 설명서.txt",
+      "category": "legacy",
+      "reason": "QuakeLike_Base/LJH 기준의 폐기된 사용 안내입니다. 현행 Life와 스폰 경로를 사용해야 합니다.",
+      "sha256_before_archive": "d9c80d4d90a636611ddbf86dcab413a961ef156101a2ea09b9423bad284de77d",
+      "sha256_after_archive": "59c4158ef693a230181a91655d6cfbc0a385f8e97887da73bc8e9b0db96dda79"
+    }
+  ],
+  "archived_at": "2026-11-05T21:20:46.330299+09:00"
+}

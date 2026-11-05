@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-11-05T20:34:07.746296+09:00",
+  "phase_1": {
+    "status": "complete",
+    "record": "docs/repository-audit/audit/baseline.json",
+    "scope": "Historical filesystem and Asset Registry baseline; not regenerated during this pilot."
+  },
+  "phase_2": {
+    "status": "complete",
+    "system": "BGM",
+    "git_commit": "6956f5d2bec90ea7171da34cb48a117a2211b944",
+    "report": "docs/repository-audit/systems/BGM.md",
+    "evidence": "docs/repository-audit/systems/evidence/bgm.json",
+    "run_directory": "docs/repository-audit/audit/generated/bgm-20261105T105332395012Z",
+    "graphs": 10,
+    "dependency_query_rows": 242,
+    "verification_command": "python Scripts/VerifyBGMSystemAudit.py",
+    "runtime_validation": "not_run"
+  },
+  "phase_3": {
+    "status": "complete",
+    "completion_kind": "static_inventory_dependency_and_system_boundary_audit_with_documented_limits",
+    "git_commit": "6956f5d2bec90ea7171da34cb48a117a2211b944",
+    "report": "docs/repository-audit/architecture/README.md",
+    "system_map": "docs/repository-audit/architecture/SystemMap.md",
+    "data_authority": "docs/repository-audit/architecture/DataAuthority.md",
+    "findings": "docs/repository-audit/architecture/Findings.md",
+    "evidence": "docs/repository-audit/architecture/audit-summary.json",
+    "run_directory": "docs/repository-audit/audit/generated/whole-20261105T110518059081Z",
+    "packages": 28198,
+    "asset_objects": 28211,
+    "typed_edges": 87375,
+    "blueprints": 923,
+    "json_graphs": 2605,
+    "json_graph_nodes": 36421,
+    "supplemental_text_graphs": 4158,
+    "native_types": 434,
+    "modules": 13,
+    "bindings": 29,
+    "workflow_files": 59,
+    "existing_documents_annotated": 31,
+    "verification_command": "python Scripts/VerifyWholeProjectAudit.py",
+    "runtime_validation": "not_run",
+    "semantic_validation": "System boundaries reviewed; automatic class/path role labels are explicitly inference. All object behaviors are not dynamically proven.",
+    "map_instance_property_validation": "not_run",
+    "cleanup": "not_started"
+  },
+  "phase_4": {
+    "status": "not_started",
+    "scope": "Cleanup candidate review, deletion and post-cleanup validation"
+  },
+  "open_questions": [
+    {
+      "id": "BGM-01",
+      "status": "runtime_unverified",
+      "question": "Does the C++ BGMVolume override reset Blueprint option volume during map travel?",
+      "next_check": "Set low BGM volume, travel and reconnect; inspect audio override order."
+    },
+    {
+      "id": "BGM-02",
+      "status": "intent_unverified",
+      "question": "Is the unconfigured shared menu track intentional?"
+    },
+    {
+      "id": "BGM-03",
+      "status": "runtime_unverified",
+      "question": "Does packaged runtime apply JSON and include/load all soft-referenced music resources?"
+    },
+    {
+      "id": "AUDIT-01",
+      "status": "confirmed_static",
+      "question": "MapsToCook retains Lvl_QuakeMap_01 and Lvl_QuakeMap_03, neither exists in current registry/asset lookup.",
+      "next_check": "Review intended cook map list and validate packaging in a separate change."
+    },
+    {
+      "id": "AUDIT-02",
+      "status": "confirmed_static",
+      "question": "Map preview test video is absent; smoke test returns true with warning when input is missing.",
+      "next_check": "Provide valid test input before claiming playback validation."
+    },
+    {
+      "id": "AUDIT-03",
+      "status": "review_required",
+      "question": "Static-unreachable packages and zero-referencer packages are not delete-safe conclusions.",
+      "next_check": "Check dynamic loading, external Actor ownership, tooling and test entrypoints."
+    }
+  ],
+  "next_recommended_system": "Phase 4: review cleanup candidates using Findings.md; resolve dynamic paths and external Actor ownership before any asset deletion.",
+  "preservation": {
+    "existing_user_change": "ExternalData/JsonAssetSyncManifest.json",
+    "asset_mutations": "none",
+    "deletions": "none",
+    "whole_project_complete": false,
+    "static_phase_3_complete": true
+  },
+  "documentation": {
+    "home": "docs/repository-audit/README.md",
+    "history": "docs/history/README.md",
+    "archived_documents": 21,
+    "agent_instructions": "AGENTS.md",
+    "archive_index": "docs/history/index.json"
+  }
+}

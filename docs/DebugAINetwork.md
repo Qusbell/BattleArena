@@ -1,3 +1,8 @@
+<!-- repository-audit-20261105:start -->
+> 2026-11-05 저장소 조사: 현재 소스·에셋과 연결을 정적 대조한 참고 문서입니다. 아래 과거 빌드·자동 테스트·실행 결과를 이번 검증 결과로 해석하지 않습니다.
+> 현행 연결과 미확인 사항은 [시스템 지도](repository-audit/architecture/SystemMap.md), [데이터 원본 정책](repository-audit/architecture/DataAuthority.md)를 확인합니다.
+<!-- repository-audit-20261105:end -->
+
 # AI 디버그 네트워크 표시
 
 ## 전송 및 표시
