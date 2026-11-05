@@ -78,8 +78,8 @@
 	"attributes":
 	{
 	},
-	"startUsageCount": 100,
-	"maxUsageCount": 100,
+	"startUsageCount": 120,
+	"maxUsageCount": 120,
 	"fpAnim": "/Script/Engine.AnimBlueprintGeneratedClass'/Game/QuakeLike_1_0/Animation/Steel/ABP/Steel_ABP_FP_BGH_Pistol.Steel_ABP_FP_BGH_Pistol_C'",
 	"tpAnim": "/Script/Engine.AnimBlueprintGeneratedClass'/Game/QuakeLike_1_0/Animation/Steel/ABP/Steel_ABP_TP_BGH_Pistol.Steel_ABP_TP_BGH_Pistol_C'",
 	"skeletalMesh": "/Script/Engine.SkeletalMesh'/Game/Scifi_Arsenal_Vol2/Skeletal_Meshes/Sci-fi_Rifle_02/SK_Sci-fi_Rifle_02_NoScope_NoMagazine.SK_Sci-fi_Rifle_02_NoScope_NoMagazine'",
