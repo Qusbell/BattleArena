@@ -9,31 +9,19 @@
 			"C03",
 			"C04",
 			"C05",
-			"C06",
-			"C02"
+			"C06"
 		],
 		"Max_Player_Count": 6,
 		"Map_Size": 1,
 		"Map_Explain": "NSLOCTEXT(\"[9702DEC0DEE0E3E2145DB69F1E91813C]\", \"06081D044470066631CB1FB2FC087DD8\", \"포탈맵입니다.\")",
 		"WinKillCount": 25,
 		"GameTimer": "(X=5.000000,Y=0.000000)",
-		"Map_ID": "Map_03",
-		"Map_Feature": [
-			"NSLOCTEXT(\"[9702DEC0DEE0E3E2145DB69F1E91813C]\", \"D3C5F41C4FF6E7DED27C4080EB9A93D0\", \"AI\")",
-			"NSLOCTEXT(\"[9702DEC0DEE0E3E2145DB69F1E91813C]\", \"7FAE598A498FF572B92C99A4DE21EBD8\", \"점프 패드\")",
-			"NSLOCTEXT(\"[9702DEC0DEE0E3E2145DB69F1E91813C]\", \"E434253247EE71511585679E5EABC644\", \"포탈\")"
-		],
-		"Feature_Icon": [
-			"/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Icon/AI.AI'",
-			"/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Icon/JumpPad.JumpPad'",
-			"/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Icon/Portal.Portal'"
-		],
 		"Character_Light_Channels": [ true ]
 	},
 	{
 		"Name": "Map_06",
 		"Map_Name": "Lvl_02Map",
-		"Map_Image": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Map_Image/01_Map.01_Map'",
+		"Map_Image": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Map_Image/02_Map.02_Map'",
 		"Map_Asset": "(WorldAsset=\"/Game/QuakeLike_Base/Lvl_02Map.Lvl_02Map\")",
 		"Character_List": [
 			"C01",
@@ -47,9 +35,6 @@
 		"Map_Explain": "",
 		"WinKillCount": 25,
 		"GameTimer": "(X=5.000000,Y=0.000000)",
-		"Map_ID": "Map_06",
-		"Map_Feature": [],
-		"Feature_Icon": [],
 		"Character_Light_Channels": [ false ]
 	},
 	{
@@ -66,15 +51,6 @@
 		"Map_Explain": "NSLOCTEXT(\"[9702DEC0DEE0E3E2145DB69F1E91813C]\", \"794CB0F640784B0A8AB6B2B5B4BCCB2F\", \"04맵입니다.\")",
 		"WinKillCount": -1,
 		"GameTimer": "(X=-1.000000,Y=0.000000)",
-		"Map_ID": "Map_04",
-		"Map_Feature": [
-			"NSLOCTEXT(\"[9702DEC0DEE0E3E2145DB69F1E91813C]\", \"AFA529D34DBA35D81130D7B0A7D37FEE\", \"AI\")",
-			"NSLOCTEXT(\"[9702DEC0DEE0E3E2145DB69F1E91813C]\", \"1B2A133342D75DAB189677AF70CFE426\", \"점프 패드\")"
-		],
-		"Feature_Icon": [
-			"/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Icon/AI.AI'",
-			"/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Icon/JumpPad.JumpPad'"
-		],
 		"Character_Light_Channels": []
 	},
 	{
@@ -88,9 +64,6 @@
 		"Map_Explain": "",
 		"WinKillCount": -1,
 		"GameTimer": "(X=-1.000000,Y=0.000000)",
-		"Map_ID": "MainMap",
-		"Map_Feature": [],
-		"Feature_Icon": [],
 		"Character_Light_Channels": []
 	},
 	{
@@ -104,9 +77,6 @@
 		"Map_Explain": "",
 		"WinKillCount": -1,
 		"GameTimer": "(X=-1.000000,Y=0.000000)",
-		"Map_ID": "TestMainMap",
-		"Map_Feature": [],
-		"Feature_Icon": [],
 		"Character_Light_Channels": []
 	},
 	{
@@ -120,9 +90,6 @@
 		"Map_Explain": "",
 		"WinKillCount": -1,
 		"GameTimer": "(X=-1.000000,Y=0.000000)",
-		"Map_ID": "LobbyMap",
-		"Map_Feature": [],
-		"Feature_Icon": [],
 		"Character_Light_Channels": []
 	},
 	{
@@ -139,9 +106,6 @@
 		"Map_Explain": "",
 		"WinKillCount": -1,
 		"GameTimer": "(X=-1.000000,Y=0.000000)",
-		"Map_ID": "Map_05",
-		"Map_Feature": [],
-		"Feature_Icon": [],
 		"Character_Light_Channels": []
 	},
 	{
@@ -158,9 +122,6 @@
 		"Map_Explain": "",
 		"WinKillCount": -1,
 		"GameTimer": "(X=-1.000000,Y=0.000000)",
-		"Map_ID": "Map_00",
-		"Map_Feature": [],
-		"Feature_Icon": [],
 		"Character_Light_Channels": []
 	},
 	{
@@ -176,13 +137,6 @@
 		"Map_Explain": "NSLOCTEXT(\"[9702DEC0DEE0E3E2145DB69F1E91813C]\", \"ADB5F5F24F420C49DF2B8FBFC3AA0732\", \"테스트 레벨입니다.글10자기준으로줄바꿈이됩니다..줄바꿈되나요\")",
 		"WinKillCount": -1,
 		"GameTimer": "(X=-1.000000,Y=0.000000)",
-		"Map_ID": "Map_01",
-		"Map_Feature": [
-			"NSLOCTEXT(\"[9702DEC0DEE0E3E2145DB69F1E91813C]\", \"1B3CC46449C4311D052AEFB692035015\", \"AI\")"
-		],
-		"Feature_Icon": [
-			"/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Icon/AI.AI'"
-		],
 		"Character_Light_Channels": []
 	},
 	{
@@ -199,15 +153,6 @@
 		"Map_Explain": "NSLOCTEXT(\"[9702DEC0DEE0E3E2145DB69F1E91813C]\", \"F87B37B64662ADA18FE0B7BD1C72D920\", \"02맵입니다.\")",
 		"WinKillCount": -1,
 		"GameTimer": "(X=-1.000000,Y=0.000000)",
-		"Map_ID": "Map_02",
-		"Map_Feature": [
-			"NSLOCTEXT(\"[9702DEC0DEE0E3E2145DB69F1E91813C]\", \"7B4187454898847BF5BA368DC189EBAA\", \"AI\")",
-			"NSLOCTEXT(\"[9702DEC0DEE0E3E2145DB69F1E91813C]\", \"796766724644455A1DDFA5AA28DE1D55\", \"점프 패드\")"
-		],
-		"Feature_Icon": [
-			"/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Icon/AI.AI'",
-			"/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Icon/JumpPad.JumpPad'"
-		],
 		"Character_Light_Channels": []
 	}
 ]
