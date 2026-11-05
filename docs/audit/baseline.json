@@ -1,0 +1,391 @@
+{
+  "schema_version": 1,
+  "started_utc": "2026-11-05T10:40:26.913915+00:00",
+  "project_root": "D:\\UnrealProjects\\ShootingArena",
+  "git_commit": "cdaf33cd0af41b26226781ee064297b2db8b3fb8",
+  "git_branch": "main",
+  "git_status_before": " M ExternalData/JsonAssetSyncManifest.json\n M Plugins/UnrealMCPython/Content/Python/UnrealMCPython/__pycache__/mcp_unreal_actions.cpython-311.pyc\n M Plugins/UnrealMCPython/Content/Python/UnrealMCPython/__pycache__/util_actions.cpython-311.pyc\n?? Scripts/RepositoryAudit.py\n?? Scripts/RepositoryAuditUnreal.py\n?? docs/audit/baseline.json\n?? docs/audit/generated/.gitignore",
+  "scope": "All workspace file metadata except .git, audit generated outputs and links/reparse points. No asset binary contents read.",
+  "size_semantics": "Logical file lengths, not allocated disk space; live workspace, not an atomic snapshot.",
+  "tracked_files": 29130,
+  "tracked_asset_files": 28198,
+  "stages": {
+    "filesystem": "complete",
+    "asset_registry": "complete",
+    "dependencies": "not_started",
+    "roles": "not_started",
+    "cleanup": "not_started"
+  },
+  "mount_candidates": [
+    {
+      "mount": "/Game",
+      "directory": "Content"
+    },
+    {
+      "mount": "/AdvancedSessions",
+      "directory": "Plugins/AdvancedSessions/Content",
+      "descriptor": "Plugins/AdvancedSessions/AdvancedSessions.uplugin"
+    },
+    {
+      "mount": "/AdvancedSteamSessions",
+      "directory": "Plugins/AdvancedSteamSessions/Content",
+      "descriptor": "Plugins/AdvancedSteamSessions/AdvancedSteamSessions.uplugin"
+    },
+    {
+      "mount": "/BlackboardUsageScanner",
+      "directory": "Plugins/BlackboardUsageScanner/Content",
+      "descriptor": "Plugins/BlackboardUsageScanner/BlackboardUsageScanner.uplugin"
+    },
+    {
+      "mount": "/GameplayValidator",
+      "directory": "Plugins/GameplayValidator/Content",
+      "descriptor": "Plugins/GameplayValidator/GameplayValidator.uplugin"
+    },
+    {
+      "mount": "/JsonAssetSync",
+      "directory": "Plugins/JsonAssetSync/Content",
+      "descriptor": "Plugins/JsonAssetSync/JsonAssetSync.uplugin"
+    },
+    {
+      "mount": "/JsonBlueprintUtilities",
+      "directory": "Plugins/JsonBlueprintUtilities/Content",
+      "descriptor": "Plugins/JsonBlueprintUtilities/JsonBlueprintUtilities.uplugin"
+    },
+    {
+      "mount": "/NiagaraUIRenderer",
+      "directory": "Plugins/NiagaraU409cc0a0b725V9/Content",
+      "descriptor": "Plugins/NiagaraU409cc0a0b725V9/NiagaraUIRenderer.uplugin"
+    },
+    {
+      "mount": "/UnrealMCPython",
+      "directory": "Plugins/UnrealMCPython/Content",
+      "descriptor": "Plugins/UnrealMCPython/UnrealMCPython.uplugin"
+    }
+  ],
+  "filesystem_completed_utc": "2026-11-05T10:40:43.438106+00:00",
+  "file_count": 36264,
+  "logical_bytes": 87756094447,
+  "tracking_counts": {
+    "tracked": 29130,
+    "ignored": 7131,
+    "untracked": 3
+  },
+  "disk_package_candidates": 28198,
+  "filesystem_error_count": 0,
+  "excluded_count": 2,
+  "asset_registry": {
+    "status": "complete",
+    "completed_utc": "2026-11-05T10:42:10.862029+00:00",
+    "transport": "Unreal MCP util.execute_python",
+    "engine_version": "5.6.1-44394996+++UE5+Release-5.6",
+    "project_root": "D:\\UnrealProjects\\ShootingArena",
+    "on_disk_only": true,
+    "asset_rows": 28211,
+    "unique_objects": 28211,
+    "unique_packages": 28198,
+    "dirty_packages_before": {
+      "content": [],
+      "maps": []
+    },
+    "dirty_packages_after": {
+      "content": [],
+      "maps": []
+    },
+    "mount_counts": {
+      "/Game": 28211
+    },
+    "class_counts": {
+      "/Script/Engine.StaticMeshActor": 10096,
+      "/Script/Engine.Texture2D": 5610,
+      "/Script/Engine.MaterialInstanceConstant": 3188,
+      "/Script/Engine.StaticMesh": 2269,
+      "/Script/Engine.AnimSequence": 910,
+      "/Script/Engine.Material": 899,
+      "/Script/Engine.Blueprint": 667,
+      "/Script/Engine.SoundWave": 550,
+      "/Script/Engine.DecalActor": 496,
+      "/Script/Engine.DialogueWave": 339,
+      "/Script/Engine.MaterialFunction": 233,
+      "/Script/Engine.SoundCue": 227,
+      "/Script/UMGEditor.WidgetBlueprint": 201,
+      "/Script/Engine.ParticleSystem": 177,
+      "/Script/Engine.SkeletalMesh": 159,
+      "/Script/CoreUObject.ObjectRedirector": 151,
+      "/Script/Engine.PhysicsAsset": 130,
+      "/Script/UnrealEd.GroupActor": 118,
+      "/Game/QuakeLike_1_0/Spawner/SpawnPoint/BP_ItemSpawnPoint.BP_ItemSpawnPoint_C": 116,
+      "/Script/Engine.Skeleton": 113,
+      "/Script/Engine.ActorFolder": 89,
+      "/Script/Engine.RectLight": 87,
+      "/Script/Engine.PointLight": 63,
+      "/Game/QuakeLike_1_0/AI/Link/BP_PathLink.BP_PathLink_C": 60,
+      "/Game/QuakeLike_1_0/AI/Link/BP_LinkTargetPoint.BP_LinkTargetPoint_C": 58,
+      "/Script/Niagara.NiagaraSystem": 56,
+      "/Script/Engine.AnimMontage": 56,
+      "/Script/Engine.AnimBlueprint": 52,
+      "/Script/Engine.FontFace": 49,
+      "/Script/CoreUObject.UserDefinedStruct": 42,
+      "/Script/Engine.UserDefinedEnum": 41,
+      "/Script/Engine.World": 40,
+      "/Script/Engine.SpotLight": 40,
+      "/Game/SuperGrid/TutorialLevel/Blueprints/LevelElements/BP_Corner.BP_Corner_C": 32,
+      "/Script/Engine.AimOffsetBlendSpace": 31,
+      "/Script/EnhancedInput.InputAction": 31,
+      "/Script/Engine.DataTable": 26,
+      "/Script/Engine.CurveFloat": 22,
+      "/Game/QuakeLike_1_0/Spawner/SpawnPoint/BP_PlayerSpawnPoint.BP_PlayerSpawnPoint_C": 22,
+      "/Script/Engine.TextureCube": 20,
+      "/Script/Engine.PlayerStart": 20,
+      "/Game/QuakeLike_Base/BGH/TargetDummy.TargetDummy_C": 20,
+      "/Script/PhysicsCore.PhysicalMaterial": 19,
+      "/Script/LevelSequence.LevelSequence": 19,
+      "/Script/Engine.DirectionalLight": 19,
+      "/Script/Engine.MaterialParameterCollection": 18,
+      "/Game/QuakeLike_1_0/JumpPoint.JumpPoint_C": 18,
+      "/Game/QuakeLike_1_0/MapDesign/MapGimmick/BPA_YJS_Direction_JumpPad.BPA_YJS_Direction_JumpPad_C": 17,
+      "/Script/Niagara.NiagaraEmitter": 16,
+      "/Script/Engine.Font": 16,
+      "/Script/Engine.CurveLinearColor": 12,
+      "/Script/GeometryCache.GeometryCache": 12,
+      "/Script/Engine.SoundAttenuation": 12,
+      "/Script/Engine.SkyAtmosphere": 12,
+      "/Script/Engine.WorldPartitionMiniMap": 12,
+      "/Script/Engine.SkyLight": 12,
+      "/Script/Engine.ExponentialHeightFog": 12,
+      "/Script/Engine.VolumetricCloud": 12,
+      "/Script/Engine.VectorFieldStatic": 11,
+      "/Script/NavigationSystem.RecastNavMesh": 11,
+      "/Script/Engine.BlendSpace1D": 10,
+      "/Script/Engine.SubsurfaceProfile": 10,
+      "/Script/AIModule.EnvQuery": 10,
+      "/Script/Engine.WorldDataLayers": 10,
+      "/Script/NavigationSystem.NavMeshBoundsVolume": 10,
+      "/Game/LevelPrototyping/Interactable/Target/BP_WobbleTarget.BP_WobbleTarget_C": 10,
+      "/Game/Variant_Shooter/Blueprints/Pickups/BP_ShooterPickup.BP_ShooterPickup_C": 10,
+      "/Game/LevelPrototyping/Interactable/JumpPad/BP_JumpPad.BP_JumpPad_C": 10,
+      "/Game/SciFi_Hanger/Blueprints/BP_FanBox.BP_FanBox_C": 10,
+      "/Game/QuakeLike_1_0/AI/Area/BP_AIArea_Cpp.BP_AIArea_Cpp_C": 9,
+      "/Game/QuakeLike_Base/LJH/Item/Spawner/BP_LJH_ItemSpawnerBase.BP_LJH_ItemSpawnerBase_C": 9,
+      "/Script/Engine.BlendSpace": 8,
+      "/Game/QuakeLike_1_0/AI/BP/BP_TourPoint.BP_TourPoint_C": 8,
+      "/Script/EnhancedInput.InputMappingContext": 7,
+      "/Game/QuakeLike_1_0/Data/PDA/PDA_WeaponBase.PDA_WeaponBase_C": 7,
+      "/Script/ControlRigDeveloper.ControlRigBlueprint": 6,
+      "/Script/Engine.TextureRenderTarget2D": 5,
+      "/Script/AIModule.BlackboardData": 5,
+      "/Script/AIModule.BehaviorTree": 5,
+      "/Script/Engine.SoundClass": 5,
+      "/Game/QuakeLike_Base/LJH/Item/Spawner/BP_LJH_PlayerSpawner.BP_LJH_PlayerSpawner_C": 5,
+      "/Script/Engine.PostProcessVolume": 5,
+      "/Script/ShootingArena.SeamlessPortalActor": 5,
+      "/Game/SciFi_Hanger/Blueprints/BP_TripodLight.BP_TripodLight_C": 5,
+      "/Script/MediaAssets.MediaTexture": 4,
+      "/Script/Engine.CurveTable": 4,
+      "/Script/Foliage.FoliageType_InstancedStaticMesh": 4,
+      "/Game/QuakeLike_1_0/Test/YesItWillBeNotEasy/BP_WayPointLink.BP_WayPointLink_C": 4,
+      "/Game/QuakeLike_Base/BGH/DebugPointNaming.DebugPointNaming_C": 4,
+      "/Game/Variant_Shooter/Blueprints/AI/BP_ShooterNPC.BP_ShooterNPC_C": 4,
+      "/Game/SciFi_Hanger/Blueprints/BP_AlarmLight.BP_AlarmLight_C": 4,
+      "/Game/SciFi_Hanger/Blueprints/BP_Capsule.BP_Capsule_C": 4,
+      "/Game/QuakeLike_1_0/MapDesign/MapGimmick/BPA_YJS_Portal_OneWay.BPA_YJS_Portal_OneWay_C": 4,
+      "/Game/QuakeLike_1_0/MapDesign/MapGimmick/BPA_YJS_Portal_TwoWay.BPA_YJS_Portal_TwoWay_C": 4,
+      "/Script/MediaAssets.MediaPlayer": 3,
+      "/Script/MediaAssets.FileMediaSource": 3,
+      "/Script/Blutility.EditorUtilityWidgetBlueprint": 3,
+      "/Script/Landscape.LandscapeLayerInfoObject": 3,
+      "/Script/Engine.AnimatedSparseVolumeTexture": 3,
+      "/Script/Engine.Texture2DArray": 3,
+      "/Game/QuakeLike_1_0/AI/Area/BP_AreaLink_Cpp.BP_AreaLink_Cpp_C": 3,
+      "/Game/QuakeLike_1_0/Portal/BP_OneWayPortal.BP_OneWayPortal_C": 3,
+      "/Script/Engine.UserDefinedStruct": 2,
+      "/Script/ShootingArena.WeaponAimAlignmentDataAsset": 2,
+      "/Game/QuakeLike_Base/PJH/DataAsset/Primary/DA_PJH_WProjectileDataAsset.DA_PJH_WProjectileDataAsset_C": 2,
+      "/Script/IKRig.IKRigDefinition": 2,
+      "/Script/Foliage.ProceduralFoliageSpawner": 2,
+      "/Script/StateTreeModule.StateTree": 2,
+      "/Game/LevelPrototyping/Interactable/Door/BP_DoorFrame.BP_DoorFrame_C": 2,
+      "/Game/SciFi_Hanger/Blueprints/BP_BatteryCapsule.BP_BatteryCapsule_C": 2,
+      "/Script/Engine.AtmosphericFog": 2,
+      "/Game/SciFi_Hanger/Blueprints/BP_DoorDuble.BP_DoorDuble_C": 2,
+      "/Script/Engine.CameraActor": 2,
+      "/Game/QuakeLike_1_0/MapDesign/MapGimmick/BPA_YJS_DamagePlate.BPA_YJS_DamagePlate_C": 2,
+      "/Game/LevelPrototyping/BP_JumpPad_Big.BP_JumpPad_Big_C": 2,
+      "/Game/LevelPrototyping/BP_JumpPad_Small.BP_JumpPad_Small_C": 2,
+      "/Script/Engine.TextureRenderTargetCube": 1,
+      "/Script/JsonAssetSync.JsonApplyRegistry": 1,
+      "/Script/Engine.StaticSparseVolumeTexture": 1,
+      "/Script/Engine.DialogueVoice": 1,
+      "/Script/Engine.MapBuildDataRegistry": 1,
+      "/Script/Engine.VolumeTexture": 1,
+      "/Script/ShootingArena.BuffWeaponGlowSettings": 1,
+      "/Script/ShootingArena.AggressionDataAssetBase": 1,
+      "/Game/QuakeLike_1_0/Data/PDA/PDA_AIAimBoundary.PDA_AIAimBoundary_C": 1,
+      "/Game/QuakeLike_1_0/Data/PDA/PDA_InterpSpeed.PDA_InterpSpeed_C": 1,
+      "/Script/ShootingArena.AreaRiskConfigDataAsset": 1,
+      "/Game/QuakeLike_1_0/Data/PDA/PDA_AreaRisk.PDA_AreaRisk_C": 1,
+      "/Script/ShootingArena.BGMSettingsDataAsset": 1,
+      "/Game/QuakeLike_1_0/Data/PDA/PDA_Life.PDA_Life_C": 1,
+      "/Game/QuakeLike_1_0/Data/PDA/PDA_MovementOption.PDA_MovementOption_C": 1,
+      "/Script/ShootingArena.ArenaLoggingDataAsset": 1,
+      "/Game/QuakeLike_1_0/Data/PDA/PDA_TeleportSkill.PDA_TeleportSkill_C": 1,
+      "/Game/QuakeLike_1_0/Data/PDA/PDA_GameConfig.PDA_GameConfig_C": 1,
+      "/Script/ShootingArena.InitialWeaponLoadoutDataAsset": 1,
+      "/Game/QuakeLike_1_0/Data/PDA/PDA_JsonImporterConfig.PDA_JsonImporterConfig_C": 1,
+      "/Game/QuakeLike_1_0/Data/PDA/PDA_TestDa.PDA_TestDa_C": 1,
+      "/Game/QuakeLike_1_0/Data/PDA/PDA_TeleportMapGimmick.PDA_TeleportMapGimmick_C": 1,
+      "/Script/ShootingArena.DeathCamDataAsset": 1,
+      "/Game/QuakeLike_1_0/Data/PDA/PDA_CharacterData.PDA_CharacterData_C": 1,
+      "/Script/ShootingArena.KillStreakSettingsDataAsset": 1,
+      "/Script/ShootingArena.ShooterNicknameSettings": 1,
+      "/Script/ShootingArena.ShooterOutlineSettings": 1,
+      "/Game/QuakeLike_1_0/Data/PDA/PDA_Respawn.PDA_Respawn_C": 1,
+      "/Script/ShootingArena.BuffScreenEffectSettings": 1,
+      "/Script/ShootingArena.PlayerDefaultNameSettings": 1,
+      "/Script/Engine.SoundMix": 1,
+      "/Script/ShootingArena.BeamFirstPersonAssets": 1,
+      "/Script/Engine.SoundConcurrency": 1,
+      "/Script/ShootingArena.JumpPadCommonSettings": 1,
+      "/Script/ShootingArena.TeleportDataAsset": 1,
+      "/Game/QuakeLike_1_0/UI/DeathUI/PDA_RespawnBarStyle.PDA_RespawnBarStyle_C": 1,
+      "/Script/ShootingArena.KillMedalUISettings": 1,
+      "/Script/Engine.PrimaryAssetLabel": 1,
+      "/Game/QuakeLike_Base/HBC/DataAsset/BP_DA_PerceptionConfig.BP_DA_PerceptionConfig_C": 1,
+      "/Game/QuakeLike_Base/LJH/Data/PrimaryDataAsset/PDA_GameState.PDA_GameState_C": 1,
+      "/Game/QuakeLike_Base/LJH/Data/PrimaryDataAsset/PDA_DropItem.PDA_DropItem_C": 1,
+      "/Game/QuakeLike_Base/LJH/Data/PrimaryDataAsset/PDA_LifeStats.PDA_LifeStats_C": 1,
+      "/Game/QuakeLike_Base/PJH/DataAsset/Primary/DA_PJH_Ability_TeleportAsset.DA_PJH_Ability_TeleportAsset_C": 1,
+      "/Game/QuakeLike_Base/PJH/DataAsset/Primary/DA_PJH_ProjectileBaseAsset.DA_PJH_ProjectileBaseAsset_C": 1,
+      "/Game/QuakeLike_Base/PJH/DataAsset/Primary/DA_PJH_PistolDataAsset.DA_PJH_PistolDataAsset_C": 1,
+      "/Game/QuakeLike_Base/PJH/DataAsset/Primary/DA_PJH_PlasmaDataAsset.DA_PJH_PlasmaDataAsset_C": 1,
+      "/Game/QuakeLike_Base/PJH/DataAsset/Primary/DA_PJH_RLauncherDataAset.DA_PJH_RLauncherDataAset_C": 1,
+      "/Game/QuakeLike_Base/PJH/DataAsset/Primary/DA_PJH_WeaponBaseAsset.DA_PJH_WeaponBaseAsset_C": 1,
+      "/Game/QuakeLike_Base/PJH/DataAsset/Primary/DA_PJH_WHitScanDataAsset.DA_PJH_WHitScanDataAsset_C": 1,
+      "/Game/QuakeLike_Base/PJH/DataAsset/Primary/DA_PJH_WPistolDataAsset.DA_PJH_WPistolDataAsset_C": 1,
+      "/Game/QuakeLike_Base/PJH/DataAsset/Primary/DA_PJH_WRailGunDataAsset.DA_PJH_WRailGunDataAsset_C": 1,
+      "/Game/QuakeLike_Base/PJH/DataAsset/Primary/DA_PJH_WShotDataAsset.DA_PJH_WShotDataAsset_C": 1,
+      "/Script/IKRig.IKRetargeter": 1,
+      "/Game/QuakeLike_Base/SDM/UI/Combat_UI/DA_GameSettings.DA_GameSettings_C": 1,
+      "/Game/QuakeLike_Base/SDM/UI/PDA_CrosshairSetting.PDA_CrosshairSetting_C": 1,
+      "/Game/QuakeLike_Base/YJS/Data/PDA_YJS_SpecialMovement.PDA_YJS_SpecialMovement_C": 1,
+      "/Script/Engine.CurveLinearColorAtlas": 1,
+      "/Script/Engine.ReverbEffect": 1,
+      "/Game/LJH/Components/BP_LJH_DropItem.BP_LJH_DropItem_C": 1,
+      "/Game/QuakeLike_1_0/MapDesign/MapGimmick/BPA_YJS_Direection_JumpPoint.BPA_YJS_Direection_JumpPoint_C": 1,
+      "/Game/QuakeLike_1_0/Test/YesItWillBeNotEasy/BP_AICharacter_Test.BP_AICharacter_Test_C": 1,
+      "/Game/QuakeLike_1_0/AI/Area/BP_AreaManager_Cpp.BP_AreaManager_Cpp_C": 1,
+      "/Game/QuakeLike_Base/BGH/BGH_PawnDummy.BGH_PawnDummy_C": 1,
+      "/Game/QuakeLike_Base/HBC/BP_BGH_BaseChar_Child_HBC.BP_BGH_BaseChar_Child_HBC_C": 1,
+      "/Game/QuakeLike_Base/LJH/Components/BP_Elevator.BP_Elevator_C": 1,
+      "/Game/QuakeLike_1_0/Assets/IndustrialFactory/Effects/EmissivePlane_01/bp_EmissiveP_01_01.bp_EmissiveP_01_01_C": 1,
+      "/Script/LevelSequence.LevelSequenceActor": 1,
+      "/Game/LevelPrototyping/BP_JumpPad_Big2.BP_JumpPad_Big2_C": 1,
+      "/Game/LevelPrototyping/BP_JumpPad_Big3.BP_JumpPad_Big3_C": 1
+    },
+    "errors": {},
+    "scope": "Project /Game and local plugin mount candidates; excludes /Engine, engine plugin content, unsaved-only assets and runtime actor instances. No graph/role/dependency analysis yet."
+  },
+  "comparison": {
+    "disk_only": 0,
+    "registry_only": 0
+  },
+  "finalized_utc": "2026-11-05T10:42:37.504789+00:00",
+  "run_directory": "docs/audit/generated/20261105T104026913682Z",
+  "collector_sha256": {
+    "RepositoryAudit.py": "5e5720a544852f00f5287a006dc614d4638996589b0307a108359f7b19372ad7",
+    "RepositoryAuditUnreal.py": "3cd29f4ac0bc9b35df0c72d08a5c8aa0f3659213e221ae36a49baf56b895ad91"
+  },
+  "artifacts": {
+    "asset-registry-state.json": {
+      "bytes": 1888,
+      "sha256": "b10fc52c6222e1e1612f6522bc1794850f07c04c8aa4974a2a563308bf627066"
+    },
+    "asset-registry-summary.json": {
+      "bytes": 12052,
+      "sha256": "c72568396e6ee442db6592dc1267bc85d9f789f762679369d0e030f7f717b058"
+    },
+    "asset-registry.csv": {
+      "bytes": 8758415,
+      "sha256": "88097c25dca2d0c01e0fd62ee9532f141414360595b854bb38d0f6d93db07837"
+    },
+    "disk-assets.csv": {
+      "bytes": 5037616,
+      "sha256": "748aefdbcb6e650cae77205445f80b79e9359427a4f4f120a9080217c048e015"
+    },
+    "documents.csv": {
+      "bytes": 5473,
+      "sha256": "a9951c2bd1f09836b4644f3eb5d223617cfda36d65a4d771ef305698814da2ad"
+    },
+    "entrypoints.json": {
+      "bytes": 4521,
+      "sha256": "4ab05c73e681731d05f69df93bdd695fedddacbc4454a35f1c2822ec0299c3ff"
+    },
+    "excluded-paths.json": {
+      "bytes": 157,
+      "sha256": "b9a93f5699f650506e08deb943dab63edd066d227f2d4347b5c7d63f86cd935d"
+    },
+    "extensions.csv": {
+      "bytes": 1808,
+      "sha256": "6150a6b081ad28516d94306389e02667b7066d14e42a72ac95e1797eb4f8ba04"
+    },
+    "files.csv": {
+      "bytes": 4814779,
+      "sha256": "1e61f600eb7263bd3a4cfabe44b945fbb8134a56ddf15ea3797115027213d311"
+    },
+    "filesystem-errors.json": {
+      "bytes": 4,
+      "sha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f"
+    },
+    "folders.csv": {
+      "bytes": 957,
+      "sha256": "10c6f69f0f929141134b8c0391aeb6cb552f272626a09c9f9198af353e5d09dd"
+    },
+    "registry-AdvancedSessions.csv": {
+      "bytes": 71,
+      "sha256": "b3274f6584e94c0a4c0e5a241bdbccd729edd9eb87dd7dd1d700c5bc90e60bc5"
+    },
+    "registry-AdvancedSteamSessions.csv": {
+      "bytes": 71,
+      "sha256": "b3274f6584e94c0a4c0e5a241bdbccd729edd9eb87dd7dd1d700c5bc90e60bc5"
+    },
+    "registry-BlackboardUsageScanner.csv": {
+      "bytes": 71,
+      "sha256": "b3274f6584e94c0a4c0e5a241bdbccd729edd9eb87dd7dd1d700c5bc90e60bc5"
+    },
+    "registry-comparison.json": {
+      "bytes": 188,
+      "sha256": "1492e1dc3b92ce6f669b104bd118d33a85bed2a4658c9d9d75f9e7c7afe3b3b3"
+    },
+    "registry-Game.csv": {
+      "bytes": 8758415,
+      "sha256": "88097c25dca2d0c01e0fd62ee9532f141414360595b854bb38d0f6d93db07837"
+    },
+    "registry-GameplayValidator.csv": {
+      "bytes": 71,
+      "sha256": "b3274f6584e94c0a4c0e5a241bdbccd729edd9eb87dd7dd1d700c5bc90e60bc5"
+    },
+    "registry-JsonAssetSync.csv": {
+      "bytes": 71,
+      "sha256": "b3274f6584e94c0a4c0e5a241bdbccd729edd9eb87dd7dd1d700c5bc90e60bc5"
+    },
+    "registry-JsonBlueprintUtilities.csv": {
+      "bytes": 71,
+      "sha256": "b3274f6584e94c0a4c0e5a241bdbccd729edd9eb87dd7dd1d700c5bc90e60bc5"
+    },
+    "registry-NiagaraUIRenderer.csv": {
+      "bytes": 71,
+      "sha256": "b3274f6584e94c0a4c0e5a241bdbccd729edd9eb87dd7dd1d700c5bc90e60bc5"
+    },
+    "registry-UnrealMCPython.csv": {
+      "bytes": 71,
+      "sha256": "b3274f6584e94c0a4c0e5a241bdbccd729edd9eb87dd7dd1d700c5bc90e60bc5"
+    },
+    "saved-folders.csv": {
+      "bytes": 1026,
+      "sha256": "37099ecdd64cf4672664bfd3207b402b4088d1a6010584fe6ca1471dab051cfc"
+    },
+    "tracked-not-observed.json": {
+      "bytes": 4,
+      "sha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f"
+    }
+  }
+}
