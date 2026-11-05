@@ -1,6 +1,7 @@
 #include "Buff/BuffPresentationComponent.h"
 #include "Buff/BuffWeaponGlow.h"
 #include "UI/BuffScreenEffect.h"
+#include "UI/BuffDurationRing.h"
 
 #include "Components/AudioComponent.h"
 #include "Components/CanvasPanelSlot.h"
@@ -116,6 +117,7 @@ void UBuffPresentationComponent::OnOwnerDeath(AController* InstigatedBy, AActor*
 		// Preserve the revision so an old update cannot re-arm this same grant after death.
 		Presentation.Tag = FGameplayTag();
 		Presentation.EndServerTime = 0.0;
+		Presentation.TotalDuration = 0.0;
 		NextWarningSecond = 0;
 		StopWarningSounds();
 		StopEffects();
@@ -155,6 +157,13 @@ void UBuffPresentationComponent::SetBuffPresentation(FGameplayTag BuffTag, doubl
 			}
 			if (Row && Table->GetRowStruct())
 			{
+				if (const FNumericProperty* Duration = CastField<FNumericProperty>(FindBuffRowProperty(Table->GetRowStruct(), TEXT("Duration"))))
+				{
+					const void* Value = Duration->ContainerPtrToValuePtr<void>(Row);
+					const double Seconds = Duration->IsFloatingPoint() ? Duration->GetFloatingPointPropertyValue(Value)
+						: static_cast<double>(Duration->GetSignedIntPropertyValue(Value));
+					Presentation.TotalDuration = FMath::IsFinite(Seconds) && Seconds > 0.0 ? Seconds : 0.0;
+				}
 				TRACE_CPUPROFILER_EVENT_SCOPE(Buff_SetBuffPresentation_ExtractVFXAssets);
 				// User-defined struct fields have generated GUID names: match their exported designer-facing names.
 				for (TFieldIterator<FObjectPropertyBase> It(Table->GetRowStruct()); It; ++It)
@@ -415,6 +424,40 @@ double UBuffPresentationComponent::GetPresentationRemainingTime() const
 	const AGameStateBase* GameState = World->GetGameState();
 	const double Now = GameState ? GameState->GetServerWorldTimeSeconds() : World->GetTimeSeconds();
 	return FMath::Max(0.0, Presentation.EndServerTime - Now);
+}
+
+float UBuffPresentationComponent::GetPresentationProgress() const
+{
+	const double Duration = Presentation.TotalDuration;
+	const double Remaining = GetPresentationRemainingTime();
+	return FMath::IsFinite(Duration) && Duration > 0.0 && FMath::IsFinite(Remaining)
+		? static_cast<float>(FMath::Clamp(Remaining / Duration, 0.0, 1.0)) : 0.0f;
+}
+
+void UBuffPresentationComponent::UpdateBuffStatusUI(AActor* BuffOwner, UTextBlock* TimeText, UImage* BuffIcon,
+	UBuffDurationRingWidget* DurationRing, UWidget* StatusGroup)
+{
+	if (!IsValid(DurationRing))
+	{
+		UpdateBuffRemainingTimeText(BuffOwner, TimeText, BuffIcon);
+		return;
+	}
+	const UBuffPresentationComponent* Buff = IsValid(BuffOwner) ? BuffOwner->FindComponentByClass<UBuffPresentationComponent>() : nullptr;
+	const double Remaining = Buff ? Buff->GetPresentationRemainingTime() : 0.0;
+	const double Duration = Buff ? Buff->Presentation.TotalDuration : 0.0;
+	const float Percent = FMath::IsFinite(Duration) && Duration > 0.0 && FMath::IsFinite(Remaining)
+		? static_cast<float>(FMath::Clamp(Remaining / Duration, 0.0, 1.0)) : 0.0f;
+	DurationRing->ApplyStatus(Remaining, Percent, Buff && IsQuad(Buff->Presentation.Tag), TimeText, BuffIcon);
+	if (IsValid(StatusGroup))
+	{
+		const ESlateVisibility Desired = Remaining > 0.0 ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed;
+		if (StatusGroup->GetVisibility() != Desired) StatusGroup->SetVisibility(Desired);
+		if (UCanvasPanelSlot* Slot = Cast<UCanvasPanelSlot>(StatusGroup->Slot))
+		{
+			const FVector2D Position = DurationRing->GetRingSettings()->Position;
+			if (!Position.ContainsNaN() && Slot->GetPosition() != Position) Slot->SetPosition(Position);
+		}
+	}
 }
 
 const FBuffVisualEffects* UBuffPresentationComponent::GetEffects() const

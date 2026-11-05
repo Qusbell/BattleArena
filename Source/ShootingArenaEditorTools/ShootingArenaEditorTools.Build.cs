@@ -6,6 +6,8 @@ public class ShootingArenaEditorTools : ModuleRules
         : base( Target )
     {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+        // Migration helpers use file-local names; unity amalgamation makes them collide.
+        bUseUnity = false;
         // Graph node authoring classes live in uncooked packages; their runtime structs are in ShootingArena.
         OverridePackageType = PackageOverrideType.GameUncookedOnly;
 
@@ -18,6 +20,8 @@ public class ShootingArenaEditorTools : ModuleRules
                 "UnrealEd",
                 "EditorSubsystem",
                 "AssetRegistry",
+                "AssetTools",
+                "KismetCompiler",
                 "Slate",
                 "SlateCore",
                 "LevelEditor",
