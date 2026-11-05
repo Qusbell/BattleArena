@@ -20,6 +20,8 @@ class UBuffScreenEffectWidget;
 class UBuffWeaponGlowSettings;
 class UMaterialInstanceDynamic;
 class UMeshComponent;
+class UBuffDurationRingWidget;
+class UWidget;
 
 /** Attachment settings only. Niagara and Cascade assets come from the acquired Buff DT row. */
 USTRUCT(BlueprintType)
@@ -51,6 +53,10 @@ struct FBuffPresentationState
 
 	UPROPERTY()
 	double EndServerTime = 0.0;
+
+	/** Nominal DT duration for HUD normalization only; never drives the gameplay timer. */
+	UPROPERTY()
+	double TotalDuration = 0.0;
 
 	UPROPERTY()
 	TObjectPtr<UNiagaraSystem> NiagaraVFX;
@@ -129,6 +135,14 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Buff|Presentation")
 	double GetPresentationRemainingTime() const;
+
+	UFUNCTION(BlueprintPure, Category = "Buff|Presentation")
+	float GetPresentationProgress() const;
+
+	/** Updates the ring, existing icon and centre text from one server-time snapshot. */
+	UFUNCTION(BlueprintCallable, Category = "Buff|Presentation")
+	static void UpdateBuffStatusUI(AActor* BuffOwner, UTextBlock* TimeText, UImage* BuffIcon,
+		UBuffDurationRingWidget* DurationRing, UWidget* StatusGroup);
 
 	/** Safe for missing/unpossessed pawns. Uses the replicated server deadline, not a HUD timer. */
 	UFUNCTION(BlueprintCallable, Category = "Buff|Presentation")
