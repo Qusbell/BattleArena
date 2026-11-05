@@ -5,7 +5,7 @@
 	"fireRate": 0.80000000000000004,
 	"spread": 0,
 	"projectileClass": "/Script/Engine.BlueprintGeneratedClass'/Game/QuakeLike_1_0/HeldItem/Projectile/BP_RocketLauncherProjectile.BP_RocketLauncherProjectile_C'",
-	"projectileSpeed": 5000,
+	"projectileSpeed": 4600,
 	"damageJudgmentOffset": 0.80000000000000004,
 	"explosionRadius": 400,
 	"explosionDamage": 90,
@@ -75,6 +75,7 @@
 	"useSeparatePlayerProjectileDestroyEffects": true,
 	"projectilePlayerDestroyEffect": "/Script/Engine.ParticleSystem'/Game/Realistic_Starter_VFX_Pack_Vol2/Particles/Explosion/P_Explosion_Big_A.P_Explosion_Big_A'",
 	"nSProjectilePlayerDestroyEffect": "None",
+	"minDamageDistance": 0,
 	"attributes":
 	{
 	},
