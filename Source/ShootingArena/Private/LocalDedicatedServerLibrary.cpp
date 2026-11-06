@@ -579,8 +579,8 @@ bool ULocalDedicatedServerLibrary::StartLocalDedicatedServer(
         *ServerExePath,
         *Params,
         true,   // bLaunchDetached
-        false,  // bLaunchHidden
-        false,  // bLaunchReallyHidden
+        true,   // bLaunchHidden (싱글플레이용 서버 콘솔 창 숨김)
+        true,   // bLaunchReallyHidden
         &OutProcessID,
         0,
         nullptr,
