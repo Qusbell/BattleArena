@@ -15,6 +15,9 @@
 [기준선](audit/BASELINE.md), 상세 시험 조사 예시는 [BGM](systems/BGM.md)에 있습니다.
 과거 수집 시점의 상태와 현재 `audit/progress.json`을 구분합니다.
 
+삭제 후보 검토는 [TestMainMenu_Level 기준 명세](cleanup/README.md)를 확인합니다.
+역참조 0건·얇은 의존 관계·레거시/프로토타입 묶음으로 구분하며, 전체 CSV/JSON은 필요한 항목만 검색합니다.
+
 ## 폴더 구성
 
 | 경로 | 내용 |

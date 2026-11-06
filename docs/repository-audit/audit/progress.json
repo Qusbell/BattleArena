@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-11-05T20:34:07.746296+09:00",
+  "updated_at": "2026-11-05T22:13:40.903817+09:00",
   "phase_1": {
     "status": "complete",
     "record": "docs/repository-audit/audit/baseline.json",
@@ -47,8 +47,21 @@
     "cleanup": "not_started"
   },
   "phase_4": {
-    "status": "not_started",
-    "scope": "Cleanup candidate review, deletion and post-cleanup validation"
+    "status": "candidate_specification_complete",
+    "scope": "Logic assets only; simple art excluded. Three tiers reflect static isolation, thin dependency and legacy/prototype review.",
+    "report": "docs/repository-audit/cleanup/README.md",
+    "candidate_index": "docs/repository-audit/cleanup/candidates.csv",
+    "entrypoint": "/Game/QuakeLike_1_0/GameFlow/MainLevel/TestMainMenu_Level",
+    "logic_candidates": 448,
+    "tiers": {
+      "1": 129,
+      "2": 100,
+      "3": 219
+    },
+    "run_directory": "docs/repository-audit/audit/generated/cleanup-20261105T130233788352Z",
+    "live_revalidated_assets": 452,
+    "deletion_status": "not_started",
+    "runtime_validation": "not_run"
   },
   "open_questions": [
     {
@@ -86,7 +99,7 @@
       "next_check": "Check dynamic loading, external Actor ownership, tooling and test entrypoints."
     }
   ],
-  "next_recommended_system": "Phase 4: review cleanup candidates using Findings.md; resolve dynamic paths and external Actor ownership before any asset deletion.",
+  "next_recommended_system": "Review logic cleanup specification and retained manual tools; no deletion has been authorized or executed in this specification task.",
   "preservation": {
     "existing_user_change": "ExternalData/JsonAssetSyncManifest.json",
     "asset_mutations": "none",

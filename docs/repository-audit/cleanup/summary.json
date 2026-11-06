@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "reviewed_utc": "2026-11-05T13:03:48.246269+00:00",
+  "entrypoint": "/Game/QuakeLike_1_0/GameFlow/MainLevel/TestMainMenu_Level",
+  "entry_world_settings": [
+    {
+      "path": "/Game/QuakeLike_1_0/GameFlow/MainLevel/TestMainMenu_Level.TestMainMenu_Level:PersistentLevel.WorldSettings",
+      "default_game_mode": "/Game/QuakeLike_1_0/GameFlow/Lobby/BP_MenuGameMode.BP_MenuGameMode_C"
+    }
+  ],
+  "run_directory": "docs/repository-audit/audit/generated/cleanup-20261105T130233788352Z",
+  "baseline_commit": "6956f5d2bec90ea7171da34cb48a117a2211b944",
+  "current_commit": "8dc083de90c5194047eef2a0b68358cfd46b373e",
+  "candidate_count": 448,
+  "tiers": {
+    "1": 129,
+    "2": 100,
+    "3": 219
+  },
+  "protected_logic_assets": 501,
+  "retained_manual_entries": [
+    {
+      "package": "/Game/EditorTools_YJH/EUW_UnusedAssetFinder",
+      "reason": "Manually invoked maintenance utility; no evidence that its purpose is retired."
+    },
+    {
+      "package": "/Game/EditorTools_YJH/WBP_AssetRow",
+      "reason": "Dependency of retained manual Editor entrypoint"
+    },
+    {
+      "package": "/Game/QuakeLike_1_0/EUW_ArenaAnalyzer",
+      "reason": "Current documented analysis UI; manually invoked Editor entrypoint."
+    },
+    {
+      "package": "/Game/QuakeLike_1_0/Test/AnalyzeVisualizer/BP_ArenaAnalyzeVisualizer",
+      "reason": "Dependency of retained manual Editor entrypoint"
+    }
+  ],
+  "live_revalidated_assets": 452,
+  "reference_changes": 0,
+  "dirty_after": {
+    "content": [],
+    "maps": []
+  },
+  "deletions": "none",
+  "runtime_tests": "not_run",
+  "cook_tests": "not_run",
+  "limits": [
+    "Tier 1 means static isolation in the defined entry flow, not an unconditional proof against all future/direct/manual loads.",
+    "Manual Editor entrypoints can have zero referencers and still be useful; retained separately.",
+    "Tier 2 counts transitive impact, not only direct referencers. Delete/refactor callers first.",
+    "Tier 3 is a legacy/prototype hypothesis, never an instruction to remove a whole folder.",
+    "Simple art resources, UI style BPs and environment construction BPs excluded. AnimBPs are executable pose/state definitions, not animation clips."
+  ],
+  "script_sha256": {
+    "Scripts/PrepareLogicCleanupReview.py": "e82a02d39d82c31b86db7b463701bb6cb5c98aa26a694104a8577282628cff8c",
+    "Scripts/CollectLogicCleanupReview.py": "fc858ad16074f6d3ffe22cc1199d4dc2ade592393cbe74ff53fb9cc6b3465330",
+    "Scripts/WriteLogicCleanupReview.py": "3a2839a671179516f2a13102ac912dba8c51d896cec4dcd8f70387c93ba35ce1",
+    "Scripts/VerifyLogicCleanupReview.py": "b6cf48d2565f39300931ce6d098936ff350ddb0a29af72475336cf02edf81c6b"
+  },
+  "evidence_sha256": {
+    "bindings-live.json": "859fb52088afc0cb0c0f83cf99f2b841c7201cbf4c6b33f887f41d3a00017c56",
+    "candidates-final.json": "d3d96d804d2767a429a5edd9474ef7c2a55a36888185dc2b86a47d9f5c4af080",
+    "candidates-live.json": "bf9741f9c2e17c1ece05dce1bd31a5a34c0f25a66f58f9054e1c74c3781cb936",
+    "candidates-preliminary.json": "f578f8a8035b2b63ea873f9556a74ef10f0b039085289b07a5505f1752dc7356",
+    "literal-reference-sites.json": "d06acec0dce6eaa8e192e9fb16bbf99e2f81e5e03c3839e5b27de96c02cbe859",
+    "protected-logic.json": "9e702a445e6575f00b23e7fad7e1d022c0bae712a8bc2fd4a5371578f101a194",
+    "runtime-roots.json": "2f6ebecd57461f65e0ba30d1e064661ba927491899a6c72698585c1001f072e9",
+    "state.json": "cfcfedf26e69e30074f3da19f18dd451ef8b9a1e007a730de91e47dbb39782bd"
+  }
+}

@@ -1,0 +1,18 @@
+[
+  {
+    "package": "/Game/EditorTools_YJH/EUW_UnusedAssetFinder",
+    "reason": "Manually invoked maintenance utility; no evidence that its purpose is retired."
+  },
+  {
+    "package": "/Game/EditorTools_YJH/WBP_AssetRow",
+    "reason": "Dependency of retained manual Editor entrypoint"
+  },
+  {
+    "package": "/Game/QuakeLike_1_0/EUW_ArenaAnalyzer",
+    "reason": "Current documented analysis UI; manually invoked Editor entrypoint."
+  },
+  {
+    "package": "/Game/QuakeLike_1_0/Test/AnalyzeVisualizer/BP_ArenaAnalyzeVisualizer",
+    "reason": "Dependency of retained manual Editor entrypoint"
+  }
+]

@@ -1,0 +1,14 @@
+{
+  "verified": true,
+  "candidates": 448,
+  "tiers": {
+    "1": 129,
+    "2": 100,
+    "3": 219
+  },
+  "protected_or_retained": 501,
+  "live_revalidated": 452,
+  "reference_changes": 0,
+  "deleted_assets": 0,
+  "runtime_regression": "not_run"
+}
