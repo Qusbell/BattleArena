@@ -18,6 +18,10 @@ class SHOOTINGARENA_API UBuffDurationRingSettings : public UDataAsset
 {
 	GENERATED_BODY()
 public:
+	/** Hides caption text only; sound playback and subtitle timing are unchanged. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "기본 자막", meta = (DisplayName = "기본 대사 자막 표시", ToolTip = "체크를 끄면 기본 사운드 자막의 글자만 숨깁니다. 음성, 효과음 및 버프 동작은 그대로 유지됩니다."))
+	bool bShowSubtitles = true;
+
 	/** Shared engine sound captions, including buff pickup dialogue. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "기본 자막", meta = (DisplayName = "자막 위치 비율 (X=좌우, Y=높이)", ToolTip = "화면 좌상단=0,0 / 우하단=1,1. X=0.5는 중앙, Y가 작을수록 위로 이동합니다.", ClampMin = "0.0", ClampMax = "1.0"))
 	FVector2D SubtitlePosition = FVector2D(0.5, 0.7);
