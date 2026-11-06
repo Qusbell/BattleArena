@@ -2,7 +2,7 @@
 	"weaponType": "HitScan",
 	"damage": 12,
 	"range": 100000,
-	"fireRate": 0.080000000000000002,
+	"fireRate": 0.059999999999999998,
 	"spread": 0,
 	"projectileClass": "None",
 	"projectileSpeed": 0,
@@ -75,6 +75,7 @@
 	"useSeparatePlayerProjectileDestroyEffects": false,
 	"projectilePlayerDestroyEffect": "None",
 	"nSProjectilePlayerDestroyEffect": "None",
+	"minDamageDistance": 0,
 	"attributes":
 	{
 	},

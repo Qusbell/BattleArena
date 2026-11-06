@@ -1,8 +1,8 @@
 {
 	"weaponType": "Projectile",
-	"damage": 14,
+	"damage": 15,
 	"range": 100000,
-	"fireRate": 0.059999999999999998,
+	"fireRate": 0.080000000000000002,
 	"spread": 0,
 	"projectileClass": "/Script/Engine.BlueprintGeneratedClass'/Game/QuakeLike_1_0/HeldItem/Projectile/BP_PlasmaProjectile.BP_PlasmaProjectile_C'",
 	"projectileSpeed": 10000,
@@ -75,6 +75,7 @@
 	"useSeparatePlayerProjectileDestroyEffects": true,
 	"projectilePlayerDestroyEffect": "/Script/Engine.ParticleSystem'/Game/ParagonWraith/FX/Particles/Abilities/Primary/FX/P_Wraith_Primary_HitWorld2.P_Wraith_Primary_HitWorld2'",
 	"nSProjectilePlayerDestroyEffect": "None",
+	"minDamageDistance": 0,
 	"attributes":
 	{
 	},
