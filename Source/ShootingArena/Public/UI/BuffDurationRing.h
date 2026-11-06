@@ -56,6 +56,16 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "원형 게이지", meta = (DisplayName = "소진된 구간 색상·불투명도"))
 	FLinearColor EmptyColor = FLinearColor(0.15f, 0.2f, 0.25f, 0.28f);
 
+	/** Display-only highlight on the moving end of the remaining arc. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "원형 게이지|끝부분 발광", meta = (DisplayName = "게이지 끝부분 발광 사용", ToolTip = "체크를 끄면 기존 5분할 링으로 표시합니다. 숫자, 아이콘 및 버프 기능에는 영향을 주지 않습니다."))
+	bool bFillEdgeGlowEnabled = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "원형 게이지|끝부분 발광", meta = (DisplayName = "끝부분 발광 밝기", EditCondition = "bFillEdgeGlowEnabled", ClampMin = "0.0", ClampMax = "1.0"))
+	float FillEdgeGlowStrength = 0.4f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "원형 게이지|끝부분 발광", meta = (DisplayName = "끝부분 발광 폭 (px)", EditCondition = "bFillEdgeGlowEnabled", ClampMin = "1.0", ClampMax = "32.0"))
+	float FillEdgeGlowWidth = 10.0f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "가운데 아이콘", meta = (DisplayName = "아이콘 표시"))
 	bool bShowIcon = true;
 
@@ -176,6 +186,8 @@ private:
 	float AppliedProgress = -1.0f;
 	float AppliedSize = -1.0f;
 	float AppliedSteps = -1.0f;
+	float AppliedEdgeGlowStrength = -1.0f;
+	float AppliedEdgeGlowWidth = -1.0f;
 	float AppliedBlur = -1.0f;
 	float AppliedIconOpacity = -1.0f;
 	FLinearColor AppliedFillColor = FLinearColor::Transparent;
