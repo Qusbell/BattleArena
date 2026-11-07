@@ -18,6 +18,10 @@ class SHOOTINGARENA_API UBuffDurationRingSettings : public UDataAsset
 {
 	GENERATED_BODY()
 public:
+	/** Hides caption text only; sound playback and subtitle timing are unchanged. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "기본 자막", meta = (DisplayName = "기본 대사 자막 표시", ToolTip = "체크를 끄면 기본 사운드 자막의 글자만 숨깁니다. 음성, 효과음 및 버프 동작은 그대로 유지됩니다."))
+	bool bShowSubtitles = true;
+
 	/** Shared engine sound captions, including buff pickup dialogue. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "기본 자막", meta = (DisplayName = "자막 위치 비율 (X=좌우, Y=높이)", ToolTip = "화면 좌상단=0,0 / 우하단=1,1. X=0.5는 중앙, Y가 작을수록 위로 이동합니다.", ClampMin = "0.0", ClampMax = "1.0"))
 	FVector2D SubtitlePosition = FVector2D(0.5, 0.7);
@@ -51,6 +55,16 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "원형 게이지", meta = (DisplayName = "소진된 구간 색상·불투명도"))
 	FLinearColor EmptyColor = FLinearColor(0.15f, 0.2f, 0.25f, 0.28f);
+
+	/** Display-only highlight on the moving end of the remaining arc. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "원형 게이지|끝부분 발광", meta = (DisplayName = "게이지 끝부분 발광 사용", ToolTip = "체크를 끄면 기존 5분할 링으로 표시합니다. 숫자, 아이콘 및 버프 기능에는 영향을 주지 않습니다."))
+	bool bFillEdgeGlowEnabled = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "원형 게이지|끝부분 발광", meta = (DisplayName = "끝부분 발광 밝기", EditCondition = "bFillEdgeGlowEnabled", ClampMin = "0.0", ClampMax = "1.0"))
+	float FillEdgeGlowStrength = 0.4f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "원형 게이지|끝부분 발광", meta = (DisplayName = "끝부분 발광 폭 (px)", EditCondition = "bFillEdgeGlowEnabled", ClampMin = "1.0", ClampMax = "32.0"))
+	float FillEdgeGlowWidth = 10.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "가운데 아이콘", meta = (DisplayName = "아이콘 표시"))
 	bool bShowIcon = true;
@@ -172,6 +186,8 @@ private:
 	float AppliedProgress = -1.0f;
 	float AppliedSize = -1.0f;
 	float AppliedSteps = -1.0f;
+	float AppliedEdgeGlowStrength = -1.0f;
+	float AppliedEdgeGlowWidth = -1.0f;
 	float AppliedBlur = -1.0f;
 	float AppliedIconOpacity = -1.0f;
 	FLinearColor AppliedFillColor = FLinearColor::Transparent;

@@ -3,6 +3,7 @@
 #include "Buff/BuffPresentationComponent.h"
 #include "UI/BuffDurationRing.h"
 #include "Blueprint/WidgetTree.h"
+#include "Blueprint/WidgetBlueprintGeneratedClass.h"
 #include "AssetCompilingManager.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
@@ -11,6 +12,8 @@
 #include "Components/OverlaySlot.h"
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
+#include "DataTableUtils.h"
+#include "Engine/DataTable.h"
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Engine/LocalPlayer.h"
@@ -115,10 +118,25 @@ bool FBuffDurationRingTest::RunTest(const FString& Parameters)
 	};
 	Refresh();
 	TestTrue(TEXT("Missing active buff hides the whole group"), Group->GetVisibility() == ESlateVisibility::Collapsed);
+	// Read the independent gameplay data: designers may tune the Quad duration.
+	UDataTable* GameplayTable = Buff->BuffDataTable;
+	if (!TestNotNull(TEXT("Gameplay buff table"), GameplayTable)) return false;
+	const uint8* QuadRow = GameplayTable->FindRowUnchecked(TEXT("Buff.Multi.Atk"));
+	if (!TestNotNull(TEXT("Quad gameplay row"), QuadRow)) return false;
+	double QuadDuration = 0.0;
+	for (TFieldIterator<FNumericProperty> It(GameplayTable->GetRowStruct()); It; ++It)
+	{
+		if (DataTableUtils::GetPropertyExportName(*It) != TEXT("Duration")) continue;
+		const void* Value = It->ContainerPtrToValuePtr<void>(QuadRow);
+		QuadDuration = It->IsFloatingPoint() ? It->GetFloatingPointPropertyValue(Value) : static_cast<double>(It->GetSignedIntPropertyValue(Value));
+		break;
+	}
+	if (!TestTrue(TEXT("Quad has a positive configured duration"), FMath::IsFinite(QuadDuration) && QuadDuration > 0.0)) return false;
+	const FString QuadSeconds = FString::Printf(TEXT("%ds"), FMath::CeilToInt(QuadDuration));
 	if (!Grant(TEXT("ApplyBuff"), TEXT("rowName"), TEXT("Buff.Multi.Atk"))) return false;
 	Refresh();
 	TestEqual(TEXT("Normal grant starts full"), Buff->GetPresentationProgress(), 1.0f);
-	TestEqual(TEXT("Centre uses existing numeric seconds"), Text->GetText().ToString(), FString(TEXT("30s")));
+	TestEqual(TEXT("Centre uses existing numeric seconds"), Text->GetText().ToString(), QuadSeconds);
 	TestEqual(TEXT("Independent DA positions the group"), Position->GetPosition(), Style->Position);
 	if (!TestNotNull(TEXT("Cached radial MID"), Ring->RingMID.Get()) || !TestNotNull(TEXT("Icon-only MID"), Ring->IconMID.Get())) return false;
 	TestEqual(TEXT("Icon opacity is independent of ring alpha"), Ring->IconMID->K2_GetScalarParameterValue(TEXT("IconOpacity")), 0.18f);
@@ -292,6 +310,195 @@ bool FBuffDurationRingTest::RunTest(const FString& Parameters)
 	FStructOnScope DeathArgs(Death); Buff->ProcessEvent(Death, DeathArgs.GetStructMemory()); Refresh();
 	TestTrue(TEXT("Death removes the indicator"), Group->GetVisibility() == ESlateVisibility::Collapsed);
 	return !HasAnyErrors();
+}
+
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FBuffHUDStyleTest, "ShootingArena.UI.BuffHUDStyle",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter | EAutomationTestFlags::NonNullRHI)
+
+bool FBuffHUDStyleTest::RunTest(const FString& Parameters)
+{
+    FTestWorldWrapper Context;
+    if (!Context.CreateTestWorld(EWorldType::Game)) return false;
+    UWorld* World = Context.GetTestWorld();
+    UGameInstance* GI = World->GetGameInstance();
+    ULocalPlayer* Player = NewObject<ULocalPlayer>(GEngine);
+    GI->AddLocalPlayer(Player, FPlatformMisc::GetPlatformUserForUserIndex(0));
+    ON_SCOPE_EXIT { GI->RemoveLocalPlayer(Player); };
+    APlayerController* PC = World->SpawnActor<APlayerController>(); PC->SetPlayer(Player);
+    UClass* Class = LoadClass<UBuffDurationRingWidget>(nullptr, TEXT("/Game/QuakeLike_Base/SDM/UI/Combat_UI/WBP_BuffDurationRing.WBP_BuffDurationRing_C"));
+    auto* Ring = CreateWidget<UBuffDurationRingWidget>(PC, Class);
+    if (!TestNotNull(TEXT("Saved buff ring"), Ring) || !TestNotNull(TEXT("Saved ring settings"), Ring->Settings.Get())) return false;
+    Ring->Settings = DuplicateObject<UBuffDurationRingSettings>(Ring->Settings, GetTransientPackage());
+    auto* Style = Ring->Settings.Get();
+    // Compare the actual displayed purchased HUD numerals, not the other root-HUD placeholders.
+    auto SavedText = [this](const TCHAR* ClassPath,const TCHAR* Name)->UTextBlock*
+    {
+        auto* BP = Cast<UWidgetBlueprintGeneratedClass>(LoadClass<UUserWidget>(nullptr,ClassPath));
+        if(!TestNotNull(TEXT("Saved HUD widget class"),BP) || !TestNotNull(TEXT("Saved HUD widget tree"),BP->GetWidgetTreeArchetype())) return nullptr;
+        return Cast<UTextBlock>(BP->GetWidgetTreeArchetype()->FindWidget(Name));
+    };
+    UTextBlock* HealthNumber = SavedText(TEXT("/Game/CompShooterHUD/UI/Content/HealthBar/Content/WB_HealthBar.WB_HealthBar_C"),TEXT("Text_Value"));
+    UTextBlock* ArmorNumber = SavedText(TEXT("/Game/CompShooterHUD/UI/Content/ArmorBar/Content/WB_ArmorBar.WB_ArmorBar_C"),TEXT("Text_Value"));
+    UTextBlock* BuffNumber = SavedText(TEXT("/Game/QuakeLike_Base/SDM/UI/Combat_UI/WBP_PlayerHUD_sdm.WBP_PlayerHUD_sdm_C"),TEXT("BuffRemainingTimeText"));
+    if(!TestNotNull(TEXT("Displayed health number"),HealthNumber) || !TestNotNull(TEXT("Displayed armor number"),ArmorNumber) || !TestNotNull(TEXT("Saved buff number"),BuffNumber)) return false;
+    TestTrue(TEXT("Buff font style exactly matches displayed health and armor"),BuffNumber->GetFont()==HealthNumber->GetFont() && BuffNumber->GetFont()==ArmorNumber->GetFont());
+    TestEqual(TEXT("Black outline is disabled in the DA"),Style->TimeOutlineSize,0);
+    TestEqual(TEXT("DA keeps the matching HUD point size"),float(Style->TimeFontSize),HealthNumber->GetFont().Size);
+    TestTrue(TEXT("Buff shadow offset matches both HUD values"),BuffNumber->GetShadowOffset()==HealthNumber->GetShadowOffset() && BuffNumber->GetShadowOffset()==ArmorNumber->GetShadowOffset());
+    TestTrue(TEXT("Buff shadow color/opacity matches the HUD"),BuffNumber->GetShadowColorAndOpacity().Equals(HealthNumber->GetShadowColorAndOpacity()) && BuffNumber->GetShadowColorAndOpacity().Equals(ArmorNumber->GetShadowColorAndOpacity()));
+    UTextBlock* RuntimeNumber=NewObject<UTextBlock>(PC);
+    RuntimeNumber->SetFont(BuffNumber->GetFont());RuntimeNumber->SetShadowOffset(BuffNumber->GetShadowOffset());RuntimeNumber->SetShadowColorAndOpacity(BuffNumber->GetShadowColorAndOpacity());
+    Ring->ApplyStatus(10.0,0.5f,true,RuntimeNumber,nullptr);
+    TestTrue(TEXT("Runtime refresh retains the HUD font without restoring an outline"),RuntimeNumber->GetFont()==HealthNumber->GetFont());
+    TestTrue(TEXT("Runtime refresh retains the drop shadow"),RuntimeNumber->GetShadowOffset()==HealthNumber->GetShadowOffset() && RuntimeNumber->GetShadowColorAndOpacity().Equals(HealthNumber->GetShadowColorAndOpacity()));
+    TestEqual(TEXT("HUD has five health-style blocks"), Style->RingSteps, 5.0f);
+    TestTrue(TEXT("Quad and Protection share the purple palette"), Style->QuadColor.Equals(Style->ProtectionColor));
+    TestTrue(TEXT("White number and red expiry warning remain"), Style->TimeColor.Equals(FLinearColor::White)
+        && Style->bTimeWarningFlashEnabled && Style->TimeWarningColor.Equals(FLinearColor::Red));
+    TestEqual(TEXT("A dedicated copy implements the ring"), Style->RingMaterial->GetMaterial()->GetPathName(),
+        FString(TEXT("/Game/QuakeLike_Base/SDM/UI/Combat_UI/Materials/M_UI_BuffDurationRing_HUD.M_UI_BuffDurationRing_HUD")));
+    Style->bFillEdgeGlowEnabled = false; // Preserve the baseline geometry/contrast captures.
+    const TSharedRef<SWidget> Slate = Ring->TakeWidget();
+    UImage* Image = Cast<UImage>(Ring->GetWidgetFromName(TEXT("CircleImg")));
+    if (!TestNotNull(TEXT("Existing circle image"), Image)) return false;
+    Ring->ApplyStatus(10.0, 1.0f, true, nullptr, nullptr);
+    UMaterialInstanceDynamic* MID = Image->GetDynamicMaterial();
+    if (!TestNotNull(TEXT("Ring uses a dynamic material"), MID)) return false;
+    FAssetCompilingManager::Get().FinishAllCompilation();
+    if (GShaderCompilingManager) GShaderCompilingManager->FinishAllCompilation();
+    if (FMaterialResource* Resource = Style->RingMaterial->GetMaterial()->GetMaterialResource(GMaxRHIFeatureLevel))
+        TestEqual(TEXT("Ring compiles without a fallback shader"), Resource->GetCompileErrors().Num(), 0);
+    const FString Dir = FPaths::ProjectSavedDir() / TEXT("Automation/BuffHUDStyle");
+    IFileManager::Get().MakeDirectory(*Dir, true);
+    auto IsFill = [](const FColor& C) { return C.R > 100 && C.B > 75 && C.R > C.G + 40 && C.B > C.G + 40; };
+    auto Luminance = [](const FColor& C) { const FLinearColor L(C); return 0.2126f*L.R + 0.7152f*L.G + 0.0722f*L.B; };
+    for (int32 D : {160, 240, 320})
+    {
+        Style->Diameter = static_cast<float>(D);
+        FWidgetRenderer Renderer(true);
+        int32 PreviousCount = MAX_int32;
+        for (float Percent : {1.0f, 0.8f, 0.59f, 0.5f, 0.2f, 0.01f, 0.0f})
+        {
+            Ring->ApplyStatus(Percent > 0.0f ? 10.0 : 0.0, Percent, true, nullptr, nullptr);
+            MID->GetRenderProxy()->CacheUniformExpressions_GameThread(true);
+            ENQUEUE_RENDER_COMMAND(FlushBuffStyleUniforms)([](FRHICommandListImmediate& RHICmdList)
+            { FMaterialRenderProxy::UpdateDeferredCachedUniformExpressions(RHICmdList); });
+            FlushRenderingCommands(); Ring->ForceLayoutPrepass();
+            auto* Target = Renderer.DrawWidget(Slate, FVector2D(D,D));
+            FlushRenderingCommands();
+            Renderer.DrawWidget(Target, Slate, FVector2D(D,D), 0.0f); FlushRenderingCommands();
+            TArray<FColor> Pixels;
+            if (!Target || !Target->GameThread_GetRenderTargetResource()->ReadPixels(Pixels)) { AddError(TEXT("GPU capture failed")); return false; }
+            int32 Count = 0;
+            for (const FColor& C : Pixels) Count += IsFill(C) ? 1 : 0;
+            const FString Name = FString::Printf(TEXT("Ring_%d_%03d.png"), D, FMath::RoundToInt(Percent*100));
+            FBufferArchive PNG;
+            TestTrue(TEXT("Ring preview encodes"), FImageUtils::ExportRenderTarget2DAsPNG(Target, PNG));
+            TestTrue(TEXT("Ring preview saves"), FFileHelper::SaveArrayToFile(PNG, *(Dir / Name)));
+            AddInfo(FString::Printf(TEXT("%s: purple pixels=%d"), *Name, Count));
+            TestTrue(TEXT("Gauge decreases inside blocks as well as at their boundaries"), Count < PreviousCount);
+            PreviousCount = Count;
+            TestTrue(TEXT("The centre remains transparent"), Pixels[(D/2)*D+D/2].A == 0);
+            if (Percent > 0.0f) TestTrue(TEXT("Remaining fill is visible"), Count > 0);
+            else TestEqual(TEXT("Expiry leaves no ring pixels"), Count, 0);
+            if (Percent == 1.0f)
+            {
+                const float Radius = 0.25f*D*(1.0f+1.0f/Style->RingSize);
+                int32 Starts=0; bool Previous=false, First=false;
+                for (int32 I=0; I<3600; ++I)
+                {
+                    const float A = I*2.0f*PI/3600.0f;
+                    const int32 X=FMath::Clamp(FMath::RoundToInt(D*0.5f+Radius*FMath::Cos(A)),0,D-1);
+                    const int32 Y=FMath::Clamp(FMath::RoundToInt(D*0.5f+Radius*FMath::Sin(A)),0,D-1);
+                    const bool Current = IsFill(Pixels[Y*D+X]);
+                    if (I==0) First=Current;
+                    if (Current && !Previous) ++Starts;
+                    Previous=Current;
+                }
+                if (First && Previous) --Starts;
+                TestEqual(TEXT("Exactly five circular health-style blocks"), Starts, 5);
+            }
+            if (Percent == 0.5f)
+            {
+                float Fill=0.0f, Empty=0.0f; int32 FillN=0, EmptyN=0;
+                const float Radius=0.25f*D*(1.0f+1.0f/Style->RingSize);
+                for(int32 I=0;I<360;++I)
+                {
+                    const float A=I*2.0f*PI/360.0f;
+                    const int32 X=FMath::Clamp(FMath::RoundToInt(D*0.5f+Radius*FMath::Cos(A)),0,D-1);
+                    const int32 Y=FMath::Clamp(FMath::RoundToInt(D*0.5f+Radius*FMath::Sin(A)),0,D-1);
+                    const FColor& C=Pixels[Y*D+X];
+                    if(IsFill(C)){Fill+=Luminance(C);++FillN;}
+                    else if(C.R>30 && C.R<80 && C.B>40 && C.B<90 && C.A>200){Empty+=Luminance(C);++EmptyN;}
+                }
+                TestTrue(TEXT("Both fill and empty regions are sampled"), FillN>0 && EmptyN>0);
+                const float Contrast=(Fill/FMath::Max(FillN,1)+0.05f)/(Empty/FMath::Max(EmptyN,1)+0.05f);
+                TestTrue(TEXT("Filled versus exhausted region contrast is at least 3:1"), Contrast>=3.0f);
+                AddInfo(FString::Printf(TEXT("%dpx fill/empty contrast %.3f:1"),D,Contrast));
+            }
+            TestTrue(TEXT("Updates reuse the same MID"), Image->GetDynamicMaterial()==MID);
+        }
+    }
+    Style->Diameter = 240.0f;
+    Style->FillEdgeGlowStrength = 0.4f; Style->FillEdgeGlowWidth = 10.0f;
+    FWidgetRenderer GlowRenderer(true);
+    auto CaptureGlow = [&](const TCHAR* Name, float Progress)
+    {
+        Ring->ApplyStatus(Progress > 0.0f ? 10.0 : 0.0, Progress, true, nullptr, nullptr);
+        MID->GetRenderProxy()->CacheUniformExpressions_GameThread(true);
+        ENQUEUE_RENDER_COMMAND(FlushGlowUniforms)([](FRHICommandListImmediate& RHICmdList)
+        { FMaterialRenderProxy::UpdateDeferredCachedUniformExpressions(RHICmdList); });
+        FlushRenderingCommands(); Ring->ForceLayoutPrepass();
+        auto* Target = GlowRenderer.DrawWidget(Slate,FVector2D(240,240)); FlushRenderingCommands();
+        TArray<FColor> Pixels;
+        if (!Target) { AddError(TEXT("Glow preview target unavailable")); return Pixels; }
+        GlowRenderer.DrawWidget(Target,Slate,FVector2D(240,240),0.0f); FlushRenderingCommands();
+        if(!Target->GameThread_GetRenderTargetResource()->ReadPixels(Pixels)) AddError(TEXT("Glow GPU readback failed"));
+        FBufferArchive PNG;
+        if(FImageUtils::ExportRenderTarget2DAsPNG(Target,PNG)) TestTrue(TEXT("Glow A/B preview saved"),FFileHelper::SaveArrayToFile(PNG,*(Dir/Name)));
+        return Pixels;
+    };
+    Style->bFillEdgeGlowEnabled = false;
+    const auto Off = CaptureGlow(TEXT("EdgeGlow_OFF_50.png"),0.5f);
+    TestEqual(TEXT("DA checkbox disables material glow"),MID->K2_GetScalarParameterValue(TEXT("EdgeGlowStrength")),0.0f);
+    Style->bFillEdgeGlowEnabled = true;
+    const auto On = CaptureGlow(TEXT("EdgeGlow_ON_50.png"),0.5f);
+    TestEqual(TEXT("DA strength reaches material"),MID->K2_GetScalarParameterValue(TEXT("EdgeGlowStrength")),0.4f);
+    TestEqual(TEXT("DA width reaches material"),MID->K2_GetScalarParameterValue(TEXT("EdgeGlowWidth")),10.0f);
+    if(Off.Num()!=240*240 || On.Num()!=Off.Num()) return false;
+    int32 Changed=0; float MaxDistance=0.0f;
+    const FVector2D Tip(120.0,120.0+60.0*(1.0+1.0/Style->RingSize));
+    for(int32 I=0;I<Off.Num();++I)
+    {
+        const FColor A=Off[I],B=On[I];
+        if(FMath::Abs(int32(A.R)-B.R)>3 || FMath::Abs(int32(A.G)-B.G)>3 || FMath::Abs(int32(A.B)-B.B)>3 || FMath::Abs(int32(A.A)-B.A)>3)
+        {
+            ++Changed;MaxDistance=FMath::Max(MaxDistance,float(FVector2D::Distance(Tip,FVector2D(I%240,I/240))));
+        }
+    }
+    TestTrue(TEXT("Enabling glow visibly changes the endpoint"),Changed>5);
+    TestTrue(TEXT("Glow affects only a small local area"),Changed<240*240/40 && MaxDistance<35.0f);
+    TestEqual(TEXT("Glow leaves the centre transparent"),On[120*240+120].A,uint8(0));
+    AddInfo(FString::Printf(TEXT("Endpoint glow changed %d pixels; furthest change %.2fpx from tip"),Changed,MaxDistance));
+    Style->FillEdgeGlowWidth=20.0f; CaptureGlow(TEXT("EdgeGlow_Wide_50.png"),0.5f);
+    TestEqual(TEXT("DA width edits apply live"),MID->K2_GetScalarParameterValue(TEXT("EdgeGlowWidth")),20.0f);
+    Style->bFillEdgeGlowEnabled=false;
+    const auto Restored=CaptureGlow(TEXT("EdgeGlow_Restored_OFF_50.png"),0.5f);
+    TestTrue(TEXT("Disabling restores the exact original pixels"),Restored==Off);
+    Style->bFillEdgeGlowEnabled=true;Style->FillEdgeGlowStrength=0.0f;
+    TestTrue(TEXT("Zero strength equals unchecked"),CaptureGlow(TEXT("EdgeGlow_Zero_50.png"),0.5f)==Off);
+    Style->FillEdgeGlowStrength=0.4f;Style->FillEdgeGlowWidth=10.0f;
+    for(float Pct:{0.3f,0.8f}) CaptureGlow(Pct==0.3f?TEXT("EdgeGlow_ON_30.png"):TEXT("EdgeGlow_ON_80.png"),Pct);
+    const auto FullOn=CaptureGlow(TEXT("EdgeGlow_Full_ON.png"),1.0f);
+    Style->bFillEdgeGlowEnabled=false;
+    TestTrue(TEXT("A full ring never flashes at the wrap seam"),CaptureGlow(TEXT("EdgeGlow_Full_OFF.png"),1.0f)==FullOn);
+    Style->bFillEdgeGlowEnabled=true;Style->FillEdgeGlowStrength=NAN;Style->FillEdgeGlowWidth=-5.0f;
+    CaptureGlow(TEXT("EdgeGlow_SafeDefaults.png"),0.5f);
+    TestEqual(TEXT("Invalid brightness has a finite fallback"),MID->K2_GetScalarParameterValue(TEXT("EdgeGlowStrength")),0.4f);
+    TestEqual(TEXT("Width is clamped"),MID->K2_GetScalarParameterValue(TEXT("EdgeGlowWidth")),1.0f);
+    TestTrue(TEXT("Switching glow reuses the existing MID"),Image->GetDynamicMaterial()==MID);
+    return !HasAnyErrors();
 }
 
 #endif

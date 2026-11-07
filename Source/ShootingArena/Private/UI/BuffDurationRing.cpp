@@ -58,6 +58,7 @@ void UBuffDurationRingWidget::ApplyRingStyle()
 		AppliedRingMaterial = Material;
 		CircleImg->SetBrushFromMaterial(RingMID);
 		AppliedProgress = AppliedSize = AppliedSteps = -1.0f;
+		AppliedEdgeGlowStrength = AppliedEdgeGlowWidth = -1.0f;
 		AppliedFillColor = FLinearColor::Transparent;
 		AppliedEmptyColor = FLinearColor(-1.0f, -1.0f, -1.0f, -1.0f);
 	}
@@ -66,6 +67,10 @@ void UBuffDurationRingWidget::ApplyRingStyle()
 	const float Steps = SafeValue(Style->RingSteps, 800.0f, 1.0f, 1000.0f);
 	if (AppliedSize != Size) { RingMID->SetScalarParameterValue(TEXT("Size"), Size); AppliedSize = Size; }
 	if (AppliedSteps != Steps) { RingMID->SetScalarParameterValue(TEXT("Steps"), Steps); AppliedSteps = Steps; }
+	const float EdgeStrength = Style->bFillEdgeGlowEnabled ? SafeValue(Style->FillEdgeGlowStrength, 0.4f, 0.0f, 1.0f) : 0.0f;
+	const float EdgeWidth = SafeValue(Style->FillEdgeGlowWidth, 10.0f, 1.0f, 32.0f);
+	if (AppliedEdgeGlowStrength != EdgeStrength) { RingMID->SetScalarParameterValue(TEXT("EdgeGlowStrength"), EdgeStrength); AppliedEdgeGlowStrength = EdgeStrength; }
+	if (AppliedEdgeGlowWidth != EdgeWidth) { RingMID->SetScalarParameterValue(TEXT("EdgeGlowWidth"), EdgeWidth); AppliedEdgeGlowWidth = EdgeWidth; }
 	if (AppliedEmptyColor != Style->EmptyColor)
 	{
 		RingMID->SetVectorParameterValue(TEXT("EmptyColor"), Style->EmptyColor);

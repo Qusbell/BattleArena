@@ -40,7 +40,7 @@ void UArenaGameViewportClient::Draw(FViewport* InViewport, FCanvas* SceneCanvas)
 void UArenaGameViewportClient::DrawSubtitleText(const FText& Text)
 {
 	// The manager's display-delegate path doesn't check the global subtitle preferences.
-	if (!SubtitleCanvas || !SubtitleSettings || Text.IsEmpty() || !GEngine
+	if (!SubtitleCanvas || !SubtitleSettings || !SubtitleSettings->bShowSubtitles || Text.IsEmpty() || !GEngine
 		|| GEngine->bSubtitlesForcedOff || !GEngine->bSubtitlesEnabled) return;
 	UFont* Font = GEngine->GetSubtitleFont();
 	if (!Font) return;

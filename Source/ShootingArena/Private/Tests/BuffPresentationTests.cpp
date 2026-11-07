@@ -54,14 +54,29 @@ bool FBuffPresentationTest::RunTest(const FString& Parameters)
 		Buff->ProcessEvent(Function, Args.GetStructMemory());
 		TestTrue(TEXT("Existing buff grant succeeds"), FindFProperty<FBoolProperty>(Function, TEXT("Success"))->GetPropertyValue_InContainer(Args.GetStructMemory()));
 	};
+	// Read the independent gameplay data: designers may tune the Quad duration.
+	UDataTable* GameplayTable = Buff->BuffDataTable;
+	if (!TestNotNull(TEXT("Gameplay buff table"), GameplayTable)) return false;
+	const uint8* QuadRow = GameplayTable->FindRowUnchecked(TEXT("Buff.Multi.Atk"));
+	if (!TestNotNull(TEXT("Quad gameplay row"), QuadRow)) return false;
+	double QuadDuration = 0.0;
+	for (TFieldIterator<FNumericProperty> It(GameplayTable->GetRowStruct()); It; ++It)
+	{
+		if (DataTableUtils::GetPropertyExportName(*It) != TEXT("Duration")) continue;
+		const void* Value = It->ContainerPtrToValuePtr<void>(QuadRow);
+		QuadDuration = It->IsFloatingPoint() ? It->GetFloatingPointPropertyValue(Value) : static_cast<double>(It->GetSignedIntPropertyValue(Value));
+		break;
+	}
+	if (!TestTrue(TEXT("Quad has a positive configured duration"), FMath::IsFinite(QuadDuration) && QuadDuration > 0.0)) return false;
+	const FString QuadSeconds = FString::Printf(TEXT("%ds"), FMath::CeilToInt(QuadDuration));
 	Grant(TEXT("ApplyBuff"), TEXT("rowName"), TEXT("Buff.Multi.Atk"));
-	TestTrue(TEXT("Normal grant publishes its actual 30-second deadline"), FMath::IsNearlyEqual(Buff->GetPresentationRemainingTime(), 30.0, 0.01));
+	TestTrue(TEXT("Normal grant publishes its configured deadline"), FMath::IsNearlyEqual(Buff->GetPresentationRemainingTime(), QuadDuration, 0.01));
 	UBuffPresentationComponent::UpdateBuffRemainingTimeText(Owner, Text);
-	TestEqual(TEXT("Numeric seconds without the buff name"), Text->GetText().ToString(), FString(TEXT("30s")));
+	TestEqual(TEXT("Numeric seconds without the buff name"), Text->GetText().ToString(), QuadSeconds);
 	Context.TickTestWorld(2.0f);
-	TestTrue(TEXT("Remaining time decreases with server game time"), Buff->GetPresentationRemainingTime() < 30.0);
+	TestTrue(TEXT("Remaining time decreases with server game time"), Buff->GetPresentationRemainingTime() < QuadDuration);
 	Grant(TEXT("ApplyBuff"), TEXT("rowName"), TEXT("Buff.Multi.Atk"));
-	TestTrue(TEXT("Refresh uses the newly assigned full deadline"), FMath::IsNearlyEqual(Buff->GetPresentationRemainingTime(), 30.0, 0.01));
+	TestTrue(TEXT("Refresh uses the newly assigned full deadline"), FMath::IsNearlyEqual(Buff->GetPresentationRemainingTime(), QuadDuration, 0.01));
 	const double DroppedEnd = World->GetGameState()->GetServerWorldTimeSeconds() + 12.0;
 	Grant(TEXT("ApplyDroppedBuff"), TEXT("Row Name"), TEXT("Buff.Multi.Def"), DroppedEnd);
 	TestTrue(TEXT("Dropped grant displays the inherited remaining time"), FMath::IsNearlyEqual(Buff->GetPresentationRemainingTime(), 12.0, 0.01));

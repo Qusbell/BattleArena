@@ -95,6 +95,11 @@ bool FBuffScreenEffectTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Designer period reaches the real effect"),
 		Pulse->GetFloatingPointPropertyValue(Pulse->ContainerPtrToValuePtr<void>(Widget->Effect)), static_cast<double>(Settings->PulsePeriod * 0.5f));
 	if (!TestNotNull(TEXT("Electric layer is built from the DA material"), Widget->ElectricMID.Get())) return false;
+	TestTrue(TEXT("Electric halo receives the same primary purple as the mask"),
+		Widget->ElectricMID->K2_GetVectorParameterValue(TEXT("Color1")).Equals(Settings->Color1));
+	TestTrue(TEXT("Electric inner glow receives the secondary colour"),
+		Widget->ElectricMID->K2_GetVectorParameterValue(TEXT("Color2")).Equals(Settings->Color2));
+	UMaterialInstanceDynamic* OriginalElectricMID = Widget->ElectricMID;
 	auto Burst = [Widget] { return Widget->ElectricMID->K2_GetScalarParameterValue(TEXT("Burst")); };
 	auto Intensity = [Widget] { return Widget->ElectricMID->K2_GetScalarParameterValue(TEXT("Intensity")); };
 	TestEqual(TEXT("New effect starts transparent"), Widget->GetRenderOpacity(), 0.0f);
@@ -109,6 +114,7 @@ bool FBuffScreenEffectTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("Refreshing a buff does not remove its effect"), Widget->HasFinished());
 	TestTrue(TEXT("Refreshing a buff flashes again"), FMath::IsNearlyEqual(Burst(), 0.8f, 0.01f));
 	Widget->NativeTick(FGeometry(), Settings->BurstSeconds);
+	TestTrue(TEXT("Colour and burst updates reuse the electric MID"), Widget->ElectricMID == OriginalElectricMID);
 	TestTrue(TEXT("Flash settles to the sustained crackle"), Burst() == 0.0f && FMath::IsNearlyEqual(Intensity(), Settings->ElectricIntensity));
 	Buff->Presentation.EndServerTime = World->GetTimeSeconds();
 	UBuffPresentationComponent::UpdateBuffRemainingTimeText(Pawn, TimeText, Icon);
