@@ -76,6 +76,7 @@
 	"projectilePlayerDestroyEffect": "/Script/Engine.ParticleSystem'/Game/Realistic_Starter_VFX_Pack_Vol2/Particles/Explosion/P_Explosion_Big_A.P_Explosion_Big_A'",
 	"nSProjectilePlayerDestroyEffect": "None",
 	"minDamageDistance": 0,
+	"hitscanEffectDelay": 0,
 	"attributes":
 	{
 	},

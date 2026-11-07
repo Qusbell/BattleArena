@@ -76,6 +76,7 @@
 	"projectilePlayerDestroyEffect": "None",
 	"nSProjectilePlayerDestroyEffect": "None",
 	"minDamageDistance": 0,
+	"hitscanEffectDelay": 0,
 	"attributes":
 	{
 	},

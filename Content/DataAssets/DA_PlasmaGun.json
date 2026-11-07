@@ -76,6 +76,7 @@
 	"projectilePlayerDestroyEffect": "/Script/Engine.ParticleSystem'/Game/ParagonWraith/FX/Particles/Abilities/Primary/FX/P_Wraith_Primary_HitWorld2.P_Wraith_Primary_HitWorld2'",
 	"nSProjectilePlayerDestroyEffect": "None",
 	"minDamageDistance": 0,
+	"hitscanEffectDelay": 0,
 	"attributes":
 	{
 	},
