@@ -10395,6 +10395,33 @@
 					"category": "Angle",
 					"advancedDisplay": false,
 					"type": "double"
+				},
+				{
+					"name": "reversalSampleInterval",
+					"displayName": "Reversal Sample Interval",
+					"cppType": "double",
+					"order": 5,
+					"category": "디폴트",
+					"advancedDisplay": false,
+					"type": "double"
+				},
+				{
+					"name": "reversalVelocityMemory",
+					"displayName": "Reversal Velocity Memory",
+					"cppType": "double",
+					"order": 6,
+					"category": "디폴트",
+					"advancedDisplay": false,
+					"type": "double"
+				},
+				{
+					"name": "reversalPenaltyDuration",
+					"displayName": "Reversal Penalty Duration",
+					"cppType": "double",
+					"order": 7,
+					"category": "디폴트",
+					"advancedDisplay": false,
+					"type": "double"
 				}
 			]
 		},

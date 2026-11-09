@@ -8,5 +8,8 @@
 	"clampAimDistance": 108,
 	"near Distance": 150,
 	"near Angle": 60,
-	"far Angle": 10
+	"far Angle": 10,
+	"reversalSampleInterval": 0.10000000000000001,
+	"reversalVelocityMemory": 0.29999999999999999,
+	"reversalPenaltyDuration": 0.20000000000000001
 }
