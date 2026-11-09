@@ -1,4 +1,5 @@
 #include "UI/CompetitiveRankingHUD.h"
+#include "UI/UIRecordingSettings.h"
 #include "UI/CompetitiveRankingOrder.h"
 #include "UI/KillMedalUISettings.h"
 #include "Audio/KillStreakVoiceComponent.h"
@@ -119,7 +120,10 @@ void UCompetitiveRankingHUD::RefreshStreakMedals(int32 Count)
 		if (!Canvas || !WidgetTree) return;
 		StreakPanel = WidgetTree->ConstructWidget<UVerticalBox>();
 		StreakPanel->SetVisibility(ESlateVisibility::HitTestInvisible);
-		UCanvasPanelSlot* StreakSlot = Canvas->AddChildToCanvas(StreakPanel);
+		URecordingUIMask* RecordingMask = WidgetTree->ConstructWidget<URecordingUIMask>();
+		RecordingMask->Section = ERecordingUISection::Medals;
+		RecordingMask->SetContent(StreakPanel);
+		UCanvasPanelSlot* StreakSlot = Canvas->AddChildToCanvas(RecordingMask);
 		StreakSlot->SetAnchors(FAnchors(Settings->MedalAnchor.X, Settings->MedalAnchor.Y));
 		StreakSlot->SetAlignment(FVector2D(0.5f, 0.0f));
 		StreakSlot->SetPosition(Settings->MedalPosition);
@@ -241,7 +245,10 @@ void UCompetitiveRankingHUD::NativeConstruct()
 	if (!Canvas || !WidgetTree || RankingPanel) return;
 	RankingPanel = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("CompetitiveRanking"));
 	RankingPanel->SetVisibility(ESlateVisibility::HitTestInvisible);
-	RankingSlot = Canvas->AddChildToCanvas(RankingPanel);
+	URecordingUIMask* RecordingMask = WidgetTree->ConstructWidget<URecordingUIMask>();
+	RecordingMask->Section = ERecordingUISection::Ranking;
+	RecordingMask->SetContent(RankingPanel);
+	RankingSlot = Canvas->AddChildToCanvas(RecordingMask);
 	RankingSlot->SetSize(FVector2D(PanelWidth, PanelHeight));
 	RankingSlot->SetZOrder(10);
 	LeaderProgress = WidgetTree->ConstructWidget<UProgressBar>(UProgressBar::StaticClass(), TEXT("RankingProgress"));
@@ -536,13 +543,13 @@ void UCompetitiveRankingHUD::NativeDestruct()
 	StreakHighlight = nullptr;
 	MedalStamps.Reset();
 	bDisplayedLargeMedal = false;
-	if (StreakPanel) StreakPanel->RemoveFromParent();
+	if (StreakPanel && StreakPanel->GetParent()) StreakPanel->GetParent()->RemoveFromParent();
 	StreakPanel = nullptr;
 	StreakIcons = nullptr;
 	StreakCountLabel = nullptr;
 	ActiveStreakSettings = nullptr;
 	DisplayedStreak = INDEX_NONE;
-	if (RankingPanel) RankingPanel->RemoveFromParent();
+	if (RankingPanel && RankingPanel->GetParent()) RankingPanel->GetParent()->RemoveFromParent();
 	RankingPanel = nullptr;
 	RankingSlot = nullptr;
 	LeaderProgress = nullptr;
