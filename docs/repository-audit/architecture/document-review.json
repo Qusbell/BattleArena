@@ -1,0 +1,1496 @@
+[
+  {
+    "path": "docs/ArenaAnalyzerV2.md",
+    "category": "current_feature_reference",
+    "headings": [
+      "Arena Analyzer v2\r",
+      "Identity and firing units\r",
+      "JSON schema\r",
+      "Event hooks\r",
+      "Query and visualization\r",
+      "Storage and cost\r",
+      "Validation\r",
+      "Verified results (2026-10-28)\r",
+      "Changed sources and assets\r",
+      "Follow-up: UI and Draw correction\r",
+      "Follow-up: unified controls and shared actor colors\r"
+    ],
+    "sha256_before_reconciliation": "63ff0e6f4155e5370ca7b4e281ca33abd113ce9211a75aaee4a74a86b74d5247",
+    "review_scope": "Static source/asset cross-reference; historical runtime results not rerun.",
+    "asset_name_checks": [
+      {
+        "name": "BPC_Life",
+        "matching_registry_objects": 1
+      },
+      {
+        "name": "BP_ArenaAnalyzeVisualizer",
+        "matching_registry_objects": 1
+      },
+      {
+        "name": "BP_PlasmaProjectile",
+        "matching_registry_objects": 1
+      },
+      {
+        "name": "BP_RocketLauncherProjectile",
+        "matching_registry_objects": 1
+      },
+      {
+        "name": "BP_WeaponBase",
+        "matching_registry_objects": 1
+      },
+      {
+        "name": "BP_Weapon_MachineGun",
+        "matching_registry_objects": 1
+      },
+      {
+        "name": "BP_Weapon_Pistol",
+        "matching_registry_objects": 1
+      },
+      {
+        "name": "BP_Weapon_RailGun",
+        "matching_registry_objects": 1
+      },
+      {
+        "name": "BP_Weapon_ShotGun",
+        "matching_registry_objects": 1
+      },
+      {
+        "name": "EUW_ArenaAnalyzer",
+        "matching_registry_objects": 1
+      }
+    ],
+    "path_checks": [
+      {
+        "path": "Content/QuakeLike_Base/Lvl_PortalMap.umap",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Saved/Automation/ArenaAnalyzer",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Saved/Automation/ArenaAnalyzer/index.json",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Saved/Logs",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Source/ShootingArena/Private/Analyzer/ArenaAnalyzeLibrary.cpp",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Source/ShootingArena/Private/Analyzer/ArenaAnalyzeSubsystem.cpp",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Source/ShootingArena/Private/Combat/RecentAttackerComponent.cpp",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Source/ShootingArena/Private/Tests/ArenaAnalyzerTests.cpp",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Source/ShootingArena/Private/Weapon/ProjectilePoolComponent.cpp",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Source/ShootingArena/Public/Analyzer/ArenaAnalyzeLibrary.h",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Source/ShootingArena/Public/Analyzer/ArenaAnalyzeSubsystem.h",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Source/ShootingArena/ShootingArena.Build.cs",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Source/ShootingArenaEditorTools/Private/ArenaAnalyzerMigrationLibrary.h/.cpp",
+        "exists_in_workspace": false
+      }
+    ],
+    "test_name_checks": [
+      {
+        "name": "ShootingArena.Analyzer.Identity",
+        "literal_or_filter_prefix_in_source": true,
+        "runtime_rerun": false
+      },
+      {
+        "name": "ShootingArena.Analyzer.JsonAndFilters",
+        "literal_or_filter_prefix_in_source": true,
+        "runtime_rerun": false
+      },
+      {
+        "name": "ShootingArena.Build.cs",
+        "literal_or_filter_prefix_in_source": false,
+        "runtime_rerun": false
+      }
+    ],
+    "review_limit": "Reference existence and source symbols were checked; full prose semantics and historical runtime assertions were not revalidated.",
+    "annotation_applied": true,
+    "sha256_after_reconciliation": "1f5de9c4f77fe0e67521cfa03b914c60d31e0fc5282d5a07285e0336cc207824"
+  },
+  {
+    "path": "docs/Buff_Stabilization_Checklist.md",
+    "category": "historical_experiment",
+    "headings": [
+      "버프 로직 안정화 및 종료 예고음\r",
+      "업무 정보\r",
+      "요청 범위와 배경\r",
+      "확정된 종료 예고음 규칙\r",
+      "첨부 체크리스트 — [1순위] 필수 개발 · 로직 안정화\r",
+      "첨부 체크리스트 — [2순위] 예외 처리 · 인게임 검증\r",
+      "첨부 체크리스트 — [3순위] 구조 변경 검토 · 보류\r",
+      "완료 기준\r",
+      "관련 기존 카드 — 유지\r",
+      "보관 메모\r"
+    ],
+    "sha256_before_reconciliation": "ae7a503581f4e42183434447fb215e350446544f99989156f5f91eb0c3eb07de",
+    "review_scope": "Static source/asset cross-reference; historical runtime results not rerun.",
+    "asset_name_checks": [],
+    "path_checks": [],
+    "test_name_checks": [],
+    "review_limit": "Reference existence and source symbols were checked; full prose semantics and historical runtime assertions were not revalidated.",
+    "annotation_applied": true,
+    "sha256_after_reconciliation": "5a17cfc5163b7c9a5300c9b94ba8b44808ac071340f29aa04873c804fe4214f5",
+    "archive_path": "docs/history/plans/Buff_Stabilization_Checklist.md",
+    "archive_category": "plans",
+    "archive_reason": "과거 안정화 점검 계획이며 현재 완료 상태나 테스트 통과를 보장하지 않습니다.",
+    "current_use": false
+  },
+  {
+    "path": "docs/BuffWarningSound.md",
+    "category": "current_feature_reference",
+    "headings": [
+      "버프 사운드 사용법\r",
+      "1. 설정할 DT 열기\r",
+      "2. 종료 예고음 설정하기\r",
+      "3. 게임에서 확인하기\r",
+      "4. 실행 중 출력 방식 비교하기\r",
+      "5. 획득음 바꾸기\r",
+      "소리가 안 들리면\r"
+    ],
+    "sha256_before_reconciliation": "4fe730b2a5c9a50f9f374f0b4bcda29ed9b9e59eecf3b2dff2758c2d50ff3d45",
+    "review_scope": "Static source/asset cross-reference; historical runtime results not rerun.",
+    "asset_name_checks": [
+      {
+        "name": "DT_BuffTable",
+        "matching_registry_objects": 1
+      }
+    ],
+    "path_checks": [],
+    "test_name_checks": [],
+    "review_limit": "Reference existence and source symbols were checked; full prose semantics and historical runtime assertions were not revalidated.",
+    "annotation_applied": true,
+    "sha256_after_reconciliation": "59c60adadfea3167ee0079f33755b1d84a4245aa587e8237d20503a4c7c62a42"
+  },
+  {
+    "path": "docs/BuffWarningSound_ImplementationNotes.md",
+    "category": "current_feature_reference",
+    "headings": [
+      "버프 종료 예고음\r",
+      "테스트 모드\r",
+      "2026-10-14 확인 결과\r",
+      "사망 검증 결과 정정\r",
+      "후속 수정 및 재검사 — 2026-10-14\r"
+    ],
+    "sha256_before_reconciliation": "5f05a15382d16c22adf403cd3d3a8c33282c824a762c489e121a9c16cb510756",
+    "review_scope": "Static source/asset cross-reference; historical runtime results not rerun.",
+    "asset_name_checks": [
+      {
+        "name": "BPC_Buff",
+        "matching_registry_objects": 1
+      },
+      {
+        "name": "BPC_Life",
+        "matching_registry_objects": 1
+      },
+      {
+        "name": "BP_QuakePlayerController",
+        "matching_registry_objects": 1
+      }
+    ],
+    "path_checks": [
+      {
+        "path": "Saved/BuffWarning",
+        "exists_in_workspace": false
+      },
+      {
+        "path": "Saved/BuffWarning/RuntimeErrorFix_20261014/",
+        "exists_in_workspace": false
+      },
+      {
+        "path": "Saved/BuffWarning/verify_lifecycle_pie.py:20",
+        "exists_in_workspace": false
+      },
+      {
+        "path": "Saved/Logs/ShootingArena.log",
+        "exists_in_workspace": true
+      }
+    ],
+    "test_name_checks": [
+      {
+        "name": "ShootingArena.Buff.Presentation",
+        "literal_or_filter_prefix_in_source": true,
+        "runtime_rerun": false
+      },
+      {
+        "name": "ShootingArena.Buff.WarningSound",
+        "literal_or_filter_prefix_in_source": true,
+        "runtime_rerun": false
+      },
+      {
+        "name": "ShootingArena.log",
+        "literal_or_filter_prefix_in_source": false,
+        "runtime_rerun": false
+      }
+    ],
+    "review_limit": "Reference existence and source symbols were checked; full prose semantics and historical runtime assertions were not revalidated.",
+    "annotation_applied": true,
+    "sha256_after_reconciliation": "1c619ae279f3da469785f15968fc8f92df0d6a9670a7ed7f2786815a327c94e2",
+    "archive_path": "docs/history/changes/BuffWarningSound_ImplementationNotes.md",
+    "archive_category": "changes",
+    "archive_reason": "버프 예고음의 구현·임시 설정·당시 검증 이력입니다. 현행 사용법은 BuffWarningSound.md를 읽습니다.",
+    "current_use": false
+  },
+  {
+    "path": "docs/ClientGameplayReady.md",
+    "category": "current_feature_reference",
+    "headings": [
+      "클라이언트 로딩 완료 보고\r",
+      "BGM과의 연결 — 2026-11-05 조사 보충\r",
+      "자동 보고 경로\r",
+      "BP 연결 위치\r",
+      "확인 방법\r"
+    ],
+    "sha256_before_reconciliation": "0dab3c4b32a981c69c91a77ddbbdad56074fd4a5b38bfb5433254df097fe5b53",
+    "review_scope": "Static source/asset cross-reference; historical runtime results not rerun.",
+    "asset_name_checks": [
+      {
+        "name": "BP_MultiplayerAIGameMode",
+        "matching_registry_objects": 1
+      },
+      {
+        "name": "BP_QuakeGameMode",
+        "matching_registry_objects": 1
+      }
+    ],
+    "path_checks": [],
+    "test_name_checks": [],
+    "review_limit": "Reference existence and source symbols were checked; full prose semantics and historical runtime assertions were not revalidated.",
+    "annotation_applied": true,
+    "sha256_after_reconciliation": "4a74b53cd82b25def451b2fc92456708bf4c361cb9b23c0095d6a9d546e13aff"
+  },
+  {
+    "path": "docs/DebugAINetwork.md",
+    "category": "current_feature_reference",
+    "headings": [
+      "AI 디버그 네트워크 표시\r",
+      "전송 및 표시\r",
+      "반영 상태\r",
+      "사용자 테스트\r"
+    ],
+    "sha256_before_reconciliation": "92dfa43907315b6d60489b459c406e4f6f95f0595ebaf7cc8c6ac06fa03b36b7",
+    "review_scope": "Static source/asset cross-reference; historical runtime results not rerun.",
+    "asset_name_checks": [
+      {
+        "name": "BPC_DebugAI_AttachToPlayerController",
+        "matching_registry_objects": 1
+      },
+      {
+        "name": "BP_QuakePlayerController",
+        "matching_registry_objects": 1
+      }
+    ],
+    "path_checks": [],
+    "test_name_checks": [],
+    "review_limit": "Reference existence and source symbols were checked; full prose semantics and historical runtime assertions were not revalidated.",
+    "annotation_applied": true,
+    "sha256_after_reconciliation": "af0ce1c6bb0e7e8354adf68a7306fb1628d225f0d77ba4cc99827da7990759ac"
+  },
+  {
+    "path": "docs/ItemSoundSettings.md",
+    "category": "current_feature_reference",
+    "headings": [
+      "아이템 생성음 / 획득음 설정\r",
+      "타이밍과 네트워크\r",
+      "기존 데이터 이전 결과\r",
+      "검증\r",
+      "적용 도구\r"
+    ],
+    "sha256_before_reconciliation": "63016bec7d1a54e32c7577722b7239b2fb56817fe737e077c5aac3d2607ee391",
+    "review_scope": "Static source/asset cross-reference; historical runtime results not rerun.",
+    "asset_name_checks": [
+      {
+        "name": "BP_QuakePlayerController",
+        "matching_registry_objects": 1
+      },
+      {
+        "name": "DT_AmmoItemTable",
+        "matching_registry_objects": 1
+      },
+      {
+        "name": "DT_BuffTable",
+        "matching_registry_objects": 1
+      },
+      {
+        "name": "DT_HeldItemTable",
+        "matching_registry_objects": 1
+      },
+      {
+        "name": "DT_LifeItemTable",
+        "matching_registry_objects": 1
+      }
+    ],
+    "path_checks": [
+      {
+        "path": "Saved/ItemSoundMigration",
+        "exists_in_workspace": false
+      },
+      {
+        "path": "Tools/Items/migrate_item_sounds.py",
+        "exists_in_workspace": true
+      }
+    ],
+    "test_name_checks": [
+      {
+        "name": "ShootingArena.Buff.Presentation",
+        "literal_or_filter_prefix_in_source": true,
+        "runtime_rerun": false
+      },
+      {
+        "name": "ShootingArena.Items.SpawnAndPickupSound",
+        "literal_or_filter_prefix_in_source": true,
+        "runtime_rerun": false
+      },
+      {
+        "name": "ShootingArena.Items.SpawnSoundTiming",
+        "literal_or_filter_prefix_in_source": true,
+        "runtime_rerun": false
+      },
+      {
+        "name": "ShootingArena.Spawner.SelectionModes",
+        "literal_or_filter_prefix_in_source": true,
+        "runtime_rerun": false
+      }
+    ],
+    "review_limit": "Reference existence and source symbols were checked; full prose semantics and historical runtime assertions were not revalidated.",
+    "annotation_applied": true,
+    "sha256_after_reconciliation": "ee134e8f42cfbef308c198df1104d239323f956760b30592ff90a44c7def6e76"
+  },
+  {
+    "path": "docs/MapPreviewMedia.md",
+    "category": "current_feature_reference",
+    "headings": [
+      "맵 미리보기 이미지·영상 설정\r"
+    ],
+    "sha256_before_reconciliation": "c50fcac9d4ada12a6b8e259d94fb48ccd8d4e99d4d9ff6a35d9a74a72def8dec",
+    "review_scope": "Static source/asset cross-reference; historical runtime results not rerun.",
+    "asset_name_checks": [
+      {
+        "name": "DT_MapData",
+        "matching_registry_objects": 1
+      },
+      {
+        "name": "DT_MapPreviewMedia",
+        "matching_registry_objects": 1
+      },
+      {
+        "name": "WBP_DifficultySelect",
+        "matching_registry_objects": 1
+      },
+      {
+        "name": "WBP_MapSelect",
+        "matching_registry_objects": 1
+      }
+    ],
+    "path_checks": [
+      {
+        "path": "Content/Movies",
+        "exists_in_workspace": false
+      },
+      {
+        "path": "Content/Movies/MainMenuPreview.mp4",
+        "exists_in_workspace": false
+      },
+      {
+        "path": "Source/ShootingArena/Public/UI/MapPreviewMedia.h",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Tools/UI/setup_map_preview.py",
+        "exists_in_workspace": true
+      }
+    ],
+    "test_name_checks": [
+      {
+        "name": "ShootingArena.UI.MapPreview.HoverResumeAndHandoff",
+        "literal_or_filter_prefix_in_source": true,
+        "runtime_rerun": false
+      }
+    ],
+    "review_limit": "Reference existence and source symbols were checked; full prose semantics and historical runtime assertions were not revalidated.",
+    "annotation_applied": true,
+    "sha256_after_reconciliation": "95041af44c6c662363097c0ae90feb4a408fa432d8672a5cfb33f139e55be4a8"
+  },
+  {
+    "path": "docs/PathLink27PlacementCheck.md",
+    "category": "historical_experiment",
+    "headings": [
+      "BP_PathLink27 배치 변경 후 확인\r",
+      "Bake 및 Link 상태\r",
+      "네 전체 경로의 좌표 공통점\r",
+      "배치 변경에 대한 반응\r",
+      "기존 200쌍 재확인\r"
+    ],
+    "sha256_before_reconciliation": "739b67142f1ac52e61331969ea728d32dbb53dc08869136ae5307e5a3b618790",
+    "review_scope": "Static source/asset cross-reference; historical runtime results not rerun.",
+    "asset_name_checks": [
+      {
+        "name": "BP_PathLink12",
+        "matching_registry_objects": 0
+      },
+      {
+        "name": "BP_PathLink27",
+        "matching_registry_objects": 0
+      },
+      {
+        "name": "BP_PathLink28",
+        "matching_registry_objects": 0
+      },
+      {
+        "name": "BP_PathLink8",
+        "matching_registry_objects": 0
+      }
+    ],
+    "path_checks": [
+      {
+        "path": "Saved/PathLinkBench/Link27AfterPlacement.json",
+        "exists_in_workspace": true
+      }
+    ],
+    "test_name_checks": [],
+    "review_limit": "Reference existence and source symbols were checked; full prose semantics and historical runtime assertions were not revalidated.",
+    "annotation_applied": true,
+    "sha256_after_reconciliation": "c14996e12b685419773a39a7a8e698ea12e7fdf17ec7330e7efd7e54c974a2d6",
+    "archive_path": "docs/history/experiments/PathLink27PlacementCheck.md",
+    "archive_category": "experiments",
+    "archive_reason": "과거 측정·배치·원인 분석 기록; 현재 조건에서 재실행하지 않았습니다.",
+    "current_use": false
+  },
+  {
+    "path": "docs/PathLinkAccuracyNextSteps.md",
+    "category": "historical_experiment",
+    "headings": [
+      "Next accuracy improvements after selecting strength 1 / 40m\r",
+      "Error sources\r",
+      "Recommended sequence\r"
+    ],
+    "sha256_before_reconciliation": "bc56bc24c230a2a5cd71f4e27be01b4f4a2a5904d07f3feb11b89c6e96c85491",
+    "review_scope": "Static source/asset cross-reference; historical runtime results not rerun.",
+    "asset_name_checks": [],
+    "path_checks": [],
+    "test_name_checks": [],
+    "review_limit": "Reference existence and source symbols were checked; full prose semantics and historical runtime assertions were not revalidated.",
+    "annotation_applied": true,
+    "sha256_after_reconciliation": "24611da00231632ffc44499e9400b7d5b70746ba34d64ceddcf06692a0688135",
+    "archive_path": "docs/history/plans/PathLinkAccuracyNextSteps.md",
+    "archive_category": "plans",
+    "archive_reason": "과거 개선 계획입니다. 현재 적용 완료 여부를 보장하는 문서가 아닙니다.",
+    "current_use": false
+  },
+  {
+    "path": "docs/PathLinkBlendResults.md",
+    "category": "historical_experiment",
+    "headings": [
+      "PathLink distance blend results\r",
+      "Method\r",
+      "All 13 settings\r",
+      "Remaining short-distance error\r",
+      "Validation and runtime cost\r",
+      "Reproduce\r"
+    ],
+    "sha256_before_reconciliation": "327eef0c2da0fe8b8717c17c2ad4194c3f141f8f609e450ef0b2c58c1771436b",
+    "review_scope": "Static source/asset cross-reference; historical runtime results not rerun.",
+    "asset_name_checks": [],
+    "path_checks": [
+      {
+        "path": "Saved/PathLinkBench/Blend200.csv",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Saved/PathLinkBench/Blend200Summary.json",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Scripts/AnalyzePathLinkBlend.py",
+        "exists_in_workspace": true
+      }
+    ],
+    "test_name_checks": [],
+    "review_limit": "Reference existence and source symbols were checked; full prose semantics and historical runtime assertions were not revalidated.",
+    "annotation_applied": true,
+    "sha256_after_reconciliation": "07808f6f81c4dcb83c9ac154a07fbd4728702bba8fb133073beda57b71c4246b",
+    "archive_path": "docs/history/experiments/PathLinkBlendResults.md",
+    "archive_category": "experiments",
+    "archive_reason": "과거 측정·배치·원인 분석 기록; 현재 조건에서 재실행하지 않았습니다.",
+    "current_use": false
+  },
+  {
+    "path": "docs/PathLinkBotAPIIntegration.md",
+    "category": "current_feature_reference",
+    "headings": [
+      "현재 Bot의 PathLink API 적용 위치\r",
+      "실제 실행 흐름\r",
+      "우선 적용할 위치\r",
+      "권장 데이터 흐름\r",
+      "API 역할\r",
+      "방향·단위·Context\r",
+      "유지할 거리와 재탐색 조건\r",
+      "확인한 구체 노드\r"
+    ],
+    "sha256_before_reconciliation": "384b3a4747c33276eae46afaf3b2dc484872196d722292efe3194ab74c0920bd",
+    "review_scope": "Static source/asset cross-reference; historical runtime results not rerun.",
+    "asset_name_checks": [
+      {
+        "name": "BPC_PointsTourist",
+        "matching_registry_objects": 1
+      },
+      {
+        "name": "BPC_VirtualInputAIMovement",
+        "matching_registry_objects": 1
+      },
+      {
+        "name": "BP_AIShooter",
+        "matching_registry_objects": 1
+      },
+      {
+        "name": "BTT_VirtualInputAIMoveTo",
+        "matching_registry_objects": 1
+      },
+      {
+        "name": "BT_QuakeTree",
+        "matching_registry_objects": 1
+      }
+    ],
+    "path_checks": [],
+    "test_name_checks": [],
+    "review_limit": "Reference existence and source symbols were checked; full prose semantics and historical runtime assertions were not revalidated.",
+    "annotation_applied": true,
+    "sha256_after_reconciliation": "f3c4b1a48450f4ce07fcbffa1b77c8cbc59dc9550297285284daf60a462a3b45",
+    "archive_path": "docs/history/plans/PathLinkBotAPIIntegration.md",
+    "archive_category": "plans",
+    "archive_reason": "당시 설계·적용 제안이며 이후 코드/캐시 구조/적용 상태와 차이가 있을 수 있습니다.",
+    "current_use": false
+  },
+  {
+    "path": "docs/PathLinkCacheConsistencySpecification.md",
+    "category": "current_feature_reference",
+    "headings": [
+      "Path Link 거리 캐시 정합성 작업 명세\r",
+      "목적\r",
+      "확인된 문제\r",
+      "적용 범위\r",
+      "사전 베이크 정합성\r",
+      "런타임 캐시 재생성\r",
+      "런타임 결과의 저장과 재사용\r",
+      "검증 및 완료 기준\r"
+    ],
+    "sha256_before_reconciliation": "7a7a90cee8d5409d34475cea88187785ecae9f2ea44a48fb157118005cb2aaf9",
+    "review_scope": "Static source/asset cross-reference; historical runtime results not rerun.",
+    "asset_name_checks": [],
+    "path_checks": [],
+    "test_name_checks": [],
+    "review_limit": "Reference existence and source symbols were checked; full prose semantics and historical runtime assertions were not revalidated.",
+    "annotation_applied": true,
+    "sha256_after_reconciliation": "8441458b29673fb40e4a3304a297e08b47e4354795b9c82a6c6a5b6f8e9f38e2",
+    "archive_path": "docs/history/plans/PathLinkCacheConsistencySpecification.md",
+    "archive_category": "plans",
+    "archive_reason": "당시 설계·적용 제안이며 이후 코드/캐시 구조/적용 상태와 차이가 있을 수 있습니다.",
+    "current_use": false
+  },
+  {
+    "path": "docs/PathLinkDirectionCorrectionResults.md",
+    "category": "historical_experiment",
+    "headings": [
+      "출발 방향을 이용한 위치 보정 결과\r",
+      "보정 알고리즘\r",
+      "기존 플레이 가능 200쌍: 9가지 설정 비교\r",
+      "별도의 검증 표본: 새 플레이 가능 200쌍\r",
+      "기존 표본에 남은 큰 오차 4개\r",
+      "샘플 31·74·141: 같은 4개 Link를 사용하는 복합 경로\r",
+      "샘플 181: 긴 일반 이동 뒤 낙하 Link 1개를 사용하는 경로\r",
+      "검증 및 재현 방법\r"
+    ],
+    "sha256_before_reconciliation": "c79e54096f5234c1fc1998269cd663873502496c24fc436e42aefde411d0b1e9",
+    "review_scope": "Static source/asset cross-reference; historical runtime results not rerun.",
+    "asset_name_checks": [
+      {
+        "name": "BP_PathLink12",
+        "matching_registry_objects": 0
+      },
+      {
+        "name": "BP_PathLink27",
+        "matching_registry_objects": 0
+      },
+      {
+        "name": "BP_PathLink28",
+        "matching_registry_objects": 0
+      },
+      {
+        "name": "BP_PathLink8",
+        "matching_registry_objects": 0
+      }
+    ],
+    "path_checks": [
+      {
+        "path": "Saved/PathLinkBench/DirectionOutlierDetails.json",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Saved/PathLinkBench/Lvl_PortalMap_PlayableRoutes200_Seed20261025.csv",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Saved/PathLinkBench/PlayableDirectionSweep200.csv",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Scripts/SweepPathLinkPlayableDirection.py",
+        "exists_in_workspace": true
+      }
+    ],
+    "test_name_checks": [],
+    "review_limit": "Reference existence and source symbols were checked; full prose semantics and historical runtime assertions were not revalidated.",
+    "annotation_applied": true,
+    "sha256_after_reconciliation": "498c7d9b5f3b4d349768231a49897dc38bbfa21c55adb2314187164e8966c7c1",
+    "archive_path": "docs/history/experiments/PathLinkDirectionCorrectionResults.md",
+    "archive_category": "experiments",
+    "archive_reason": "과거 측정·배치·원인 분석 기록; 현재 조건에서 재실행하지 않았습니다.",
+    "current_use": false
+  },
+  {
+    "path": "docs/PathLinkLargePolygons.md",
+    "category": "historical_experiment",
+    "headings": [
+      "Portal map polygon size / maximum-error investigation\r",
+      "Largest polygons\r",
+      "Why the recorded maximum relative error was 57.54%\r",
+      "Repeat the inspection\r"
+    ],
+    "sha256_before_reconciliation": "9afcec6a1035313d9d953dbb6d948b0fb64d1e269883e9d5aad8440bdecb3aac",
+    "review_scope": "Static source/asset cross-reference; historical runtime results not rerun.",
+    "asset_name_checks": [
+      {
+        "name": "BP_PathLink16",
+        "matching_registry_objects": 0
+      }
+    ],
+    "path_checks": [
+      {
+        "path": "Saved/PathLinkBench/final.json",
+        "exists_in_workspace": true
+      }
+    ],
+    "test_name_checks": [],
+    "review_limit": "Reference existence and source symbols were checked; full prose semantics and historical runtime assertions were not revalidated.",
+    "annotation_applied": true,
+    "sha256_after_reconciliation": "0bf5c14f5347b04db81a19079d220084b8abb0c7f75b74090d003d3865ac1c1a",
+    "archive_path": "docs/history/experiments/PathLinkLargePolygons.md",
+    "archive_category": "experiments",
+    "archive_reason": "과거 측정·배치·원인 분석 기록; 현재 조건에서 재실행하지 않았습니다.",
+    "current_use": false
+  },
+  {
+    "path": "docs/PathLinkLazySearchResults.md",
+    "category": "historical_experiment",
+    "headings": [
+      "NavPoly 캐시를 활용한 상세 Route 탐색 개선\r",
+      "구현한 동작\r",
+      "기존 과소평가 네 사례 재측정\r",
+      "새로운 시작·목표 200쌍\r",
+      "조회 비용\r",
+      "빌드 및 회귀 검사\r",
+      "재현 자료\r"
+    ],
+    "sha256_before_reconciliation": "2b783a49dca7d12c9c07dd22495152f9ba229f783f805705f0bd85250eb4a396",
+    "review_scope": "Static source/asset cross-reference; historical runtime results not rerun.",
+    "asset_name_checks": [
+      {
+        "name": "BP_PathLink11",
+        "matching_registry_objects": 0
+      },
+      {
+        "name": "BP_PathLink28",
+        "matching_registry_objects": 0
+      }
+    ],
+    "path_checks": [
+      {
+        "path": "Saved/Automation/PathLinkLazySearch/index.json:",
+        "exists_in_workspace": false
+      },
+      {
+        "path": "Saved/PathLinkBench/LazySearch_before.json",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Saved/PathLinkBench/Lvl_PortalMap_PlayableRoutes200_Seed20261026.csv:",
+        "exists_in_workspace": false
+      },
+      {
+        "path": "Scripts/AnalyzePathLinkLazySearch.py:",
+        "exists_in_workspace": false
+      },
+      {
+        "path": "Scripts/BenchmarkPathLinkLazySearch.py:",
+        "exists_in_workspace": false
+      },
+      {
+        "path": "Scripts/VerifyPathLinkLazySearch.py:",
+        "exists_in_workspace": false
+      }
+    ],
+    "test_name_checks": [
+      {
+        "name": "ShootingArena.PathLink.BakedRouting",
+        "literal_or_filter_prefix_in_source": true,
+        "runtime_rerun": false
+      },
+      {
+        "name": "ShootingArena.PathLink.LazySearch",
+        "literal_or_filter_prefix_in_source": true,
+        "runtime_rerun": false
+      }
+    ],
+    "review_limit": "Reference existence and source symbols were checked; full prose semantics and historical runtime assertions were not revalidated.",
+    "annotation_applied": true,
+    "sha256_after_reconciliation": "3f2e25abd1ad274f1421070822035556f7b41ab2249c8652db25bb9b489d5d2f",
+    "archive_path": "docs/history/experiments/PathLinkLazySearchResults.md",
+    "archive_category": "experiments",
+    "archive_reason": "과거 측정·배치·원인 분석 기록; 현재 조건에서 재실행하지 않았습니다.",
+    "current_use": false
+  },
+  {
+    "path": "docs/PathLinkOutlierRootCause.md",
+    "category": "historical_experiment",
+    "headings": [
+      "큰 오차 네 사례의 원인 조사\r",
+      "같은 좌표로 비교한 결과\r",
+      "31·74·141번: 가까운 Link 후보 제한\r",
+      "181번: 장애물 배수가 더 좋은 후보를 가림\r",
+      "검증 방법과 배치 확인\r",
+      "이후 수정 방향\r"
+    ],
+    "sha256_before_reconciliation": "6d07082872cc1ed262d531c9d41712fe2844676aeba538e81d099982bc1aebe3",
+    "review_scope": "Static source/asset cross-reference; historical runtime results not rerun.",
+    "asset_name_checks": [
+      {
+        "name": "BP_PathLink11",
+        "matching_registry_objects": 0
+      },
+      {
+        "name": "BP_PathLink27",
+        "matching_registry_objects": 0
+      },
+      {
+        "name": "BP_PathLink28",
+        "matching_registry_objects": 0
+      }
+    ],
+    "path_checks": [
+      {
+        "path": "Saved/PathLinkBench/OutlierExactGraphDiagnosis.json",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Scripts/DiagnosePathLinkOutliers.py",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Source/ShootingArena/Private/AI/PathLink/Internal/PathLinkRouteFinder.cpp",
+        "exists_in_workspace": true
+      }
+    ],
+    "test_name_checks": [],
+    "review_limit": "Reference existence and source symbols were checked; full prose semantics and historical runtime assertions were not revalidated.",
+    "annotation_applied": true,
+    "sha256_after_reconciliation": "498c247f45f7f8dd04b3e97c6b1503cdcbb3acc8f93d74bd6551bf891b1c1e93",
+    "archive_path": "docs/history/experiments/PathLinkOutlierRootCause.md",
+    "archive_category": "experiments",
+    "archive_reason": "과거 측정·배치·원인 분석 기록; 현재 조건에서 재실행하지 않았습니다.",
+    "current_use": false
+  },
+  {
+    "path": "docs/PathLinkPlayableBlendSweep.md",
+    "category": "historical_experiment",
+    "headings": [
+      "Same 200 playable pairs: strength/range sweep\r",
+      "All settings\r",
+      "Interpretation\r",
+      "Previously highlighted samples\r",
+      "Reproduce\r"
+    ],
+    "sha256_before_reconciliation": "6aea895cef9b8ff7b1426a9698c18b3e7715eb35806d51f630ce6f076c221fb7",
+    "review_scope": "Static source/asset cross-reference; historical runtime results not rerun.",
+    "asset_name_checks": [],
+    "path_checks": [
+      {
+        "path": "Saved/PathLinkBench/PlayableBlendSweep200.csv",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Saved/PathLinkBench/PlayableBlendSweep200Summary.json",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Scripts/SweepPathLinkPlayableBlend.py",
+        "exists_in_workspace": true
+      }
+    ],
+    "test_name_checks": [],
+    "review_limit": "Reference existence and source symbols were checked; full prose semantics and historical runtime assertions were not revalidated.",
+    "annotation_applied": true,
+    "sha256_after_reconciliation": "e87c8f4c48e511ccbbefd20eb8f60aff926177fd2d0308caff1e518d96544027",
+    "archive_path": "docs/history/experiments/PathLinkPlayableBlendSweep.md",
+    "archive_category": "experiments",
+    "archive_reason": "과거 측정·배치·원인 분석 기록; 현재 조건에서 재실행하지 않았습니다.",
+    "current_use": false
+  },
+  {
+    "path": "docs/PathLinkPlayableResults.md",
+    "category": "historical_experiment",
+    "headings": [
+      "PortalMap playable, mutually reachable random route test\r",
+      "Playable-point definition\r",
+      "Sampling and acceptance\r",
+      "Accuracy on all 200 accepted forward routes\r",
+      "Distance buckets\r",
+      "Validation\r",
+      "Reproduce\r"
+    ],
+    "sha256_before_reconciliation": "9800980b81f25b20033ca7b7c473b9cb7051a71b9c7af5f88018623385597bfa",
+    "review_scope": "Static source/asset cross-reference; historical runtime results not rerun.",
+    "asset_name_checks": [
+      {
+        "name": "BP_AIShooter",
+        "matching_registry_objects": 1
+      },
+      {
+        "name": "BP_PlayerSpawnPoint",
+        "matching_registry_objects": 1
+      }
+    ],
+    "path_checks": [
+      {
+        "path": "Saved/PathLinkBench/Lvl_PortalMap_PlayableRoutes200_Seed20261024.csv",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Saved/PathLinkBench/PlayableAnchors.json",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Saved/PathLinkBench/PlayableSummary.json",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Scripts/AnalyzePathLinkRandom.py",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Scripts/ExportPathLinkPlayableAnchors.py",
+        "exists_in_workspace": true
+      }
+    ],
+    "test_name_checks": [],
+    "review_limit": "Reference existence and source symbols were checked; full prose semantics and historical runtime assertions were not revalidated.",
+    "annotation_applied": true,
+    "sha256_after_reconciliation": "4989f295d545500258d5ff38927476dd936a79d0fdb86b169eeaf5536da4ca51",
+    "archive_path": "docs/history/experiments/PathLinkPlayableResults.md",
+    "archive_category": "experiments",
+    "archive_reason": "과거 측정·배치·원인 분석 기록; 현재 조건에서 재실행하지 않았습니다.",
+    "current_use": false
+  },
+  {
+    "path": "docs/PathLinkRandomResults.md",
+    "category": "historical_experiment",
+    "headings": [
+      "PortalMap random route validation\r",
+      "Sampling\r",
+      "Reachability\r",
+      "Accuracy\r",
+      "Execution checks\r",
+      "Reproduce and raw data\r"
+    ],
+    "sha256_before_reconciliation": "ee423b929526c651f58879d731427d0da801b830eb3edc67c21fcc97e9114290",
+    "review_scope": "Static source/asset cross-reference; historical runtime results not rerun.",
+    "asset_name_checks": [],
+    "path_checks": [
+      {
+        "path": "Saved/PathLinkBench/Lvl_PortalMap_RandomRoutes200_Seed20261022.csv",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Saved/PathLinkBench/Random400Summary.json",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Scripts/AnalyzePathLinkRandom.py",
+        "exists_in_workspace": true
+      }
+    ],
+    "test_name_checks": [],
+    "review_limit": "Reference existence and source symbols were checked; full prose semantics and historical runtime assertions were not revalidated.",
+    "annotation_applied": true,
+    "sha256_after_reconciliation": "dec2e80f32a35af5231fd361c5839ef756d2d93697c7906c60bdbd89eac1a7c5",
+    "archive_path": "docs/history/experiments/PathLinkRandomResults.md",
+    "archive_category": "experiments",
+    "archive_reason": "과거 측정·배치·원인 분석 기록; 현재 조건에서 재실행하지 않았습니다.",
+    "current_use": false
+  },
+  {
+    "path": "docs/PathLinkRoutingCache.md",
+    "category": "current_feature_reference",
+    "headings": [
+      "PathLink navigation cost cache\r",
+      "Existing behavior and changes\r",
+      "Editor analysis and bake\r",
+      "Runtime API and accuracy\r",
+      "Validity and packaging\r",
+      "Measurements and regression\r",
+      "Automatic lifecycle verification (2026-10-21)\r",
+      "Baked departure direction (format version 2)\r",
+      "Current runtime default: directional offset correction\r"
+    ],
+    "sha256_before_reconciliation": "dd57857f0431d423ab59ab2f53fec3c17e0d1136e4a1d5e8035dbcfc6cd76b24",
+    "review_scope": "Static source/asset cross-reference; historical runtime results not rerun.",
+    "asset_name_checks": [],
+    "path_checks": [
+      {
+        "path": "Saved/PathLinkBench",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Saved/PathLinkBench/Blend200.csv",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Saved/PathLinkBench/DepartureBakeVerification.json",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Saved/PathLinkBench/managed.json",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Scripts/AnalyzePathLinkBlend.py",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Scripts/AnalyzePathLinkRandom.py",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Scripts/ExportPathLinkPlayableAnchors.py",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Scripts/PathLinkBenchmark.py",
+        "exists_in_workspace": true
+      }
+    ],
+    "test_name_checks": [
+      {
+        "name": "ShootingArena.PathLink.BakedRouting",
+        "literal_or_filter_prefix_in_source": true,
+        "runtime_rerun": false
+      }
+    ],
+    "review_limit": "Reference existence and source symbols were checked; full prose semantics and historical runtime assertions were not revalidated.",
+    "annotation_applied": true,
+    "sha256_after_reconciliation": "0bcd8f652e6938c4230dd72a01df88b9aa0740684f9b34d4286539e470ecbb1e",
+    "archive_path": "docs/history/plans/PathLinkRoutingCache.md",
+    "archive_category": "plans",
+    "archive_reason": "당시 설계·적용 제안이며 이후 코드/캐시 구조/적용 상태와 차이가 있을 수 있습니다.",
+    "current_use": false
+  },
+  {
+    "path": "docs/PathLinkRoutingCacheResults.md",
+    "category": "historical_experiment",
+    "headings": [
+      "PathLink verification — 2026-10-20\r",
+      "Bake\r",
+      "Route/output regression and timings\r",
+      "Runtime and failure paths\r",
+      "Adoption boundary\r"
+    ],
+    "sha256_before_reconciliation": "222ab8e02cff5c55fe315a5c13c37d2b7ee2f74272a6661b88edbb80b4fa6d1e",
+    "review_scope": "Static source/asset cross-reference; historical runtime results not rerun.",
+    "asset_name_checks": [
+      {
+        "name": "BP_AIShooter_C",
+        "matching_registry_objects": 0
+      }
+    ],
+    "path_checks": [
+      {
+        "path": "Saved/PathLinkBench/baseline.json",
+        "exists_in_workspace": true
+      }
+    ],
+    "test_name_checks": [
+      {
+        "name": "ShootingArena.PathLink.BakedRouting",
+        "literal_or_filter_prefix_in_source": true,
+        "runtime_rerun": false
+      }
+    ],
+    "review_limit": "Reference existence and source symbols were checked; full prose semantics and historical runtime assertions were not revalidated.",
+    "annotation_applied": true,
+    "sha256_after_reconciliation": "efe3cf2b94207c7a73a18fa378788bac4a06db0624bc69d3e61e1c1255133cea",
+    "archive_path": "docs/history/experiments/PathLinkRoutingCacheResults.md",
+    "archive_category": "experiments",
+    "archive_reason": "과거 측정·배치·원인 분석 기록; 현재 조건에서 재실행하지 않았습니다.",
+    "current_use": false
+  },
+  {
+    "path": "docs/PathLinkRuntimeCacheFix.md",
+    "category": "current_feature_reference",
+    "headings": [
+      "포탈맵 추정 거리 False 문제\r",
+      "확인된 원인\r",
+      "1. 플레이 전 준비 순서\r",
+      "2. 런타임 Polygon 참조 ID 변경\r",
+      "검증\r",
+      "진단 API\r"
+    ],
+    "sha256_before_reconciliation": "f70349f16a4eb1d0162532dcb8d2c41577cfb462b5d6d8530680a6e81d5b1c35",
+    "review_scope": "Static source/asset cross-reference; historical runtime results not rerun.",
+    "asset_name_checks": [
+      {
+        "name": "BPC_DebugAI_AttachToPlayerController",
+        "matching_registry_objects": 1
+      }
+    ],
+    "path_checks": [
+      {
+        "path": "Saved/PathLinkBench/RuntimeReferenceRegression.json",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Scripts/VerifyPathLinkRuntimeReferences.py",
+        "exists_in_workspace": true
+      }
+    ],
+    "test_name_checks": [
+      {
+        "name": "ShootingArena.PathLink.BakedRouting",
+        "literal_or_filter_prefix_in_source": true,
+        "runtime_rerun": false
+      },
+      {
+        "name": "ShootingArena.PathLink.LazySearch",
+        "literal_or_filter_prefix_in_source": true,
+        "runtime_rerun": false
+      }
+    ],
+    "review_limit": "Reference existence and source symbols were checked; full prose semantics and historical runtime assertions were not revalidated.",
+    "annotation_applied": true,
+    "sha256_after_reconciliation": "c476aa78d592e154febe0eb18563c1728872e2f47911dc9d13e9b46ac09f9c03",
+    "archive_path": "docs/history/changes/PathLinkRuntimeCacheFix.md",
+    "archive_category": "changes",
+    "archive_reason": "과거 구현 변경·수정 이력; 현행 동작 규범으로 사용하지 않습니다.",
+    "current_use": false
+  },
+  {
+    "path": "docs/PathLinkSTGInlineLTG.md",
+    "category": "current_feature_reference",
+    "headings": [
+      "Filtering STG의 추정 거리 LTG 비교 적용\r"
+    ],
+    "sha256_before_reconciliation": "3cc3882c2fb014a69ff569f8f4a8819e85ace722f2912e6eb5979190aa8723e8",
+    "review_scope": "Static source/asset cross-reference; historical runtime results not rerun.",
+    "asset_name_checks": [
+      {
+        "name": "BP_QuakeAIController2",
+        "matching_registry_objects": 1
+      }
+    ],
+    "path_checks": [
+      {
+        "path": "Saved/PathLinkBench/FilteringSTG_BeforeInlineLTG.json",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Scripts/InlineSTGLTGEstimate.py",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Scripts/VerifySTGInlineLTG.py입니다",
+        "exists_in_workspace": false
+      }
+    ],
+    "test_name_checks": [],
+    "review_limit": "Reference existence and source symbols were checked; full prose semantics and historical runtime assertions were not revalidated.",
+    "annotation_applied": true,
+    "sha256_after_reconciliation": "6bff25f4db795a2b78201725eef0009c6056935422cb3556536506bb4b0cee8f",
+    "archive_path": "docs/history/changes/PathLinkSTGInlineLTG.md",
+    "archive_category": "changes",
+    "archive_reason": "과거 구현 변경·수정 이력; 현행 동작 규범으로 사용하지 않습니다.",
+    "current_use": false
+  },
+  {
+    "path": "docs/PortalMapCollisionRepair.md",
+    "category": "historical_experiment",
+    "headings": [
+      "Lvl_PortalMap 충돌 후처리\r",
+      "2026-10-30 Office 53: 포털 뒤 벽의 누락 충돌 보강\r",
+      "2026-10-28 Stair 51: 계단 중간 NavMesh 누락 보정\r",
+      "2026-10-28 Stair 51: 사용자 계단 형상을 유지한 충돌 연결\r",
+      "2026-10-28 외곽 벽 관통·벽 접합부 발판 수정\r",
+      "이번 검증\r",
+      "2026-10-27 이동 동선 우선 단순화\r",
+      "이번 검증\r",
+      "2026-10-19 기존 후처리 기록\r",
+      "적용 내용\r",
+      "검증\r",
+      "조사·검증 도구와 기록\r"
+    ],
+    "sha256_before_reconciliation": "0c3266c41a38ab2f201c5ec1832143868ba22a75a5b20eb1941d83bbf7058a1b",
+    "review_scope": "Static source/asset cross-reference; historical runtime results not rerun.",
+    "asset_name_checks": [
+      {
+        "name": "BP_AIShooter",
+        "matching_registry_objects": 1
+      }
+    ],
+    "path_checks": [
+      {
+        "path": "Saved/CollisionAudit/Lvl_PortalMap/20261027_simplification/simplification_report.json",
+        "exists_in_workspace": false
+      },
+      {
+        "path": "Saved/CollisionAudit/Lvl_PortalMap/20261028_gaps/",
+        "exists_in_workspace": false
+      },
+      {
+        "path": "Saved/CollisionAudit/Lvl_PortalMap/20261028_stair51/",
+        "exists_in_workspace": false
+      },
+      {
+        "path": "Saved/CollisionAudit/Lvl_PortalMap/20261028_stair51_navview/",
+        "exists_in_workspace": false
+      },
+      {
+        "path": "Saved/CollisionAudit/Lvl_PortalMap/20261030_wall53/",
+        "exists_in_workspace": false
+      },
+      {
+        "path": "Saved/CollisionAudit/Lvl_PortalMap/repair_report.json",
+        "exists_in_workspace": false
+      },
+      {
+        "path": "Tools/LevelCollision/portal_map_collision.py",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Tools/LevelCollision/portal_map_collision_disk_validate.py",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Tools/LevelCollision/portal_map_collision_validate.py",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Tools/LevelCollision/portal_map_simplify.py",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Tools/LevelCollision/portal_map_stair_connector.py",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Tools/LevelCollision/portal_map_wall_continuity.py",
+        "exists_in_workspace": true
+      }
+    ],
+    "test_name_checks": [],
+    "review_limit": "Reference existence and source symbols were checked; full prose semantics and historical runtime assertions were not revalidated.",
+    "annotation_applied": true,
+    "sha256_after_reconciliation": "bca3ef29352e59b069078273a9493f7acb2ca562fb721407237616cd1b99fccc",
+    "archive_path": "docs/history/changes/PortalMapCollisionRepair.md",
+    "archive_category": "changes",
+    "archive_reason": "맵 충돌·내비메시 수정 이력입니다. 현행 맵 전체를 다시 검증하지 않았습니다.",
+    "current_use": false
+  },
+  {
+    "path": "docs/README.md",
+    "category": "current_feature_reference",
+    "headings": [
+      "ShootingArena 문서 안내"
+    ],
+    "sha256_before_reconciliation": "dc884565d75333d81635fe7f6beaf61cbb4a68c03365ded001a8fa78044bc504",
+    "review_scope": "Static source/asset cross-reference; historical runtime results not rerun."
+  },
+  {
+    "path": "docs/TextureOptimizationReview.md",
+    "category": "historical_experiment",
+    "headings": [
+      "텍스처 최적화 적용 보고서\r",
+      "적용\r",
+      "검증\r"
+    ],
+    "sha256_before_reconciliation": "96fb119e3a7c71398f1ccdb4fb0e097b298d98c8bd3c1bedc54bf9a9162d92fc",
+    "review_scope": "Static source/asset cross-reference; historical runtime results not rerun.",
+    "asset_name_checks": [],
+    "path_checks": [],
+    "test_name_checks": [],
+    "review_limit": "Reference existence and source symbols were checked; full prose semantics and historical runtime assertions were not revalidated.",
+    "annotation_applied": true,
+    "sha256_after_reconciliation": "c9445426b55d447867bc9ceb44083ca9799c50478a3104a2fc58feaf7fd4707f",
+    "archive_path": "docs/history/experiments/TextureOptimizationReview.md",
+    "archive_category": "experiments",
+    "archive_reason": "과거 텍스처 최적화 측정 기록입니다. 연결된 백업/비교 자료가 현재 워크스페이스에 없어 재검증 근거가 불완전합니다.",
+    "current_use": false
+  },
+  {
+    "path": "docs/UIBackInput.md",
+    "category": "current_feature_reference",
+    "headings": [
+      "UI 뒤로가기 / 취소 / 창 닫기 키 (UIBackInput)\r",
+      "1. 사용자 입장 (플레이어)\r",
+      "2. 동작 방식\r",
+      "3. 새 메뉴를 만들 때\r",
+      "4. 설정 (키 / 버튼 이름 변경)\r",
+      "패키징(출시) 시 Esc로 바꾸기\r",
+      "5. 화면별로 직접 처리하고 싶을 때 (`IUIBackHandler`)\r",
+      "6. 문제 해결\r",
+      "7. 관련 코드\r"
+    ],
+    "sha256_before_reconciliation": "5b8da9c11393cbaf4c7ec62568e00bda637f90bbcd29795ca01f3d8306f36a3d",
+    "review_scope": "Static source/asset cross-reference; historical runtime results not rerun.",
+    "asset_name_checks": [
+      {
+        "name": "WBP_MapPickPop",
+        "matching_registry_objects": 1
+      },
+      {
+        "name": "WBP_QuitDialog",
+        "matching_registry_objects": 1
+      }
+    ],
+    "path_checks": [
+      {
+        "path": "Source/ShootingArena/Public/UI/UIBackHandler.h",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Source/ShootingArena/Public/UI/UIBackInputSettings.h",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Source/ShootingArena/Public/UI/UIBackInputSubsystem.h",
+        "exists_in_workspace": true
+      }
+    ],
+    "test_name_checks": [],
+    "review_limit": "Reference existence and source symbols were checked; full prose semantics and historical runtime assertions were not revalidated.",
+    "annotation_applied": true,
+    "sha256_after_reconciliation": "831c64ae94f9d973ec89e87ab029fb8cdc6121587d21298629c91478eac32365"
+  },
+  {
+    "path": "GamePlayDB/README.md",
+    "category": "current_feature_reference",
+    "headings": [
+      "GamePlayDB — 전투 데이터 DB 연결 (2026-10-29)\r",
+      "폴더 구성\r",
+      "DB 위치\r",
+      "기록이 만들어지는 조건\r",
+      "저장 실패 시\r",
+      "사용법\r",
+      "특정 경기의 데이터 조회 (완료 조건 2)\r",
+      "여러 경기 구분 (완료 조건 3)\r",
+      "집계 조회\r",
+      "실제 플레이와 비교 (완료 조건 4)\r",
+      "검증 결과 (실제 경기, 2026-10-29)\r"
+    ],
+    "sha256_before_reconciliation": "5d2d7ee5721ab445c681c4c0cc95cd7b5f2793f10f8524927151be9ebe820aba",
+    "review_scope": "Static source/asset cross-reference; historical runtime results not rerun.",
+    "asset_name_checks": [],
+    "path_checks": [
+      {
+        "path": "Content/Data/ShootingArenaLog.db",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Saved/Analyze/ShootingArenaLog.db",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Tools/ArenaMatchLog/GenerateSchema.py",
+        "exists_in_workspace": true
+      }
+    ],
+    "test_name_checks": [],
+    "review_limit": "Reference existence and source symbols were checked; full prose semantics and historical runtime assertions were not revalidated.",
+    "annotation_applied": true,
+    "sha256_after_reconciliation": "f8d9c7d1c0df750d22440a8545f3973438536b954decd97b6f33f22bd03566a3"
+  },
+  {
+    "path": "GamePlayDB/구현상태.md",
+    "category": "current_feature_reference",
+    "headings": [
+      "구현 상태 — 확정 필요 사항과 알려진 한계\r",
+      "확정 필요 사항\r",
+      "기록하지만 근사치로 채운 값\r",
+      "확인한 것 / 못 한 것\r"
+    ],
+    "sha256_before_reconciliation": "a5bdb88056b554e2de4d7ebb0bb42e1d547e08e81865c5b8458b20d424ddc3bf",
+    "review_scope": "Static source/asset cross-reference; historical runtime results not rerun.",
+    "asset_name_checks": [
+      {
+        "name": "BPC_Life",
+        "matching_registry_objects": 1
+      },
+      {
+        "name": "BP_AIShooter_C",
+        "matching_registry_objects": 0
+      },
+      {
+        "name": "BP_PlayerShooter_C",
+        "matching_registry_objects": 0
+      },
+      {
+        "name": "BP_RocketLauncherProjectile",
+        "matching_registry_objects": 1
+      },
+      {
+        "name": "DA_MachineGun",
+        "matching_registry_objects": 1
+      },
+      {
+        "name": "DA_Pistol",
+        "matching_registry_objects": 1
+      },
+      {
+        "name": "DA_RocketLauncher",
+        "matching_registry_objects": 1
+      },
+      {
+        "name": "PDA_WeaponBase_C",
+        "matching_registry_objects": 0
+      }
+    ],
+    "path_checks": [],
+    "test_name_checks": [],
+    "review_limit": "Reference existence and source symbols were checked; full prose semantics and historical runtime assertions were not revalidated.",
+    "annotation_applied": true,
+    "sha256_after_reconciliation": "0262204660d2b7e17d1e52d2242f9f2ec65342bef918bb115b489b5b5e51ff5f"
+  },
+  {
+    "path": "GamePlayDB/연결표.md",
+    "category": "current_feature_reference",
+    "headings": [
+      "연결표 — 저장 테이블별 코드 연결 위치와 실행 시점\r",
+      "1. 경기·참가자\r",
+      "2. 스폰·무기 상태\r",
+      "3. 발사·피해·사망\r",
+      "4. 아이템·버프\r",
+      "5. 블루프린트 수정 목록 (4개 에셋)\r"
+    ],
+    "sha256_before_reconciliation": "7f47e0cb740228823e03d391c9aeee3b47f62ce37bf32ead491ffb29bf15ed21",
+    "review_scope": "Static source/asset cross-reference; historical runtime results not rerun.",
+    "asset_name_checks": [
+      {
+        "name": "BPC_Buff",
+        "matching_registry_objects": 1
+      },
+      {
+        "name": "BPC_Inventory",
+        "matching_registry_objects": 1
+      },
+      {
+        "name": "BPC_Life",
+        "matching_registry_objects": 1
+      },
+      {
+        "name": "BP_DropItem",
+        "matching_registry_objects": 1
+      }
+    ],
+    "path_checks": [
+      {
+        "path": "Content/QuakeLike_1_0/Buff/BPC_Buff",
+        "exists_in_workspace": false
+      },
+      {
+        "path": "Content/QuakeLike_1_0/DropItem/BP_DropItem",
+        "exists_in_workspace": false
+      },
+      {
+        "path": "Content/QuakeLike_1_0/Inventory/BPC_Inventory",
+        "exists_in_workspace": false
+      },
+      {
+        "path": "Source/ShootingArena/Private/Analyzer/ArenaMatchLogSubsystem.cpp",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Source/ShootingArena/Private/Combat/RecentAttackerComponent.cpp",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Source/ShootingArena/Private/Weapon/InitialWeaponLoadoutComponent.cpp",
+        "exists_in_workspace": true
+      },
+      {
+        "path": "Source/ShootingArena/Public/Analyzer/ArenaMatchLogLibrary.h",
+        "exists_in_workspace": true
+      }
+    ],
+    "test_name_checks": [],
+    "review_limit": "Reference existence and source symbols were checked; full prose semantics and historical runtime assertions were not revalidated.",
+    "annotation_applied": true,
+    "sha256_after_reconciliation": "d6fdefb1df33c244f32e9612634555af726249ff458f8096b61c9d14b56ace3b"
+  },
+  {
+    "path": "Manual/Life관련 사용 설명서.txt",
+    "category": "legacy_manual",
+    "headings": [],
+    "sha256_before_reconciliation": "68b10a1b3e7565ae29e6874973dd5674379a37d8b4f1b39b11d21e8635ec2522",
+    "review_scope": "Static source/asset cross-reference; historical runtime results not rerun.",
+    "asset_name_checks": [
+      {
+        "name": "BPC_SpawnerManager",
+        "matching_registry_objects": 1
+      },
+      {
+        "name": "DA_DefaultLife",
+        "matching_registry_objects": 1
+      },
+      {
+        "name": "DA_Life_Default",
+        "matching_registry_objects": 1
+      }
+    ],
+    "path_checks": [
+      {
+        "path": "Content/DataAssets/DA_DefaultLife.json",
+        "exists_in_workspace": true
+      }
+    ],
+    "test_name_checks": [],
+    "review_limit": "Reference existence and source symbols were checked; full prose semantics and historical runtime assertions were not revalidated.",
+    "annotation_applied": true,
+    "sha256_after_reconciliation": "64545b2ee2bd754bcf37c9b99e066a70e1ed10d8cca2dbf59c208e29a9ca93b9",
+    "archive_path": "docs/history/legacy/Life관련 사용 설명서.txt",
+    "archive_category": "legacy",
+    "archive_reason": "QuakeLike_Base/LJH 기준의 폐기된 사용 안내입니다. 현행 Life와 스폰 경로를 사용해야 합니다.",
+    "current_use": false
+  }
+]

@@ -1,0 +1,425 @@
+[
+  {
+    "type": "data_table_bindings",
+    "source": "Content/DataTables/DT_Character.json",
+    "target": "/Game/QuakeLike_1_0/GameFlow/Table/DT/DT_Character.DT_Character",
+    "source_exists": true,
+    "row_names": [
+      "D01",
+      "D02",
+      "D03",
+      "D04",
+      "D05",
+      "D06",
+      "C01",
+      "C02",
+      "C03",
+      "C04",
+      "C05",
+      "C06"
+    ],
+    "columns": [
+      "Character_Name",
+      "Character_Sprite",
+      "Character_Modeling",
+      "Characteristic_ID"
+    ],
+    "row_struct": "/Game/QuakeLike_1_0/GameFlow/Table/ST/ST_Character.ST_Character"
+  },
+  {
+    "type": "data_table_bindings",
+    "source": "Content/DataTables/DT_Characteristic.json",
+    "target": "/Game/QuakeLike_1_0/Data/AI/DT_Characteristic.DT_Characteristic",
+    "source_exists": true,
+    "row_names": [
+      "Dummy_1",
+      "Dummy_2",
+      "Dummy_3",
+      "Dummy_4",
+      "Dummy_5",
+      "Dummy_6",
+      "BGH_Easy",
+      "BGH_Normal",
+      "BGH_Hard",
+      "HBC_Easy",
+      "HBC_Normal",
+      "HBC_Hard",
+      "LJH_Easy",
+      "LJH_Normal",
+      "LJH_Hard",
+      "PJH_Easy",
+      "PJH_Normal",
+      "PJH_Hard",
+      "YJS_Easy",
+      "YJS_Normal",
+      "YJS_Hard",
+      "YJH_Easy",
+      "YJH_Normal",
+      "YJH_Hard"
+    ],
+    "columns": [
+      "Attack_Skill",
+      "Aim_Skill",
+      "Aim_Accuracy",
+      "Fire_Throttle",
+      "View_Max_Change",
+      "ReactionTime",
+      "Aggression",
+      "Aggression_Threshold",
+      "Jumper"
+    ],
+    "row_struct": "/Game/QuakeLike_1_0/AI/LSH_AI_Table/02_AI_Struct/ST_Characteristic.ST_Characteristic"
+  },
+  {
+    "type": "data_table_bindings",
+    "source": "Content/DataTables/DT_DropItemSetting.json",
+    "target": "/Game/QuakeLike_1_0/Data/Item/DeathDrop/DT_DropItemSetting.DT_DropItemSetting",
+    "source_exists": true,
+    "row_names": [
+      "Default"
+    ],
+    "columns": [
+      "WeaponDropEnabled",
+      "SubstituteWeapon",
+      "BuffDropEnabled",
+      "SmallHealthDropEnabled",
+      "SmallArmorDropEnabled",
+      "MaxDropCount",
+      "DirectionError",
+      "MinUpAngle",
+      "MaxUpAngle",
+      "MinLaunchForce",
+      "MaxLaunchForce",
+      "HorizontalDecelTime",
+      "HorizontalDecelExponent",
+      "DespawnTime",
+      "DespawnShrinkEnabled",
+      "DespawnShrinkDuration",
+      "SettlementHeightOffset",
+      "SmallHealthItem",
+      "SmallArmorItem",
+      "WeaponTable",
+      "BuffTable",
+      "WeaponPickupClass",
+      "BuffPickupClass",
+      "LifePickupClass"
+    ],
+    "row_struct": "/Script/ShootingArena.DeathDropSettings"
+  },
+  {
+    "type": "data_table_bindings",
+    "source": "Content/DataTables/DT_MapData.json",
+    "target": "/Game/QuakeLike_1_0/GameFlow/Table/DT/DT_MapData.DT_MapData",
+    "source_exists": true,
+    "row_names": [
+      "Map_03",
+      "Map_06",
+      "Map_04",
+      "MainMap",
+      "TestMainMap",
+      "LobbyMap",
+      "AITestMap",
+      "Map_00",
+      "Map_01",
+      "Map_02"
+    ],
+    "columns": [
+      "Map_Name",
+      "Map_Image",
+      "Map_Asset",
+      "Character_List",
+      "Max_Player_Count",
+      "Map_Size",
+      "Map_Explain",
+      "WinKillCount",
+      "GameTimer",
+      "Character_Light_Channels"
+    ],
+    "row_struct": "/Game/QuakeLike_1_0/GameFlow/Table/ST/ST_MapData.ST_MapData"
+  },
+  {
+    "type": "data_table_bindings",
+    "source": "Content/DataTables/DT_Item_Weight.json",
+    "target": "/Game/QuakeLike_1_0/Data/AI/DT_Item_Weight.DT_Item_Weight",
+    "source_exists": true,
+    "row_names": [
+      "ID.HealPack.Mega",
+      "ID.HealPack.Big",
+      "ID.HealPack.middle",
+      "ID.HealPack.Small",
+      "ID.PlatePack.Mega",
+      "ID.PlatePack.Big",
+      "ID.PlatePack.middle",
+      "ID.PlatePack.Small",
+      "ID.MachineGun",
+      "ID.MachineGun.Ammo",
+      "ID.ShotGun",
+      "ID.ShotGun.Ammo",
+      "ID.PlasmaGun",
+      "ID.PlasmaGun.Ammo",
+      "ID.RailGun",
+      "ID.RailGun.Ammo",
+      "ID.RocketLauncher",
+      "ID.RocketLauncher.Ammo",
+      "ID.QuadDamage",
+      "ID.Protection"
+    ],
+    "columns": [
+      "Item_Tag",
+      "Base_Score",
+      "Reference_Tag",
+      "Curve_FuzzyWeight",
+      "Max_Falloff_Distance"
+    ],
+    "row_struct": "/Game/QuakeLike_1_0/AI/LSH_AI_Table/02_AI_Struct/ST_Item_Weight.ST_Item_Weight"
+  },
+  {
+    "type": "data_table_bindings",
+    "source": "Content/DataTables/DT_WeaponChange_Weight.json",
+    "target": "/Game/QuakeLike_1_0/Data/AI/DT_WeaponChange_Weight.DT_WeaponChange_Weight",
+    "source_exists": true,
+    "row_names": [
+      "ID.Pistol",
+      "ID.MachineGun",
+      "ID.ShotGun",
+      "ID.PlasmaGun",
+      "ID.RailGun",
+      "ID.RocketLauncher"
+    ],
+    "columns": [
+      "Weapon_Tag",
+      "Base_Weight",
+      "DistanceCurve",
+      "AmmoCurve",
+      "IsRadialWeapon"
+    ],
+    "row_struct": "/Game/QuakeLike_1_0/AI/LSH_AI_Table/02_AI_Struct/ST_WeaponChange_Weight.ST_WeaponChange_Weight"
+  },
+  {
+    "type": "data_table_bindings",
+    "source": "Content/DataTables/DT_AmmoItemTable.json",
+    "target": "/Game/QuakeLike_1_0/Data/Item/DropTable/DT_AmmoItemTable.DT_AmmoItemTable",
+    "source_exists": true,
+    "row_names": [
+      "Bullet",
+      "ID.MachineGun.Ammo",
+      "ID.PlasmaGun.Ammo",
+      "ID.ShotGun.Ammo",
+      "ID.RocketLauncher.Ammo",
+      "ID.RailGun.Ammo"
+    ],
+    "columns": [
+      "attributes",
+      "TargetItemID",
+      "ammo",
+      "mesh",
+      "PickupSound",
+      "pickupVolume",
+      "SpawnSound",
+      "SpawnVolume"
+    ],
+    "row_struct": "/Game/QuakeLike_1_0/Spawner/DataTable/ST_AmmoItemData.ST_AmmoItemData"
+  },
+  {
+    "type": "data_table_bindings",
+    "source": "Content/DataTables/DT_BuffTable.json",
+    "target": "/Game/QuakeLike_1_0/Data/Item/DropTable/DT_BuffTable.DT_BuffTable",
+    "source_exists": true,
+    "row_names": [
+      "Buff.Multi.Atk",
+      "Buff.Multi.Def",
+      "Buff.Add.Atk",
+      "Buff.Add.Def"
+    ],
+    "columns": [
+      "BuffTag",
+      "Mesh",
+      "PickupSound",
+      "PickupVolume",
+      "Duration",
+      "StatValue",
+      "BuffType",
+      "ModifierType",
+      "NiagaraVFX",
+      "ParticleVFX",
+      "SpawnSound",
+      "SpawnVolume",
+      "WarningSound",
+      "WarningLocalEnabled",
+      "WarningWorldEnabled",
+      "WarningLocalVolume",
+      "WarningWorldVolume",
+      "WarningAttenuation",
+      "attributes"
+    ],
+    "row_struct": "/Game/QuakeLike_1_0/Spawner/DataTable/ST_BuffData.ST_BuffData"
+  },
+  {
+    "type": "data_table_bindings",
+    "source": "Content/DataTables/DT_HeldItemTable.json",
+    "target": "/Game/QuakeLike_1_0/Data/Item/DropTable/DT_HeldItemTable.DT_HeldItemTable",
+    "source_exists": true,
+    "row_names": [
+      "ID.MachineGun",
+      "ID.PlasmaGun",
+      "ID.RocketLauncher",
+      "ID.ShotGun",
+      "ID.RailGun",
+      "ID.Pistol"
+    ],
+    "columns": [
+      "item",
+      "Item DA",
+      "Weapon DA",
+      "mesh",
+      "SpawnSound",
+      "SpawnVolume",
+      "PickupSound",
+      "PickupVolume"
+    ],
+    "row_struct": "/Game/QuakeLike_1_0/Spawner/DataTable/ST_HeldItemData.ST_HeldItemData"
+  },
+  {
+    "type": "data_table_bindings",
+    "source": "Content/DataTables/DT_LifeItemTable.json",
+    "target": "/Game/QuakeLike_1_0/Data/Item/DropTable/DT_LifeItemTable.DT_LifeItemTable",
+    "source_exists": true,
+    "row_names": [
+      "HealPack_Default",
+      "ID.HealPack.Big",
+      "ID.HealPack.middle",
+      "ID.HealPack.Small",
+      "ID.HealPack.Mega",
+      "ID.PlatePack.Big",
+      "ID.PlatePack.middle",
+      "ID.PlatePack.Small",
+      "ID.PlatePack.Mega"
+    ],
+    "columns": [
+      "attributes",
+      "type",
+      "amount",
+      "mesh",
+      "isMegaPack",
+      "pickupSound",
+      "pickupVolume",
+      "SpawnSound",
+      "SpawnVolume"
+    ],
+    "row_struct": "/Game/QuakeLike_1_0/Spawner/DataTable/ST_LifeItemData.ST_LifeItemData"
+  },
+  {
+    "type": "data_asset_bindings",
+    "source": "Content/DataAssets/DA_MachineGun.json",
+    "target": "/Game/QuakeLike_1_0/Data/Item/DA_MachineGun.DA_MachineGun",
+    "source_exists": true
+  },
+  {
+    "type": "data_asset_bindings",
+    "source": "Content/DataAssets/DA_RailGun.json",
+    "target": "/Game/QuakeLike_1_0/Data/Item/DA_RailGun.DA_RailGun",
+    "source_exists": true
+  },
+  {
+    "type": "data_asset_bindings",
+    "source": "Content/DataAssets/DA_PlasmaGun.json",
+    "target": "/Game/QuakeLike_1_0/Data/Item/DA_PlasmaGun.DA_PlasmaGun",
+    "source_exists": true
+  },
+  {
+    "type": "data_asset_bindings",
+    "source": "Content/DataAssets/DA_RocketLauncher.json",
+    "target": "/Game/QuakeLike_1_0/Data/Item/DA_RocketLauncher.DA_RocketLauncher",
+    "source_exists": true
+  },
+  {
+    "type": "data_asset_bindings",
+    "source": "Content/DataAssets/DA_ShotGun.json",
+    "target": "/Game/QuakeLike_1_0/Data/Item/DA_ShotGun.DA_ShotGun",
+    "source_exists": true
+  },
+  {
+    "type": "data_asset_bindings",
+    "source": "Content/DataAssets/DA_Pistol.json",
+    "target": "/Game/QuakeLike_1_0/Data/Item/DA_Pistol.DA_Pistol",
+    "source_exists": true
+  },
+  {
+    "type": "data_asset_bindings",
+    "source": "Content/DataAssets/DA_MatchSetting.json",
+    "target": "/Game/QuakeLike_1_0/Data/GameMode/DA_MatchSetting.DA_MatchSetting",
+    "source_exists": true
+  },
+  {
+    "type": "data_asset_bindings",
+    "source": "Content/DataAssets/DA_Respawn.json",
+    "target": "/Game/QuakeLike_1_0/Data/Respawn/DA_Respawn.DA_Respawn",
+    "source_exists": true
+  },
+  {
+    "type": "data_asset_bindings",
+    "source": "Content/DataAssets/DA_DeathCamera_Default.json",
+    "target": "/Game/QuakeLike_1_0/Data/Player/DA_DeathCamera_Default.DA_DeathCamera_Default",
+    "source_exists": true
+  },
+  {
+    "type": "data_asset_bindings",
+    "source": "Content/DataAssets/DA_DefaultPlayer.json",
+    "target": "/Game/QuakeLike_1_0/Data/Player/DA_DefaultPlayer.DA_DefaultPlayer",
+    "source_exists": true
+  },
+  {
+    "type": "data_asset_bindings",
+    "source": "Content/DataAssets/DA_KillStreakSettings.json",
+    "target": "/Game/QuakeLike_1_0/Data/Player/DA_KillStreakSettings.DA_KillStreakSettings",
+    "source_exists": true
+  },
+  {
+    "type": "data_asset_bindings",
+    "source": "Content/DataAssets/DA_ShooterOutline_Default.json",
+    "target": "/Game/QuakeLike_1_0/Data/Player/DA_ShooterOutline_Default.DA_ShooterOutline_Default",
+    "source_exists": true
+  },
+  {
+    "type": "data_asset_bindings",
+    "source": "Content/DataAssets/DA_ShooterNickname_Default.json",
+    "target": "/Game/QuakeLike_1_0/Data/Player/DA_ShooterNickname_Default.DA_ShooterNickname_Default",
+    "source_exists": true
+  },
+  {
+    "type": "data_asset_bindings",
+    "source": "Content/DataAssets/DA_DefaultLife.json",
+    "target": "/Game/QuakeLike_1_0/Data/Chracter/DA_DefaultLife.DA_DefaultLife",
+    "source_exists": true
+  },
+  {
+    "type": "data_asset_bindings",
+    "source": "Content/DataAssets/DA_MovementOption.json",
+    "target": "/Game/QuakeLike_1_0/Data/Chracter/DA_MovementOption.DA_MovementOption",
+    "source_exists": true
+  },
+  {
+    "type": "data_asset_bindings",
+    "source": "Content/DataAssets/DA_BGMSetting_Default.json",
+    "target": "/Game/QuakeLike_1_0/Data/BGM/DA_BGMSetting_Default.DA_BGMSetting_Default",
+    "source_exists": true
+  },
+  {
+    "type": "data_asset_bindings",
+    "source": "Content/DataAssets/DA_AIAimBoundary.json",
+    "target": "/Game/QuakeLike_1_0/Data/AI/DA_AIAimBoundary.DA_AIAimBoundary",
+    "source_exists": true
+  },
+  {
+    "type": "data_asset_bindings",
+    "source": "Content/DataAssets/DA_InterpSpeed.json",
+    "target": "/Game/QuakeLike_1_0/Data/AI/DA_InterpSpeed.DA_InterpSpeed",
+    "source_exists": true
+  },
+  {
+    "type": "data_asset_bindings",
+    "source": "Content/DataAssets/DA_DefaultAggression.json",
+    "target": "/Game/QuakeLike_1_0/Data/AI/Aggression/DA_DefaultAggression.DA_DefaultAggression",
+    "source_exists": true
+  }
+]

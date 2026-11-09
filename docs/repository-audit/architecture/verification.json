@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "run_directory": "docs/audit/generated/whole-20261105T110518059081Z",
+  "verification": {
+    "verified": true,
+    "packages": 28198,
+    "assets": 28211,
+    "typed_edges": 87375,
+    "blueprints": 923,
+    "json_graphs": 2605,
+    "text_graphs": 4158,
+    "input_hashes": 594,
+    "document_links": 499,
+    "runtime_validation": "not_run",
+    "cleanup": "not_started"
+  },
+  "health": {
+    "checked_utc": "2026-11-05T11:35:22.575445+00:00",
+    "project_root": "D:\\UnrealProjects\\ShootingArena",
+    "engine": "5.6.1-44394996+++UE5+Release-5.6",
+    "dirty_content": [],
+    "dirty_maps": [],
+    "missing_cook_maps": {
+      "Lvl_QuakeMap_01": true,
+      "Lvl_QuakeMap_03": true
+    }
+  },
+  "scripts": {
+    "Scripts/WholeProjectAuditUnreal.py": "63066c652ffe5ddf779b6c9e54ea1c875b5f9d0044daa470e9bd02973aeb5274",
+    "Scripts/WholeProjectGraphSupplement.py": "6c59d5b579cca584257afcb298fca4e0a9dc82219fa7c282dff77e9414a88287",
+    "Scripts/AnalyzeWholeProjectAudit.py": "f1c8a0ddc7c0cf6e1f91db77b4101aca136322e331b1c0d9ab167469d84aed76",
+    "Scripts/WriteWholeProjectCatalogs.py": "541c9b9103e5ec7c2f39778ab20f61b5a88abd97e73772f4fb33e2366107d9c4",
+    "Scripts/VerifyWholeProjectAudit.py": "1b38a6c9b50f7fde1683c3fbd8b0fdeeb8828c965b1e609f2872daa3a07b4ad6"
+  },
+  "artifact_files": 6810,
+  "artifact_logical_bytes": 234841399
+}

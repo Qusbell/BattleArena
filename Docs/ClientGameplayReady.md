@@ -1,4 +1,17 @@
+<!-- repository-audit-20261105:start -->
+> 2026-11-05 저장소 조사: 현재 소스·에셋과 연결을 정적 대조한 참고 문서입니다. 아래 과거 빌드·자동 테스트·실행 결과를 이번 검증 결과로 해석하지 않습니다.
+> 현행 연결과 미확인 사항은 [시스템 지도](repository-audit/architecture/SystemMap.md), [데이터 원본 정책](repository-audit/architecture/DataAuthority.md)를 확인합니다.
+<!-- repository-audit-20261105:end -->
+
 # 클라이언트 로딩 완료 보고
+
+## BGM과의 연결 — 2026-11-05 조사 보충
+
+`ULoadingScreenSubsystem`은 BGMSubsystem을 초기화 의존성으로 선언합니다.
+로딩 시작 시 BGM 감쇠를 요청하고, `RemoveLoadingScreen(bRestoreBGM=true)`에서
+`EndLoadingBGM()`으로 볼륨을 복구합니다. BGM 완료 콜백을 플레이 준비 보고 조건으로 사용하지는 않습니다.
+설정·곡 선택·옵션 볼륨의 별도 경로는 [BGM 시스템 조사](repository-audit/systems/BGM.md)에 정리했습니다.
+아래의 준비 보고 절차는 이번 조사에서 전체 재검증하지 않았습니다.
 
 엄밀한 전체 초기화 보장이 아닌, 로딩 화면 종료와 실제 Pawn 도착을 기준으로 한 간단한 시작 신호입니다.
 

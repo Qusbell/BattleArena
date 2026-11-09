@@ -1,3 +1,10 @@
+<!-- repository-audit-20261105:start -->
+> 2026-11-05 저장소 조사: 현재 소스·에셋과 연결을 정적 대조한 참고 문서입니다. 아래 과거 빌드·자동 테스트·실행 결과를 이번 검증 결과로 해석하지 않습니다.
+> 현행 연결과 미확인 사항은 [시스템 지도](repository-audit/architecture/SystemMap.md), [데이터 원본 정책](repository-audit/architecture/DataAuthority.md)를 확인합니다.
+
+> 아이템/버프 DT는 JsonAssetSync에 등록되어 있습니다. 지속할 설정 변경은 원본 JSON에도 반영해야 하며, Editor 시작 및 패키징 실행 시작 시 JSON이 다시 적용됩니다.
+<!-- repository-audit-20261105:end -->
+
 # 버프 사운드 사용법
 
 ## 1. 설정할 DT 열기

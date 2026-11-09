@@ -1,3 +1,8 @@
+<!-- repository-audit-20261105:start -->
+> 2026-11-05 저장소 조사: 현재 소스·에셋과 연결을 정적 대조한 참고 문서입니다. 아래 과거 빌드·자동 테스트·실행 결과를 이번 검증 결과로 해석하지 않습니다.
+> 현행 연결과 미확인 사항은 [시스템 지도](../docs/repository-audit/architecture/SystemMap.md), [데이터 원본 정책](../docs/repository-audit/architecture/DataAuthority.md)를 확인합니다.
+<!-- repository-audit-20261105:end -->
+
 # GamePlayDB — 전투 데이터 DB 연결 (2026-10-29)
 
 지시서(`261028_전투데이터_DB연결_지시서.md`)에 따라 한 경기에서 발생한 전투 데이터를 SQLite에 저장합니다.

@@ -1,0 +1,200 @@
+[
+  {
+    "name": "AdvancedSessions",
+    "descriptor": "Plugins/AdvancedSessions/AdvancedSessions.uplugin",
+    "project_override": null,
+    "enabled_by_default_declaration": null,
+    "modules": [
+      {
+        "Name": "AdvancedSessions",
+        "Type": "Runtime",
+        "LoadingPhase": "PreDefault"
+      }
+    ],
+    "dependencies": [
+      {
+        "Name": "OnlineSubsystem",
+        "Enabled": true
+      },
+      {
+        "Name": "OnlineSubsystemUtils",
+        "Enabled": true
+      }
+    ],
+    "note": "Descriptor/project declarations; not a runtime plugin activation probe."
+  },
+  {
+    "name": "AdvancedSteamSessions",
+    "descriptor": "Plugins/AdvancedSteamSessions/AdvancedSteamSessions.uplugin",
+    "project_override": {
+      "Name": "AdvancedSteamSessions",
+      "Enabled": false
+    },
+    "enabled_by_default_declaration": null,
+    "modules": [
+      {
+        "Name": "AdvancedSteamSessions",
+        "Type": "RunTime",
+        "LoadingPhase": "PostDefault"
+      }
+    ],
+    "dependencies": [
+      {
+        "Name": "AdvancedSessions",
+        "Enabled": true
+      },
+      {
+        "Name": "OnlineSubsystem",
+        "Enabled": true
+      },
+      {
+        "Name": "OnlineSubsystemSteam",
+        "Enabled": true
+      },
+      {
+        "Name": "OnlineSubsystemUtils",
+        "Enabled": true
+      },
+      {
+        "Name": "SteamShared",
+        "Enabled": true
+      }
+    ],
+    "note": "Descriptor/project declarations; not a runtime plugin activation probe."
+  },
+  {
+    "name": "BlackboardUsageScanner",
+    "descriptor": "Plugins/BlackboardUsageScanner/BlackboardUsageScanner.uplugin",
+    "project_override": null,
+    "enabled_by_default_declaration": null,
+    "modules": [
+      {
+        "Name": "BlackboardUsageScanner",
+        "Type": "Editor",
+        "LoadingPhase": "Default"
+      }
+    ],
+    "dependencies": [],
+    "note": "Descriptor/project declarations; not a runtime plugin activation probe."
+  },
+  {
+    "name": "GameplayValidator",
+    "descriptor": "Plugins/GameplayValidator/GameplayValidator.uplugin",
+    "project_override": null,
+    "enabled_by_default_declaration": null,
+    "modules": [
+      {
+        "Name": "GameplayValidatorEditor",
+        "Type": "Editor",
+        "LoadingPhase": "Default"
+      }
+    ],
+    "dependencies": [],
+    "note": "Descriptor/project declarations; not a runtime plugin activation probe."
+  },
+  {
+    "name": "JsonAssetSync",
+    "descriptor": "Plugins/JsonAssetSync/JsonAssetSync.uplugin",
+    "project_override": null,
+    "enabled_by_default_declaration": null,
+    "modules": [
+      {
+        "Name": "JsonAssetSync",
+        "Type": "Runtime",
+        "LoadingPhase": "Default"
+      },
+      {
+        "Name": "JsonAssetSyncEditor",
+        "Type": "Editor",
+        "LoadingPhase": "Default"
+      }
+    ],
+    "dependencies": [],
+    "note": "Descriptor/project declarations; not a runtime plugin activation probe."
+  },
+  {
+    "name": "JsonBlueprintUtilities",
+    "descriptor": "Plugins/JsonBlueprintUtilities/JsonBlueprintUtilities.uplugin",
+    "project_override": {
+      "Name": "JsonBlueprintUtilities",
+      "Enabled": true
+    },
+    "enabled_by_default_declaration": false,
+    "modules": [
+      {
+        "Name": "JsonBlueprintUtilities",
+        "Type": "Runtime",
+        "LoadingPhase": "Default"
+      },
+      {
+        "Name": "JsonBlueprintGraph",
+        "Type": "UncookedOnly",
+        "LoadingPhase": "Default"
+      }
+    ],
+    "dependencies": [],
+    "note": "Descriptor/project declarations; not a runtime plugin activation probe."
+  },
+  {
+    "name": "NiagaraUIRenderer",
+    "descriptor": "Plugins/NiagaraU409cc0a0b725V9/NiagaraUIRenderer.uplugin",
+    "project_override": {
+      "Name": "NiagaraUIRenderer",
+      "Enabled": true,
+      "SupportedTargetPlatforms": [
+        "Win64",
+        "Android"
+      ]
+    },
+    "enabled_by_default_declaration": null,
+    "modules": [
+      {
+        "Name": "NiagaraUIRenderer",
+        "Type": "Runtime",
+        "LoadingPhase": "PreDefault",
+        "PlatformAllowList": [
+          "Win64",
+          "Android"
+        ]
+      },
+      {
+        "Name": "NiagaraUIRendererEditor",
+        "Type": "Editor",
+        "LoadingPhase": "Default",
+        "PlatformAllowList": [
+          "Win64"
+        ]
+      }
+    ],
+    "dependencies": [
+      {
+        "Name": "Niagara",
+        "Enabled": true
+      }
+    ],
+    "note": "Descriptor/project declarations; not a runtime plugin activation probe."
+  },
+  {
+    "name": "UnrealMCPython",
+    "descriptor": "Plugins/UnrealMCPython/UnrealMCPython.uplugin",
+    "project_override": null,
+    "enabled_by_default_declaration": null,
+    "modules": [
+      {
+        "Name": "UnrealMCPython",
+        "Type": "Editor",
+        "LoadingPhase": "PostEngineInit",
+        "PlatformAllowList": [
+          "Win64"
+        ]
+      }
+    ],
+    "dependencies": [
+      {
+        "Name": "PythonScriptPlugin",
+        "Enabled": true
+      }
+    ],
+    "note": "Descriptor/project declarations; not a runtime plugin activation probe."
+  }
+]

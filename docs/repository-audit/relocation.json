@@ -1,0 +1,395 @@
+{
+  "schema_version": 1,
+  "purpose": "Documentation consolidation; original collection evidence is preserved.",
+  "path_aliases": {
+    "docs/audit": "docs/repository-audit/audit",
+    "docs/architecture": "docs/repository-audit/architecture",
+    "docs/systems": "docs/repository-audit/systems",
+    "docs/PathLink27PlacementCheck.md": "docs/history/experiments/PathLink27PlacementCheck.md",
+    "docs/PathLinkAccuracyNextSteps.md": "docs/history/plans/PathLinkAccuracyNextSteps.md",
+    "docs/PathLinkBlendResults.md": "docs/history/experiments/PathLinkBlendResults.md",
+    "docs/PathLinkBotAPIIntegration.md": "docs/history/plans/PathLinkBotAPIIntegration.md",
+    "docs/PathLinkCacheConsistencySpecification.md": "docs/history/plans/PathLinkCacheConsistencySpecification.md",
+    "docs/PathLinkDirectionCorrectionResults.md": "docs/history/experiments/PathLinkDirectionCorrectionResults.md",
+    "docs/PathLinkLargePolygons.md": "docs/history/experiments/PathLinkLargePolygons.md",
+    "docs/PathLinkLazySearchResults.md": "docs/history/experiments/PathLinkLazySearchResults.md",
+    "docs/PathLinkOutlierRootCause.md": "docs/history/experiments/PathLinkOutlierRootCause.md",
+    "docs/PathLinkPlayableBlendSweep.md": "docs/history/experiments/PathLinkPlayableBlendSweep.md",
+    "docs/PathLinkPlayableResults.md": "docs/history/experiments/PathLinkPlayableResults.md",
+    "docs/PathLinkRandomResults.md": "docs/history/experiments/PathLinkRandomResults.md",
+    "docs/PathLinkRoutingCache.md": "docs/history/plans/PathLinkRoutingCache.md",
+    "docs/PathLinkRoutingCacheResults.md": "docs/history/experiments/PathLinkRoutingCacheResults.md",
+    "docs/PathLinkRuntimeCacheFix.md": "docs/history/changes/PathLinkRuntimeCacheFix.md",
+    "docs/PathLinkSTGInlineLTG.md": "docs/history/changes/PathLinkSTGInlineLTG.md",
+    "docs/BuffWarningSound_ImplementationNotes.md": "docs/history/changes/BuffWarningSound_ImplementationNotes.md",
+    "docs/Buff_Stabilization_Checklist.md": "docs/history/plans/Buff_Stabilization_Checklist.md",
+    "docs/PortalMapCollisionRepair.md": "docs/history/changes/PortalMapCollisionRepair.md",
+    "docs/TextureOptimizationReview.md": "docs/history/experiments/TextureOptimizationReview.md",
+    "Manual/Life관련 사용 설명서.txt": "docs/history/legacy/Life관련 사용 설명서.txt"
+  },
+  "files": {
+    ".gitignore": {
+      "before_path": ".gitignore",
+      "sha256_before": "d90b3f55b05af8b2cbbdd2843b47bd6a05ab1f8c6f92f2469fae31ab4fdd17c6",
+      "sha256_after": "4b725359db46e61bae92ba252b0d5b4ed816acfd0af171405516c284fe2df04e"
+    },
+    "AGENTS.md": {
+      "before_path": "AGENTS.md",
+      "sha256_before": "19703c093fdee0ef219be98f6fd8c7820f1205b96d91c6f58f85a4fc981d960d",
+      "sha256_after": "4c1cdd2ed5f404718014eef95537144ed6f772e2ab7e59645eaaf398ee22ab6d"
+    },
+    "docs/repository-audit/architecture/catalogs/AI-Decision.md": {
+      "before_path": "docs/architecture/catalogs/AI-Decision.md",
+      "sha256_before": "dd988e5361f12aebae961ce5e4a983bba1680eb093f6e23328b07887182cbf84",
+      "sha256_after": "9eb52a5bc2cebcb967cab420523558c2fc4acc4a1182bef451f028323fef82cd"
+    },
+    "docs/repository-audit/architecture/catalogs/AI-Navigation.md": {
+      "before_path": "docs/architecture/catalogs/AI-Navigation.md",
+      "sha256_before": "cedaaa8c06f42e75985bf7431067700e6a8d7f2af30bbad67ffe5901fa929204",
+      "sha256_after": "867926fcf367fea55061375ff51464b8bac96d3b33cb0799d76d2f38bf9d1f8d"
+    },
+    "docs/repository-audit/architecture/catalogs/Audio-Camera.md": {
+      "before_path": "docs/architecture/catalogs/Audio-Camera.md",
+      "sha256_before": "41a909fb656817cfd9cd29d6fc7d2a98de99c2772b136454e9a20c0dcacfb9ac",
+      "sha256_after": "301bdea00ff77a6b0acd0fb8b284c8a0149fb342f225f022ea775c0a16d7e2e3"
+    },
+    "docs/repository-audit/architecture/catalogs/Character.md": {
+      "before_path": "docs/architecture/catalogs/Character.md",
+      "sha256_before": "530bfc5c6ff87a7511b1cb28ce802681a4e84f86689db7e156ecc15ecfcecc57",
+      "sha256_after": "fdfd88fd5464b153a72cf0709f84e7d0d4d6b54210286a9c3744a20cd0cf000b"
+    },
+    "docs/repository-audit/architecture/catalogs/Combat-Weapons.md": {
+      "before_path": "docs/architecture/catalogs/Combat-Weapons.md",
+      "sha256_before": "7de2485b23b93c34251db37b72e121bad1aba302b3b5d527086e24175361c686",
+      "sha256_after": "5c0ea853e7518432270eeff453ffa178583d50954a61b4c53e2427043b02df1f"
+    },
+    "docs/repository-audit/architecture/catalogs/Data-Config.md": {
+      "before_path": "docs/architecture/catalogs/Data-Config.md",
+      "sha256_before": "d5f1e5a3d248dcb8afd7779607558f073cc39f740f12753e2d67640e7fa3a383",
+      "sha256_after": "3b30af7cbb0d1bd7358be1206add2c38847d5df5644ef13cd095eb66b318027a"
+    },
+    "docs/repository-audit/architecture/catalogs/GameFlow-Network.md": {
+      "before_path": "docs/architecture/catalogs/GameFlow-Network.md",
+      "sha256_before": "83138c9a4003829ccd6b9f0191c12c2f6d48d2342f18a452f2e1ca3fca1ab459",
+      "sha256_after": "6b5052dea611e7cd4ddc9a47d897a906238b2598c25a631e7e5fcc71bf8f8994"
+    },
+    "docs/repository-audit/architecture/catalogs/Items-Buffs.md": {
+      "before_path": "docs/architecture/catalogs/Items-Buffs.md",
+      "sha256_before": "259d56ebd1a515170606b21486507a4e0088426efdc8d71531cabb83e3696405",
+      "sha256_after": "36b02bee9c30613e1bdce2b9961e5c629dc4237ef5db1304acfedc80d265878d"
+    },
+    "docs/repository-audit/architecture/catalogs/Movement-World.md": {
+      "before_path": "docs/architecture/catalogs/Movement-World.md",
+      "sha256_before": "ed4dc4e3625d01aa2567beef178ad5db1cbff2bd3e59279690ba29b7a6343077",
+      "sha256_after": "3896bcf9a864814e2ba79b3c35b0ae59d2ebb3293b1ff7524f496ee0a2630452"
+    },
+    "docs/repository-audit/architecture/catalogs/Other.md": {
+      "before_path": "docs/architecture/catalogs/Other.md",
+      "sha256_before": "8afbaebfebcb98fe8b01f1187cd78471165dc9338fd42b79381abcfdfeabc0ed",
+      "sha256_after": "fc8b6c94d06385273d937f31a6f82d2a92373b193c0f0f0847c80ae8a2c2bf9d"
+    },
+    "docs/repository-audit/architecture/catalogs/Telemetry-Debug.md": {
+      "before_path": "docs/architecture/catalogs/Telemetry-Debug.md",
+      "sha256_before": "839bff58321c89cbc9cd30471bb19789b4894a0c96955c5e0a97a8ac65f4af5c",
+      "sha256_after": "5250765febfb0674f39213d51aaaddd62b9cddac4b85525f115dece558a777d1"
+    },
+    "docs/repository-audit/architecture/catalogs/UI.md": {
+      "before_path": "docs/architecture/catalogs/UI.md",
+      "sha256_before": "9751f5ba415bdbd5dcb3e536becf909355e1c4b80eb548c7c27d7a97b89e3dfc",
+      "sha256_after": "0e01fa512b3b4168a7b12096a068a90e9950563fc26e3defc00f81e68a29b1ac"
+    },
+    "docs/repository-audit/architecture/DataAuthority.md": {
+      "before_path": "docs/architecture/DataAuthority.md",
+      "sha256_before": "1b3ffa6155ef5a27aa3ce20aefff5c2f8b6678a5f84e30e0053ad0fbbdd6a6dc",
+      "sha256_after": "1b3ffa6155ef5a27aa3ce20aefff5c2f8b6678a5f84e30e0053ad0fbbdd6a6dc"
+    },
+    "docs/repository-audit/architecture/Findings.md": {
+      "before_path": "docs/architecture/Findings.md",
+      "sha256_before": "5c2c7605d4b6218b1a8ef7cbae0107a30b8ff42f7e1038124a2ed3fcb95a3606",
+      "sha256_after": "7fc278a48f693a5459dfcd0ae795b46ae5f99d3a40be2f2946cec8a67c7d0be7"
+    },
+    "docs/repository-audit/architecture/README.md": {
+      "before_path": "docs/architecture/README.md",
+      "sha256_before": "5bb7eda1d6ffd91fa69b1d33a27d3745855f22236c971ce79a62f989d4282fdd",
+      "sha256_after": "318f6dbd66be8f1201ee0f39645b30b9513a40214df5d0aa35e6f18d12ccf830"
+    },
+    "docs/repository-audit/architecture/SystemMap.md": {
+      "before_path": "docs/architecture/SystemMap.md",
+      "sha256_before": "bb9a6256d5de8207f7f8922a7a6bedc7b9cc92320aac413ae40d3030f8523424",
+      "sha256_after": "1dcb475468f7daf9c873def958b2572481f17bd3392b2947c1dcc0b63436d4fb"
+    },
+    "docs/ArenaAnalyzerV2.md": {
+      "before_path": "docs/ArenaAnalyzerV2.md",
+      "sha256_before": "1f5de9c4f77fe0e67521cfa03b914c60d31e0fc5282d5a07285e0336cc207824",
+      "sha256_after": "c440f76bd6a6a48639f1f4d9d09e2f1fb80dc6c321eb272b93fb31a053e2235f"
+    },
+    "docs/repository-audit/audit/BASELINE.md": {
+      "before_path": "docs/audit/BASELINE.md",
+      "sha256_before": "2f5f2175c983ccd2c74acf1c186931faf49067d8f9c5cac9686f5b19814f0218",
+      "sha256_after": "41cbfcf4e049bab3bfd839d0e7e8ea850367896819ae9d70d7a994743b9e0c9b"
+    },
+    "docs/repository-audit/audit/README.md": {
+      "before_path": "docs/audit/README.md",
+      "sha256_before": "5e47b8288b10e88ef51c1f9919385502d498be10df504a16356a0ccc9dcf3c67",
+      "sha256_after": "a522e7d2eabd972da6f8c83c0e3de20856f40915c4e926f834e7254792dc8dcb"
+    },
+    "docs/history/plans/Buff_Stabilization_Checklist.md": {
+      "before_path": "docs/Buff_Stabilization_Checklist.md",
+      "sha256_before": "5a17cfc5163b7c9a5300c9b94ba8b44808ac071340f29aa04873c804fe4214f5",
+      "sha256_after": "beaef99a6762f2e754cdc14dad8148a7c85b1aece68a29096184b4f84d930cf6"
+    },
+    "docs/BuffWarningSound.md": {
+      "before_path": "docs/BuffWarningSound.md",
+      "sha256_before": "59c60adadfea3167ee0079f33755b1d84a4245aa587e8237d20503a4c7c62a42",
+      "sha256_after": "acf825d40cc849821327fcb3d93f9ebb852e2882405cc8912d6c123c0289bd96"
+    },
+    "docs/history/changes/BuffWarningSound_ImplementationNotes.md": {
+      "before_path": "docs/BuffWarningSound_ImplementationNotes.md",
+      "sha256_before": "1c619ae279f3da469785f15968fc8f92df0d6a9670a7ed7f2786815a327c94e2",
+      "sha256_after": "05d21c434a10b64548d0850a780c294dc3f952cd37e31493b9cd1e64fe66222a"
+    },
+    "docs/ClientGameplayReady.md": {
+      "before_path": "docs/ClientGameplayReady.md",
+      "sha256_before": "4a74b53cd82b25def451b2fc92456708bf4c361cb9b23c0095d6a9d546e13aff",
+      "sha256_after": "bdc719db65a3a4b35cd285b80756f36e3517e0a69a34f4af36b55fe5a955cdc0"
+    },
+    "docs/DebugAINetwork.md": {
+      "before_path": "docs/DebugAINetwork.md",
+      "sha256_before": "af0ce1c6bb0e7e8354adf68a7306fb1628d225f0d77ba4cc99827da7990759ac",
+      "sha256_after": "a888ff5f1cf319df94bd85371fc3659aa84c67d8d3e74c2069db890ab6ad7a22"
+    },
+    "docs/ItemSoundSettings.md": {
+      "before_path": "docs/ItemSoundSettings.md",
+      "sha256_before": "ee134e8f42cfbef308c198df1104d239323f956760b30592ff90a44c7def6e76",
+      "sha256_after": "c1d2c326081ff01227c1f21f95b17b2cc4c8f8f39517852a23530c68876911e2"
+    },
+    "docs/MapPreviewMedia.md": {
+      "before_path": "docs/MapPreviewMedia.md",
+      "sha256_before": "95041af44c6c662363097c0ae90feb4a408fa432d8672a5cfb33f139e55be4a8",
+      "sha256_after": "9b4326e300a62c2615c62b987e62e6905af2ead7cf508516b995c37814b635d9"
+    },
+    "docs/history/experiments/PathLink27PlacementCheck.md": {
+      "before_path": "docs/PathLink27PlacementCheck.md",
+      "sha256_before": "c14996e12b685419773a39a7a8e698ea12e7fdf17ec7330e7efd7e54c974a2d6",
+      "sha256_after": "4c3ff17c2d4cf89526120053acc95c4bbb1d040228469ee02090d2bd10c1b56e"
+    },
+    "docs/history/plans/PathLinkAccuracyNextSteps.md": {
+      "before_path": "docs/PathLinkAccuracyNextSteps.md",
+      "sha256_before": "24611da00231632ffc44499e9400b7d5b70746ba34d64ceddcf06692a0688135",
+      "sha256_after": "bdcd66228a2115b6d9cc85c4e538dc738bde8d5df9ca5236afecea550fc71ac2"
+    },
+    "docs/history/experiments/PathLinkBlendResults.md": {
+      "before_path": "docs/PathLinkBlendResults.md",
+      "sha256_before": "07808f6f81c4dcb83c9ac154a07fbd4728702bba8fb133073beda57b71c4246b",
+      "sha256_after": "d465ecdd7a64d1f3ae7a18aec5f9aafd563d3f68714f7b1981696c2de48e2fab"
+    },
+    "docs/history/plans/PathLinkBotAPIIntegration.md": {
+      "before_path": "docs/PathLinkBotAPIIntegration.md",
+      "sha256_before": "f3c4b1a48450f4ce07fcbffa1b77c8cbc59dc9550297285284daf60a462a3b45",
+      "sha256_after": "d021373f45f32b61152b353618bb260ed494b083bb68d31540aa138ca3bcc33d"
+    },
+    "docs/history/plans/PathLinkCacheConsistencySpecification.md": {
+      "before_path": "docs/PathLinkCacheConsistencySpecification.md",
+      "sha256_before": "8441458b29673fb40e4a3304a297e08b47e4354795b9c82a6c6a5b6f8e9f38e2",
+      "sha256_after": "9b3df8584e37462684667a079dcec190d8a5cca9e24c36a2e0f417476b40174d"
+    },
+    "docs/history/experiments/PathLinkDirectionCorrectionResults.md": {
+      "before_path": "docs/PathLinkDirectionCorrectionResults.md",
+      "sha256_before": "498c7d9b5f3b4d349768231a49897dc38bbfa21c55adb2314187164e8966c7c1",
+      "sha256_after": "c64666b6bc90ec2aad0972cefb1808bab4034367c43e9096920acf6d585dcbf4"
+    },
+    "docs/history/experiments/PathLinkLargePolygons.md": {
+      "before_path": "docs/PathLinkLargePolygons.md",
+      "sha256_before": "0bf5c14f5347b04db81a19079d220084b8abb0c7f75b74090d003d3865ac1c1a",
+      "sha256_after": "a44cdec7ce56627e78ac8503e926a6c7f52c518f8324d355982546d3b64c27d8"
+    },
+    "docs/history/experiments/PathLinkLazySearchResults.md": {
+      "before_path": "docs/PathLinkLazySearchResults.md",
+      "sha256_before": "3f2e25abd1ad274f1421070822035556f7b41ab2249c8652db25bb9b489d5d2f",
+      "sha256_after": "f2937b441935147d887d8e1b429ee0fe7a437a0f01b6ca94faca02e2429f241b"
+    },
+    "docs/history/experiments/PathLinkOutlierRootCause.md": {
+      "before_path": "docs/PathLinkOutlierRootCause.md",
+      "sha256_before": "498c247f45f7f8dd04b3e97c6b1503cdcbb3acc8f93d74bd6551bf891b1c1e93",
+      "sha256_after": "65bfce878eb8545a704a3c9305df5a39dc14ff0fa74f933f4caa2567caf63ca5"
+    },
+    "docs/history/experiments/PathLinkPlayableBlendSweep.md": {
+      "before_path": "docs/PathLinkPlayableBlendSweep.md",
+      "sha256_before": "e87c8f4c48e511ccbbefd20eb8f60aff926177fd2d0308caff1e518d96544027",
+      "sha256_after": "e2f8ee9bc98deba82a1733b1e409bd60b29b6062ac9468bd47c10cfc01c1be1a"
+    },
+    "docs/history/experiments/PathLinkPlayableResults.md": {
+      "before_path": "docs/PathLinkPlayableResults.md",
+      "sha256_before": "4989f295d545500258d5ff38927476dd936a79d0fdb86b169eeaf5536da4ca51",
+      "sha256_after": "17ea619e75040579aeb86dbf260a0ea6d43b3fe3bcc062bccb4b8eb4d97fa76f"
+    },
+    "docs/history/experiments/PathLinkRandomResults.md": {
+      "before_path": "docs/PathLinkRandomResults.md",
+      "sha256_before": "dec2e80f32a35af5231fd361c5839ef756d2d93697c7906c60bdbd89eac1a7c5",
+      "sha256_after": "8118c68b2a8bec1a206332e358637403462f776bc606313004b15b8bdefa5309"
+    },
+    "docs/history/plans/PathLinkRoutingCache.md": {
+      "before_path": "docs/PathLinkRoutingCache.md",
+      "sha256_before": "0bcd8f652e6938c4230dd72a01df88b9aa0740684f9b34d4286539e470ecbb1e",
+      "sha256_after": "0a164e574f943de79f7c8317f950a5dc19111ec4a08d634d59a7458c390fef62"
+    },
+    "docs/history/experiments/PathLinkRoutingCacheResults.md": {
+      "before_path": "docs/PathLinkRoutingCacheResults.md",
+      "sha256_before": "efe3cf2b94207c7a73a18fa378788bac4a06db0624bc69d3e61e1c1255133cea",
+      "sha256_after": "3a02f4f75d3fca6850861172ee1d053816dca37a2c51ed2d00ecca13f0c66383"
+    },
+    "docs/history/changes/PathLinkRuntimeCacheFix.md": {
+      "before_path": "docs/PathLinkRuntimeCacheFix.md",
+      "sha256_before": "c476aa78d592e154febe0eb18563c1728872e2f47911dc9d13e9b46ac09f9c03",
+      "sha256_after": "fa02c8df1d40de7bdd14141020948f9462f3d5ea457bdc1431538c60971a13b4"
+    },
+    "docs/history/changes/PathLinkSTGInlineLTG.md": {
+      "before_path": "docs/PathLinkSTGInlineLTG.md",
+      "sha256_before": "6bff25f4db795a2b78201725eef0009c6056935422cb3556536506bb4b0cee8f",
+      "sha256_after": "81d45976250bd0e04e722192aaee16a66e17f8fa6ea60d5ff165a7101ec2b8e5"
+    },
+    "docs/history/changes/PortalMapCollisionRepair.md": {
+      "before_path": "docs/PortalMapCollisionRepair.md",
+      "sha256_before": "bca3ef29352e59b069078273a9493f7acb2ca562fb721407237616cd1b99fccc",
+      "sha256_after": "ee3a72d7f9a91ae1c079c5ddec740b1d9e47bd4153ce5816b2d89f63e020d342"
+    },
+    "docs/README.md": {
+      "before_path": "docs/README.md",
+      "sha256_before": "0319226866038459b06a39b8871fc0900c82a92af4b8be729e9f49ecb08dd46b",
+      "sha256_after": "b781a56c42e4ac13c1353c3643b7eaacbe6a49124ca5bc4b5e15ec0db2aa4370"
+    },
+    "docs/repository-audit/systems/BGM.md": {
+      "before_path": "docs/systems/BGM.md",
+      "sha256_before": "a876447cc680dad5c5002f51276975a956ba3010cf18e2506c89f1f40422a0e3",
+      "sha256_after": "b50a2de32a0beb3686ed4cb5b5dd6d825cd5121c0891d20cc37acb547ce10926"
+    },
+    "docs/history/experiments/TextureOptimizationReview.md": {
+      "before_path": "docs/TextureOptimizationReview.md",
+      "sha256_before": "c9445426b55d447867bc9ceb44083ca9799c50478a3104a2fc58feaf7fd4707f",
+      "sha256_after": "7d8078d815512fcd8c41a23dd38d59cd19e66a2c056d3dd398dddfd3bc0ddd88"
+    },
+    "docs/UIBackInput.md": {
+      "before_path": "docs/UIBackInput.md",
+      "sha256_before": "831c64ae94f9d973ec89e87ab029fb8cdc6121587d21298629c91478eac32365",
+      "sha256_after": "76865e5a693f8813720e1e0060ab6d63caaff74a1d345b8ed480cb8e28e0c3fc"
+    },
+    "GamePlayDB/README.md": {
+      "before_path": "GamePlayDB/README.md",
+      "sha256_before": "f8d9c7d1c0df750d22440a8545f3973438536b954decd97b6f33f22bd03566a3",
+      "sha256_after": "479f715c6a1974d16de308f0e0a199bd1f134a15f908c90a7ff1bbeeddf8a83a"
+    },
+    "GamePlayDB/구현상태.md": {
+      "before_path": "GamePlayDB/구현상태.md",
+      "sha256_before": "0262204660d2b7e17d1e52d2242f9f2ec65342bef918bb115b489b5b5e51ff5f",
+      "sha256_after": "59aca9a8e64dbbd1f08b6a2d39563f64eaaf459c3f523fcfef74c45e3f43dc5b"
+    },
+    "GamePlayDB/연결표.md": {
+      "before_path": "GamePlayDB/연결표.md",
+      "sha256_before": "d6fdefb1df33c244f32e9612634555af726249ff458f8096b61c9d14b56ace3b",
+      "sha256_after": "ce6b9466efacd06f5e2ab0b4cda16f68e844d38a58251a3bf8ea7e4cd7e08e54"
+    },
+    "docs/history/legacy/Life관련 사용 설명서.txt": {
+      "before_path": "Manual/Life관련 사용 설명서.txt",
+      "sha256_before": "64545b2ee2bd754bcf37c9b99e066a70e1ed10d8cca2dbf59c208e29a9ca93b9",
+      "sha256_after": "59c4158ef693a230181a91655d6cfbc0a385f8e97887da73bc8e9b0db96dda79"
+    },
+    "Scripts/AnalyzeWholeProjectAudit.py": {
+      "before_path": "Scripts/AnalyzeWholeProjectAudit.py",
+      "sha256_before": "f1c8a0ddc7c0cf6e1f91db77b4101aca136322e331b1c0d9ab167469d84aed76",
+      "sha256_after": "e603162627b69073e6b854db695dcb858a6fdff6cad34b12a547cdaddecd3ce3"
+    },
+    "Scripts/AuditBGMSystem.py": {
+      "before_path": "Scripts/AuditBGMSystem.py",
+      "sha256_before": "fcd829562779d8a08c43e5d5aa8a876be61125e67512c999cbbe612768778609",
+      "sha256_after": "0b072eb6dbdf3e9f09f165b6aa0a09e55886dba3231bebbb4d497f94487fdca5"
+    },
+    "Scripts/RepositoryAudit.py": {
+      "before_path": "Scripts/RepositoryAudit.py",
+      "sha256_before": "5e5720a544852f00f5287a006dc614d4638996589b0307a108359f7b19372ad7",
+      "sha256_after": "f2cb3c0fdc48c191046111d035ffbbc25a4ebae07a7208bb2c212639477fa889"
+    },
+    "Scripts/RepositoryAuditUnreal.py": {
+      "before_path": "Scripts/RepositoryAuditUnreal.py",
+      "sha256_before": "3cd29f4ac0bc9b35df0c72d08a5c8aa0f3659213e221ae36a49baf56b895ad91",
+      "sha256_after": "0fbdd091d6f74d6123a1ba78d6b89e2c9fedea1ff67bdb095e8d64d1718ad206"
+    },
+    "Scripts/VerifyBGMSystemAudit.py": {
+      "before_path": "Scripts/VerifyBGMSystemAudit.py",
+      "sha256_before": "0414c43321bade0d0947aef8d8f9c2b68e682a4f39a5fe780273b6d6fe3eefc3",
+      "sha256_after": "dcd8f5111ee3a74af2370fdac3274884178bbbe83e0c2d31eb01affcc05fa550"
+    },
+    "Scripts/VerifyWholeProjectAudit.py": {
+      "before_path": "Scripts/VerifyWholeProjectAudit.py",
+      "sha256_before": "1b38a6c9b50f7fde1683c3fbd8b0fdeeb8828c965b1e609f2872daa3a07b4ad6",
+      "sha256_after": "8ea99ad2ba8f4e9e648c422a9d8b4137c429aee30b4cc0f374f6e1cf4e35e4aa"
+    },
+    "Scripts/WholeProjectAuditUnreal.py": {
+      "before_path": "Scripts/WholeProjectAuditUnreal.py",
+      "sha256_before": "63066c652ffe5ddf779b6c9e54ea1c875b5f9d0044daa470e9bd02973aeb5274",
+      "sha256_after": "109c2206961362338f73d5f62cd7f131604b386327639409aed51dbe996a2762"
+    },
+    "Scripts/WholeProjectGraphSupplement.py": {
+      "before_path": "Scripts/WholeProjectGraphSupplement.py",
+      "sha256_before": "6c59d5b579cca584257afcb298fca4e0a9dc82219fa7c282dff77e9414a88287",
+      "sha256_after": "24f4dcd77d2b8bc903b2720bd6a928e1e2197342be98e07ba91fed1187fd4f85"
+    },
+    "Scripts/WriteWholeProjectCatalogs.py": {
+      "before_path": "Scripts/WriteWholeProjectCatalogs.py",
+      "sha256_before": "541c9b9103e5ec7c2f39778ab20f61b5a88abd97e73772f4fb33e2366107d9c4",
+      "sha256_after": "86e4986e11360ede35f155f830ff55b928e60befec75d0a0ce5a2843b3ee336e"
+    },
+    "Scripts/AuditPaths.py": {
+      "before_path": null,
+      "sha256_before": null,
+      "sha256_after": "6cd2913f809f138b256844999e4f4b270ae58e4db1c4b79929af55ea2bd86b78"
+    },
+    "docs/repository-audit/README.md": {
+      "before_path": null,
+      "sha256_before": null,
+      "sha256_after": "e29f8464e747fab8c2c4d2d95dc2e1c3d52bb0785581902c7654e163d999101b"
+    },
+    "docs/history/README.md": {
+      "before_path": null,
+      "sha256_before": null,
+      "sha256_after": "c27204fa06280b8929df4b9fc7c977b609feec73d7925273bdfbe60e24cc32af"
+    },
+    "docs/history/index.json": {
+      "before_path": null,
+      "sha256_before": null,
+      "sha256_after": "369bdd13269b3b9eb0484e28cedc91582f351f2f31261ee20668e6fac3f37d11"
+    }
+  },
+  "generated_before": {
+    "files": 6908,
+    "bytes": 305767447,
+    "tree_sha256": "bbe9597684e4dc78d6e613f81ed5e875dab14d82917b561a950b3bdf0ce426fe"
+  },
+  "generated_after": {
+    "files": 6908,
+    "bytes": 305767447,
+    "tree_sha256": "bbe9597684e4dc78d6e613f81ed5e875dab14d82917b561a950b3bdf0ce426fe"
+  },
+  "completed_at": "2026-11-05T21:20:46.330299+09:00",
+  "historical_generated_bytes_preserved": true,
+  "history_archive": {
+    "documents": 21,
+    "index": "docs/history/index.json",
+    "unavailable_links": [
+      {
+        "document": "docs/history/experiments/TextureOptimizationReview.md",
+        "original_link": "TextureMipBackups",
+        "workspace_path": "docs/TextureMipBackups"
+      },
+      {
+        "document": "docs/history/experiments/TextureOptimizationReview.md",
+        "original_link": "TextureMipComparison/comparison_interior.png",
+        "workspace_path": "docs/TextureMipComparison/comparison_interior.png"
+      },
+      {
+        "document": "docs/history/experiments/TextureOptimizationReview.md",
+        "original_link": "TextureMipComparison/interior_results.json",
+        "workspace_path": "docs/TextureMipComparison/interior_results.json"
+      }
+    ]
+  }
+}

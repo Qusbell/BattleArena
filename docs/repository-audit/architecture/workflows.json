@@ -1,0 +1,415 @@
+[
+  {
+    "file": "BuildAndVerify.bat",
+    "description_from_source": "",
+    "role_evidence": "filename only; workflow purpose requires inspection",
+    "lines": 82,
+    "system_inference": "Other"
+  },
+  {
+    "file": "BuildAndVerifyPortable.bat",
+    "description_from_source": "",
+    "role_evidence": "filename only; workflow purpose requires inspection",
+    "lines": 84,
+    "system_inference": "Other"
+  },
+  {
+    "file": "GamePlayDB/aggregates.sql",
+    "description_from_source": "",
+    "role_evidence": "filename only; workflow purpose requires inspection",
+    "lines": 177,
+    "system_inference": "Other"
+  },
+  {
+    "file": "GamePlayDB/verify_match.py",
+    "description_from_source": "경기 기록 검증 스크립트 (완료 조건 1~4).\n\n사용:\n    python verify_match.py [DB경로] [MatchId]\n\n- DB경로 생략: ../Saved/Analyze/ShootingArenaLog.db\n- MatchId 생략: 가장 최근에 시작한 경기",
+    "role_evidence": "module docstring",
+    "lines": 61,
+    "system_inference": "Other"
+  },
+  {
+    "file": "PackageAll.bat",
+    "description_from_source": "",
+    "role_evidence": "filename only; workflow purpose requires inspection",
+    "lines": 67,
+    "system_inference": "Other"
+  },
+  {
+    "file": "RefreshBlueprints.bat",
+    "description_from_source": "",
+    "role_evidence": "filename only; workflow purpose requires inspection",
+    "lines": 68,
+    "system_inference": "Other"
+  },
+  {
+    "file": "ResolveUnrealEngine.ps1",
+    "description_from_source": "",
+    "role_evidence": "filename only; workflow purpose requires inspection",
+    "lines": 58,
+    "system_inference": "Other"
+  },
+  {
+    "file": "RunClient.bat",
+    "description_from_source": "",
+    "role_evidence": "filename only; workflow purpose requires inspection",
+    "lines": 22,
+    "system_inference": "Other"
+  },
+  {
+    "file": "RunServer.bat",
+    "description_from_source": "",
+    "role_evidence": "filename only; workflow purpose requires inspection",
+    "lines": 43,
+    "system_inference": "Other"
+  },
+  {
+    "file": "Scripts/AnalyzePathLinkBlend.py",
+    "description_from_source": "Analyze PathLink.BenchmarkEstimateBlend CSV. Distances are cm; relative errors exclude zero-length routes.",
+    "role_evidence": "module docstring",
+    "lines": 42,
+    "system_inference": "AI.Navigation"
+  },
+  {
+    "file": "Scripts/AnalyzePathLinkLazySearch.py",
+    "description_from_source": "Aggregate the fixed 204 before/after samples and independent exact-reference results.",
+    "role_evidence": "module docstring",
+    "lines": 49,
+    "system_inference": "AI.Navigation"
+  },
+  {
+    "file": "Scripts/AnalyzePathLinkRandom.py",
+    "description_from_source": "Aggregate native random-route benchmark CSVs. No Unreal dependencies.",
+    "role_evidence": "module docstring",
+    "lines": 62,
+    "system_inference": "AI.Navigation"
+  },
+  {
+    "file": "Scripts/AnalyzeWholeProjectAudit.py",
+    "description_from_source": "Analyze exported MCP evidence and authored text. Never reads asset binary contents.",
+    "role_evidence": "module docstring",
+    "lines": 287,
+    "system_inference": "Other"
+  },
+  {
+    "file": "Scripts/AuditBGMSystem.py",
+    "description_from_source": "Read-only pilot collector. Execute collect() ONLY through Unreal MCP execute_python.\n\nLoads selected assets for inspection; never calls gameplay functions, compiles, applies JSON or saves assets.",
+    "role_evidence": "module docstring",
+    "lines": 185,
+    "system_inference": "Other"
+  },
+  {
+    "file": "Scripts/BenchmarkPathLinkLazySearch.py",
+    "description_from_source": "Run through Unreal MCP. Replay four outliers plus 200 fresh fixed playable pairs before/after C++ change.",
+    "role_evidence": "module docstring",
+    "lines": 63,
+    "system_inference": "AI.Navigation"
+  },
+  {
+    "file": "Scripts/DiagnosePathLinkOutliers.py",
+    "description_from_source": "Run through Unreal MCP. Read-only graph reconstruction; temporary candidate-setting probes restored in finally.",
+    "role_evidence": "module docstring",
+    "lines": 107,
+    "system_inference": "AI.Navigation"
+  },
+  {
+    "file": "Scripts/ExportPathLinkPlayableAnchors.py",
+    "description_from_source": "Run ONLY through Unreal MCP execute_python. Read authored Blueprint spawn components/capsule; export test input.",
+    "role_evidence": "module docstring",
+    "lines": 22,
+    "system_inference": "AI.Navigation"
+  },
+  {
+    "file": "Scripts/InlineSTGLTGEstimate.py",
+    "description_from_source": "Execute only through Unreal MCP execute_python. Inline directional LTG checks in Filtering STG.",
+    "role_evidence": "module docstring",
+    "lines": 105,
+    "system_inference": "Other"
+  },
+  {
+    "file": "Scripts/PathLinkBenchmark.py",
+    "description_from_source": "Run through Unreal MCP execute_python in an editor world. No asset/Blueprint edits.\n\nSet PATHLINK_BENCH_OUTPUT and optionally PATHLINK_BENCH_BASELINE in the executing globals.\nRecords full route outputs for comparison as well as per-request times. Frame spikes must be\nmeasured separately in representative PIE/gameplay using Unreal Insights and subsystem counters.",
+    "role_evidence": "module docstring",
+    "lines": 110,
+    "system_inference": "AI.Navigation"
+  },
+  {
+    "file": "Scripts/RepositoryAudit.py",
+    "description_from_source": "Filesystem-only audit. Never opens Unreal asset binaries or deletes project files.",
+    "role_evidence": "module docstring",
+    "lines": 259,
+    "system_inference": "Other"
+  },
+  {
+    "file": "Scripts/RepositoryAuditUnreal.py",
+    "description_from_source": "Run ONLY via Unreal MCP execute_python. Registry metadata only; no asset loads/saves.\n\nCall collect(run_directory). Completed roots can be resumed with the same directory.",
+    "role_evidence": "module docstring",
+    "lines": 81,
+    "system_inference": "Other"
+  },
+  {
+    "file": "Scripts/SweepPathLinkPlayableBlend.py",
+    "description_from_source": "Run via Unreal MCP execute_python. Replay the EXACT accepted 200 pairs; do not resample or filter by estimates.",
+    "role_evidence": "module docstring",
+    "lines": 107,
+    "system_inference": "AI.Navigation"
+  },
+  {
+    "file": "Scripts/SweepPathLinkPlayableDirection.py",
+    "description_from_source": "Run via Unreal MCP. Compare directional offset correction on the fixed 200 playable pairs.",
+    "role_evidence": "module docstring",
+    "lines": 109,
+    "system_inference": "AI.Navigation"
+  },
+  {
+    "file": "Scripts/VerifyBGMSystemAudit.py",
+    "description_from_source": "Verify pilot evidence and provenance without opening Unreal assets.",
+    "role_evidence": "module docstring",
+    "lines": 51,
+    "system_inference": "Other"
+  },
+  {
+    "file": "Scripts/VerifyPathLinkLazySearch.py",
+    "description_from_source": "Run through Unreal MCP after BenchmarkPathLinkLazySearch.py ('after'). Independent all-exact oracle.",
+    "role_evidence": "module docstring",
+    "lines": 83,
+    "system_inference": "AI.Navigation"
+  },
+  {
+    "file": "Scripts/VerifyPathLinkRuntimeReferences.py",
+    "description_from_source": "Execute via Unreal MCP in PortalMap PIE; exercises real debug Blueprint and tile churn.\n\nNo editor assets are changed. The selected PIE pawn is restored after the Blueprint fixture.\nResults are written after 20 seconds to Saved/PathLinkBench/RuntimeReferenceRegression.json.",
+    "role_evidence": "module docstring",
+    "lines": 77,
+    "system_inference": "AI.Navigation"
+  },
+  {
+    "file": "Scripts/VerifySTGInlineLTG.py",
+    "description_from_source": "Run only via Unreal MCP. Invoke the actual Blueprint filter on transient actors, then clean up.",
+    "role_evidence": "module docstring",
+    "lines": 66,
+    "system_inference": "Other"
+  },
+  {
+    "file": "Scripts/VerifyWholeProjectAudit.py",
+    "description_from_source": "Verify full static-audit coverage, evidence, reachability and documents; no Unreal access.",
+    "role_evidence": "module docstring",
+    "lines": 122,
+    "system_inference": "Other"
+  },
+  {
+    "file": "Scripts/WholeProjectAuditUnreal.py",
+    "description_from_source": "Whole-project static audit. Invoke ONLY through Unreal MCP util.execute_python.\n\nprepare(), dependencies(run, limit), blueprints(run, limit), bindings(run).\nEvery batch is checkpointed; no compile, asset save, JSON apply or world load.",
+    "role_evidence": "module docstring",
+    "lines": 197,
+    "system_inference": "Other"
+  },
+  {
+    "file": "Scripts/WholeProjectGraphSupplement.py",
+    "description_from_source": "MCP-only native T3D read export for graphs outside the JSON helper's coverage.",
+    "role_evidence": "module docstring",
+    "lines": 65,
+    "system_inference": "Other"
+  },
+  {
+    "file": "Scripts/WriteWholeProjectCatalogs.py",
+    "description_from_source": "Generate navigable catalogs and review annotations from a completed static audit.",
+    "role_evidence": "module docstring",
+    "lines": 131,
+    "system_inference": "Other"
+  },
+  {
+    "file": "TestStandalone.bat",
+    "description_from_source": "",
+    "role_evidence": "filename only; workflow purpose requires inspection",
+    "lines": 4,
+    "system_inference": "Other"
+  },
+  {
+    "file": "Tools/ArenaMatchLog/GenerateSchema.py",
+    "description_from_source": "Regenerates Source/ShootingArena/Private/Analyzer/ArenaMatchLogSchema.inc from the committed\ntemplate database (Content/Data/ShootingArenaLog.db). Run from the repository root.",
+    "role_evidence": "module docstring",
+    "lines": 30,
+    "system_inference": "Telemetry.Debug"
+  },
+  {
+    "file": "Tools/Items/migrate_item_sounds.py",
+    "description_from_source": "Run explicitly in UE Python with the editor closed; backs up data before migration.\n\nEditor-only native helpers modify graphs/structs. No maps or damage/drop rules are edited.",
+    "role_evidence": "module docstring",
+    "lines": 104,
+    "system_inference": "Items.Buffs"
+  },
+  {
+    "file": "Tools/LevelCollision/portal_map_collision.py",
+    "description_from_source": "Editor-only, instance-scoped collision repair for Lvl_PortalMap.\n\nLoad with importlib inside the Unreal Editor. The audit_* methods are read-only;\napply_surfaces(), apply_walls() and save() are explicit. Original mesh assets,\ngameplay triggers and global presets are never edited. Reports in\nSaved/CollisionAudit retain the original settings.",
+    "role_evidence": "module docstring",
+    "lines": 583,
+    "system_inference": "Movement.World"
+  },
+  {
+    "file": "Tools/LevelCollision/portal_map_collision_disk_validate.py",
+    "description_from_source": "Read-only saved-package verification in a separate Unreal Python commandlet.\n\nSet PORTAL_COLLISION_REPORT to the simplification report's absolute filename.\nRun with UnrealEditor-Cmd <project> -run=pythonscript -script=<this file>\n-unattended -nullrhi. The interactive editor's unsaved work is not reloaded.",
+    "role_evidence": "module docstring",
+    "lines": 173,
+    "system_inference": "Movement.World"
+  },
+  {
+    "file": "Tools/LevelCollision/portal_map_collision_validate.py",
+    "description_from_source": "Temporary SIE checks using an actual spawned AI character.\n\nOnly operates on the PIE world. Stopping SIE discards all pawn/controller edits.\nThe editor level and gameplay Blueprints are never changed by this validator.",
+    "role_evidence": "module docstring",
+    "lines": 176,
+    "system_inference": "Movement.World"
+  },
+  {
+    "file": "Tools/LevelCollision/portal_map_ramp_patch.py",
+    "description_from_source": "Instance-only ramp collision with ordinary bidirectional walking NavLinks.\n\nThe visual mesh and its current user placement are read-only. Navigation face\ngeneration remains incomplete in this location; links explicitly bridge that\ngap and must be validated with actual AI path following before saving.",
+    "role_evidence": "module docstring",
+    "lines": 156,
+    "system_inference": "Movement.World"
+  },
+  {
+    "file": "Tools/LevelCollision/portal_map_simplify.py",
+    "description_from_source": "Movement-first, level-local simplification of PortalMap collision.\n\nPlans are computed in memory. apply() is explicit; save() saves only touched\npackages. Source render assets are not edited. All coordinates in reports are\nworld coordinates, so moved/scaled actors are measured again on each run.",
+    "role_evidence": "module docstring",
+    "lines": 610,
+    "system_inference": "Movement.World"
+  },
+  {
+    "file": "Tools/LevelCollision/portal_map_stair_ai_validate.py",
+    "description_from_source": "Real AIController/PathFollowing checks, confined to the authoritative PIE world.",
+    "role_evidence": "module docstring",
+    "lines": 123,
+    "system_inference": "Movement.World"
+  },
+  {
+    "file": "Tools/LevelCollision/portal_map_stair_connector.py",
+    "description_from_source": "Fit collision to one existing PortalMap stair WITHOUT changing its geometry.\n\nThe source actor and shared mesh are read-only. Only the collision proxy,\nlocal navigation modifier and generated navigation are saved.",
+    "role_evidence": "module docstring",
+    "lines": 221,
+    "system_inference": "Movement.World"
+  },
+  {
+    "file": "Tools/LevelCollision/portal_map_wall_contact_validate.py",
+    "description_from_source": "Actual PIE character contact/drop regression checks for non-walkable walls.",
+    "role_evidence": "module docstring",
+    "lines": 90,
+    "system_inference": "Movement.World"
+  },
+  {
+    "file": "Tools/LevelCollision/portal_map_wall_continuity.py",
+    "description_from_source": "Continuous, non-walkable wall bodies for PortalMap (editor instances only).\n\nUnlike missing-face patches, these bodies replace the full collision of plain\nwall panels. The full boundary panel is included even beyond NavBounds. Real\nportal apertures are subtracted; the Corridor kit's roof lip retains native support.\nplan(), apply(), and save() are deliberately separate operations.",
+    "role_evidence": "module docstring",
+    "lines": 271,
+    "system_inference": "Movement.World"
+  },
+  {
+    "file": "Tools/mcp-server/generate_catalog.py",
+    "description_from_source": "Generates the dispatcher action catalog from the plugin's ue_* function signatures.\n\nThe catalog is the single source of truth that list_actions exposes to the LLM.\nIt MUST match the real ue_* signatures exactly, because the dispatcher passes\nparams straight through as ue_func(**params). Hand-transcribing signatures is\nerror-prone, so we extract them via AST instead.\n\nUsage:\n    python generate_catalog.py            # writes src/unreal_mcp/dispatchers/_catalog.py\n    python generate_catalog.py --check    # exits 1 if the committed catalog is stale\n\nRun with --check in CI / validate_tools to catch drift.",
+    "role_evidence": "module docstring",
+    "lines": 153,
+    "system_inference": "Other"
+  },
+  {
+    "file": "Tools/mcp-server/setup.py",
+    "description_from_source": "",
+    "role_evidence": "filename only; workflow purpose requires inspection",
+    "lines": 21,
+    "system_inference": "Other"
+  },
+  {
+    "file": "Tools/mcp-server/src/unreal_mcp/core.py",
+    "description_from_source": "",
+    "role_evidence": "filename only; workflow purpose requires inspection",
+    "lines": 249,
+    "system_inference": "Other"
+  },
+  {
+    "file": "Tools/mcp-server/src/unreal_mcp/dispatcher.py",
+    "description_from_source": "Namespace dispatcher — thin assembler.\n\nOne MCP tool per domain. Each accepts (action, params) and routes to the\nUnreal TCP server as ue_<action>(**params). action='list_actions' returns the\ndomain's action catalog (param names + one-line docs).\n\nThe catalog is AUTO-GENERATED from the plugin's ue_* signatures\n(see generate_catalog.py). Param names are therefore guaranteed to match —\nno hand transcription. This file never grows when actions are added.",
+    "role_evidence": "module docstring",
+    "lines": 131,
+    "system_inference": "Other"
+  },
+  {
+    "file": "Tools/mcp-server/src/unreal_mcp/dispatchers/__init__.py",
+    "description_from_source": "",
+    "role_evidence": "filename only; workflow purpose requires inspection",
+    "lines": 0,
+    "system_inference": "Other"
+  },
+  {
+    "file": "Tools/mcp-server/src/unreal_mcp/dispatchers/_catalog.py",
+    "description_from_source": "",
+    "role_evidence": "filename only; workflow purpose requires inspection",
+    "lines": 1061,
+    "system_inference": "Other"
+  },
+  {
+    "file": "Tools/mcp-server/src/unreal_mcp/main.py",
+    "description_from_source": "",
+    "role_evidence": "filename only; workflow purpose requires inspection",
+    "lines": 24,
+    "system_inference": "Other"
+  },
+  {
+    "file": "Tools/mcp-server/src/unreal_mcp/server.py",
+    "description_from_source": "",
+    "role_evidence": "filename only; workflow purpose requires inspection",
+    "lines": 13,
+    "system_inference": "Other"
+  },
+  {
+    "file": "Tools/mcp-server/tests/test_core.py",
+    "description_from_source": "Unit tests for the TCP response unwrapping (offline, no Unreal).",
+    "role_evidence": "module docstring",
+    "lines": 45,
+    "system_inference": "Other"
+  },
+  {
+    "file": "Tools/mcp-server/tests/test_coverage.py",
+    "description_from_source": "Action coverage enforcement (offline, no Unreal needed).\n\nEvery catalog action must be exercised by an in-editor unittest\n(Plugins/.../tests/test_<domain>.py references \"ue_<action>\"), OR be listed\nin KNOWN_UNTESTED below as acknowledged technical debt.\n\nWhy: the dispatcher auto-exposes any ue_* function. Without this gate, a new\naction could ship with zero behavior test and all other gates stay green.\nThis makes \"add an action without a test\" a conscious, reviewable choice\n(you must edit KNOWN_UNTESTED) rather than a silent gap.\n\nKNOWN_UNTESTED is debt to shrink, not to grow. The stale-entry check fails if\nan allowlisted action becomes tested or disappears, so the list self-cleans.",
+    "role_evidence": "module docstring",
+    "lines": 88,
+    "system_inference": "Other"
+  },
+  {
+    "file": "Tools/mcp-server/tests/test_dispatcher.py",
+    "description_from_source": "Offline routing tests for the namespace dispatcher.\n\nThese do NOT need Unreal running. They mock the TCP layer (send_to_unreal /\nsend_python_exec / send_livecoding_compile) and assert that each domain tool\nroutes (action, params) to the correct module + ue_<action> + params.\n\nRun:\n    cd mcp-server && uv run pytest",
+    "role_evidence": "module docstring",
+    "lines": 177,
+    "system_inference": "Other"
+  },
+  {
+    "file": "Tools/mcp-server/tests/test_e2e.py",
+    "description_from_source": "End-to-end tests: MCP server dispatcher -> real TCP -> C++ server -> ue_* -> back.\n\nUnlike test_dispatcher.py (which mocks the TCP layer), these run the FULL chain\nwith NO mocks. They prove the actual scenario an MCP client triggers:\nrouting + socket round-trip + C++ dispatch + response unwrapping.\n\nRequires a running Unreal editor with the UnrealMCPython TCP server on :12029.\nIf the port is not reachable, the whole module is skipped (so CI / offline runs\nstay green; run locally with the editor open to exercise these).\n\nRun:\n    cd mcp-server && uv run --extra dev pytest tests/test_e2e.py -v",
+    "role_evidence": "module docstring",
+    "lines": 222,
+    "system_inference": "Other"
+  },
+  {
+    "file": "Tools/mcp-server/validate_tools.py",
+    "description_from_source": "Validates that the dispatcher action catalog is in sync with the plugin's\nue_* function signatures.\n\nThe catalog (dispatchers/_catalog.py) is auto-generated by generate_catalog.py.\nThis script re-runs the generator in --check mode: if the committed catalog\ndiffers from what the current signatures would produce, it fails.\n\nThis catches the bug class where catalog param names drift from the real\nue_* signatures (the dispatcher passes params straight through as\nue_func(**params), so a name mismatch = runtime failure).\n\nUsage:\n    python validate_tools.py",
+    "role_evidence": "module docstring",
+    "lines": 39,
+    "system_inference": "Other"
+  },
+  {
+    "file": "Tools/muzzle_flash_assets.py",
+    "description_from_source": "Create only the self-contained muzzle-flash textures and materials in UE 5.6.\n\nRun with UnrealEditor-Cmd.exe -ExecutePythonScript=<this file>. Existing assets are\nnever replaced; a failed partial run can be inspected before retrying.",
+    "role_evidence": "module docstring",
+    "lines": 121,
+    "system_inference": "Other"
+  },
+  {
+    "file": "Tools/muzzle_flash_validate.py",
+    "description_from_source": "Read-only validation of the isolated MG muzzle-flash asset and dependencies.\n\nRun through UnrealEditor-Cmd.exe -ExecutePythonScript=<absolute path>.",
+    "role_evidence": "module docstring",
+    "lines": 47,
+    "system_inference": "Other"
+  },
+  {
+    "file": "Tools/UI/setup_map_preview.py",
+    "description_from_source": "Run in Unreal Editor after compiling MapPreviewMedia.cpp.\n\nConnects the existing map/difficulty graphs without replacing their navigation,\nmap selection, server startup, text, or style logic. Safe to run again.",
+    "role_evidence": "module docstring",
+    "lines": 103,
+    "system_inference": "UI"
+  }
+]
