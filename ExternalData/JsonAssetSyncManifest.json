@@ -10587,6 +10587,616 @@
 					"type": "bool"
 				}
 			]
+		},
+		{
+			"id": "/Game/QuakeLike_1_0/UI/PlayerUI/KillMedals/DA_KillMedalUISettings.DA_KillMedalUISettings",
+			"displayName": "DA_KillMedalUISettings",
+			"assetType": "DataAsset",
+			"source": "Content/DataAssets/DA_KillMedalUISettings.json",
+			"target": "/Game/QuakeLike_1_0/UI/PlayerUI/KillMedals/DA_KillMedalUISettings.DA_KillMedalUISettings",
+			"class": "/Script/ShootingArena.KillMedalUISettings",
+			"properties": [
+				{
+					"name": "medalTexture",
+					"displayName": "전환 기준 미만 누적 메달 이미지",
+					"cppType": "TObjectPtr<UTexture2D>",
+					"order": 0,
+					"category": "메달|이미지",
+					"advancedDisplay": false,
+					"type": "object",
+					"objectClass": "/Script/Engine.Texture2D"
+				},
+				{
+					"name": "largeMedalMinKills",
+					"displayName": "큰 메달 전환 킬 수 (이상)",
+					"cppType": "int32",
+					"order": 1,
+					"tooltip": "At this kill count and above, replace the individual medals with one large medal and a kill count.",
+					"category": "메달|단계",
+					"advancedDisplay": false,
+					"constraints":
+					{
+						"clampMin": "1"
+					},
+					"type": "int32"
+				},
+				{
+					"name": "largeMedalTexture",
+					"displayName": "전환 기준 이상 메달 이미지",
+					"cppType": "TObjectPtr<UTexture2D>",
+					"order": 2,
+					"tooltip": "Falls back to MedalTexture when left empty.",
+					"category": "메달|이미지",
+					"advancedDisplay": false,
+					"type": "object",
+					"objectClass": "/Script/Engine.Texture2D"
+				},
+				{
+					"name": "medalAnchor",
+					"displayName": "화면 기준 위치",
+					"cppType": "FVector2D",
+					"order": 3,
+					"tooltip": "Normalized screen position: (0,0) top left, (0.5,0.5) centre.",
+					"category": "메달|위치",
+					"advancedDisplay": false,
+					"constraints":
+					{
+						"clampMin": "0.0",
+						"clampMax": "1.0"
+					},
+					"type": "struct",
+					"structType": "Vector2D",
+					"structPath": "/Script/CoreUObject.Vector2D",
+					"properties": [
+						{
+							"name": "x",
+							"displayName": "X",
+							"cppType": "double",
+							"order": 0,
+							"advancedDisplay": false,
+							"type": "double"
+						},
+						{
+							"name": "y",
+							"displayName": "Y",
+							"cppType": "double",
+							"order": 1,
+							"advancedDisplay": false,
+							"type": "double"
+						}
+					]
+				},
+				{
+					"name": "medalPosition",
+					"displayName": "메달 위치 보정",
+					"cppType": "FVector2D",
+					"order": 4,
+					"tooltip": "Offset from the anchor; +X right, +Y down. The medal row is horizontally centred here.",
+					"category": "메달|위치",
+					"advancedDisplay": false,
+					"type": "struct",
+					"structType": "Vector2D",
+					"structPath": "/Script/CoreUObject.Vector2D",
+					"properties": [
+						{
+							"name": "x",
+							"displayName": "X",
+							"cppType": "double",
+							"order": 0,
+							"advancedDisplay": false,
+							"type": "double"
+						},
+						{
+							"name": "y",
+							"displayName": "Y",
+							"cppType": "double",
+							"order": 1,
+							"advancedDisplay": false,
+							"type": "double"
+						}
+					]
+				},
+				{
+					"name": "firstMedalSize",
+					"displayName": "첫 메달 크기",
+					"cppType": "FVector2D",
+					"order": 5,
+					"category": "메달|크기",
+					"advancedDisplay": false,
+					"constraints":
+					{
+						"clampMin": "1.0"
+					},
+					"type": "struct",
+					"structType": "Vector2D",
+					"structPath": "/Script/CoreUObject.Vector2D",
+					"properties": [
+						{
+							"name": "x",
+							"displayName": "X",
+							"cppType": "double",
+							"order": 0,
+							"advancedDisplay": false,
+							"type": "double"
+						},
+						{
+							"name": "y",
+							"displayName": "Y",
+							"cppType": "double",
+							"order": 1,
+							"advancedDisplay": false,
+							"type": "double"
+						}
+					]
+				},
+				{
+					"name": "additionalMedalSize",
+					"displayName": "추가 메달 크기",
+					"cppType": "FVector2D",
+					"order": 6,
+					"category": "메달|크기",
+					"advancedDisplay": false,
+					"constraints":
+					{
+						"clampMin": "1.0"
+					},
+					"type": "struct",
+					"structType": "Vector2D",
+					"structPath": "/Script/CoreUObject.Vector2D",
+					"properties": [
+						{
+							"name": "x",
+							"displayName": "X",
+							"cppType": "double",
+							"order": 0,
+							"advancedDisplay": false,
+							"type": "double"
+						},
+						{
+							"name": "y",
+							"displayName": "Y",
+							"cppType": "double",
+							"order": 1,
+							"advancedDisplay": false,
+							"type": "double"
+						}
+					]
+				},
+				{
+					"name": "largeMedalSize",
+					"displayName": "전환 기준 이상 큰 메달 크기",
+					"cppType": "FVector2D",
+					"order": 7,
+					"category": "메달|크기",
+					"advancedDisplay": false,
+					"constraints":
+					{
+						"clampMin": "1.0"
+					},
+					"type": "struct",
+					"structType": "Vector2D",
+					"structPath": "/Script/CoreUObject.Vector2D",
+					"properties": [
+						{
+							"name": "x",
+							"displayName": "X",
+							"cppType": "double",
+							"order": 0,
+							"advancedDisplay": false,
+							"type": "double"
+						},
+						{
+							"name": "y",
+							"displayName": "Y",
+							"cppType": "double",
+							"order": 1,
+							"advancedDisplay": false,
+							"type": "double"
+						}
+					]
+				},
+				{
+					"name": "medalGap",
+					"displayName": "메달 사이 간격",
+					"cppType": "float",
+					"order": 8,
+					"category": "메달|위치",
+					"advancedDisplay": false,
+					"constraints":
+					{
+						"clampMin": "0.0"
+					},
+					"type": "float"
+				},
+				{
+					"name": "displayDuration",
+					"displayName": "메달 표시 시간",
+					"cppType": "float",
+					"order": 9,
+					"tooltip": "Restarted by each credited kill; the streak itself is retained when the UI hides.",
+					"category": "메달|효과",
+					"advancedDisplay": false,
+					"constraints":
+					{
+						"clampMin": "0.01",
+						"units": "s"
+					},
+					"type": "float"
+				},
+				{
+					"name": "highlightOpacity",
+					"displayName": "반짝임 불투명도",
+					"cppType": "float",
+					"order": 10,
+					"category": "메달|효과",
+					"advancedDisplay": false,
+					"constraints":
+					{
+						"clampMin": "0.0",
+						"clampMax": "1.0"
+					},
+					"type": "float"
+				},
+				{
+					"name": "stampStartScale",
+					"displayName": "등장 시작 크기 배율",
+					"cppType": "float",
+					"order": 11,
+					"tooltip": "최종 메달 크기에 곱하는 배율입니다. 2는 2배 크기이며, 높일수록 등장 동작이 커집니다.",
+					"category": "메달|도장 애니메이션",
+					"advancedDisplay": false,
+					"constraints":
+					{
+						"clampMin": "0.01"
+					},
+					"type": "float"
+				},
+				{
+					"name": "stampImpactTime",
+					"displayName": "착지까지 걸리는 시간",
+					"cppType": "float",
+					"order": 12,
+					"tooltip": "등장 크기에서 착지 크기까지 줄어드는 시간입니다. 짧을수록 빠르게 찍힙니다.",
+					"category": "메달|도장 애니메이션",
+					"advancedDisplay": false,
+					"constraints":
+					{
+						"clampMin": "0.01",
+						"units": "s"
+					},
+					"type": "float"
+				},
+				{
+					"name": "stampImpactScale",
+					"displayName": "착지 순간 압축 배율",
+					"cppType": "float",
+					"order": 13,
+					"tooltip": "1은 압축 없음, 0.8은 최종 크기의 80%입니다. 작을수록 착지 후 반동이 커집니다.",
+					"category": "메달|도장 애니메이션",
+					"advancedDisplay": false,
+					"constraints":
+					{
+						"clampMin": "0.01",
+						"clampMax": "1.0"
+					},
+					"type": "float"
+				},
+				{
+					"name": "stampSettleTime",
+					"displayName": "착지 후 복원 시간",
+					"cppType": "float",
+					"order": 14,
+					"tooltip": "착지 크기에서 최종 크기로 돌아오는 시간입니다. 짧을수록 반동이 빠릅니다.",
+					"category": "메달|도장 애니메이션",
+					"advancedDisplay": false,
+					"constraints":
+					{
+						"clampMin": "0.01",
+						"units": "s"
+					},
+					"type": "float"
+				},
+				{
+					"name": "countFont",
+					"displayName": "킬 수 문구 폰트 및 크기",
+					"cppType": "FSlateFontInfo",
+					"order": 15,
+					"tooltip": "Expand this field to edit the font family, typeface, size and outline.",
+					"category": "문구",
+					"advancedDisplay": false,
+					"type": "struct",
+					"structType": "SlateFontInfo",
+					"structPath": "/Script/SlateCore.SlateFontInfo",
+					"properties": [
+						{
+							"name": "fontObject",
+							"displayName": "폰트 패밀리",
+							"cppType": "TObjectPtr<UObject>",
+							"order": 0,
+							"tooltip": "폰트 오브젝트입니다. (UMG 나 슬레이트 위젯 스타일을 사용하는 경우 유효합니다.)",
+							"advancedDisplay": false,
+							"type": "object",
+							"objectClass": "/Script/CoreUObject.Object"
+						},
+						{
+							"name": "fontMaterial",
+							"displayName": "폰트 임포트 옵션 데이터",
+							"cppType": "TObjectPtr<UObject>",
+							"order": 1,
+							"tooltip": "렌더링에 사용되는 머티리얼입니다.",
+							"advancedDisplay": false,
+							"type": "object",
+							"objectClass": "/Script/CoreUObject.Object"
+						},
+						{
+							"name": "outlineSettings",
+							"displayName": "윤곽선 세팅",
+							"cppType": "FFontOutlineSettings",
+							"order": 2,
+							"tooltip": "폰트에 외곽선을 주는 데 필요한 설정들입니다.",
+							"advancedDisplay": false,
+							"type": "struct",
+							"structType": "FontOutlineSettings",
+							"structPath": "/Script/SlateCore.FontOutlineSettings",
+							"properties": [
+								{
+									"name": "outlineSize",
+									"displayName": "윤곽선 크기",
+									"cppType": "int32",
+									"order": 0,
+									"tooltip": "아웃라인의 크기입니다 (슬레이트의 단위를 사용합니다. 1.0 폰트 스케일에서 이 값 1은 1픽셀이 됩니다).",
+									"advancedDisplay": false,
+									"constraints":
+									{
+										"clampMin": "0",
+										"clampMax": "1024"
+									},
+									"type": "int32"
+								},
+								{
+									"name": "bMiteredCorners",
+									"displayName": "연귀이음 모서리",
+									"cppType": "bool",
+									"order": 1,
+									"tooltip": "활성화하면 윤곽선의 모서리가 날카롭게 연귀이음 처리되고, 그렇지 않으면 둥글게 처리됩니다.",
+									"advancedDisplay": false,
+									"type": "bool"
+								},
+								{
+									"name": "bSeparateFillAlpha",
+									"displayName": "별도 알파 채우기",
+									"cppType": "bool",
+									"order": 2,
+									"tooltip": "활성화된 경우, 외곽선의 안쪽에 있는 원래 글자 부분이 완전히 반투명하게 됩니다.  이 기능을 사용하면 외곽선과 그 안쪽에 있는 글자가\n서로 분리된 알파 값을 가질 수 있습니다. 하지만 외곽선이 완전히 불투명한 경우, 내부 윤곽선 테두리와 원래 글자 부분이 만나는 곳에 약간의 품질 저하가 발생할 수 있습니다.",
+									"advancedDisplay": false,
+									"type": "bool"
+								},
+								{
+									"name": "bApplyOutlineToDropShadows",
+									"displayName": "윤곽선을 적용하여 섀도 드롭",
+									"cppType": "bool",
+									"order": 3,
+									"tooltip": "활성화하면 이 폰트를 사용하는 모든 드롭 섀도에 외곽선이 적용됩니다.",
+									"advancedDisplay": false,
+									"type": "bool"
+								},
+								{
+									"name": "outlineMaterial",
+									"displayName": "윤곽선 머티리얼",
+									"cppType": "TObjectPtr<UObject>",
+									"order": 4,
+									"tooltip": "아웃라인에 적용할 머티리얼입니다.",
+									"advancedDisplay": false,
+									"type": "object",
+									"objectClass": "/Script/CoreUObject.Object"
+								},
+								{
+									"name": "outlineColor",
+									"displayName": "윤곽선 컬러",
+									"cppType": "FLinearColor",
+									"order": 5,
+									"tooltip": "외곽선의 색상입니다.",
+									"advancedDisplay": false,
+									"type": "struct",
+									"structType": "LinearColor",
+									"structPath": "/Script/CoreUObject.LinearColor",
+									"properties": [
+										{
+											"name": "r",
+											"displayName": "R",
+											"cppType": "float",
+											"order": 0,
+											"advancedDisplay": false,
+											"type": "float"
+										},
+										{
+											"name": "g",
+											"displayName": "G",
+											"cppType": "float",
+											"order": 1,
+											"advancedDisplay": false,
+											"type": "float"
+										},
+										{
+											"name": "b",
+											"displayName": "B",
+											"cppType": "float",
+											"order": 2,
+											"advancedDisplay": false,
+											"type": "float"
+										},
+										{
+											"name": "a",
+											"displayName": "A",
+											"cppType": "float",
+											"order": 3,
+											"advancedDisplay": false,
+											"type": "float"
+										}
+									]
+								}
+							]
+						},
+						{
+							"name": "typefaceFontName",
+							"displayName": "타입페이스",
+							"cppType": "FName",
+							"order": 3,
+							"tooltip": "기본 타입페이스 중 사용할 폰트의 이름입니다. None 인 경우 첫 항목을 사용합니다.",
+							"advancedDisplay": false,
+							"type": "name"
+						},
+						{
+							"name": "size",
+							"displayName": "크기",
+							"cppType": "float",
+							"order": 4,
+							"tooltip": "폰트 크기는 포인트 값으로 측정됩니다. 포인트의 슬레이트 유닛 변환은 96DPI에서 이뤄집니다.\n따라서 Photoshop 같은 툴을 사용하여 레이아웃 및 UI 모형 작업의 프로토타입을 제작하는 경우, UMG 폰트 세팅을 변경하여\n슬레이트가 내부적으로 96DPI를 사용하더라도 UMG 폰트 크기가 72DPI로 표시되게 할 수 있습니다.",
+							"advancedDisplay": false,
+							"constraints":
+							{
+								"clampMin": "1",
+								"clampMax": "1000"
+							},
+							"type": "float"
+						},
+						{
+							"name": "letterSpacing",
+							"displayName": "문자 간격",
+							"cppType": "int32",
+							"order": 5,
+							"tooltip": "텍스트 내 모든 글자 사이의 균등한 간격(또는 트래킹)입니다.",
+							"advancedDisplay": false,
+							"constraints":
+							{
+								"clampMin": "-1000",
+								"clampMax": "10000"
+							},
+							"type": "int32"
+						},
+						{
+							"name": "skewAmount",
+							"displayName": "왜곡량",
+							"cppType": "float",
+							"order": 6,
+							"tooltip": "텍스트에 적용할 왜곡량입니다.",
+							"advancedDisplay": false,
+							"constraints":
+							{
+								"clampMin": "-5",
+								"clampMax": "5"
+							},
+							"type": "float"
+						},
+						{
+							"name": "bForceMonospaced",
+							"displayName": "고정 폭",
+							"cppType": "bool",
+							"order": 7,
+							"tooltip": "의사 고정 폭 폰트를 활성화합니다.",
+							"advancedDisplay": false,
+							"type": "bool"
+						},
+						{
+							"name": "bMaterialIsStencil",
+							"displayName": "머티리얼의 스텐실 여부",
+							"cppType": "bool",
+							"order": 8,
+							"tooltip": "활성화한 경우, 텍스트를 자동으로 스텐실하지 않고 전체 쿼드가 머티리얼로 채워집니다. 이 작업은 머티리얼 내에서 Font Signed Distance 노드를 사용하여 수행해야 합니다.",
+							"advancedDisplay": false,
+							"type": "bool"
+						},
+						{
+							"name": "monospacedWidth",
+							"displayName": "고정 폭",
+							"cppType": "float",
+							"order": 9,
+							"tooltip": "bForceMonospaced가 활성화되어 있는 경우 모든 문자에 적용할 균등한 너비로, 폰트 크기에 비례합니다.",
+							"advancedDisplay": false,
+							"constraints":
+							{
+								"clampMin": "0"
+							},
+							"type": "float"
+						}
+					]
+				},
+				{
+					"name": "countColor",
+					"displayName": "킬 수 숫자 색상",
+					"cppType": "FLinearColor",
+					"order": 16,
+					"category": "문구",
+					"advancedDisplay": false,
+					"type": "struct",
+					"structType": "LinearColor",
+					"structPath": "/Script/CoreUObject.LinearColor",
+					"properties": [
+						{
+							"name": "r",
+							"displayName": "R",
+							"cppType": "float",
+							"order": 0,
+							"advancedDisplay": false,
+							"type": "float"
+						},
+						{
+							"name": "g",
+							"displayName": "G",
+							"cppType": "float",
+							"order": 1,
+							"advancedDisplay": false,
+							"type": "float"
+						},
+						{
+							"name": "b",
+							"displayName": "B",
+							"cppType": "float",
+							"order": 2,
+							"advancedDisplay": false,
+							"type": "float"
+						},
+						{
+							"name": "a",
+							"displayName": "A",
+							"cppType": "float",
+							"order": 3,
+							"advancedDisplay": false,
+							"type": "float"
+						}
+					]
+				},
+				{
+					"name": "countPosition",
+					"displayName": "킬 수 문구 위치 보정",
+					"cppType": "FVector2D",
+					"order": 17,
+					"tooltip": "Offset from the centre above the medal row; +X right, +Y down.",
+					"category": "문구",
+					"advancedDisplay": false,
+					"type": "struct",
+					"structType": "Vector2D",
+					"structPath": "/Script/CoreUObject.Vector2D",
+					"properties": [
+						{
+							"name": "x",
+							"displayName": "X",
+							"cppType": "double",
+							"order": 0,
+							"advancedDisplay": false,
+							"type": "double"
+						},
+						{
+							"name": "y",
+							"displayName": "Y",
+							"cppType": "double",
+							"order": 1,
+							"advancedDisplay": false,
+							"type": "double"
+						}
+					]
+				}
+			]
 		}
 	]
 }
