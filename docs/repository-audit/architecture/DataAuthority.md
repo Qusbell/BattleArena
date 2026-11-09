@@ -1,5 +1,7 @@
 # 설정 데이터의 원본과 편집 기준
 
+2026-11-09 추가: 촬영용 `/Game/QuakeLike_1_0/UI/Recording/DA_UIRecordingSettings`는 DA 에셋 자체가 원본입니다. JsonAssetSync에 등록하지 않았으므로 이 에셋의 체크박스를 직접 편집·저장합니다. [촬영 UI](../systems/UIRecording.md).
+
 2026-11-05 조사에서 실제 `DA_JsonApplyRegistry` binding 29개와
 `ExternalData/JsonAssetSyncManifest.json`의 source/target 29쌍이 일치했습니다.
 원본 파일·대상 에셋 누락은 0건입니다. 전체 목록은 [data-bindings.json](data-bindings.json)에 있습니다.

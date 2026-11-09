@@ -109,6 +109,8 @@ OneWayTeleportActor, JumpPadFlightComponent/CommonSettings는 별도 이동 기�
 
 ## UI·오디오·카메라
 
+- 촬영 UI는 `DA_UIRecordingSettings`의 15개 체크박스로 표시 영역별 그리기를 제어합니다. `URecordingUIMask`는 자식 위젯 상태를 유지하며 표시만 감춥니다. [연결 범위와 사용법](../systems/UIRecording.md).
+
 - UIBackInput은 Slate 입력 선처리와 CommonUI/버튼 규칙의 뒤로가기 경계입니다. ReusableStyleHost/UIPalette는 화면 스타일을 공유합니다.
 - MapPreviewSubsystem/Widget은 미디어 소스·플레이어와 메뉴 간 미리보기를 관리합니다. HUD/CompetitiveRanking·KillMedal·RespawnCountdown·CrosshairRecoil은 표시 기능입니다.
 - BGM은 GameInstance 수명이며 로딩·옵션 볼륨 경계가 있습니다. [BGM 상세 조사](../systems/BGM.md)를 참고합니다.

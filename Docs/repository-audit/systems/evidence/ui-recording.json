@@ -1,0 +1,352 @@
+{
+  "bindings": [
+    {
+      "asset": "/Game/CompShooterHUD/UI/Content/HealthBar/WB_HB_Container.WB_HB_Container",
+      "content": "Overlay_1",
+      "mask": "RecordingUI_Combat_Overlay_1",
+      "section": "Combat"
+    },
+    {
+      "asset": "/Game/CompShooterHUD/UI/Content/ArmorBar/WB_AB_Container.WB_AB_Container",
+      "content": "Overlay_1",
+      "mask": "RecordingUI_Combat_Overlay_1",
+      "section": "Combat"
+    },
+    {
+      "asset": "/Game/CompShooterHUD/UI/Content/WeaponBar/WB_WeaponBar_Container.WB_WeaponBar_Container",
+      "content": "Overlay_1",
+      "mask": "RecordingUI_Combat_Overlay_1",
+      "section": "Combat"
+    },
+    {
+      "asset": "/Game/CompShooterHUD/UI/Content/ActionBar/WB_ActionBar_Base.WB_ActionBar_Base",
+      "content": "Overlay_0",
+      "mask": "RecordingUI_Combat_Overlay_0",
+      "section": "Combat"
+    },
+    {
+      "asset": "/Game/CompShooterHUD/UI/Content/Timer/WB_Timer.WB_Timer",
+      "content": "Overlay_0",
+      "mask": "RecordingUI_Timer_Overlay_0",
+      "section": "Timer"
+    },
+    {
+      "asset": "/Game/CompShooterHUD/UI/Content/TeamKillCount/WB_TKC_Base.WB_TKC_Base",
+      "content": "Overlay_0",
+      "mask": "RecordingUI_Ranking_Overlay_0",
+      "section": "Ranking"
+    },
+    {
+      "asset": "/Game/CompShooterHUD/UI/Content/PersonaKillCount/WB_PersonaKillCount.WB_PersonaKillCount",
+      "content": "SizeBox_1",
+      "mask": "RecordingUI_Ranking_SizeBox_1",
+      "section": "Ranking"
+    },
+    {
+      "asset": "/Game/CompShooterHUD/UI/Content/Kill_Message/WB_KillMessage.WB_KillMessage",
+      "content": "Overlay_0",
+      "mask": "RecordingUI_KillFeed_Overlay_0",
+      "section": "KillFeed"
+    },
+    {
+      "asset": "/Game/CompShooterHUD/UI/Content/Medals/WB_Medals_Base.WB_Medals_Base",
+      "content": "Overlay_0",
+      "mask": "RecordingUI_Medals_Overlay_0",
+      "section": "Medals"
+    },
+    {
+      "asset": "/Game/CompShooterHUD/UI/Content/AchievementMessage/WB_Achievement_Base.WB_Achievement_Base",
+      "content": "Overlay_0",
+      "mask": "RecordingUI_Medals_Overlay_0",
+      "section": "Medals"
+    },
+    {
+      "asset": "/Game/CompShooterHUD/UI/Content/IntermediatePoints/WB_IntPoints_Base.WB_IntPoints_Base",
+      "content": "Overlay_0",
+      "mask": "RecordingUI_Medals_Overlay_0",
+      "section": "Medals"
+    },
+    {
+      "asset": "/Game/CompShooterHUD/UI/Content/Crosshairs/WB_CrosshairBase.WB_CrosshairBase",
+      "content": "CanvasPanel_0",
+      "mask": "RecordingUI_Crosshair_CanvasPanel_0",
+      "section": "Crosshair"
+    },
+    {
+      "asset": "/Game/CompShooterHUD/UI/Content/DamageFeedback/WB_DamageFeedback.WB_DamageFeedback",
+      "content": "Overlay_0",
+      "mask": "RecordingUI_DamageEffects_Overlay_0",
+      "section": "DamageEffects"
+    },
+    {
+      "asset": "/Game/CompShooterHUD/UI/Content/DamageIndicator/WB_DamageIndicator_Base.WB_DamageIndicator_Base",
+      "content": "Overlay_0",
+      "mask": "RecordingUI_DamageEffects_Overlay_0",
+      "section": "DamageEffects"
+    },
+    {
+      "asset": "/Game/CompShooterHUD/UI/Content/MainTutorialMessage/WB_MainTutorialMessage.WB_MainTutorialMessage",
+      "content": "CanvasPanel_0",
+      "mask": "RecordingUI_Menus_CanvasPanel_0",
+      "section": "Menus"
+    },
+    {
+      "asset": "/Game/QuakeLike_Base/SDM/UI/Combat_UI/WBP_ScoreBoard.WBP_ScoreBoard",
+      "content": "CanvasPanel_26",
+      "mask": "RecordingUI_Scoreboard_CanvasPanel_26",
+      "section": "Scoreboard"
+    },
+    {
+      "asset": "/Game/QuakeLike_Base/SDM/UI/Combat_UI/WBP_KillLog.WBP_KillLog",
+      "content": "CanvasPanel_26",
+      "mask": "RecordingUI_KillFeed_CanvasPanel_26",
+      "section": "KillFeed"
+    },
+    {
+      "asset": "/Game/QuakeLike_Base/SDM/UI/Combat_UI/WBP_PlayerKIll.WBP_PlayerKIll",
+      "content": "CanvasPanel_26",
+      "mask": "RecordingUI_KillFeed_CanvasPanel_26",
+      "section": "KillFeed"
+    },
+    {
+      "asset": "/Game/QuakeLike_Base/SDM/UI/Combat_UI/WBP_PlayerHit.WBP_PlayerHit",
+      "content": "CanvasPanel_26",
+      "mask": "RecordingUI_DamageEffects_CanvasPanel_26",
+      "section": "DamageEffects"
+    },
+    {
+      "asset": "/Game/QuakeLike_Base/SDM/UI/Combat_UI/WBP_Playtime.WBP_Playtime",
+      "content": "HorizontalBox_34",
+      "mask": "RecordingUI_Timer_HorizontalBox_34",
+      "section": "Timer"
+    },
+    {
+      "asset": "/Game/QuakeLike_Base/SDM/UI/Combat_UI/WBP_PlayerHUD_sdm.WBP_PlayerHUD_sdm",
+      "content": "VerticalBox_73",
+      "mask": "RecordingUI_Combat_VerticalBox_73",
+      "section": "Combat"
+    },
+    {
+      "asset": "/Game/QuakeLike_Base/SDM/UI/Combat_UI/WBP_PlayerHUD_sdm.WBP_PlayerHUD_sdm",
+      "content": "InactiveVeritcalBox",
+      "mask": "RecordingUI_Combat_InactiveVeritcalBox",
+      "section": "Combat"
+    },
+    {
+      "asset": "/Game/QuakeLike_Base/SDM/UI/Combat_UI/WBP_PlayerHUD_sdm.WBP_PlayerHUD_sdm",
+      "content": "BuffStatusColumn",
+      "mask": "RecordingUI_Buffs_BuffStatusColumn",
+      "section": "Buffs"
+    },
+    {
+      "asset": "/Game/QuakeLike_Base/SDM/UI/Combat_UI/WBP_PlayerHUD_sdm.WBP_PlayerHUD_sdm",
+      "content": "HitZone",
+      "mask": "RecordingUI_Crosshair_HitZone",
+      "section": "Crosshair"
+    },
+    {
+      "asset": "/Game/CompShooterHUD/UI/WB_ShooterHUD.WB_ShooterHUD",
+      "content": "WB_FX_Damage",
+      "mask": "RecordingUI_DamageEffects_WB_FX_Damage",
+      "section": "DamageEffects"
+    },
+    {
+      "asset": "/Game/CompShooterHUD/UI/WB_ShooterHUD.WB_ShooterHUD",
+      "content": "WB_FX_Highlight",
+      "mask": "RecordingUI_DamageEffects_WB_FX_Highlight",
+      "section": "DamageEffects"
+    },
+    {
+      "asset": "/Game/QuakeLike_1_0/UI/DeathUI/WBP_DeathScreen.WBP_DeathScreen",
+      "content": "CanvasPanel_29",
+      "mask": "RecordingUI_DeathScreen_CanvasPanel_29",
+      "section": "DeathScreen"
+    },
+    {
+      "asset": "/Game/QuakeLike_1_0/UI/PlayerUI/WBP_PlayerHUD.WBP_PlayerHUD",
+      "content": "CanvasPanel_26",
+      "mask": "RecordingUI_Combat_CanvasPanel_26",
+      "section": "Combat"
+    },
+    {
+      "asset": "/Game/QuakeLike_1_0/UI/WBP_Crosshair.WBP_Crosshair",
+      "content": "CanvasPanel_146",
+      "mask": "RecordingUI_Crosshair_CanvasPanel_146",
+      "section": "Crosshair"
+    },
+    {
+      "asset": "/Game/QuakeLike_1_0/UI/WBP_RailGunZoomOverlay.WBP_RailGunZoomOverlay",
+      "content": "CanvasPanel_70",
+      "mask": "RecordingUI_Crosshair_CanvasPanel_70",
+      "section": "Crosshair"
+    },
+    {
+      "asset": "/Game/QuakeLike_1_0/UI/WBP_ItemRespawnBar.WBP_ItemRespawnBar",
+      "content": "CanvasPanel_0",
+      "mask": "RecordingUI_Combat_CanvasPanel_0",
+      "section": "Combat"
+    },
+    {
+      "asset": "/Game/QuakeLike_1_0/GameFlow/UI/WBP_Result.WBP_Result",
+      "content": "CanvasPanel_39",
+      "mask": "RecordingUI_Results_CanvasPanel_39",
+      "section": "Results"
+    },
+    {
+      "asset": "/Game/QuakeLike_1_0/GameFlow/UI/WBP_Cursor.WBP_Cursor",
+      "content": "Image_139",
+      "mask": "RecordingUI_Cursor_Image_139",
+      "section": "Cursor"
+    },
+    {
+      "asset": "/Game/QuakeLike_1_0/GameFlow/UI/03_Widget/WBP_RootLayout.WBP_RootLayout",
+      "content": "CanvasPanel_35",
+      "mask": "RecordingUI_Menus_CanvasPanel_35",
+      "section": "Menus"
+    },
+    {
+      "asset": "/Game/QuakeLike_1_0/GameFlow/UI/03_Widget/WBP_MapPickPop.WBP_MapPickPop",
+      "content": "CanvasPanel_21",
+      "mask": "RecordingUI_Menus_CanvasPanel_21",
+      "section": "Menus"
+    },
+    {
+      "asset": "/Game/QuakeLike_1_0/GameFlow/UI/03_Widget/WBP_QuitDialog.WBP_QuitDialog",
+      "content": "CanvasPanel_41",
+      "mask": "RecordingUI_Menus_CanvasPanel_41",
+      "section": "Menus"
+    },
+    {
+      "asset": "/Game/QuakeLike_1_0/GameProgressFlow/WBP_PauseMenu.WBP_PauseMenu",
+      "content": "PausePanel",
+      "mask": "RecordingUI_Menus_PausePanel",
+      "section": "Menus"
+    },
+    {
+      "asset": "/Game/QuakeLike_1_0/GameProgressFlow/WBP_SettingsMenu.WBP_SettingsMenu",
+      "content": "UIStyle_BackgroundBlur_0",
+      "mask": "RecordingUI_Menus_UIStyle_BackgroundBlur_0",
+      "section": "Menus"
+    },
+    {
+      "asset": "/Game/QuakeLike_1_0/GameFlow/UI/WBP_IPInput.WBP_IPInput",
+      "content": "CanvasPanel_10",
+      "mask": "RecordingUI_Menus_CanvasPanel_10",
+      "section": "Menus"
+    },
+    {
+      "asset": "/Game/QuakeLike_1_0/GameFlow/UI/WBP_MainMenu.WBP_MainMenu",
+      "content": "CanvasPanel_99",
+      "mask": "RecordingUI_Menus_CanvasPanel_99",
+      "section": "Menus"
+    },
+    {
+      "asset": "/Game/QuakeLike_1_0/GameFlow/UI/WBP_MapSelect.WBP_MapSelect",
+      "content": "CanvasPanel_32",
+      "mask": "RecordingUI_Menus_CanvasPanel_32",
+      "section": "Menus"
+    },
+    {
+      "asset": "/Game/QuakeLike_1_0/GameFlow/UI/WBP_MapSelect1.WBP_MapSelect1",
+      "content": "CanvasPanel_32",
+      "mask": "RecordingUI_Menus_CanvasPanel_32",
+      "section": "Menus"
+    },
+    {
+      "asset": "/Game/QuakeLike_1_0/GameFlow/UI/WBP_DifficultySelect.WBP_DifficultySelect",
+      "content": "CanvasPanel_11",
+      "mask": "RecordingUI_Menus_CanvasPanel_11",
+      "section": "Menus"
+    },
+    {
+      "asset": "/Game/QuakeLike_1_0/GameFlow/UI/WBP_DifficultySelect_SDM.WBP_DifficultySelect_SDM",
+      "content": "CanvasPanel_11",
+      "mask": "RecordingUI_Menus_CanvasPanel_11",
+      "section": "Menus"
+    },
+    {
+      "asset": "/Game/QuakeLike_1_0/GameFlow/UI/WBP_MainMenu_SDM.WBP_MainMenu_SDM",
+      "content": "CanvasPanel_99",
+      "mask": "RecordingUI_Menus_CanvasPanel_99",
+      "section": "Menus"
+    },
+    {
+      "asset": "/Game/QuakeLike_1_0/GameFlow/UI/WBP_MapSelect_SDM.WBP_MapSelect_SDM",
+      "content": "CanvasPanel_32",
+      "mask": "RecordingUI_Menus_CanvasPanel_32",
+      "section": "Menus"
+    },
+    {
+      "asset": "/Game/QuakeLike_1_0/GameFlow/Lobby/WBP_MultiLobby.WBP_MultiLobby",
+      "content": "Root",
+      "mask": "RecordingUI_Menus_Root",
+      "section": "Menus"
+    },
+    {
+      "asset": "/Game/QuakeLike_1_0/GameFlow/Lobby/WBP_MultiConnect.WBP_MultiConnect",
+      "content": "Root",
+      "mask": "RecordingUI_Menus_Root",
+      "section": "Menus"
+    },
+    {
+      "asset": "/Game/QuakeLike_1_0/GameFlow/Lobby/WBP_MapSelectPopup.WBP_MapSelectPopup",
+      "content": "Root",
+      "mask": "RecordingUI_Menus_Root",
+      "section": "Menus"
+    },
+    {
+      "asset": "/Game/QuakeLike_1_0/GameFlow/Lobby/WBP_BotMenu.WBP_BotMenu",
+      "content": "Root",
+      "mask": "RecordingUI_Menus_Root",
+      "section": "Menus"
+    },
+    {
+      "asset": "/Game/QuakeLike_1_0/GameFlow/Lobby/WBP_BotPicker.WBP_BotPicker",
+      "content": "Root",
+      "mask": "RecordingUI_Menus_Root",
+      "section": "Menus"
+    },
+    {
+      "asset": "/Game/QuakeLike_1_0/GameFlow/Lobby/WBP_ConfirmModal.WBP_ConfirmModal",
+      "content": "Root",
+      "mask": "RecordingUI_Menus_Root",
+      "section": "Menus"
+    },
+    {
+      "asset": "/Game/QuakeLike_1_0/UI/MapTransitionUI/WBP_MapTransitionUI.WBP_MapTransitionUI",
+      "content": "CanvasPanel_19",
+      "mask": "RecordingUI_Menus_CanvasPanel_19",
+      "section": "Loading"
+    },
+    {
+      "asset": "/Game/QuakeLike_1_0/UI/ServerUI/WBP_ServerConnectUI.WBP_ServerConnectUI",
+      "content": "CanvasPanel_31",
+      "mask": "RecordingUI_Menus_CanvasPanel_31",
+      "section": "Loading"
+    },
+    {
+      "asset": "/Game/QuakeLike_1_0/UI/ServerUI/WBP_ServerMapChangeTestUI.WBP_ServerMapChangeTestUI",
+      "content": "CanvasPanel_21",
+      "mask": "RecordingUI_Menus_CanvasPanel_21",
+      "section": "Menus"
+    },
+    {
+      "asset": "/Game/QuakeLike_1_0/Camera/WBP_FOVTest.WBP_FOVTest",
+      "content": "CanvasPanel_83",
+      "mask": "RecordingUI_Menus_CanvasPanel_83",
+      "section": "Menus"
+    },
+    {
+      "asset": "/Game/QuakeLike_1_0/Test/UI/WBP_DebugAI.WBP_DebugAI",
+      "content": "DebugPanelCanvas",
+      "mask": "RecordingUI_Menus_DebugPanelCanvas",
+      "section": "Menus"
+    },
+    {
+      "asset": "/Game/QuakeLike_1_0/Player/WBP_PlayerOption.WBP_PlayerOption",
+      "content": "CanvasPanel_39",
+      "mask": "RecordingUI_Menus_CanvasPanel_39",
+      "section": "Menus"
+    }
+  ]
+}

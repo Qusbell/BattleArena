@@ -1,4 +1,5 @@
 #include "Loading/LoadingScreenSubsystem.h"
+#include "UI/UIRecordingSettings.h"
 
 #include "Audio/BGMSubsystem.h"
 #include "Loading/LoadingCoordinator.h"
@@ -200,6 +201,11 @@ void ULoadingScreenSubsystem::ShowLoadingScreen(const FString& StatusText)
 	if (!LoadingOverlay.IsValid())
 	{
 		LoadingOverlay = SNew(SBorder)
+			.Visibility_Lambda([]()
+			{
+				const UUIRecordingSettings* Recording = UUIRecordingSettings::Get();
+				return Recording && !Recording->Loading ? EVisibility::Hidden : EVisibility::HitTestInvisible;
+			})
 			.BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
 			.BorderBackgroundColor(FLinearColor(0.01f, 0.01f, 0.015f, 1.0f))
 			.HAlign(HAlign_Center).VAlign(VAlign_Center)

@@ -1,4 +1,5 @@
 #include "Camera/ShooterNicknameWidget.h"
+#include "UI/UIRecordingSettings.h"
 #include "Camera/ShooterNicknameComponent.h"
 #include "Blueprint/SlateBlueprintLibrary.h"
 #include "Framework/Application/SlateApplication.h"
@@ -24,6 +25,7 @@ int32 UShooterNicknameWidget::NativePaint(const FPaintArgs& Args, const FGeometr
 	const FWidgetStyle& WidgetStyle, bool bParentEnabled) const
 {
 	const int32 BaseLayer = Super::NativePaint(Args, Geometry, CullingRect, Elements, LayerId, WidgetStyle, bParentEnabled);
+	if (const UUIRecordingSettings* Recording = UUIRecordingSettings::Get(); Recording && !Recording->Nicknames) return BaseLayer;
 	const UShooterNicknameComponent* Component = DisplayComponent.Get();
 	const APlayerController* PC = GetOwningPlayer();
 	if (!IsValid(Component) || Component->IsBeingDestroyed() || !IsValid(PC)
