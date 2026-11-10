@@ -38,22 +38,6 @@
 		"Character_Light_Channels": [ false ]
 	},
 	{
-		"Name": "Map_04",
-		"Map_Name": "Lvl_QuakeMap_04",
-		"Map_Image": "None",
-		"Map_Asset": "(WorldAsset=\"/Game/QuakeLike_Base/Lvl_QuakeMap_04.Lvl_QuakeMap_04\")",
-		"Character_List": [
-			"C06",
-			"C03"
-		],
-		"Max_Player_Count": 6,
-		"Map_Size": 0,
-		"Map_Explain": "NSLOCTEXT(\"[9702DEC0DEE0E3E2145DB69F1E91813C]\", \"794CB0F640784B0A8AB6B2B5B4BCCB2F\", \"04맵입니다.\")",
-		"WinKillCount": -1,
-		"GameTimer": "(X=-1.000000,Y=0.000000)",
-		"Character_Light_Channels": []
-	},
-	{
 		"Name": "MainMap",
 		"Map_Name": "MainMenu_Level",
 		"Map_Image": "None",
@@ -151,6 +135,22 @@
 		"Max_Player_Count": 6,
 		"Map_Size": 0,
 		"Map_Explain": "NSLOCTEXT(\"[9702DEC0DEE0E3E2145DB69F1E91813C]\", \"F87B37B64662ADA18FE0B7BD1C72D920\", \"02맵입니다.\")",
+		"WinKillCount": -1,
+		"GameTimer": "(X=-1.000000,Y=0.000000)",
+		"Character_Light_Channels": []
+	},
+	{
+		"Name": "Map_04",
+		"Map_Name": "Lvl_QuakeMap_04",
+		"Map_Image": "None",
+		"Map_Asset": "(WorldAsset=\"/Game/QuakeLike_Base/Lvl_QuakeMap_04.Lvl_QuakeMap_04\")",
+		"Character_List": [
+			"C06",
+			"C03"
+		],
+		"Max_Player_Count": 6,
+		"Map_Size": 0,
+		"Map_Explain": "NSLOCTEXT(\"[9702DEC0DEE0E3E2145DB69F1E91813C]\", \"794CB0F640784B0A8AB6B2B5B4BCCB2F\", \"04맵입니다.\")",
 		"WinKillCount": -1,
 		"GameTimer": "(X=-1.000000,Y=0.000000)",
 		"Character_Light_Channels": []

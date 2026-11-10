@@ -29,6 +29,18 @@ DA는 **에셋 자체가 설정 원본**입니다. JsonAssetSync Registry/외부
 - `Scripts/ConfigureRecordingUI.py`: MCP execute_python 전용, 기존 위젯 이름과 이벤트를 유지하는 재실행 가능한 연결 스크립트.
 - `ShootingArena.UI.RecordingSettings`: 체크박스 기본값·독립성 검사.
 - `ShootingArena.UI.RecordingPaintMask`: 실제 렌더타깃에서 표시→숨김→표시와 자식 표시/투명도 보존 검사.
+- `ShootingArena.UI.RecordingRespawnProgress`: 실제 사망바 머티리얼·배경 텍스처로 진행률 0/50/100%에서 표시→숨김→표시와 진행률 보존 검사.
 - 2026-11-09: 최종 Editor 일반 빌드 성공, 위 자동 검사 2개 성공, 58개 연결 스크립트 재실행·Blueprint 컴파일/저장 성공. 초기 Live Coding 패치 적용 중 Editor 충돌 후 일반 빌드·재시작으로 복구했으며 최종 MCP 응답을 확인했습니다.
 - MainMenu PIE는 시작/종료했지만 ShowUI 캡처가 실제 메뉴 표시를 증명하지 않아 화면 검증 성공으로 기록하지 않습니다.
 - 전체 UI 상태 조합과 패키징 실행은 별도 검증 범위입니다. 기존 전체 조사 원본은 재생성하지 않습니다.
+
+## 2026-11-10 사망바 잔상 수정
+
+`WBP_DeathScreen.PB_RespawnBar`의 `M_RespawnFillGradient`가 Opacity에 텍스처 알파만 사용해
+부모 Recording UI Mask의 투명도를 무시했습니다. Opacity를 `TextureSample.A * VertexColor.A`로
+연결해 DA의 **사망·리스폰 화면** 체크를 해제하면 머티리얼 채움도 함께 숨겨지도록 수정했습니다.
+참조 에셋은 `WBP_DeathScreen` 하나로 확인했으며, 리스폰 타이머/게임 로직과 DA 기본값은 변경하지 않습니다.
+새 UI 머티리얼도 Opacity에 `VertexColor.A`를 반영해야 이 표시 마스크가 적용됩니다.
+일반 Editor 빌드와 Recording 계열 자동 검사 3개가 통과했습니다. 회귀 검사는 실제 사망바의
+머티리얼·배경 텍스처로 진행률 0/50/100%에서 숨김 시 투명 픽셀만 남고, 재표시되며,
+진행률 값이 유지되는지 확인합니다. 실제 전투 사망 장면과 패키징 실행은 수행하지 않았습니다.
