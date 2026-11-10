@@ -20,7 +20,7 @@ struct FUIHotkeyButton
 
 /**
  * 메뉴 "뒤로가기/취소/창 닫기" 공용 입력 설정. Project Settings > Game > UI Back Input.
- * 에디터에서는 Esc가 PIE를 종료시키므로 임시로 F10을 쓰고, 패키징 후에는 BackKeys에 Escape만 남기면 됩니다.
+ * 기본 뒤로가기 키는 Esc입니다. (에디터 PIE에서는 Esc가 PIE를 종료하므로 Editor Preferences에서 해당 단축키를 해제하거나 독립 실행 게임으로 테스트합니다.)
  */
 UCLASS(Config = Game, DefaultConfig, meta = (DisplayName = "UI Back Input"))
 class SHOOTINGARENA_API UUIBackInputSettings : public UDeveloperSettings
