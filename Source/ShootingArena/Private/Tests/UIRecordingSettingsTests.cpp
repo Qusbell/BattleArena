@@ -3,6 +3,9 @@
 #include "UI/UIRecordingSettings.h"
 #include "UObject/UnrealType.h"
 #include "Components/Border.h"
+#include "Components/ProgressBar.h"
+#include "Engine/Texture2D.h"
+#include "Materials/MaterialInterface.h"
 #include "Engine/World.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "Slate/WidgetRenderer.h"
@@ -64,6 +67,56 @@ bool FUIRecordingPaintTest::RunTest(const FString&)
 	TestEqual(TEXT("Child animation opacity is preserved"), Child->GetRenderOpacity(), 0.35f);
 	Settings->Menus = true;
 	TestTrue(TEXT("Re-enabling the same widget restores its drawing"), Painted());
+	Mask->ReleaseSlateResources(true);
+	World->DestroyWorld(false);
+	return true;
+}
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FUIRecordingRespawnProgressTest, "ShootingArena.UI.RecordingRespawnProgress",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FUIRecordingRespawnProgressTest::RunTest(const FString&)
+{
+	UUIRecordingSettings* Settings = UUIRecordingSettings::Get();
+	UMaterialInterface* Fill = LoadObject<UMaterialInterface>(nullptr,
+		TEXT("/Game/QuakeLike_1_0/UI/DeathUI/Materials/M_RespawnFillGradient.M_RespawnFillGradient"));
+	UTexture2D* Background = LoadObject<UTexture2D>(nullptr,
+		TEXT("/Game/CompShooterHUD/Textures/Healthbar/T_ProgressBase_336x24.T_ProgressBase_336x24"));
+	if (!TestNotNull(TEXT("Recording profile"), Settings) || !TestNotNull(TEXT("Actual respawn fill material"), Fill)
+		|| !TestNotNull(TEXT("Actual respawn background texture"), Background)) return false;
+	TGuardValue<bool> Restore(Settings->DeathScreen, true);
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, false);
+	URecordingUIMask* Mask = NewObject<URecordingUIMask>(World);
+	Mask->Section = ERecordingUISection::DeathScreen;
+	UProgressBar* Bar = NewObject<UProgressBar>(World);
+	FProgressBarStyle Style = Bar->GetWidgetStyle();
+	Style.BackgroundImage.SetResourceObject(Background);
+	Style.BackgroundImage.DrawAs = ESlateBrushDrawType::Image;
+	Style.FillImage.SetResourceObject(Fill);
+	Style.FillImage.DrawAs = ESlateBrushDrawType::Image;
+	Bar->SetWidgetStyle(Style);
+	Bar->SetFillColorAndOpacity(FLinearColor::White);
+	Mask->SetContent(Bar);
+	TSharedRef<SWidget> Slate = Mask->TakeWidget();
+	FWidgetRenderer Renderer(false, true);
+	auto Painted = [&]()
+	{
+		UTextureRenderTarget2D* Target = Renderer.DrawWidget(Slate, FVector2D(336, 24));
+		FlushRenderingCommands();
+		TArray<FColor> Pixels;
+		Target->GameThread_GetRenderTargetResource()->ReadPixels(Pixels);
+		return Pixels.ContainsByPredicate([](const FColor& Pixel) { return Pixel.A > 0; });
+	};
+	for (const float Percent : {0.0f, 0.5f, 1.0f})
+	{
+		Bar->SetPercent(Percent);
+		Settings->DeathScreen = true;
+		TestTrue(TEXT("Respawn bar is visible when enabled"), Painted());
+		Settings->DeathScreen = false;
+		TestFalse(TEXT("Neither background nor material fill remains when hidden"), Painted());
+		TestEqual(TEXT("Recording toggle preserves countdown progress"), Bar->GetPercent(), Percent);
+		Settings->DeathScreen = true;
+		TestTrue(TEXT("Respawn bar can be shown again"), Painted());
+	}
 	Mask->ReleaseSlateResources(true);
 	World->DestroyWorld(false);
 	return true;

@@ -1,5 +1,13 @@
 {
   "schema_version": 1,
+  "ui_recording_respawn_material_fix": {
+    "date": "2026-11-10",
+    "asset": "/Game/QuakeLike_1_0/UI/DeathUI/Materials/M_RespawnFillGradient",
+    "change": "Multiply existing opacity by VertexColor.A to honor the parent recording mask",
+    "report": "docs/repository-audit/systems/UIRecording.md",
+    "regression_test": "ShootingArena.UI.RecordingRespawnProgress",
+    "validation": "Editor build succeeded; RecordingSettings, RecordingPaintMask and RecordingRespawnProgress passed; actual respawn material/background hidden and restored at 0/50/100 percent; full death gameplay and packaged runtime not exercised"
+  },
   "ui_recording_incremental_update": {
     "date": "2026-11-09",
     "report": "docs/repository-audit/systems/UIRecording.md",
