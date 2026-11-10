@@ -24,6 +24,14 @@
 			"bLoop": true,
 			"fadeInTime": -1,
 			"fadeOutTime": -1
+		},
+		"lvl_02Map":
+		{
+			"sound": "/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/026_qk_music_main_menu_win_Cue.026_qk_music_main_menu_win_Cue",
+			"volumeMultiplier": 1,
+			"bLoop": true,
+			"fadeInTime": -1,
+			"fadeOutTime": -1
 		}
 	},
 	"defaultFadeInTime": 1,
