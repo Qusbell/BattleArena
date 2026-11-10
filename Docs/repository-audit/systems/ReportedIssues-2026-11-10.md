@@ -134,3 +134,11 @@ MCP를 통해 두 Blueprint를 수정·컴파일·개별 저장했습니다. 둘
 | 서버 결과 배열 순서를 뒤집어 Player를 앞으로 이동 | 정상 표시, AI 표시 이름과 행 데이터 유지 |
 
 전체 fixture 결과는 `passed=true`입니다. 원본은 `Saved/Diagnostics/ReportedIssues/fix-regression.json`, 이식 가능한 요약은 [회귀 검증 요약](ReportedIssues-2026-11-10-regression.json)에 보관했습니다. fixture는 테스트 폰·아이템을 사용하는 PIE 전용이며, 실행 후 호출자가 PIE를 종료합니다. 실제 수행에서도 PIE를 종료했습니다. 패키징 빌드·Cook 검증은 수행하지 않았습니다.
+
+## PR #962의 main 병합 및 재검증
+
+main `4800a0d31b16e8c379bcfa8556a2d69f677f0477`과의 충돌은 `WBP_Result.uasset` 및 조사 문서 README 두 파일이었습니다. README는 두 문서 링크를 모두 보존했습니다. 결과창은 main 원본을 선택한 뒤, MCP로 이름 조회 실패 처리를 다시 적용했습니다. main에 추가된 촬영용 UI 마스크를 포함한 전체 위젯 트리는 재적용 전후 동일함을 확인했습니다. 버프 잠금 수정은 충돌 없이 유지됐습니다.
+
+main의 새 native 클래스가 포함되지 않은 이전 Editor DLL에서는 `RecordingUIMask`/`UIRecordingSettings`를 조회할 수 없었고, RecordingUIMask 관련 로드 경고가 104건 발생했습니다. 사용자 승인 후 Editor를 종료하고 `ShootingArenaEditor Win64 Development -WaitMutex -NoHotReloadFromIDE` 일반 빌드를 수행해 성공했습니다. 재시작 후 두 클래스가 정상 조회됐으며 같은 종류의 시작 로드 경고는 0건이었습니다. Live Coding은 사용하지 않았습니다. 기존 `Unknown structure` 이슈는 사용자 지침에 따라 추가 조사하지 않았습니다.
+
+통합 후 `Lvl_PortalMap`에서 fixture를 다시 실행해 `passed=true`를 확인했습니다. 버프 6회, 실패 후 재시도, 완료 후 재진입, Player의 원래/역순 표시와 AI 이름 보존이 모두 통과했습니다. 재시작 시 기본 메뉴 맵에서 잘못 시작한 최초 fixture는 전투 폰이 없어 중단됐으므로 검증 결과에 포함하지 않았습니다. fixture에 맵 전제 확인을 추가했으며, 검증 후 PIE를 종료하고 기본 메뉴 맵으로 복원했습니다. 위 회귀 요약 JSON은 이 통합 후 검증 결과로 갱신했습니다.

@@ -8,6 +8,7 @@ root=pathlib.Path(unreal.Paths.project_saved_dir())/'Diagnostics/ReportedIssues'
 root.mkdir(parents=True,exist_ok=True)
 cw=unreal.EditorLevelLibrary.get_pie_worlds(False)[0]
 sw=next(w for w in unreal.EditorLevelLibrary.get_pie_worlds(True) if w!=cw)
+assert 'Lvl_PortalMap' in sw.get_path_name(), 'Run this fixture in Lvl_PortalMap dedicated-server/client PIE'
 lib=unreal.get_default_object(unreal.GameplayStatics.static_class())
 state={'start':time.monotonic(),'phase':'init','buff_trials':[],'done':False}
 def component(p,name):return next(c for c in p.get_components_by_class(unreal.ActorComponent) if c.get_name()==name)
@@ -26,7 +27,10 @@ def tick(dt):
   if state['phase']=='init':
    if now-state['start']<4:return
    spc=unreal.GameplayStatics.get_player_controller(sw,0);cpc=unreal.GameplayStatics.get_player_controller(cw,0)
-   p1=spc.get_controlled_pawn();p2=next(c.get_controlled_pawn() for c in unreal.GameplayStatics.get_all_actors_of_class(sw,unreal.AIController) if c.get_controlled_pawn())
+   p1=spc.get_controlled_pawn()
+   ai_pawns=[c.get_controlled_pawn() for c in unreal.GameplayStatics.get_all_actors_of_class(sw,unreal.AIController) if c.get_controlled_pawn()]
+   if not p1 or not ai_pawns:return
+   p2=ai_pawns[0]
    for ai in unreal.GameplayStatics.get_all_actors_of_class(sw,unreal.AIController):
     ai.stop_movement()
     if ai.brain_component:ai.brain_component.stop_logic('Reported issue regression')

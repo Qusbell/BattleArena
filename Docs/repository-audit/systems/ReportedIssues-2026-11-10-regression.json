@@ -1,6 +1,9 @@
 {
   "date": "2026-11-10",
   "environment": "UE 5.6.1 dedicated-server and client PIE, Lvl_PortalMap",
+  "validation": "After main integration and clean Editor build",
+  "main_commit": "4800a0d31b16e8c379bcfa8556a2d69f677f0477",
+  "main_widget_tree_unchanged": true,
   "fixture": "Scripts/Diagnostics/VerifyReportedIssueFixes.py",
   "passed": true,
   "buff_trials": [
@@ -8,7 +11,7 @@
       "distance": 90,
       "failure_released_lock": true,
       "ends": [
-        42.92432841658592,
+        41.72801894322038,
         0.0
       ],
       "picked": true,
@@ -18,7 +21,7 @@
     {
       "distance": 90,
       "ends": [
-        44.25766342878342,
+        43.09760446473956,
         0.0
       ],
       "picked": true,
@@ -28,7 +31,7 @@
     {
       "distance": 90,
       "ends": [
-        45.59100091457367,
+        44.76510156318545,
         0.0
       ],
       "picked": true,
@@ -38,7 +41,7 @@
     {
       "distance": 90,
       "ends": [
-        46.92433452606201,
+        46.0988141708076,
         0.0
       ],
       "picked": true,
@@ -48,7 +51,7 @@
     {
       "distance": 90,
       "ends": [
-        48.25766822695732,
+        47.76548118516803,
         0.0
       ],
       "picked": true,
@@ -58,7 +61,7 @@
     {
       "distance": 90,
       "ends": [
-        49.92522242665291,
+        49.43293349072337,
         0.0
       ],
       "picked": true,
