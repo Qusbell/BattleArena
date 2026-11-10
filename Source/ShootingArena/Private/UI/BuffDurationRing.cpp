@@ -1,6 +1,7 @@
 #include "UI/BuffDurationRing.h"
 
 #include "Components/Image.h"
+#include "Components/Overlay.h"
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 #include "Engine/Texture2D.h"
@@ -63,6 +64,21 @@ void UBuffDurationRingWidget::ApplyRingStyle()
 		AppliedEmptyColor = FLinearColor(-1.0f, -1.0f, -1.0f, -1.0f);
 	}
 	if (!RingMID) return;
+	RingMID->SetScalarParameterValue(TEXT("WhiteOutlineWidth"), SafeValue(Style->RingWhiteOutlineWidth, 0.75f, 0.0f, 4.0f));
+	RingMID->SetVectorParameterValue(TEXT("OutlineColor"), Style->RingOutlineColor);
+	const float HaloRange = Style->bRingHaloEnabled && Style->RingHaloStrength > 0.0f
+		? SafeValue(Style->RingHaloRange, 10.0f, 1.0f, 48.0f) : 0.0f;
+	const float CanvasScale = 1.0f + 2.0f * HaloRange / Diameter;
+	CircleImg->SetRenderScale(FVector2D(CanvasScale));
+	RingMID->SetScalarParameterValue(TEXT("HaloCanvasScale"), CanvasScale);
+	RingMID->SetScalarParameterValue(TEXT("HaloRange"), HaloRange / Diameter);
+	RingMID->SetScalarParameterValue(TEXT("HaloStrength"), HaloRange > 0.0f ? SafeValue(Style->RingHaloStrength, 0.5f, 0.0f, 1.0f) : 0.0f);
+	RingMID->SetScalarParameterValue(TEXT("HaloCustomColor"), Style->bUseCustomRingHaloColor ? 1.0f : 0.0f);
+	RingMID->SetVectorParameterValue(TEXT("HaloColor"), Style->RingHaloColor);
+	RingMID->SetScalarParameterValue(TEXT("GradientEnabled"), Style->bRingGradientEnabled ? 1.0f : 0.0f);
+	RingMID->SetScalarParameterValue(TEXT("GradientAngle"), (SafeValue(Style->RingGradientAngle, 0.0f, -360.0f, 360.0f) - 90.0f - Angle) / 360.0f);
+	RingMID->SetVectorParameterValue(TEXT("GradientStart"), Style->RingGradientStart);
+	RingMID->SetVectorParameterValue(TEXT("GradientEnd"), Style->RingGradientEnd);
 	const float Size = SafeValue(Style->RingSize, 1.06f, 1.001f, 2.0f);
 	const float Steps = SafeValue(Style->RingSteps, 800.0f, 1.0f, 1000.0f);
 	if (AppliedSize != Size) { RingMID->SetScalarParameterValue(TEXT("Size"), Size); AppliedSize = Size; }
@@ -157,7 +173,103 @@ FLinearColor UBuffDurationRingWidget::GetTimeDisplayColor(double Remaining) cons
 		&& FMath::IsFinite(Warning.B) && FMath::IsFinite(Warning.A) ? Warning : FLinearColor::Red;
 }
 
-void UBuffDurationRingWidget::ApplyStatus(double Remaining, float Progress, bool bQuad, UTextBlock* TimeText, UImage* Icon)
+void UBuffDurationRingWidget::UpdateWhiteShine(double Remaining, bool bRingVisible, UImage* Icon, const UObject* BuffSource, uint32 BuffRevision)
+{
+	const UBuffDurationRingSettings* Style = GetRingSettings();
+	UOverlay* Overlay = IsValid(Icon) ? Cast<UOverlay>(Icon->GetParent()) : nullptr;
+	if (!ShineImage.IsValid() || ShineImage->GetParent() != Overlay)
+	{
+		ApplyVisibility(ShineImage.Get(), false);
+		ApplyVisibility(FrameImage.Get(), false);
+		ShineImage.Reset();
+		FrameImage.Reset();
+		ShineMID = nullptr;
+		FrameMID = nullptr;
+		if (Overlay)
+		{
+			for (UWidget* Child : Overlay->GetAllChildren())
+			{
+				if (Child->GetFName() == TEXT("BuffIconWhiteShine"))
+				{
+					ShineImage = Cast<UImage>(Child);
+				}
+				else if (Child->GetFName() == TEXT("BuffIconFrame")) FrameImage = Cast<UImage>(Child);
+			}
+		}
+	}
+
+	const float FrameDiameter = SafeValue(Style->IconFrameDiameter, 190.0f, 1.0f, 1024.0f);
+	const bool bFrame = FrameImage.IsValid() && Style->bShowIconFrame && Style->bShowIcon && Style->IconFrameMaterial && Remaining > 0.0;
+	if (bFrame)
+	{
+		if (!FrameMID || FrameMID->Parent != Style->IconFrameMaterial)
+		{
+			FrameMID = UMaterialInstanceDynamic::Create(Style->IconFrameMaterial, this);
+			FrameImage->SetBrushFromMaterial(FrameMID);
+		}
+		FrameImage->SetDesiredSizeOverride(FVector2D(FrameDiameter));
+		FrameImage->SetRenderTransform(Icon->GetRenderTransform());
+		FrameImage->SetRenderTransformPivot(Icon->GetRenderTransformPivot());
+		FrameMID->SetVectorParameterValue(TEXT("FrameColor"), Style->IconFrameColor);
+		FrameMID->SetScalarParameterValue(TEXT("FrameThickness"), SafeValue(Style->IconFrameThickness, 2.0f, 0.1f, FrameDiameter * 0.5f) / FrameDiameter);
+	}
+	ApplyVisibility(FrameImage.Get(), bFrame);
+	const bool bIconMask = Style->bEnableIconWhiteShine && AppliedIconTexture;
+	const bool bAreaMask = Style->bEnableAreaWhiteShine;
+	const bool bIconShine = ShineImage.IsValid() && (bIconMask || bAreaMask) && Style->bShowIcon && Style->IconWhiteShineMaterial;
+	const bool bRingShine = bRingVisible && Style->bEnableRingWhiteShine;
+	if ((!bIconShine && !bRingShine) || !FMath::IsFinite(Remaining) || Remaining <= 0.0)
+	{
+		ApplyVisibility(ShineImage.Get(), false);
+		if (RingMID) RingMID->SetScalarParameterValue(TEXT("WhiteShineProgress"), -1.0f);
+		LastShineRemaining = 0.0;
+		ShineStartTime = -1.0;
+		ShineBuffSource.Reset();
+		return;
+	}
+
+	constexpr double SweepDuration = 0.32;
+	const double Now = FPlatformTime::Seconds();
+	const double Interval = SafeValue(Style->IconFlashInterval, 1.0f, 0.05f, 60.0f);
+	const bool bNewBuff = LastShineRemaining <= 0.0 || ShineBuffSource.Get() != BuffSource || ShineBuffRevision != BuffRevision;
+	const bool bCrossedBoundary = FMath::CeilToDouble(Remaining / Interval) < FMath::CeilToDouble(LastShineRemaining / Interval);
+	const bool bPlaying = ShineStartTime >= 0.0 && Now - ShineStartTime < SweepDuration;
+	if (bNewBuff || (!bPlaying && bCrossedBoundary))
+	{
+		ShineStartTime = Now;
+	}
+	ShineBuffSource = BuffSource;
+	ShineBuffRevision = BuffRevision;
+	LastShineRemaining = Remaining;
+	const double Age = Now - ShineStartTime;
+	const bool bVisible = ShineStartTime >= 0.0 && Age < SweepDuration;
+	const float Phase = bVisible ? static_cast<float>(Age / SweepDuration) : -1.0f;
+	if (RingMID) RingMID->SetScalarParameterValue(TEXT("WhiteShineProgress"), bRingShine ? Phase : -1.0f);
+	if (bIconShine && bVisible)
+	{
+		if (!ShineMID || ShineMID->Parent != Style->IconWhiteShineMaterial)
+		{
+			ShineMID = UMaterialInstanceDynamic::Create(Style->IconWhiteShineMaterial, this);
+			ShineImage->SetBrushFromMaterial(ShineMID);
+		}
+		if (AppliedIconTexture) ShineMID->SetTextureParameterValue(TEXT("IconTexture"), AppliedIconTexture);
+		ShineMID->SetScalarParameterValue(TEXT("SweepProgress"), Phase);
+		const float AreaDiameter = bAreaMask ? FrameDiameter * SafeValue(Style->AreaWhiteShineScale, 1.0f, 0.1f, 3.0f) : 0.0f;
+		const FVector2D Extent(FMath::Max(AppliedIconSize.X, AreaDiameter), FMath::Max(AppliedIconSize.Y, AreaDiameter));
+		ShineMID->SetVectorParameterValue(TEXT("ShineExtent"), FLinearColor(Extent.X, Extent.Y, AppliedIconSize.X, AppliedIconSize.Y));
+		ShineMID->SetScalarParameterValue(TEXT("ShineIconHeight"), AppliedIconSize.Y);
+		ShineMID->SetScalarParameterValue(TEXT("IconMaskEnabled"), bIconMask ? 1.0f : 0.0f);
+		ShineMID->SetScalarParameterValue(TEXT("AreaDiameter"), AreaDiameter);
+		ShineImage->SetDesiredSizeOverride(Extent);
+		ShineImage->SetColorAndOpacity(FLinearColor::White);
+		ShineImage->SetRenderTransform(Icon->GetRenderTransform());
+		ShineImage->SetRenderTransformPivot(Icon->GetRenderTransformPivot());
+	}
+	ApplyVisibility(ShineImage.Get(), bIconShine && bVisible);
+}
+
+void UBuffDurationRingWidget::ApplyStatus(double Remaining, float Progress, bool bQuad, UTextBlock* TimeText, UImage* Icon,
+	const UObject* BuffSource, uint32 BuffRevision)
 {
 	ApplyRingStyle();
 	ApplyIconStyle(Icon);
@@ -174,9 +286,11 @@ void UBuffDurationRingWidget::ApplyStatus(double Remaining, float Progress, bool
 			AppliedFillColor = Color;
 		}
 	}
-	ApplyVisibility(this, bActive && Style->bShowRing && RingMID && Percent > 0.0f);
+	const bool bRingVisible = bActive && Style->bShowRing && RingMID && Percent > 0.0f;
+	ApplyVisibility(this, bRingVisible);
 	ApplyVisibility(Icon, bActive && Style->bShowIcon);
 	ApplyVisibility(TimeText, bActive && Style->bShowTime);
+	UpdateWhiteShine(Remaining, bRingVisible, Icon, BuffSource, BuffRevision);
 	if (!bActive) return;
 	const bool bFiniteIconRGB = FMath::IsFinite(Style->IconColor.R)
 		&& FMath::IsFinite(Style->IconColor.G) && FMath::IsFinite(Style->IconColor.B);
