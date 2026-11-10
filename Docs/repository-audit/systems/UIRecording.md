@@ -44,3 +44,19 @@ DA는 **에셋 자체가 설정 원본**입니다. JsonAssetSync Registry/외부
 일반 Editor 빌드와 Recording 계열 자동 검사 3개가 통과했습니다. 회귀 검사는 실제 사망바의
 머티리얼·배경 텍스처로 진행률 0/50/100%에서 숨김 시 투명 픽셀만 남고, 재표시되며,
 진행률 값이 유지되는지 확인합니다. 실제 전투 사망 장면과 패키징 실행은 수행하지 않았습니다.
+
+## 2026-11-11 중앙 알림의 사망 우선 처리
+
+현재 사용 중인 `/Game/QuakeLike_Base/SDM/UI/Combat_UI/WBP_PlayerHUD_sdm`의
+`ShowCompetitiveDeathMessage`는 기존 중앙 알림을 `RemoveKillMessages`로 제거한 다음 사망 문구를 표시합니다.
+`ShowCompetitiveKillMessage`는 소유 컨트롤러의 `deathScreen`이 Visible/HitTestInvisible인 동안 요청을 무시합니다.
+기존 `Toggle Death UI(false)`가 화면을 Hidden으로 전환하면 처치 알림이 다시 허용됩니다.
+별도 사망 플래그나 타이머를 추가하지 않았으며, 전체 킬피드·점수·처치 판정과 DA 체크값은 변경하지 않았습니다.
+촬영 마스크는 원래 Visibility를 보존하므로 DA에서 사망 화면을 숨겨도 사망 우선순위는 유지됩니다.
+
+`Scripts/Diagnostics/VerifyPersonalMessagePriority.py`를 MCP에서 실행했습니다.
+실제 Lvl_PortalMap 서버/클라이언트 PIE의 중앙 위젯에서 단독 처치, 처치→사망, 사망→처치,
+사망→연속 처치 요청, 사망 UI를 닫은 뒤 처치 요청의 5개 조건을 검사했습니다.
+0.6초 뒤 남은 위젯 수와 `Head1/Head2/Child1/Child2` 문구를 읽어 모두 통과했습니다.
+[실행 근거](evidence/personal-message-priority.json)는 제어된 UI 이벤트 시험이며,
+실제 총격으로 두 플레이어가 동시에 사망하는 네트워크 전투·패키징·화면 캡처 검증은 포함하지 않습니다.
