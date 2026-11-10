@@ -20,6 +20,8 @@
 
 ## 폴더 구성
 
+추가 기능 문서: [촬영용 UI 표시 설정](systems/UIRecording.md) — UI별 DA 체크박스, 58개 Blueprint 연결과 native 표시 경계.
+
 | 경로 | 내용 |
 |---|---|
 | `audit/` | 조사 절차·현재 진행 상태·최초 기준선 |

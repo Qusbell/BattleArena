@@ -2,7 +2,7 @@
 	{
 		"Name": "Map_03",
 		"Map_Name": "Lvl_PortalMap",
-		"Map_Image": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Map_Image/04_Map.04_Map'",
+		"Map_Image": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Map_Image/Portal_Map.Portal_Map'",
 		"Map_Asset": "(WorldAsset=\"/Game/QuakeLike_Base/Lvl_PortalMap.Lvl_PortalMap\")",
 		"Character_List": [
 			"C01",

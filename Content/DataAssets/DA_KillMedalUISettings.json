@@ -1,0 +1,76 @@
+{
+	"medalTexture": "/Script/Engine.Texture2D'/Game/QuakeLike_Base/YJH/Kill3.Kill3'",
+	"largeMedalMinKills": 7,
+	"largeMedalTexture": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/UI/PlayerUI/KillMedals/T_KillMedal_TripleKill.T_KillMedal_TripleKill'",
+	"medalAnchor":
+	{
+		"x": 0.5,
+		"y": 0.14999999999999999
+	},
+	"medalPosition":
+	{
+		"x": 0,
+		"y": 0
+	},
+	"firstMedalSize":
+	{
+		"x": 130,
+		"y": 130
+	},
+	"additionalMedalSize":
+	{
+		"x": 130,
+		"y": 130
+	},
+	"largeMedalSize":
+	{
+		"x": 180,
+		"y": 180
+	},
+	"medalGap": 4,
+	"displayDuration": 2.5999999046325684,
+	"highlightOpacity": 0.30000001192092896,
+	"stampStartScale": 3.5,
+	"stampImpactTime": 0.23000000417232513,
+	"stampImpactScale": 0.81999999284744263,
+	"stampSettleTime": 0.059999998658895493,
+	"countFont":
+	{
+		"fontObject": "/Script/Engine.Font'/Game/QuakeLike_Base/SDM/F_BITCORE1.F_BITCORE1'",
+		"fontMaterial": "None",
+		"outlineSettings":
+		{
+			"outlineSize": 0,
+			"bMiteredCorners": false,
+			"bSeparateFillAlpha": false,
+			"bApplyOutlineToDropShadows": false,
+			"outlineMaterial": "None",
+			"outlineColor":
+			{
+				"r": 0,
+				"g": 0,
+				"b": 0,
+				"a": 1
+			}
+		},
+		"typefaceFontName": "Default",
+		"size": 24,
+		"letterSpacing": 0,
+		"skewAmount": 0,
+		"bForceMonospaced": false,
+		"bMaterialIsStencil": false,
+		"monospacedWidth": 1
+	},
+	"countColor":
+	{
+		"r": 1,
+		"g": 0.65837478637695312,
+		"b": 0.063010014593601227,
+		"a": 1
+	},
+	"countPosition":
+	{
+		"x": 0,
+		"y": 0
+	}
+}
