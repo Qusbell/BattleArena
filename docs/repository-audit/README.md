@@ -21,6 +21,7 @@
 ## 폴더 구성
 
 - [보고된 버프·결과창·부활 문제의 실행 조사 및 수정 검증](systems/ReportedIssues-2026-11-10.md)
+- [촬영용 UI 표시 설정](systems/UIRecording.md) — UI별 DA 체크박스, 58개 Blueprint 연결과 native 표시 경계.
 
 | 경로 | 내용 |
 |---|---|

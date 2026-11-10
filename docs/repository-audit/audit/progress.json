@@ -1,5 +1,14 @@
 {
   "schema_version": 1,
+  "ui_recording_incremental_update": {
+    "date": "2026-11-09",
+    "report": "docs/repository-audit/systems/UIRecording.md",
+    "evidence": "docs/repository-audit/systems/evidence/ui-recording.json",
+    "scope": "15 local presentation flags, 58 MCP Blueprint mask bindings, native ranking/medals/buff/nickname/loading display paths",
+    "source_of_truth": "/Game/QuakeLike_1_0/UI/Recording/DA_UIRecordingSettings; asset-owned, not JsonAssetSync-bound",
+    "validation": "Editor build and targeted settings/render-target automation; full capture scenarios and packaged runtime not verified",
+    "baseline_recollection": "not_performed; historical whole-project inventory preserved"
+  },
   "updated_at": "2026-11-05T22:13:40.903817+09:00",
   "phase_1": {
     "status": "complete",

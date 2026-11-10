@@ -1,4 +1,5 @@
 #include "UI/BuffScreenEffect.h"
+#include "UI/UIRecordingSettings.h"
 
 #include "Buff/BuffPresentationComponent.h"
 #include "Blueprint/WidgetTree.h"
@@ -41,7 +42,10 @@ bool UBuffScreenEffectWidget::InitializeEffect(UBuffPresentationComponent* Buff,
 	Out->SetFloatingPointPropertyValue(Out->ContainerPtrToValuePtr<void>(Args.GetStructMemory()), HalfPeriod);
 	if (!WidgetTree) WidgetTree = NewObject<UWidgetTree>(this);
 	UOverlay* Root = WidgetTree->ConstructWidget<UOverlay>();
-	WidgetTree->RootWidget = Root;
+	URecordingUIMask* RecordingMask = WidgetTree->ConstructWidget<URecordingUIMask>();
+	RecordingMask->Section = ERecordingUISection::Buffs;
+	RecordingMask->SetContent(Root);
+	WidgetTree->RootWidget = RecordingMask;
 	auto AddFill = [Root](UWidget* Child)
 	{
 		UOverlaySlot* Slot = Root->AddChildToOverlay(Child);
