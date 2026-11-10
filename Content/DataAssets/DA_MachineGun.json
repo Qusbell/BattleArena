@@ -71,7 +71,7 @@
 	},
 	"machineGunBeamLifeTime": 0.20000000000000001,
 	"railGunBeamLifeTime": 0.20000000000000001,
-	"crosshairRecoilSpreadAmount": 20,
+	"crosshairRecoilSpreadAmount": 5,
 	"useSeparatePlayerProjectileDestroyEffects": false,
 	"projectilePlayerDestroyEffect": "None",
 	"nSProjectilePlayerDestroyEffect": "None",
