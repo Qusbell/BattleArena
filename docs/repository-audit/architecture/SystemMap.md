@@ -46,6 +46,8 @@ flowchart LR
 
 ## 전투·무기·투사체
 
+2026-11-10 부분 갱신: `AMyPlayerController → UAimAssistComponent → ControlRotation → BP_PlayerShooter.GetAim` 경로로 로컬 에임 어시스트를 추가했습니다. `GetHeart`, Life/CharacterPool을 읽고 자신 이외의 Pawn은 적으로 간주합니다. Team을 사용하지 않으며 무기별 피해·발사 판정은 기존 경로입니다. 설정과 검증 범위는 [AimAssist](../systems/AimAssist.md)에 있습니다.
+
 `HeldItem`/`Fire` 계열 Blueprint와 native `Weapon` 폴더가 함께 동작합니다.
 `BP_Weapon_PlasmaGun`과 `BP_Weapon_RocketLauncher`의 `Spawn Pooled Projectile`,
 두 Projectile의 `Is Pooled Projectile` 호출을 확인했습니다.
