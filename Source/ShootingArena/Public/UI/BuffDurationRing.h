@@ -41,6 +41,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "원형 게이지", meta = (DisplayName = "링 두께 (1에 가까울수록 얇음)", ClampMin = "1.001", ClampMax = "2.0"))
 	float RingSize = 1.06f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "원형 게이지", meta = (DisplayName = "흰색 윤곽선 두께 (px)", ClampMin = "0.0", ClampMax = "4.0"))
+	float RingWhiteOutlineWidth = 0.75f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "원형 게이지", meta = (DisplayName = "윤곽선 색상", HideAlphaChannel))
+	FLinearColor RingOutlineColor = FLinearColor(0.73f, 0.80f, 0.88f);
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "원형 게이지", meta = (DisplayName = "링 패턴 반복 수", ClampMin = "1.0", ClampMax = "1000.0"))
 	float RingSteps = 800.0f;
 
@@ -103,6 +109,63 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "아이콘 반짝임", meta = (DisplayName = "반짝임 지속시간 (초)", EditCondition = "bIconFlashEnabled", ClampMin = "0.01", ClampMax = "2.0", Units = "s"))
 	float IconFlashDuration = 0.15f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "흰색 반짝임", meta = (DisplayName = "아이콘 흰색 반짝임 사용"))
+	bool bEnableIconWhiteShine = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "흰색 반짝임", meta = (DisplayName = "원형 테두리 흰색 반짝임 사용"))
+	bool bEnableRingWhiteShine = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "흰색 반짝임", meta = (EditCondition = "bEnableIconWhiteShine"))
+	TObjectPtr<UMaterialInterface> IconWhiteShineMaterial;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "링 그라데이션", meta = (DisplayName = "링 그라데이션 사용"))
+	bool bRingGradientEnabled = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "링 그라데이션", meta = (DisplayName = "시작 색상"))
+	FLinearColor RingGradientStart = FLinearColor(0.18f, 0.62f, 1.0f);
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "링 그라데이션", meta = (DisplayName = "끝 색상"))
+	FLinearColor RingGradientEnd = FLinearColor(0.75f, 0.42f, 1.0f);
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "링 그라데이션", meta = (DisplayName = "기준 각도 (°)"))
+	float RingGradientAngle = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "아이콘 원형 테두리", meta = (DisplayName = "원형 테두리 표시"))
+	bool bShowIconFrame = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "아이콘 원형 테두리", meta = (DisplayName = "테두리 색상"))
+	FLinearColor IconFrameColor = FLinearColor(0.65f, 0.8f, 1.0f, 0.6f);
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "아이콘 원형 테두리", meta = (DisplayName = "테두리 선 두께"))
+	float IconFrameThickness = 2.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "아이콘 원형 테두리", meta = (DisplayName = "원형 테두리 지름"))
+	float IconFrameDiameter = 190.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "링 발광", meta = (DisplayName = "링 발광 사용"))
+	bool bRingHaloEnabled = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "링 발광", meta = (DisplayName = "발광 강도"))
+	float RingHaloStrength = 0.5f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "링 발광", meta = (DisplayName = "발광 퍼지는 범위"))
+	float RingHaloRange = 10.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "링 발광", meta = (DisplayName = "사용자 지정 발광 색상 사용"))
+	bool bUseCustomRingHaloColor = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "링 발광", meta = (DisplayName = "발광 색상"))
+	FLinearColor RingHaloColor = FLinearColor(1.0f, 0.65f, 0.22f);
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "흰색 반짝임", meta = (DisplayName = "원형 영역 반짝임 사용"))
+	bool bEnableAreaWhiteShine = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "흰색 반짝임", meta = (DisplayName = "원형 영역 반짝임 범위 배율"))
+	float AreaWhiteShineScale = 1.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "아이콘 원형 테두리")
+	TObjectPtr<UMaterialInterface> IconFrameMaterial;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "가운데 숫자", meta = (DisplayName = "남은 시간 표시"))
 	bool bShowTime = true;
 
@@ -150,7 +213,8 @@ public:
 	TObjectPtr<UBuffDurationRingSettings> Settings;
 
 	const UBuffDurationRingSettings* GetRingSettings() const;
-	void ApplyStatus(double Remaining, float Progress, bool bQuad, UTextBlock* TimeText, UImage* Icon);
+	void ApplyStatus(double Remaining, float Progress, bool bQuad, UTextBlock* TimeText, UImage* Icon,
+		const UObject* BuffSource = nullptr, uint32 BuffRevision = 0);
 
 protected:
 	virtual void NativePreConstruct() override;
@@ -164,6 +228,7 @@ protected:
 private:
 	void ApplyRingStyle();
 	void ApplyIconStyle(UImage* Icon);
+	void UpdateWhiteShine(double Remaining, bool bRingVisible, UImage* Icon, const UObject* BuffSource, uint32 BuffRevision);
 	float GetIconFlashMultiplier(double Remaining) const;
 	FLinearColor GetTimeDisplayColor(double Remaining) const;
 
@@ -181,6 +246,18 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTexture2D> AppliedIconTexture;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> ShineMID;
+
+	TWeakObjectPtr<UImage> ShineImage;
+	TWeakObjectPtr<UImage> FrameImage;
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> FrameMID;
+	TWeakObjectPtr<const UObject> ShineBuffSource;
+	uint32 ShineBuffRevision = 0;
+	double LastShineRemaining = 0.0;
+	double ShineStartTime = -1.0;
 
 	TWeakObjectPtr<UImage> StyledIcon;
 	float AppliedProgress = -1.0f;

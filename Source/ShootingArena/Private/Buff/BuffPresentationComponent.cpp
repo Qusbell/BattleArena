@@ -447,7 +447,8 @@ void UBuffPresentationComponent::UpdateBuffStatusUI(AActor* BuffOwner, UTextBloc
 	const double Duration = Buff ? Buff->Presentation.TotalDuration : 0.0;
 	const float Percent = FMath::IsFinite(Duration) && Duration > 0.0 && FMath::IsFinite(Remaining)
 		? static_cast<float>(FMath::Clamp(Remaining / Duration, 0.0, 1.0)) : 0.0f;
-	DurationRing->ApplyStatus(Remaining, Percent, Buff && IsQuad(Buff->Presentation.Tag), TimeText, BuffIcon);
+	DurationRing->ApplyStatus(Remaining, Percent, Buff && IsQuad(Buff->Presentation.Tag), TimeText, BuffIcon,
+		Buff, Buff ? Buff->Presentation.Revision : 0);
 	if (IsValid(StatusGroup))
 	{
 		const ESlateVisibility Desired = Remaining > 0.0 ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed;
