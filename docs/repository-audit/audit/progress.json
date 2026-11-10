@@ -1,5 +1,15 @@
 {
   "schema_version": 1,
+  "aim_assist_incremental_update": {
+    "date": "2026-11-10",
+    "report": "docs/repository-audit/systems/AimAssist.md",
+    "decision": "Decision/002-aim-assist.md",
+    "scope": "Native inherited local controller component, input and ControlRotation hooks; GetHeart/GetAim and Life read-only bridges; all other pawns are enemies; no Team dependency or Blueprint asset edits",
+    "source_of_truth": "UAimAssistSettings / DefaultGame.ini [/Script/ShootingArena.AimAssistSettings]; enable state is controller-local memory",
+    "validation": "Installed UE 5.6.1 final Editor Development and game Shipping compile/link succeeded; MCP automation BlueprintBridge and ConvergenceAndEligibility passed; manual hotkey/input/play feel, network shots and Git-source-engine server/Cook/packaged runtime not verified",
+    "evidence": "docs/repository-audit/systems/evidence/aim-assist.json",
+    "baseline_recollection": "not_performed; historical whole-project inventory preserved"
+  },
   "ui_recording_respawn_material_fix": {
     "date": "2026-11-10",
     "asset": "/Game/QuakeLike_1_0/UI/DeathUI/Materials/M_RespawnFillGradient",

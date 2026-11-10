@@ -1,5 +1,7 @@
 # 설정 데이터의 원본과 편집 기준
 
+2026-11-10 추가: 로컬 에임 어시스트의 수렴 시간은 `UAimAssistSettings`/`DefaultGame.ini`의 `[/Script/ShootingArena.AimAssistSettings]`가 원본입니다. Project Settings > Game > Aim Assist에서 조정합니다. JsonAssetSync에 연결하지 않으며 활성화 상태는 컨트롤러별 메모리에만 보관합니다. [시스템 문서](../systems/AimAssist.md)를 참조합니다.
+
 2026-11-09 추가: 촬영용 `/Game/QuakeLike_1_0/UI/Recording/DA_UIRecordingSettings`는 DA 에셋 자체가 원본입니다. JsonAssetSync에 등록하지 않았으므로 이 에셋의 체크박스를 직접 편집·저장합니다. [촬영 UI](../systems/UIRecording.md).
 
 2026-11-05 조사에서 실제 `DA_JsonApplyRegistry` binding 29개와

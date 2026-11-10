@@ -18,6 +18,11 @@ class SHOOTINGARENA_API AMyPlayerController : public APlayerController
 	
 public:
 	AMyPlayerController();
+	virtual void UpdateRotation(float DeltaTime) override;
+	virtual void ProcessPlayerInput(const float DeltaTime, const bool bGamePaused) override;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Aim Assist")
+	TObjectPtr<class UAimAssistComponent> AimAssist;
 
 	/** Called locally after a successful loading-screen transition. Retries until a pawn exists. */
 	void ReportGameplayReadyAfterLoading();

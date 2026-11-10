@@ -1,4 +1,5 @@
 #include "MyPlayerController.h"
+#include "Camera/AimAssistComponent.h"
 #include "MyReconnectionGameMode.h"
 #include "Loading/LoadingScreenSubsystem.h"
 #include "Engine/GameInstance.h"
@@ -21,6 +22,7 @@
 
 AMyPlayerController::AMyPlayerController()
 {
+	AimAssist = CreateDefaultSubobject<UAimAssistComponent>(TEXT("AimAssist"));
 	ShooterOutline = CreateDefaultSubobject<UShooterOutlineComponent>(TEXT("ShooterOutline"));
 	ShooterNickname = CreateDefaultSubobject<UShooterNicknameComponent>(TEXT("ShooterNickname"));
 	ShooterRevenge = CreateDefaultSubobject<UShooterRevengeComponent>(TEXT("ShooterRevenge"));
@@ -46,6 +48,24 @@ AMyPlayerController::AMyPlayerController()
 	KillMedalTierTypes.Add(2, EKillMedalType::DoubleKill);
 	KillMedalTierTypes.Add(3, EKillMedalType::TripleKill);
 	KillMedalTierTypes.Add(4, EKillMedalType::Rampage);
+}
+
+void AMyPlayerController::ProcessPlayerInput(const float DeltaTime, const bool bGamePaused)
+{
+	Super::ProcessPlayerInput(DeltaTime, bGamePaused);
+	if (AimAssist) AimAssist->ProcessToggle();
+}
+
+void AMyPlayerController::UpdateRotation(float DeltaTime)
+{
+	FRotator Assisted;
+	if (AimAssist && AimAssist->TryGetRotation(DeltaTime, Assisted))
+	{
+		// Clear only this frame's accumulated look input. Do not mutate the shared ignore-input stack.
+		RotationInput = FRotator::ZeroRotator;
+		SetControlRotation(Assisted);
+	}
+	Super::UpdateRotation(DeltaTime);
 }
 
 void AMyPlayerController::AwardKillMedal(EKillMedalType MedalType)
