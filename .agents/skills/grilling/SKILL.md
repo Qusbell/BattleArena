@@ -17,10 +17,10 @@ Finding *facts* is your job, never the user's. When a frontier question needs a 
 
 The session is done when the frontier is empty: every branch of the design tree visited, nothing left silently assumed. Do not act on it until the user confirms you have reached a shared understanding.
 
-Once shared understanding is confirmed, use `request_user_input_async` to offer:
+The grilling session ends once shared understanding is confirmed. Then use `request_user_input_async` to offer:
 
-1. **Create Decision & Execute (Recommended)** — Save to `Decision/<number>-<document-name>.md`, then execute.
-2. **Execute Only** — Execute without creating a Decision document.
+1. **Create Decision & Implement (Recommended)** — Save to `Decision/<number>-<document-name>.md`, then start implement.
+2. **Implement Only** — Start implement without creating a Decision document.
 3. **Other** — Specify an alternative.
 
 Do not act until the user selects an option.

@@ -1,0 +1,154 @@
+{
+  "date": "2026-11-10",
+  "environment": "UE 5.6.1 dedicated-server and client PIE, Lvl_PortalMap",
+  "validation": "After main integration and clean Editor build",
+  "main_commit": "4800a0d31b16e8c379bcfa8556a2d69f677f0477",
+  "main_widget_tree_unchanged": true,
+  "fixture": "Scripts/Diagnostics/VerifyReportedIssueFixes.py",
+  "passed": true,
+  "buff_trials": [
+    {
+      "distance": 90,
+      "failure_released_lock": true,
+      "ends": [
+        41.72801894322038,
+        0.0
+      ],
+      "picked": true,
+      "locked": false,
+      "reentry_ignored": true
+    },
+    {
+      "distance": 90,
+      "ends": [
+        43.09760446473956,
+        0.0
+      ],
+      "picked": true,
+      "locked": false,
+      "reentry_ignored": true
+    },
+    {
+      "distance": 90,
+      "ends": [
+        44.76510156318545,
+        0.0
+      ],
+      "picked": true,
+      "locked": false,
+      "reentry_ignored": true
+    },
+    {
+      "distance": 90,
+      "ends": [
+        46.0988141708076,
+        0.0
+      ],
+      "picked": true,
+      "locked": false,
+      "reentry_ignored": true
+    },
+    {
+      "distance": 90,
+      "ends": [
+        47.76548118516803,
+        0.0
+      ],
+      "picked": true,
+      "locked": false,
+      "reentry_ignored": true
+    },
+    {
+      "distance": 90,
+      "ends": [
+        49.43293349072337,
+        0.0
+      ],
+      "picked": true,
+      "locked": false,
+      "reentry_ignored": true
+    }
+  ],
+  "player_name": "Player",
+  "result_original": [
+    {
+      "Text_Name": "Ghost",
+      "Text_Rank": "1위",
+      "Text_Kill": "0 킬",
+      "Text_Death": "0 데스"
+    },
+    {
+      "Text_Name": "Anger",
+      "Text_Rank": "1위",
+      "Text_Kill": "0 킬",
+      "Text_Death": "0 데스"
+    },
+    {
+      "Text_Name": "Greater",
+      "Text_Rank": "1위",
+      "Text_Kill": "0 킬",
+      "Text_Death": "0 데스"
+    },
+    {
+      "Text_Name": "Peacer",
+      "Text_Rank": "1위",
+      "Text_Kill": "0 킬",
+      "Text_Death": "0 데스"
+    },
+    {
+      "Text_Name": "Eschatologist",
+      "Text_Rank": "1위",
+      "Text_Kill": "0 킬",
+      "Text_Death": "0 데스"
+    },
+    {
+      "Text_Name": "Player",
+      "Text_Rank": "1위",
+      "Text_Kill": "0 킬",
+      "Text_Death": "0 데스"
+    }
+  ],
+  "result_reversed": [
+    {
+      "Text_Name": "Player",
+      "Text_Rank": "1위",
+      "Text_Kill": "0 킬",
+      "Text_Death": "0 데스"
+    },
+    {
+      "Text_Name": "Eschatologist",
+      "Text_Rank": "1위",
+      "Text_Kill": "0 킬",
+      "Text_Death": "0 데스"
+    },
+    {
+      "Text_Name": "Peacer",
+      "Text_Rank": "1위",
+      "Text_Kill": "0 킬",
+      "Text_Death": "0 데스"
+    },
+    {
+      "Text_Name": "Greater",
+      "Text_Rank": "1위",
+      "Text_Kill": "0 킬",
+      "Text_Death": "0 데스"
+    },
+    {
+      "Text_Name": "Anger",
+      "Text_Rank": "1위",
+      "Text_Kill": "0 킬",
+      "Text_Death": "0 데스"
+    },
+    {
+      "Text_Name": "Ghost",
+      "Text_Rank": "1위",
+      "Text_Kill": "0 킬",
+      "Text_Death": "0 데스"
+    }
+  ],
+  "raw_evidence": "Saved/Diagnostics/ReportedIssues/fix-regression.json",
+  "limits": [
+    "No packaged build or Cook verification",
+    "Controlled PIE fixture, not natural match traversal"
+  ]
+}
