@@ -205,9 +205,9 @@
 	},
 	{
 		"Name": "PJH_Hard",
-		"Attack_Skill": 0.40000000000000002,
-		"Aim_Skill": 0.40000000000000002,
-		"Aim_Accuracy": 0.90000000000000002,
+		"Attack_Skill": 0.55000000000000004,
+		"Aim_Skill": 0.45000000000000001,
+		"Aim_Accuracy": 0.69999999999999996,
 		"Fire_Throttle": 0.65000000000000002,
 		"View_Max_Change": 590,
 		"ReactionTime": 0.20000000000000001,
