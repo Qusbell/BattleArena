@@ -1,0 +1,63 @@
+{
+  "done": true,
+  "cases": [
+    {
+      "name": "kill_only",
+      "rows": [
+        {
+          "Head1": "You Killed",
+          "Head2": "",
+          "Child1": "PriorityVictim",
+          "Child2": ""
+        }
+      ]
+    },
+    {
+      "name": "kill_then_death",
+      "rows": [
+        {
+          "Head1": "Killed by",
+          "Head2": "PriorityKiller",
+          "Child1": "",
+          "Child2": ""
+        }
+      ]
+    },
+    {
+      "name": "death_then_kill",
+      "rows": [
+        {
+          "Head1": "Killed by",
+          "Head2": "PriorityKiller",
+          "Child1": "",
+          "Child2": ""
+        }
+      ]
+    },
+    {
+      "name": "death_then_multiple_kills",
+      "rows": [
+        {
+          "Head1": "Killed by",
+          "Head2": "PriorityKiller",
+          "Child1": "",
+          "Child2": ""
+        }
+      ]
+    },
+    {
+      "name": "after_respawn",
+      "rows": [
+        {
+          "Head1": "You Killed",
+          "Head2": "",
+          "Child1": "PriorityVictim",
+          "Child2": ""
+        }
+      ]
+    }
+  ],
+  "next": 5,
+  "ready": 177340.443,
+  "passed": true
+}
