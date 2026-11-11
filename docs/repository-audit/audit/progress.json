@@ -1,5 +1,15 @@
 {
   "schema_version": 1,
+  "personal_message_death_priority": {
+    "date": "2026-11-11",
+    "asset": "/Game/QuakeLike_Base/SDM/UI/Combat_UI/WBP_PlayerHUD_sdm",
+    "report": "docs/repository-audit/systems/UIRecording.md",
+    "evidence": "docs/repository-audit/systems/evidence/personal-message-priority.json",
+    "change": "Clear personal messages before showing death; reject personal kill messages while the owning controller death screen is visible; retain existing respawn visibility lifecycle",
+    "validation": "Blueprint compile passed; five controlled real-client HUD event cases passed in Lvl_PortalMap PIE; physical mutual-kill combat, screenshots and packaged runtime not exercised",
+    "integration_validation": "Reapplied both functions on main 3282d7830; Editor build, Blueprint compile, all five PIE cases and BuffDurationRing passed. Main widget tree and EventGraph matched. BuffHUDStyle ring segmentation and contrast assertions failed on both the integrated HUD and pristine main.",
+    "baseline_recollection": "not_performed; historical whole-project inventory preserved"
+  },
   "aim_assist_incremental_update": {
     "date": "2026-11-10",
     "report": "docs/repository-audit/systems/AimAssist.md",
