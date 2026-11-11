@@ -1,5 +1,9 @@
 # 설정 데이터의 원본과 편집 기준
 
+2026-11-11 추가. `DA_KillMedalUISettings`는 `Content/DataAssets/DA_KillMedalUISettings.json`에 연결됩니다.
+메달과 처치 알림의 색상·불투명도·그림자를 DA에서 편집하고 저장하면 JsonAssetSync가 JSON에 내보냅니다.
+다음 Editor·런타임 시작은 이 JSON을 적용합니다. [킬 알림 스타일과 검증 방법](../systems/UIRecording.md#2026-11-11-킬-메달과-처치-알림-스타일)
+
 2026-11-10 추가: 로컬 에임 어시스트의 수렴 시간은 `UAimAssistSettings`/`DefaultGame.ini`의 `[/Script/ShootingArena.AimAssistSettings]`가 원본입니다. Project Settings > Game > Aim Assist에서 조정합니다. JsonAssetSync에 연결하지 않으며 활성화 상태는 컨트롤러별 메모리에만 보관합니다. [시스템 문서](../systems/AimAssist.md)를 참조합니다.
 
 2026-11-09 추가: 촬영용 `/Game/QuakeLike_1_0/UI/Recording/DA_UIRecordingSettings`는 DA 에셋 자체가 원본입니다. JsonAssetSync에 등록하지 않았으므로 이 에셋의 체크박스를 직접 편집·저장합니다. [촬영 UI](../systems/UIRecording.md).

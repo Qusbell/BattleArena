@@ -65,3 +65,35 @@ PR #972 통합에서는 `main`의 `3282d7830` HUD에 중앙 알림 함수 두 �
 위젯 트리 49개와 EventGraph 84개 노드를 변경 전후 비교했으며, 통합본에서도 중앙 알림 PIE 검사 5개가 모두 통과했습니다.
 클라이언트 HUD에서 버프 링, 아이콘 테두리와 흰색 반짝임 위젯이 생성됐고 `ShootingArena.UI.BuffDurationRing`도 통과했습니다.
 `ShootingArena.UI.BuffHUDStyle`의 링 분할·대비 검사는 통합본과 수정 전 `main`에서 같은 항목이 실패했습니다.
+
+## 2026-11-11 킬 메달과 처치 알림 스타일
+
+`/Game/QuakeLike_1_0/UI/PlayerUI/KillMedals/DA_KillMedalUISettings`에서 아래 값을 편집합니다.
+
+| 항목 | 확인할 값 |
+|---|---|
+| 메달 → 배경 | 배경 RGB와 불투명도. 각 일반 메달과 큰 메달에 하나씩 적용합니다. |
+| You Killed → 배경 | 처치 알림 배경 RGB와 불투명도. 불투명도 0에서 글자만 표시합니다. |
+| You Killed → 그림자 | 그림자 색상·알파와 거리 배율. 기본값 0은 끄기, 0.5는 기존 거리의 절반입니다. |
+
+`WBP_PlayerHUD_sdm.ShowCompetitiveKillMessage`는 기존 알림을 만든 직후 현재 DA 스타일을 적용합니다.
+`You Killed`와 대상 이름을 담은 텍스트 그룹과 배경을 같은 세로 중앙에 배치합니다.
+메달마다 `CompetitiveRankingHUD`가 `You Killed`와 같은 `T_Blur_800x200` 그림자를 이미지 뒤에 표시합니다.
+그림자의 바깥쪽은 이미지보다 넓게 그려 가장자리가 자연스럽게 흐려지며, 기존 도장 애니메이션을 따라갑니다.
+DA 저장 시 JsonAssetSync가 `Content/DataAssets/DA_KillMedalUISettings.json`에 값을 내보내며 다음 시작에서 JSON을 적용합니다.
+
+전투 맵의 PIE에서 캐릭터가 스폰된 뒤 에디터 Output Log에 아래 명령을 입력합니다.
+
+```text
+py "D:/Unreal_ShootingArena/ShootingArena/Scripts/Diagnostics/PreviewKillNotificationUI.py" 3
+```
+
+마지막 숫자를 `1`, `3`, `7`로 바꿔 단일 메달, 개별 배경이 있는 메달 3개, 현재 기준의 큰 메달을 확인합니다.
+미리보기는 현재 PIE 플레이어의 연속 처치 수를 초기화한 다음 지정한 메달 수와 `Preview Target` 처치 알림을 표시합니다.
+DA에서 색상이나 그림자 값을 바꾼 뒤 같은 명령을 실행해 비교합니다.
+
+PIE에서 단일·다중·큰 메달과 파란 메달/빨간 처치 알림, 배경 0, 그림자 배율 0/0.5/1을 확인했습니다.
+최초 스타일 캡처는 `Saved/Diagnostics/KillNotificationStyles/`에 저장했습니다.
+최종 메달 그림자는 기본값, 불투명도 0, 파란색의 3개 PIE 조건으로 비교했습니다. 캡처와 결과는 `Saved/Diagnostics/KillNotificationSoftShadow/`에 있습니다.
+`ShootingArena.UI.KillMedalAutomaticAwards`와 `ShootingArena.UI.KillMedalBridge`가 통과했고, 재시작 로그에서 DA의 JSON 적용 성공을 확인했습니다.
+기존 중앙 알림의 사망 우선순위 5개 조건도 다시 확인했습니다. 패키징 실행과 실전 상호 처치는 검증 범위에 포함하지 않았습니다.
