@@ -21,7 +21,7 @@ static const TCHAR* const GArenaMatchLogSchema[] =
     GameBuildVersion     TEXT NOT NULL,
     SettingsVersion      TEXT NOT NULL,
     TimeLimitSeconds     INTEGER     NOT NULL,
-    KillTarget           INTEGER     NOT NULL, StartedAtKst TEXT,
+    KillTarget           INTEGER     NOT NULL, StartedAtKst TEXT, CollectionVersion INTEGER,
     PRIMARY KEY (MatchId),
     FOREIGN KEY (MatchId, EventSequence) REFERENCES event (MatchId, EventSequence) DEFERRABLE INITIALLY DEFERRED
 ))RAWSQL"),
@@ -40,7 +40,7 @@ static const TCHAR* const GArenaMatchLogSchema[] =
     CharacterId          TEXT NOT NULL,
     DifficultyId         TEXT,
     CharacteristicId     TEXT,
-    BotSettingsHash      TEXT,
+    BotSettingsHash      TEXT, PlayerKey TEXT,
     PRIMARY KEY (MatchId, ParticipantId),
     FOREIGN KEY (MatchId) REFERENCES match (MatchId) DEFERRABLE INITIALLY DEFERRED,
     FOREIGN KEY (BotSettingsHash) REFERENCES bot_settings (BotSettingsHash) DEFERRABLE INITIALLY DEFERRED,
@@ -73,7 +73,7 @@ static const TCHAR* const GArenaMatchLogSchema[] =
     ParticipantId        INTEGER     NOT NULL,
     SpawnNumber          INTEGER     NOT NULL,
     WeaponId             TEXT NOT NULL,
-    bIsDefaultWeapon     INTEGER     NOT NULL,
+    bIsDefaultWeapon     INTEGER     NOT NULL, InitialAmmo INTEGER, bUnlimitedAmmo INTEGER,
     PRIMARY KEY (MatchId, ParticipantId, SpawnNumber, WeaponId),
     FOREIGN KEY (MatchId, ParticipantId, SpawnNumber)
         REFERENCES spawn (MatchId, ParticipantId, SpawnNumber) DEFERRABLE INITIALLY DEFERRED,
@@ -124,7 +124,7 @@ static const TCHAR* const GArenaMatchLogSchema[] =
     HealthAfter            REAL        NOT NULL,
     ArmorBefore            REAL        NOT NULL,
     ArmorAfter             REAL        NOT NULL,
-    EngagementDistance     REAL,
+    EngagementDistance     REAL, bBuffsRecorded INTEGER,
     PRIMARY KEY (MatchId, EventSequence),
     FOREIGN KEY (MatchId, EventSequence) REFERENCES event (MatchId, EventSequence) DEFERRABLE INITIALLY DEFERRED,
     FOREIGN KEY (MatchId, VictimParticipantId, VictimSpawnNumber)
@@ -216,7 +216,7 @@ static const TCHAR* const GArenaMatchLogSchema[] =
     SpawnNumber           INTEGER          NOT NULL,
     BuffAfter             TEXT,
     BuffChangeType        TEXT      NOT NULL,
-    BuffExpiresAtSeconds  REAL,
+    BuffExpiresAtSeconds  REAL, BuffId INTEGER, PreviousBuffId INTEGER,
     PRIMARY KEY (MatchId, EventSequence),
     FOREIGN KEY (MatchId, EventSequence) REFERENCES event (MatchId, EventSequence) DEFERRABLE INITIALLY DEFERRED,
     FOREIGN KEY (MatchId, ParticipantId, SpawnNumber)
@@ -241,6 +241,184 @@ static const TCHAR* const GArenaMatchLogSchema[] =
     "Values" TEXT NOT NULL CHECK (json_valid("Values") AND json_type("Values")='object'),
     PRIMARY KEY (SettingsVersion,SourceTable,RowName)
 ))RAWSQL"),
+	TEXT(R"RAWSQL(CREATE TABLE ammo_change (
+    MatchId         TEXT    NOT NULL,
+    EventSequence   INTEGER NOT NULL,
+    ParticipantId   INTEGER NOT NULL,
+    SpawnNumber     INTEGER NOT NULL,
+    WeaponId        TEXT    NOT NULL,
+    bUnlimitedAmmo  INTEGER NOT NULL,
+    AmmoBefore      INTEGER,
+    AmmoAfter       INTEGER,
+    ChangeReason    TEXT    NOT NULL,
+    PRIMARY KEY (MatchId, EventSequence),
+    FOREIGN KEY (MatchId, EventSequence) REFERENCES event (MatchId, EventSequence) DEFERRABLE INITIALLY DEFERRED,
+    FOREIGN KEY (MatchId, ParticipantId, SpawnNumber)
+        REFERENCES spawn (MatchId, ParticipantId, SpawnNumber) DEFERRABLE INITIALLY DEFERRED,
+    CHECK (bUnlimitedAmmo IN (0,1)),
+    CHECK (ChangeReason IN ('Fire','Pickup','Other')),
+    CHECK (bUnlimitedAmmo=0 OR (AmmoBefore IS NULL AND AmmoAfter IS NULL))
+))RAWSQL"),
+	TEXT(R"RAWSQL(CREATE TABLE fire_context (
+    MatchId              TEXT    NOT NULL,
+    EventSequence        INTEGER NOT NULL,
+    TargetParticipantId  INTEGER,
+    TargetSpawnNumber    INTEGER,
+    TargetDistance       REAL,
+    EquippedWeaponId     TEXT,
+    PRIMARY KEY (MatchId, EventSequence),
+    FOREIGN KEY (MatchId, EventSequence) REFERENCES fire (MatchId, EventSequence) DEFERRABLE INITIALLY DEFERRED,
+    FOREIGN KEY (MatchId, TargetParticipantId, TargetSpawnNumber)
+        REFERENCES spawn (MatchId, ParticipantId, SpawnNumber) DEFERRABLE INITIALLY DEFERRED,
+    CHECK ((TargetParticipantId IS NULL) = (TargetSpawnNumber IS NULL)),
+    CHECK (TargetParticipantId IS NOT NULL OR TargetDistance IS NULL)
+))RAWSQL"),
+	TEXT(R"RAWSQL(CREATE TABLE participant_settings (
+    MatchId        TEXT    NOT NULL,
+    ParticipantId  INTEGER NOT NULL,
+    SourceTable    TEXT    NOT NULL,
+    RowName        TEXT    NOT NULL,
+    "Values"       TEXT    NOT NULL CHECK (json_valid("Values") AND json_type("Values")='object'),
+    PRIMARY KEY (MatchId, ParticipantId, SourceTable, RowName),
+    FOREIGN KEY (MatchId, ParticipantId) REFERENCES participant (MatchId, ParticipantId) DEFERRABLE INITIALLY DEFERRED
+))RAWSQL"),
+	TEXT(R"RAWSQL(CREATE TABLE buff_instance (
+    MatchId              TEXT    NOT NULL,
+    BuffId               INTEGER NOT NULL,
+    ParticipantId        INTEGER NOT NULL,
+    SpawnNumber          INTEGER NOT NULL,
+    SettingsVersion      TEXT    NOT NULL,
+    SourceTable          TEXT    NOT NULL,
+    RowName              TEXT    NOT NULL,
+    SourceEventSequence  INTEGER,
+    PRIMARY KEY (MatchId, BuffId),
+    FOREIGN KEY (MatchId, ParticipantId, SpawnNumber)
+        REFERENCES spawn (MatchId, ParticipantId, SpawnNumber) DEFERRABLE INITIALLY DEFERRED,
+    FOREIGN KEY (SettingsVersion, SourceTable, RowName)
+        REFERENCES balance_settings (SettingsVersion, SourceTable, RowName) DEFERRABLE INITIALLY DEFERRED,
+    FOREIGN KEY (MatchId, SourceEventSequence) REFERENCES event (MatchId, EventSequence) DEFERRABLE INITIALLY DEFERRED
+))RAWSQL"),
+	TEXT(R"RAWSQL(CREATE TABLE damage_buff (
+    MatchId              TEXT    NOT NULL,
+    DamageEventSequence  INTEGER NOT NULL,
+    BuffId               INTEGER NOT NULL,
+    BuffEventSequence    INTEGER NOT NULL,
+    Role                 TEXT    NOT NULL,
+    PRIMARY KEY (MatchId, DamageEventSequence, BuffId, Role),
+    FOREIGN KEY (MatchId, DamageEventSequence) REFERENCES damage (MatchId, EventSequence) DEFERRABLE INITIALLY DEFERRED,
+    FOREIGN KEY (MatchId, BuffId) REFERENCES buff_instance (MatchId, BuffId) DEFERRABLE INITIALLY DEFERRED,
+    FOREIGN KEY (MatchId, BuffEventSequence) REFERENCES buff (MatchId, EventSequence) DEFERRABLE INITIALLY DEFERRED,
+    CHECK (Role IN ('Attacker','Victim'))
+))RAWSQL"),
+	TEXT(R"RAWSQL(CREATE TABLE observation_config (
+    MatchId               TEXT    NOT NULL,
+    ObservationVersion    INTEGER NOT NULL,
+    SampleIntervalSeconds REAL,
+    ExposureRule          TEXT    NOT NULL,
+    PRIMARY KEY (MatchId),
+    FOREIGN KEY (MatchId) REFERENCES match (MatchId) DEFERRABLE INITIALLY DEFERRED
+))RAWSQL"),
+	TEXT(R"RAWSQL(CREATE TABLE observation_sample (
+    MatchId                TEXT    NOT NULL,
+    ParticipantId          INTEGER NOT NULL,
+    SpawnNumber            INTEGER NOT NULL,
+    ElapsedSeconds         REAL    NOT NULL,
+    SampleIntervalSeconds  REAL    NOT NULL,
+    ViewYaw                REAL,
+    ViewPitch              REAL,
+    AimX                   REAL,
+    AimY                   REAL,
+    AimZ                   REAL,
+    SpeedXY                REAL,
+    VelocityZ              REAL,
+    bGrounded              INTEGER,
+    bCrouched              INTEGER,
+    EquippedWeaponId       TEXT,
+    ObservedParticipantId  INTEGER,
+    ObservedSpawnNumber    INTEGER,
+    ObservedDistance       REAL,
+    ObservedHeightDelta    REAL,
+    ObservedRelX           REAL,
+    ObservedRelY           REAL,
+    ObservedRelZ           REAL,
+    ObservedVelX           REAL,
+    ObservedVelY           REAL,
+    ObservedVelZ           REAL,
+    RelForwardSpeed        REAL,
+    RelLateralSpeed        REAL,
+    PRIMARY KEY (MatchId, ParticipantId, SpawnNumber, ElapsedSeconds),
+    FOREIGN KEY (MatchId, ParticipantId, SpawnNumber)
+        REFERENCES spawn (MatchId, ParticipantId, SpawnNumber) DEFERRABLE INITIALLY DEFERRED,
+    FOREIGN KEY (MatchId, ObservedParticipantId, ObservedSpawnNumber)
+        REFERENCES spawn (MatchId, ParticipantId, SpawnNumber) DEFERRABLE INITIALLY DEFERRED
+))RAWSQL"),
+	TEXT(R"RAWSQL(CREATE TABLE exposure_change (
+    MatchId                TEXT    NOT NULL,
+    EventSequence          INTEGER NOT NULL,
+    ParticipantId          INTEGER NOT NULL,
+    SpawnNumber            INTEGER NOT NULL,
+    ObservedParticipantId  INTEGER NOT NULL,
+    ObservedSpawnNumber    INTEGER NOT NULL,
+    bExposed               INTEGER NOT NULL,
+    bOccluded              INTEGER,
+    Distance               REAL,
+    HeightDelta            REAL,
+    PRIMARY KEY (MatchId, EventSequence),
+    FOREIGN KEY (MatchId, EventSequence) REFERENCES event (MatchId, EventSequence) DEFERRABLE INITIALLY DEFERRED,
+    FOREIGN KEY (MatchId, ParticipantId, SpawnNumber)
+        REFERENCES spawn (MatchId, ParticipantId, SpawnNumber) DEFERRABLE INITIALLY DEFERRED,
+    FOREIGN KEY (MatchId, ObservedParticipantId, ObservedSpawnNumber)
+        REFERENCES spawn (MatchId, ParticipantId, SpawnNumber) DEFERRABLE INITIALLY DEFERRED,
+    CHECK (bExposed IN (0,1))
+))RAWSQL"),
+	TEXT(R"RAWSQL(CREATE TABLE attack_input (
+    MatchId           TEXT    NOT NULL,
+    EventSequence     INTEGER NOT NULL,
+    ParticipantId     INTEGER NOT NULL,
+    SpawnNumber       INTEGER NOT NULL,
+    InputState        TEXT    NOT NULL,
+    EquippedWeaponId  TEXT,
+    PRIMARY KEY (MatchId, EventSequence),
+    FOREIGN KEY (MatchId, EventSequence) REFERENCES event (MatchId, EventSequence) DEFERRABLE INITIALLY DEFERRED,
+    FOREIGN KEY (MatchId, ParticipantId, SpawnNumber)
+        REFERENCES spawn (MatchId, ParticipantId, SpawnNumber) DEFERRABLE INITIALLY DEFERRED,
+    CHECK (InputState IN ('Start','End'))
+))RAWSQL"),
+	TEXT(R"RAWSQL(CREATE TABLE fire_availability (
+    MatchId           TEXT    NOT NULL,
+    EventSequence     INTEGER NOT NULL,
+    ParticipantId     INTEGER NOT NULL,
+    SpawnNumber       INTEGER NOT NULL,
+    EquippedWeaponId  TEXT,
+    bCanFire          INTEGER NOT NULL,
+    BlockReason       TEXT,
+    PRIMARY KEY (MatchId, EventSequence),
+    FOREIGN KEY (MatchId, EventSequence) REFERENCES event (MatchId, EventSequence) DEFERRABLE INITIALLY DEFERRED,
+    FOREIGN KEY (MatchId, ParticipantId, SpawnNumber)
+        REFERENCES spawn (MatchId, ParticipantId, SpawnNumber) DEFERRABLE INITIALLY DEFERRED,
+    CHECK (bCanFire IN (0,1)),
+    CHECK ((bCanFire=1) = (BlockReason IS NULL))
+))RAWSQL"),
+	TEXT(R"RAWSQL(CREATE TABLE jump_observation (
+    MatchId        TEXT    NOT NULL,
+    EventSequence  INTEGER NOT NULL,
+    ParticipantId  INTEGER NOT NULL,
+    SpawnNumber    INTEGER NOT NULL,
+    JumpKind       TEXT    NOT NULL,
+    bGrounded      INTEGER,
+    bCanJump       INTEGER,
+    ForcedCause    TEXT,
+    PRIMARY KEY (MatchId, EventSequence),
+    FOREIGN KEY (MatchId, EventSequence) REFERENCES event (MatchId, EventSequence) DEFERRABLE INITIALLY DEFERRED,
+    FOREIGN KEY (MatchId, ParticipantId, SpawnNumber)
+        REFERENCES spawn (MatchId, ParticipantId, SpawnNumber) DEFERRABLE INITIALLY DEFERRED,
+    CHECK (JumpKind IN ('InputPressed','Executed','Forced')),
+    CHECK ((JumpKind='Forced') = (ForcedCause IS NOT NULL))
+))RAWSQL"),
+	TEXT(R"RAWSQL(CREATE TABLE analysis_param (
+    Name   TEXT NOT NULL PRIMARY KEY,
+    Value  REAL NOT NULL
+))RAWSQL"),
 	TEXT(R"RAWSQL(CREATE TRIGGER bot_settings_no_update BEFORE UPDATE ON bot_settings
 WHEN NEW."BotSettingsHash" IS NOT OLD."BotSettingsHash" OR NEW."Attack_Skill" IS NOT OLD."Attack_Skill" OR NEW."Aim_Skill" IS NOT OLD."Aim_Skill" OR NEW."Aim_Accuracy" IS NOT OLD."Aim_Accuracy" OR NEW."Fire_Throttle" IS NOT OLD."Fire_Throttle" OR NEW."View_Max_Change" IS NOT OLD."View_Max_Change" OR NEW."ReactionTime" IS NOT OLD."ReactionTime" OR NEW."Aggression" IS NOT OLD."Aggression" OR NEW."Aggression_Threshold" IS NOT OLD."Aggression_Threshold" OR NEW."Jumper" IS NOT OLD."Jumper"
 BEGIN SELECT RAISE(ABORT,'bot_settings snapshots are immutable'); END)RAWSQL"),
@@ -255,6 +433,14 @@ BEGIN SELECT RAISE(ABORT,'balance_settings snapshots are immutable'); END)RAWSQL
 WHEN EXISTS (SELECT 1 FROM balance_settings b WHERE b.SettingsVersion=NEW.SettingsVersion
  AND b.SourceTable=NEW.SourceTable AND b.RowName=NEW.RowName AND b."Values" IS NOT NEW."Values")
 BEGIN SELECT RAISE(ABORT,'settings version already has different applied values'); END)RAWSQL"),
+	TEXT(R"RAWSQL(CREATE TRIGGER participant_settings_no_update BEFORE UPDATE ON participant_settings
+WHEN NEW.MatchId IS NOT OLD.MatchId OR NEW.ParticipantId IS NOT OLD.ParticipantId OR NEW.SourceTable IS NOT OLD.SourceTable
+  OR NEW.RowName IS NOT OLD.RowName OR NEW."Values" IS NOT OLD."Values"
+BEGIN SELECT RAISE(ABORT,'participant_settings snapshots are immutable'); END)RAWSQL"),
+	TEXT(R"RAWSQL(CREATE TRIGGER participant_settings_no_replace BEFORE INSERT ON participant_settings
+WHEN EXISTS (SELECT 1 FROM participant_settings b WHERE b.MatchId=NEW.MatchId AND b.ParticipantId=NEW.ParticipantId
+ AND b.SourceTable=NEW.SourceTable AND b.RowName=NEW.RowName AND b."Values" IS NOT NEW."Values")
+BEGIN SELECT RAISE(ABORT,'participant settings already have different applied values'); END)RAWSQL"),
 	TEXT(R"RAWSQL(CREATE INDEX ix_event_type        ON event (EventType))RAWSQL"),
 	TEXT(R"RAWSQL(CREATE INDEX ix_fire_shooter      ON fire (MatchId, ShooterParticipantId, WeaponId))RAWSQL"),
 	TEXT(R"RAWSQL(CREATE INDEX ix_damage_attack     ON damage (MatchId, AttackId))RAWSQL"),
@@ -267,19 +453,15 @@ BEGIN SELECT RAISE(ABORT,'settings version already has different applied values'
 	TEXT(R"RAWSQL(CREATE INDEX ix_participant_character ON participant (CharacterId,DifficultyId,BotSettingsHash,MatchId))RAWSQL"),
 	TEXT(R"RAWSQL(CREATE INDEX ix_damage_attacker ON damage (MatchId,AttackerParticipantId,AttackerSpawnNumber))RAWSQL"),
 	TEXT(R"RAWSQL(CREATE INDEX ix_death_victim ON death (MatchId,VictimParticipantId,VictimSpawnNumber))RAWSQL"),
-	TEXT(R"RAWSQL(CREATE VIEW v_event_details AS
-SELECT MatchId,EventSequence,'MatchStarted' AS ExpectedEventType FROM match
-UNION ALL SELECT MatchId,EventSequence,'MatchEnded' FROM match_end
-UNION ALL SELECT MatchId,EventSequence,'Spawned' FROM spawn
-UNION ALL SELECT MatchId,EventSequence,'SpawnEnded' FROM spawn_end
-UNION ALL SELECT MatchId,EventSequence,'WeaponFired' FROM fire
-UNION ALL SELECT MatchId,EventSequence,'DamageApplied' FROM damage
-UNION ALL SELECT MatchId,EventSequence,'Died' FROM death
-UNION ALL SELECT MatchId,EventSequence,'WeaponEquipped' FROM weapon_equip
-UNION ALL SELECT MatchId,EventSequence,'ItemSpawned' FROM item_spawn
-UNION ALL SELECT MatchId,EventSequence,'ItemRemoved' FROM item_remove
-UNION ALL SELECT MatchId,EventSequence,'ItemPickedUp' FROM pickup
-UNION ALL SELECT MatchId,EventSequence,'BuffChanged' FROM buff)RAWSQL"),
+	TEXT(R"RAWSQL(CREATE INDEX ix_ammo_change_life ON ammo_change (MatchId, ParticipantId, SpawnNumber, WeaponId))RAWSQL"),
+	TEXT(R"RAWSQL(CREATE INDEX ix_ammo_change_cause ON ammo_change (MatchId, ChangeReason))RAWSQL"),
+	TEXT(R"RAWSQL(CREATE INDEX ix_damage_buff_buff ON damage_buff (MatchId, BuffId))RAWSQL"),
+	TEXT(R"RAWSQL(CREATE INDEX ix_buff_id ON buff (MatchId, BuffId))RAWSQL"),
+	TEXT(R"RAWSQL(CREATE INDEX ix_exposure_life ON exposure_change (MatchId, ParticipantId, SpawnNumber))RAWSQL"),
+	TEXT(R"RAWSQL(CREATE INDEX ix_attack_input_life ON attack_input (MatchId, ParticipantId, SpawnNumber))RAWSQL"),
+	TEXT(R"RAWSQL(CREATE INDEX ix_fire_availability_life ON fire_availability (MatchId, ParticipantId, SpawnNumber))RAWSQL"),
+	TEXT(R"RAWSQL(CREATE INDEX ix_jump_life ON jump_observation (MatchId, ParticipantId, SpawnNumber))RAWSQL"),
+	TEXT(R"RAWSQL(CREATE INDEX ix_observation_sample_time ON observation_sample (MatchId, ParticipantId, ElapsedSeconds))RAWSQL"),
 	TEXT(R"RAWSQL(CREATE VIEW v_equip_span AS
 WITH points AS (
  SELECT s.MatchId,s.ParticipantId,s.SpawnNumber,e.ElapsedSeconds AS StartSeconds,
@@ -319,64 +501,6 @@ LEFT JOIN damage d ON d.MatchId=dt.MatchId AND d.EventSequence=dt.KillerDamageEv
 LEFT JOIN fire f ON f.MatchId=d.MatchId AND f.AttackId=d.AttackId
  AND f.ShooterParticipantId=dt.KillerParticipantId
 WHERE dt.KillerParticipantId IS NOT NULL)RAWSQL"),
-	TEXT(R"RAWSQL(CREATE VIEW v_record_issues AS
-SELECT m.MatchId,'MISSING_MATCH_END' AS Code,'INFO' AS Severity,NULL AS EventSequence,'경기 종료 기록 없음' AS Detail
-FROM match m WHERE NOT EXISTS(SELECT 1 FROM match_end me WHERE me.MatchId=m.MatchId)
-UNION ALL
-SELECT MatchId,'EVENT_SEQUENCE_GAP','ERROR',NULL,'이벤트 순서 누락'
-FROM event GROUP BY MatchId HAVING COUNT(*)<>MAX(EventSequence)
-UNION ALL
-SELECT e.MatchId,'EVENT_DETAIL_COUNT','ERROR',e.EventSequence,'공통 이벤트의 상세 기록은 하나여야 함'
-FROM event e LEFT JOIN v_event_details d USING(MatchId,EventSequence)
-GROUP BY e.MatchId,e.EventSequence HAVING COUNT(d.EventSequence)<>1
-UNION ALL
-SELECT e.MatchId,'EVENT_TYPE_MISMATCH','ERROR',e.EventSequence,'이벤트 종류와 상세 테이블 불일치'
-FROM event e JOIN v_event_details d USING(MatchId,EventSequence) WHERE e.EventType<>d.ExpectedEventType
-UNION ALL
-SELECT d.MatchId,'WEAPON_ATTACK_REFERENCE','ERROR',d.EventSequence,'무기 피해의 발사, 공격자 또는 원래 스폰 참조 불일치'
-FROM damage d LEFT JOIN fire f ON f.MatchId=d.MatchId AND f.AttackId=d.AttackId
-WHERE d.DamageSource='Weapon' AND (f.AttackId IS NULL OR d.AttackerParticipantId IS NOT f.ShooterParticipantId OR d.AttackerSpawnNumber IS NOT f.ShooterSpawnNumber)
-UNION ALL
-SELECT d.MatchId,'SKILL_SOURCE_UNDEFINED','ERROR',d.EventSequence,'스킬 시전 원본 연결은 지시서의 확정 필요 사항'
-FROM damage d WHERE d.DamageSource='Skill'
-UNION ALL
-SELECT s.MatchId,'MISSING_SPAWN_END','ERROR',s.EventSequence,'종료 경기의 생존 구간 종료 누락'
-FROM spawn s JOIN match_end me USING(MatchId)
-LEFT JOIN spawn_end se USING(MatchId,ParticipantId,SpawnNumber) WHERE se.EventSequence IS NULL
-UNION ALL
-SELECT s.MatchId,'MISSING_INITIAL_WEAPON','ERROR',s.EventSequence,'초기 장착 무기가 초기 보유 무기에서 누락'
-FROM spawn s WHERE NOT EXISTS(SELECT 1 FROM spawn_weapon sw WHERE sw.MatchId=s.MatchId AND sw.ParticipantId=s.ParticipantId AND sw.SpawnNumber=s.SpawnNumber AND sw.WeaponId=s.InitialEquippedWeaponId)
-UNION ALL
-SELECT w.MatchId,'EQUIP_OUTSIDE_SPAWN','ERROR',w.EventSequence,'장착 변경이 해당 생존 구간 밖에 있음'
-FROM weapon_equip w JOIN spawn s USING(MatchId,ParticipantId,SpawnNumber)
-LEFT JOIN spawn_end se USING(MatchId,ParticipantId,SpawnNumber)
-WHERE w.EventSequence<s.EventSequence OR (se.EventSequence IS NOT NULL AND w.EventSequence>se.EventSequence)
-UNION ALL
-SELECT dt.MatchId,'KILLER_DAMAGE_MISMATCH','ERROR',dt.EventSequence,'처치 인정 피해의 공격자 또는 피해자 스폰 불일치'
-FROM death dt JOIN damage d ON d.MatchId=dt.MatchId AND d.EventSequence=dt.KillerDamageEventSequence
-WHERE d.AttackerParticipantId IS NOT dt.KillerParticipantId OR d.VictimParticipantId<>dt.VictimParticipantId OR d.VictimSpawnNumber<>dt.VictimSpawnNumber
-UNION ALL
-SELECT p.MatchId,'MISSING_PARTICIPANT_RESULT','ERROR',NULL,'종료 경기의 참가자 최종 결과 누락'
-FROM participant p JOIN match_end me USING(MatchId)
-LEFT JOIN participant_result r USING(MatchId,ParticipantId) WHERE r.ParticipantId IS NULL
-UNION ALL
-SELECT m.MatchId,'MISSING_SETTINGS_ARCHIVE','ERROR',m.EventSequence,'설정 버전의 실제 수치 보존 자료 누락'
-FROM match m WHERE NOT EXISTS(SELECT 1 FROM balance_settings b WHERE b.SettingsVersion=m.SettingsVersion)
-UNION ALL
-SELECT p.MatchId,'MISSING_BOT_SETTINGS','ERROR',NULL,'봇의 실제 성격값 보존 자료 누락'
-FROM participant p LEFT JOIN bot_settings b USING(BotSettingsHash) WHERE p.bIsBot=1 AND b.BotSettingsHash IS NULL
-UNION ALL
-SELECT MatchId,'EVENT_TIME_REVERSED','ERROR',EventSequence,'발생 순서와 발생 시각의 선후 불일치'
-FROM (SELECT MatchId,EventSequence,ElapsedSeconds,LAG(ElapsedSeconds) OVER(PARTITION BY MatchId ORDER BY EventSequence) AS PreviousSeconds FROM event)
-WHERE ElapsedSeconds<PreviousSeconds
-UNION ALL
-SELECT r.MatchId,'FINAL_RESULT_DIFFERENCE','WARNING',NULL,'최종 결과와 이벤트 수 차이: 게임 점수 규칙 또는 누락 확인 필요'
-FROM participant_result r
-WHERE r.FinalKills<>(SELECT COUNT(*) FROM death dt WHERE dt.MatchId=r.MatchId AND dt.KillerParticipantId=r.ParticipantId)
- OR r.FinalDeaths<>(SELECT COUNT(*) FROM death dt WHERE dt.MatchId=r.MatchId AND dt.VictimParticipantId=r.ParticipantId)
-UNION ALL
-SELECT MatchId,'UNKNOWN_KILL_WEAPON','WARNING',EventSequence,'인정된 처치의 무기를 확인할 수 없음: WeaponId NULL로 구분'
-FROM v_kill_attribution WHERE WeaponId IS NULL)RAWSQL"),
 	TEXT(R"RAWSQL(CREATE VIEW v_valid_matches AS
 SELECT m.MatchId,me.MatchEndReason FROM match m JOIN match_end me USING(MatchId)
 WHERE NOT EXISTS(SELECT 1 FROM v_record_issues i WHERE i.MatchId=m.MatchId AND i.Severity='ERROR'))RAWSQL"),
@@ -515,4 +639,288 @@ SELECT c."GameBuildVersion",c."SettingsVersion",c."MapId",c."TimeLimitSeconds",c
 FROM relations r JOIN v_participant_context c ON c.MatchId=r.MatchId AND c.ParticipantId=r.OwnId
 JOIN v_participant_context o ON o.MatchId=r.MatchId AND o.ParticipantId=r.OpponentId
 GROUP BY c."GameBuildVersion",c."SettingsVersion",c."MapId",c."TimeLimitSeconds",c."KillTarget",c."MatchEndReason",c."RosterSignature",c."CharacterId",c."bIsBot",c."DifficultyId",c."CharacteristicId",c."BotSettingsHash",o."CharacterId",o."bIsBot",o."DifficultyId",o."CharacteristicId",o."BotSettingsHash")RAWSQL"),
+	TEXT(R"RAWSQL(CREATE VIEW v_event_details AS
+SELECT MatchId,EventSequence,'MatchStarted' AS ExpectedEventType FROM match
+UNION ALL SELECT MatchId,EventSequence,'MatchEnded' FROM match_end
+UNION ALL SELECT MatchId,EventSequence,'Spawned' FROM spawn
+UNION ALL SELECT MatchId,EventSequence,'SpawnEnded' FROM spawn_end
+UNION ALL SELECT MatchId,EventSequence,'WeaponFired' FROM fire
+UNION ALL SELECT MatchId,EventSequence,'DamageApplied' FROM damage
+UNION ALL SELECT MatchId,EventSequence,'Died' FROM death
+UNION ALL SELECT MatchId,EventSequence,'WeaponEquipped' FROM weapon_equip
+UNION ALL SELECT MatchId,EventSequence,'ItemSpawned' FROM item_spawn
+UNION ALL SELECT MatchId,EventSequence,'ItemRemoved' FROM item_remove
+UNION ALL SELECT MatchId,EventSequence,'ItemPickedUp' FROM pickup
+UNION ALL SELECT MatchId,EventSequence,'BuffChanged' FROM buff UNION ALL SELECT MatchId,EventSequence,'AmmoChanged' FROM ammo_change UNION ALL SELECT MatchId,EventSequence,'ExposureChanged' FROM exposure_change UNION ALL SELECT MatchId,EventSequence,'AttackInput' FROM attack_input UNION ALL SELECT MatchId,EventSequence,'FireAvailabilityChanged' FROM fire_availability UNION ALL SELECT MatchId,EventSequence,'JumpObserved' FROM jump_observation)RAWSQL"),
+	TEXT(R"RAWSQL(CREATE VIEW v_ammo_history AS
+WITH points AS (
+ SELECT sw.MatchId,sw.ParticipantId,sw.SpawnNumber,sw.WeaponId,e.EventSequence AS Seq,e.ElapsedSeconds AS Seconds,
+  'Initial' AS ChangeReason,NULL AS CauseEventSequence,sw.bUnlimitedAmmo,NULL AS AmmoBefore,sw.InitialAmmo AS AmmoAfter
+ FROM spawn_weapon sw JOIN spawn s USING(MatchId,ParticipantId,SpawnNumber)
+ JOIN event e ON e.MatchId=s.MatchId AND e.EventSequence=s.EventSequence
+ UNION ALL
+ SELECT a.MatchId,a.ParticipantId,a.SpawnNumber,a.WeaponId,a.EventSequence,e.ElapsedSeconds,
+  a.ChangeReason,e.CauseEventSequence,a.bUnlimitedAmmo,a.AmmoBefore,a.AmmoAfter
+ FROM ammo_change a JOIN event e ON e.MatchId=a.MatchId AND e.EventSequence=a.EventSequence
+), chained AS (
+ SELECT *,LAG(Seq) OVER w AS PreviousSeq,LAG(AmmoAfter) OVER w AS PreviousAmmoAfter
+ FROM points WINDOW w AS (PARTITION BY MatchId,ParticipantId,SpawnNumber,WeaponId ORDER BY Seq)
+)
+SELECT MatchId,ParticipantId,SpawnNumber,WeaponId,Seq AS EventSequence,Seconds AS ElapsedSeconds,ChangeReason,
+ CauseEventSequence,bUnlimitedAmmo,AmmoBefore,AmmoAfter,PreviousAmmoAfter,
+ CASE WHEN ChangeReason<>'Initial' AND bUnlimitedAmmo=0 AND PreviousSeq IS NOT NULL
+       AND AmmoBefore IS NOT PreviousAmmoAfter THEN 1 ELSE 0 END AS bContinuityBreak
+FROM chained)RAWSQL"),
+	TEXT(R"RAWSQL(CREATE VIEW v_observation_gaps AS
+SELECT MatchId,ParticipantId,SpawnNumber,PrevSeconds,ElapsedSeconds AS NextSeconds,
+ ElapsedSeconds-PrevSeconds AS GapSeconds,ConfiguredInterval AS SampleIntervalSeconds
+FROM (SELECT s.*,c.SampleIntervalSeconds AS ConfiguredInterval,
+       LAG(s.ElapsedSeconds) OVER(PARTITION BY s.MatchId,s.ParticipantId,s.SpawnNumber ORDER BY s.ElapsedSeconds) AS PrevSeconds
+      FROM observation_sample s JOIN observation_config c ON c.MatchId=s.MatchId)
+WHERE PrevSeconds IS NOT NULL
+ AND ElapsedSeconds-PrevSeconds > ConfiguredInterval*(SELECT Value FROM analysis_param WHERE Name='GapToleranceFactor'))RAWSQL"),
+	TEXT(R"RAWSQL(CREATE VIEW v_extension_issues AS
+SELECT f.MatchId,'AMMO_FIRE_LINK_MISSING' AS Code,'ERROR' AS Severity,f.EventSequence,'발사에 연결된 탄약 처리 기록 없음' AS Detail
+FROM fire f JOIN match m USING(MatchId)
+WHERE m.CollectionVersion=1 AND NOT EXISTS(
+ SELECT 1 FROM ammo_change a JOIN event e ON e.MatchId=a.MatchId AND e.EventSequence=a.EventSequence
+ WHERE a.MatchId=f.MatchId AND a.ChangeReason='Fire' AND e.CauseEventSequence=f.EventSequence)
+UNION ALL
+SELECT a.MatchId,'AMMO_CAUSE_MISSING','ERROR',a.EventSequence,'발사 또는 획득 원인의 탄약 처리에 원인 이벤트 없음'
+FROM ammo_change a JOIN match m USING(MatchId) JOIN event e ON e.MatchId=a.MatchId AND e.EventSequence=a.EventSequence
+WHERE m.CollectionVersion=1 AND a.ChangeReason IN ('Fire','Pickup') AND e.CauseEventSequence IS NULL
+UNION ALL
+SELECT a.MatchId,'AMMO_VALUE_MISSING','ERROR',a.EventSequence,'유한 탄약 처리의 전후 수량 누락'
+FROM ammo_change a JOIN match m USING(MatchId)
+WHERE m.CollectionVersion=1 AND a.bUnlimitedAmmo=0 AND (a.AmmoBefore IS NULL OR a.AmmoAfter IS NULL)
+UNION ALL
+SELECT h.MatchId,'AMMO_CONTINUITY_BREAK','WARNING',h.EventSequence,'이전 변경 후 수량과 다음 변경 전 수량이 다름: 중간 탄약 변경 누락 확인'
+FROM v_ammo_history h JOIN match m USING(MatchId)
+WHERE m.CollectionVersion=1 AND h.bContinuityBreak=1
+UNION ALL
+SELECT sw.MatchId,'AMMO_INITIAL_MISSING','ERROR',s.EventSequence,'초기 보유 무기의 초기 탄약 또는 무한 탄약 여부 누락'
+FROM spawn_weapon sw JOIN match m USING(MatchId)
+JOIN spawn s ON s.MatchId=sw.MatchId AND s.ParticipantId=sw.ParticipantId AND s.SpawnNumber=sw.SpawnNumber
+WHERE m.CollectionVersion=1 AND (sw.bUnlimitedAmmo IS NULL OR (sw.bUnlimitedAmmo=0 AND sw.InitialAmmo IS NULL))
+UNION ALL
+SELECT f.MatchId,'FIRE_CONTEXT_MISSING','ERROR',f.EventSequence,'발사 조건 행 없음'
+FROM fire f JOIN match m USING(MatchId)
+WHERE m.CollectionVersion=1 AND NOT EXISTS(SELECT 1 FROM fire_context c WHERE c.MatchId=f.MatchId AND c.EventSequence=f.EventSequence)
+UNION ALL
+SELECT p.MatchId,'PARTICIPANT_SETTINGS_MISSING','ERROR',NULL,'참가자별 적용 설정 없음'
+FROM participant p JOIN match m USING(MatchId)
+WHERE m.CollectionVersion=1 AND NOT EXISTS(SELECT 1 FROM participant_settings s WHERE s.MatchId=p.MatchId AND s.ParticipantId=p.ParticipantId)
+UNION ALL
+SELECT b.MatchId,'BUFF_INSTANCE_MISSING','ERROR',b.EventSequence,'버프 변경의 버프 적용 ID 또는 적용 효과 누락'
+FROM buff b JOIN match m USING(MatchId)
+WHERE m.CollectionVersion=1 AND (b.BuffId IS NULL OR NOT EXISTS(SELECT 1 FROM buff_instance i WHERE i.MatchId=b.MatchId AND i.BuffId=b.BuffId))
+UNION ALL
+SELECT i.MatchId,'BUFF_SOURCE_MISSING','WARNING',NULL,'버프 적용 ID '||i.BuffId||'의 원인 이벤트 없음'
+FROM buff_instance i JOIN match m USING(MatchId)
+WHERE m.CollectionVersion=1 AND i.SourceEventSequence IS NULL
+UNION ALL
+SELECT d.MatchId,'DAMAGE_BUFF_UNRECORDED','ERROR',d.EventSequence,'피해의 버프 연결 수집 완료 여부 없음'
+FROM damage d JOIN match m USING(MatchId)
+WHERE m.CollectionVersion=1 AND d.bBuffsRecorded IS NULL
+UNION ALL
+SELECT d.MatchId,'DAMAGE_BUFF_LINK_MISSING','ERROR',d.EventSequence,'버프 태그가 있는 피해에 효과 연결 없음'
+FROM damage d JOIN match m USING(MatchId)
+WHERE m.CollectionVersion=1 AND d.bBuffsRecorded=1 AND (
+ (d.AttackerBuffTag IS NOT NULL AND NOT EXISTS(SELECT 1 FROM damage_buff x WHERE x.MatchId=d.MatchId AND x.DamageEventSequence=d.EventSequence AND x.Role='Attacker'))
+ OR (d.VictimBuffTag IS NOT NULL AND NOT EXISTS(SELECT 1 FROM damage_buff x WHERE x.MatchId=d.MatchId AND x.DamageEventSequence=d.EventSequence AND x.Role='Victim')))
+UNION ALL
+SELECT g.MatchId,'OBSERVATION_GAP','WARNING',NULL,'행동 관측 누락 구간 '||ROUND(g.PrevSeconds,2)||'초~'||ROUND(g.NextSeconds,2)||'초: 무입력으로 해석하지 않음'
+FROM v_observation_gaps g JOIN match m USING(MatchId)
+WHERE m.CollectionVersion=1)RAWSQL"),
+	TEXT(R"RAWSQL(CREATE VIEW v_behavior_timeline AS
+SELECT x.MatchId,x.ParticipantId,x.SpawnNumber,e.ElapsedSeconds,x.EventSequence,'ExposureChanged' AS Kind,
+ json_object('Observed',x.ObservedParticipantId,'bExposed',x.bExposed,'bOccluded',x.bOccluded,'Distance',x.Distance,'HeightDelta',x.HeightDelta) AS Detail
+FROM exposure_change x JOIN event e USING(MatchId,EventSequence)
+UNION ALL
+SELECT x.MatchId,x.ParticipantId,x.SpawnNumber,e.ElapsedSeconds,x.EventSequence,'AttackInput',
+ json_object('State',x.InputState,'Weapon',x.EquippedWeaponId)
+FROM attack_input x JOIN event e USING(MatchId,EventSequence)
+UNION ALL
+SELECT x.MatchId,x.ParticipantId,x.SpawnNumber,e.ElapsedSeconds,x.EventSequence,'FireAvailability',
+ json_object('bCanFire',x.bCanFire,'BlockReason',x.BlockReason,'Weapon',x.EquippedWeaponId)
+FROM fire_availability x JOIN event e USING(MatchId,EventSequence)
+UNION ALL
+SELECT x.MatchId,x.ParticipantId,x.SpawnNumber,e.ElapsedSeconds,x.EventSequence,'Jump',
+ json_object('Kind',x.JumpKind,'bGrounded',x.bGrounded,'bCanJump',x.bCanJump,'ForcedCause',x.ForcedCause)
+FROM jump_observation x JOIN event e USING(MatchId,EventSequence)
+UNION ALL
+SELECT x.MatchId,x.ShooterParticipantId,x.ShooterSpawnNumber,e.ElapsedSeconds,x.EventSequence,'Fire',
+ json_object('Weapon',x.WeaponId,'AttackId',x.AttackId,'Target',c.TargetParticipantId,'TargetDistance',c.TargetDistance)
+FROM fire x JOIN event e USING(MatchId,EventSequence)
+LEFT JOIN fire_context c USING(MatchId,EventSequence)
+UNION ALL
+SELECT x.MatchId,x.VictimParticipantId,x.VictimSpawnNumber,e.ElapsedSeconds,x.EventSequence,'DamageTaken',
+ json_object('Attacker',x.AttackerParticipantId,'InputDamage',x.InputDamage,'HealthAfter',x.HealthAfter,'ArmorAfter',x.ArmorAfter)
+FROM damage x JOIN event e USING(MatchId,EventSequence))RAWSQL"),
+	TEXT(R"RAWSQL(CREATE VIEW v_exposure_response AS
+WITH exposures AS (
+ SELECT x.MatchId,x.EventSequence,x.ParticipantId,x.SpawnNumber,x.ObservedParticipantId,x.ObservedSpawnNumber,
+  e.ElapsedSeconds AS StartSeconds,x.Distance,x.HeightDelta,x.bOccluded,
+  (SELECT MIN(e2.ElapsedSeconds) FROM exposure_change x2 JOIN event e2 ON e2.MatchId=x2.MatchId AND e2.EventSequence=x2.EventSequence
+   WHERE x2.MatchId=x.MatchId AND x2.ParticipantId=x.ParticipantId AND x2.SpawnNumber=x.SpawnNumber
+    AND x2.ObservedParticipantId=x.ObservedParticipantId AND x2.ObservedSpawnNumber=x.ObservedSpawnNumber
+    AND x2.bExposed=0 AND e2.ElapsedSeconds>=e.ElapsedSeconds AND x2.EventSequence>x.EventSequence) AS EndSeconds
+ FROM exposure_change x JOIN event e USING(MatchId,EventSequence) WHERE x.bExposed=1
+)
+SELECT ex.MatchId,ex.EventSequence AS ExposureEventSequence,ex.ParticipantId,ex.SpawnNumber,ex.ObservedParticipantId,
+ ex.StartSeconds,ex.EndSeconds,ex.Distance,ex.HeightDelta,ex.bOccluded,
+ (SELECT SUM(1) FROM attack_input a JOIN event ea ON ea.MatchId=a.MatchId AND ea.EventSequence=a.EventSequence
+   WHERE a.MatchId=ex.MatchId AND a.ParticipantId=ex.ParticipantId AND a.SpawnNumber=ex.SpawnNumber AND a.InputState='Start'
+    AND ea.ElapsedSeconds>=ex.StartSeconds AND (ex.EndSeconds IS NULL OR ea.ElapsedSeconds<=ex.EndSeconds)) AS AttackStartsWhileExposed,
+ (SELECT SUM(1) FROM fire f JOIN event ef ON ef.MatchId=f.MatchId AND ef.EventSequence=f.EventSequence
+   WHERE f.MatchId=ex.MatchId AND f.ShooterParticipantId=ex.ParticipantId AND f.ShooterSpawnNumber=ex.SpawnNumber
+    AND ef.ElapsedSeconds>=ex.StartSeconds AND (ex.EndSeconds IS NULL OR ef.ElapsedSeconds<=ex.EndSeconds)) AS FiresWhileExposed,
+ (SELECT d.HealthAfter FROM damage d JOIN event ed ON ed.MatchId=d.MatchId AND ed.EventSequence=d.EventSequence
+   WHERE d.MatchId=ex.MatchId AND d.VictimParticipantId=ex.ParticipantId AND d.VictimSpawnNumber=ex.SpawnNumber AND ed.ElapsedSeconds<=ex.StartSeconds
+   ORDER BY ed.EventSequence DESC LIMIT 1) AS LastKnownHealth,
+ (SELECT d.ArmorAfter FROM damage d JOIN event ed ON ed.MatchId=d.MatchId AND ed.EventSequence=d.EventSequence
+   WHERE d.MatchId=ex.MatchId AND d.VictimParticipantId=ex.ParticipantId AND d.VictimSpawnNumber=ex.SpawnNumber AND ed.ElapsedSeconds<=ex.StartSeconds
+   ORDER BY ed.EventSequence DESC LIMIT 1) AS LastKnownArmor,
+ (SELECT q.WeaponId FROM v_equip_span q WHERE q.MatchId=ex.MatchId AND q.ParticipantId=ex.ParticipantId AND q.SpawnNumber=ex.SpawnNumber
+   AND q.StartSeconds<=ex.StartSeconds AND (q.EndSeconds IS NULL OR q.EndSeconds>ex.StartSeconds) LIMIT 1) AS EquippedWeaponId,
+ (SELECT h.AmmoAfter FROM v_ammo_history h
+   JOIN v_equip_span q ON q.MatchId=ex.MatchId AND q.ParticipantId=ex.ParticipantId AND q.SpawnNumber=ex.SpawnNumber
+    AND q.StartSeconds<=ex.StartSeconds AND (q.EndSeconds IS NULL OR q.EndSeconds>ex.StartSeconds)
+   WHERE h.MatchId=ex.MatchId AND h.ParticipantId=ex.ParticipantId AND h.SpawnNumber=ex.SpawnNumber AND h.WeaponId=q.WeaponId
+    AND h.ElapsedSeconds<=ex.StartSeconds ORDER BY h.EventSequence DESC LIMIT 1) AS AmmoAtExposure
+FROM exposures ex)RAWSQL"),
+	TEXT(R"RAWSQL(CREATE VIEW v_reaction_stimulus AS
+WITH stimuli AS (
+ SELECT MatchId,ParticipantId,SpawnNumber,EventSequence,'Exposure' AS StimulusKind FROM exposure_change WHERE bExposed=1
+ UNION ALL SELECT MatchId,VictimParticipantId,VictimSpawnNumber,EventSequence,'DamageTaken' FROM damage
+ WHERE AttackerParticipantId IS NOT NULL AND bSelfDamage=0
+)
+SELECT s.MatchId,s.ParticipantId,s.SpawnNumber,s.EventSequence AS StimulusEventSequence,s.StimulusKind,es.ElapsedSeconds AS StimulusSeconds,
+ (SELECT MIN(ea.ElapsedSeconds)-es.ElapsedSeconds FROM attack_input a JOIN event ea ON ea.MatchId=a.MatchId AND ea.EventSequence=a.EventSequence
+   WHERE a.MatchId=s.MatchId AND a.ParticipantId=s.ParticipantId AND a.SpawnNumber=s.SpawnNumber AND a.InputState='Start'
+    AND a.EventSequence>s.EventSequence) AS SecondsToAttackInput,
+ (SELECT MIN(ef.ElapsedSeconds)-es.ElapsedSeconds FROM fire f JOIN event ef ON ef.MatchId=f.MatchId AND ef.EventSequence=f.EventSequence
+   WHERE f.MatchId=s.MatchId AND f.ShooterParticipantId=s.ParticipantId AND f.ShooterSpawnNumber=s.SpawnNumber
+    AND f.EventSequence>s.EventSequence) AS SecondsToFire,
+ EXISTS(SELECT 1 FROM attack_input a JOIN event ea ON ea.MatchId=a.MatchId AND ea.EventSequence=a.EventSequence
+   WHERE a.MatchId=s.MatchId AND a.ParticipantId=s.ParticipantId AND a.SpawnNumber=s.SpawnNumber AND a.EventSequence<s.EventSequence
+    AND a.InputState='Start' AND NOT EXISTS(SELECT 1 FROM attack_input b WHERE b.MatchId=a.MatchId AND b.ParticipantId=a.ParticipantId
+     AND b.SpawnNumber=a.SpawnNumber AND b.InputState='End' AND b.EventSequence>a.EventSequence AND b.EventSequence<s.EventSequence)) AS bAttackAlreadyHeld
+FROM stimuli s JOIN event es ON es.MatchId=s.MatchId AND es.EventSequence=s.EventSequence)RAWSQL"),
+	TEXT(R"RAWSQL(CREATE VIEW weapon_distance_stats AS
+WITH shots AS (
+ SELECT f.MatchId,f.AttackId,f.ShooterParticipantId AS ParticipantId,f.WeaponId,c.TargetParticipantId,c.TargetDistance,
+  CASE WHEN c.TargetDistance IS NULL THEN NULL
+       ELSE CAST(c.TargetDistance/(SELECT Value FROM analysis_param WHERE Name='DistanceBandCm') AS INTEGER) END AS DistanceBand,
+  EXISTS(SELECT 1 FROM damage d WHERE d.MatchId=f.MatchId AND d.AttackId=f.AttackId AND d.DamageSource='Weapon'
+   AND d.bSelfDamage=0 AND d.VictimParticipantId<>f.ShooterParticipantId) AS bHit,
+  COALESCE((SELECT SUM(MAX(0,MAX(d.HealthBefore,0)-MAX(d.HealthAfter,0))+MAX(0,MAX(d.ArmorBefore,0)-MAX(d.ArmorAfter,0)))
+   FROM damage d WHERE d.MatchId=f.MatchId AND d.AttackId=f.AttackId AND d.DamageSource='Weapon' AND d.bSelfDamage=0),0) AS AppliedDamage
+ FROM fire f JOIN fire_context c ON c.MatchId=f.MatchId AND c.EventSequence=f.EventSequence
+)
+SELECT x."GameBuildVersion",x."SettingsVersion",x."MapId",x."TimeLimitSeconds",x."KillTarget",x."MatchEndReason",x."RosterSignature",x."CharacterId",x."bIsBot",x."DifficultyId",x."CharacteristicId",x."BotSettingsHash",
+ s.WeaponId,s.DistanceBand,
+ s.DistanceBand*(SELECT Value FROM analysis_param WHERE Name='DistanceBandCm') AS DistanceFromCm,
+ COUNT(*) AS FireCount,SUM(s.bHit) AS HitAttackCount,1.0*SUM(s.bHit)/COUNT(*) AS HitRate,SUM(s.AppliedDamage) AS AppliedDamage,
+ SUM(s.TargetParticipantId IS NOT NULL) AS TargetedFireCount
+FROM shots s JOIN v_participant_context x ON x.MatchId=s.MatchId AND x.ParticipantId=s.ParticipantId
+GROUP BY x."GameBuildVersion",x."SettingsVersion",x."MapId",x."TimeLimitSeconds",x."KillTarget",x."MatchEndReason",x."RosterSignature",x."CharacterId",x."bIsBot",x."DifficultyId",x."CharacteristicId",x."BotSettingsHash",s.WeaponId,s.DistanceBand)RAWSQL"),
+	TEXT(R"RAWSQL(CREATE VIEW weapon_ammo_stats AS
+WITH shots AS (
+ SELECT f.MatchId,f.AttackId,f.ShooterParticipantId AS ParticipantId,f.WeaponId,a.bUnlimitedAmmo,a.AmmoBefore,
+  CAST(json_extract(b."Values",'$.maxUsageCount') AS INTEGER) AS MaxAmmo,
+  EXISTS(SELECT 1 FROM damage d WHERE d.MatchId=f.MatchId AND d.AttackId=f.AttackId AND d.DamageSource='Weapon'
+   AND d.bSelfDamage=0 AND d.VictimParticipantId<>f.ShooterParticipantId) AS bHit
+ FROM fire f
+ JOIN event ef ON ef.MatchId=f.MatchId AND ef.CauseEventSequence=f.EventSequence AND ef.EventType='AmmoChanged'
+ JOIN ammo_change a ON a.MatchId=ef.MatchId AND a.EventSequence=ef.EventSequence AND a.ChangeReason='Fire'
+ JOIN match m ON m.MatchId=f.MatchId
+ LEFT JOIN balance_settings b ON b.SettingsVersion=m.SettingsVersion AND b.SourceTable='DataAsset:PDA_WeaponBase_C' AND b.RowName=f.WeaponId
+)
+SELECT x."GameBuildVersion",x."SettingsVersion",x."MapId",x."TimeLimitSeconds",x."KillTarget",x."MatchEndReason",x."RosterSignature",x."CharacterId",x."bIsBot",x."DifficultyId",x."CharacteristicId",x."BotSettingsHash",
+ s.WeaponId,s.bUnlimitedAmmo,
+ CASE WHEN s.bUnlimitedAmmo=1 OR s.MaxAmmo IS NULL OR s.MaxAmmo<=0 THEN NULL
+      WHEN s.AmmoBefore*4<=s.MaxAmmo THEN 'Q1_Low' WHEN s.AmmoBefore*2<=s.MaxAmmo THEN 'Q2'
+      WHEN s.AmmoBefore*4<=s.MaxAmmo*3 THEN 'Q3' ELSE 'Q4_High' END AS AmmoBand,
+ COUNT(*) AS FireCount,SUM(s.bHit) AS HitAttackCount,1.0*SUM(s.bHit)/COUNT(*) AS HitRate
+FROM shots s JOIN v_participant_context x ON x.MatchId=s.MatchId AND x.ParticipantId=s.ParticipantId
+GROUP BY x."GameBuildVersion",x."SettingsVersion",x."MapId",x."TimeLimitSeconds",x."KillTarget",x."MatchEndReason",x."RosterSignature",x."CharacterId",x."bIsBot",x."DifficultyId",x."CharacteristicId",x."BotSettingsHash",s.WeaponId,s.bUnlimitedAmmo,AmmoBand)RAWSQL"),
+	TEXT(R"RAWSQL(CREATE VIEW weapon_buff_stats AS
+WITH hits AS (
+ SELECT d.MatchId,d.EventSequence,f.ShooterParticipantId AS ParticipantId,f.WeaponId,d.InputDamage,
+  MAX(0,MAX(d.HealthBefore,0)-MAX(d.HealthAfter,0))+MAX(0,MAX(d.ArmorBefore,0)-MAX(d.ArmorAfter,0)) AS AppliedDamage,
+  d.bBuffsRecorded,bi.RowName AS AttackerBuffRow,m.SettingsVersion
+ FROM damage d JOIN fire f ON f.MatchId=d.MatchId AND f.AttackId=d.AttackId
+ JOIN match m ON m.MatchId=d.MatchId
+ LEFT JOIN damage_buff db ON db.MatchId=d.MatchId AND db.DamageEventSequence=d.EventSequence AND db.Role='Attacker'
+ LEFT JOIN buff_instance bi ON bi.MatchId=db.MatchId AND bi.BuffId=db.BuffId
+ WHERE d.DamageSource='Weapon' AND d.bSelfDamage=0 AND d.bBuffsRecorded=1
+)
+SELECT x."GameBuildVersion",x."SettingsVersion",x."MapId",x."TimeLimitSeconds",x."KillTarget",x."MatchEndReason",x."RosterSignature",x."CharacterId",x."bIsBot",x."DifficultyId",x."CharacteristicId",x."BotSettingsHash",
+ h.WeaponId,COALESCE(h.AttackerBuffRow,'None') AS AttackerBuffRow,
+ json_extract(b."Values",'$.modifierType') AS ModifierType,json_extract(b."Values",'$.statValue') AS StatValue,
+ COUNT(*) AS DamageEvents,SUM(h.InputDamage) AS InputDamage,SUM(h.AppliedDamage) AS AppliedDamage,1.0*SUM(h.AppliedDamage)/COUNT(*) AS AppliedDamagePerEvent
+FROM hits h JOIN v_participant_context x ON x.MatchId=h.MatchId AND x.ParticipantId=h.ParticipantId
+LEFT JOIN balance_settings b ON b.SettingsVersion=h.SettingsVersion AND b.SourceTable='DT_BuffTable' AND b.RowName=h.AttackerBuffRow
+GROUP BY x."GameBuildVersion",x."SettingsVersion",x."MapId",x."TimeLimitSeconds",x."KillTarget",x."MatchEndReason",x."RosterSignature",x."CharacterId",x."bIsBot",x."DifficultyId",x."CharacteristicId",x."BotSettingsHash",h.WeaponId,AttackerBuffRow)RAWSQL"),
+	TEXT(R"RAWSQL(CREATE VIEW v_record_issues AS
+SELECT m.MatchId,'MISSING_MATCH_END' AS Code,'INFO' AS Severity,NULL AS EventSequence,'경기 종료 기록 없음' AS Detail
+FROM match m WHERE NOT EXISTS(SELECT 1 FROM match_end me WHERE me.MatchId=m.MatchId)
+UNION ALL
+SELECT MatchId,'EVENT_SEQUENCE_GAP','ERROR',NULL,'이벤트 순서 누락'
+FROM event GROUP BY MatchId HAVING COUNT(*)<>MAX(EventSequence)
+UNION ALL
+SELECT e.MatchId,'EVENT_DETAIL_COUNT','ERROR',e.EventSequence,'공통 이벤트의 상세 기록은 하나여야 함'
+FROM event e LEFT JOIN v_event_details d USING(MatchId,EventSequence)
+GROUP BY e.MatchId,e.EventSequence HAVING COUNT(d.EventSequence)<>1
+UNION ALL
+SELECT e.MatchId,'EVENT_TYPE_MISMATCH','ERROR',e.EventSequence,'이벤트 종류와 상세 테이블 불일치'
+FROM event e JOIN v_event_details d USING(MatchId,EventSequence) WHERE e.EventType<>d.ExpectedEventType
+UNION ALL
+SELECT d.MatchId,'WEAPON_ATTACK_REFERENCE','ERROR',d.EventSequence,'무기 피해의 발사, 공격자 또는 원래 스폰 참조 불일치'
+FROM damage d LEFT JOIN fire f ON f.MatchId=d.MatchId AND f.AttackId=d.AttackId
+WHERE d.DamageSource='Weapon' AND (f.AttackId IS NULL OR d.AttackerParticipantId IS NOT f.ShooterParticipantId OR d.AttackerSpawnNumber IS NOT f.ShooterSpawnNumber)
+UNION ALL
+SELECT d.MatchId,'SKILL_SOURCE_UNDEFINED','ERROR',d.EventSequence,'스킬 시전 원본 연결은 지시서의 확정 필요 사항'
+FROM damage d WHERE d.DamageSource='Skill'
+UNION ALL
+SELECT s.MatchId,'MISSING_SPAWN_END','ERROR',s.EventSequence,'종료 경기의 생존 구간 종료 누락'
+FROM spawn s JOIN match_end me USING(MatchId)
+LEFT JOIN spawn_end se USING(MatchId,ParticipantId,SpawnNumber) WHERE se.EventSequence IS NULL
+UNION ALL
+SELECT s.MatchId,'MISSING_INITIAL_WEAPON','ERROR',s.EventSequence,'초기 장착 무기가 초기 보유 무기에서 누락'
+FROM spawn s WHERE NOT EXISTS(SELECT 1 FROM spawn_weapon sw WHERE sw.MatchId=s.MatchId AND sw.ParticipantId=s.ParticipantId AND sw.SpawnNumber=s.SpawnNumber AND sw.WeaponId=s.InitialEquippedWeaponId)
+UNION ALL
+SELECT w.MatchId,'EQUIP_OUTSIDE_SPAWN','ERROR',w.EventSequence,'장착 변경이 해당 생존 구간 밖에 있음'
+FROM weapon_equip w JOIN spawn s USING(MatchId,ParticipantId,SpawnNumber)
+LEFT JOIN spawn_end se USING(MatchId,ParticipantId,SpawnNumber)
+WHERE w.EventSequence<s.EventSequence OR (se.EventSequence IS NOT NULL AND w.EventSequence>se.EventSequence)
+UNION ALL
+SELECT dt.MatchId,'KILLER_DAMAGE_MISMATCH','ERROR',dt.EventSequence,'처치 인정 피해의 공격자 또는 피해자 스폰 불일치'
+FROM death dt JOIN damage d ON d.MatchId=dt.MatchId AND d.EventSequence=dt.KillerDamageEventSequence
+WHERE d.AttackerParticipantId IS NOT dt.KillerParticipantId OR d.VictimParticipantId<>dt.VictimParticipantId OR d.VictimSpawnNumber<>dt.VictimSpawnNumber
+UNION ALL
+SELECT p.MatchId,'MISSING_PARTICIPANT_RESULT','ERROR',NULL,'종료 경기의 참가자 최종 결과 누락'
+FROM participant p JOIN match_end me USING(MatchId)
+LEFT JOIN participant_result r USING(MatchId,ParticipantId) WHERE r.ParticipantId IS NULL
+UNION ALL
+SELECT m.MatchId,'MISSING_SETTINGS_ARCHIVE','ERROR',m.EventSequence,'설정 버전의 실제 수치 보존 자료 누락'
+FROM match m WHERE NOT EXISTS(SELECT 1 FROM balance_settings b WHERE b.SettingsVersion=m.SettingsVersion)
+UNION ALL
+SELECT p.MatchId,'MISSING_BOT_SETTINGS','ERROR',NULL,'봇의 실제 성격값 보존 자료 누락'
+FROM participant p LEFT JOIN bot_settings b USING(BotSettingsHash) WHERE p.bIsBot=1 AND b.BotSettingsHash IS NULL
+UNION ALL
+SELECT MatchId,'EVENT_TIME_REVERSED','ERROR',EventSequence,'발생 순서와 발생 시각의 선후 불일치'
+FROM (SELECT MatchId,EventSequence,ElapsedSeconds,LAG(ElapsedSeconds) OVER(PARTITION BY MatchId ORDER BY EventSequence) AS PreviousSeconds FROM event)
+WHERE ElapsedSeconds<PreviousSeconds
+UNION ALL
+SELECT r.MatchId,'FINAL_RESULT_DIFFERENCE','WARNING',NULL,'최종 결과와 이벤트 수 차이: 게임 점수 규칙 또는 누락 확인 필요'
+FROM participant_result r
+WHERE r.FinalKills<>(SELECT COUNT(*) FROM death dt WHERE dt.MatchId=r.MatchId AND dt.KillerParticipantId=r.ParticipantId)
+ OR r.FinalDeaths<>(SELECT COUNT(*) FROM death dt WHERE dt.MatchId=r.MatchId AND dt.VictimParticipantId=r.ParticipantId)
+UNION ALL
+SELECT MatchId,'UNKNOWN_KILL_WEAPON','WARNING',EventSequence,'인정된 처치의 무기를 확인할 수 없음: WeaponId NULL로 구분'
+FROM v_kill_attribution WHERE WeaponId IS NULL
+UNION ALL
+SELECT MatchId,Code,Severity,EventSequence,Detail FROM v_extension_issues)RAWSQL"),
 };
