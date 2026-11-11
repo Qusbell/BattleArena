@@ -1,5 +1,15 @@
 {
   "schema_version": 1,
+  "kill_notification_style": {
+    "date": "2026-11-11",
+    "report": "docs/repository-audit/systems/UIRecording.md",
+    "settings": "/Game/QuakeLike_1_0/UI/PlayerUI/KillMedals/DA_KillMedalUISettings",
+    "source": "Content/DataAssets/DA_KillMedalUISettings.json (JsonAssetSync exports on DA save and applies on startup)",
+    "preview": "Scripts/Diagnostics/PreviewKillNotificationUI.py",
+    "medal_shadow": "One feathered T_Blur_800x200 backdrop per medal, using the You Killed texture and the existing medal DA tint/opacity. Captured default, disabled and blue shadows in client PIE.",
+    "validation": "Development Editor build, Blueprint compile, KillMedalAutomaticAwards, KillMedalBridge, five client PIE style configurations and five death-priority cases passed. DA save export, startup JSON apply, actual PIE captures and editor console preview command verified. Packaged runtime and physical trades not exercised.",
+    "baseline_recollection": "not_performed; historical whole-project inventory preserved"
+  },
   "personal_message_death_priority": {
     "date": "2026-11-11",
     "asset": "/Game/QuakeLike_Base/SDM/UI/Combat_UI/WBP_PlayerHUD_sdm",

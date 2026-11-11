@@ -7,7 +7,7 @@
 
 class UTexture2D;
 
-/** Designer settings for the consecutive-kill medal display. Positions use DPI-scaled UI units. */
+/** Designer settings for the consecutive-kill medals and personal kill message. */
 UCLASS(BlueprintType)
 class SHOOTINGARENA_API UKillMedalUISettings : public UDataAsset
 {
@@ -25,6 +25,24 @@ public:
 	/** Falls back to MedalTexture when left empty. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "메달|이미지", meta = (DisplayName = "전환 기준 이상 메달 이미지"))
 	TObjectPtr<UTexture2D> LargeMedalTexture;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "메달|배경", meta = (DisplayName = "메달 배경 색상", HideAlphaChannel))
+	FLinearColor MedalBackgroundColor = FLinearColor(0.012f, 0.016f, 0.024f);
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "메달|배경", meta = (DisplayName = "메달 배경 불투명도", ClampMin = "0.0", ClampMax = "1.0"))
+	float MedalBackgroundOpacity = 0.8f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "You Killed|배경", meta = (DisplayName = "처치 알림 배경 색상", HideAlphaChannel))
+	FLinearColor KillMessageBackgroundColor = FLinearColor(0.02f, 0.025f, 0.035f);
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "You Killed|배경", meta = (DisplayName = "처치 알림 배경 불투명도", ClampMin = "0.0", ClampMax = "1.0"))
+	float KillMessageBackgroundOpacity = 0.85f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "You Killed|그림자", meta = (DisplayName = "글자 그림자 색상 및 알파"))
+	FLinearColor KillMessageShadowColor = FLinearColor(0.0f, 0.0f, 0.0f, 0.5f);
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "You Killed|그림자", meta = (DisplayName = "글자 그림자 거리 배율", ToolTip = "0은 그림자 끄기, 1은 기존 그림자 거리입니다.", ClampMin = "0.0", ClampMax = "2.0"))
+	float KillMessageShadowScale = 0.0f;
 
 	/** Normalized screen position: (0,0) top left, (0.5,0.5) centre. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "메달|위치", meta = (DisplayName = "화면 기준 위치", ClampMin = "0.0", ClampMax = "1.0"))

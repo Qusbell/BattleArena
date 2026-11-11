@@ -2,6 +2,30 @@
 	"medalTexture": "/Script/Engine.Texture2D'/Game/QuakeLike_Base/YJH/Kill3.Kill3'",
 	"largeMedalMinKills": 7,
 	"largeMedalTexture": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/UI/PlayerUI/KillMedals/T_KillMedal_TripleKill.T_KillMedal_TripleKill'",
+	"medalBackgroundColor":
+	{
+		"r": 0.012000000104308128,
+		"g": 0.016000000759959221,
+		"b": 0.024000000208616257,
+		"a": 1
+	},
+	"medalBackgroundOpacity": 0.80000001192092896,
+	"killMessageBackgroundColor":
+	{
+		"r": 0.019999999552965164,
+		"g": 0.02500000037252903,
+		"b": 0.035000000149011612,
+		"a": 1
+	},
+	"killMessageBackgroundOpacity": 0.85000002384185791,
+	"killMessageShadowColor":
+	{
+		"r": 0,
+		"g": 0,
+		"b": 0,
+		"a": 0.5
+	},
+	"killMessageShadowScale": 0,
 	"medalAnchor":
 	{
 		"x": 0.5,

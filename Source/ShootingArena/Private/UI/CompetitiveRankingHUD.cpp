@@ -6,6 +6,7 @@
 #include "UI/UIPalette.h"
 #include "Camera/ShooterDisplayLibrary.h"
 #include "Blueprint/WidgetTree.h"
+#include "Blueprint/WidgetBlueprintGeneratedClass.h"
 #include "Components/Border.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
@@ -24,6 +25,7 @@
 #include "Engine/World.h"
 #include "Engine/Texture2D.h"
 #include "GameFramework/GameStateBase.h"
+#include "GameFramework/HUD.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerState.h"
 #include "UObject/UnrealType.h"
@@ -41,6 +43,12 @@ namespace
 	constexpr float RankingScale = 0.975f;
 	constexpr float TimerGap = 5.0f;
 
+	FLinearColor BackgroundTint(FLinearColor Color, float Opacity)
+	{
+		Color.A = FMath::IsFinite(Opacity) ? FMath::Clamp(Opacity, 0.0f, 1.0f) : 0.0f;
+		return Color;
+	}
+
 	int32 ReadInt(const UObject* Object, FName Name)
 	{
 		const FIntProperty* Property = IsValid(Object) ? FindFProperty<FIntProperty>(Object->GetClass(), Name) : nullptr;
@@ -54,6 +62,54 @@ UCompetitiveRankingHUD::UCompetitiveRankingHUD(const FObjectInitializer& ObjectI
 	static ConstructorHelpers::FClassFinder<UUserWidget> Highlight(
 		TEXT("/Game/CompShooterHUD/UI/Content/Medals/WB_Medal_Highlight"));
 	StreakHighlightClass = Highlight.Class;
+	static ConstructorHelpers::FObjectFinder<UTexture2D> Backdrop(
+		TEXT("/Game/CompShooterHUD/Textures/Elements/T_Blur_800x200.T_Blur_800x200"));
+	MedalBackdropTexture = Backdrop.Object;
+}
+
+UUserWidget* UCompetitiveRankingHUD::FindPersonalMessage() const
+{
+	const UUserWidget* Messages = Cast<UUserWidget>(GetWidgetFromName(TEXT("WB_KillMessage")));
+	const UPanelWidget* Content = Messages ? Cast<UPanelWidget>(Messages->GetWidgetFromName(TEXT("OV_Content"))) : nullptr;
+	return Content && Content->GetChildrenCount() ? Cast<UUserWidget>(Content->GetChildAt(0)) : nullptr;
+}
+
+void UCompetitiveRankingHUD::ApplyPersonalKillMessageStyle(APlayerController* Player)
+{
+	AHUD* HUD = Player ? Player->GetHUD() : nullptr;
+	const auto* Root = HUD ? FindFProperty<FObjectPropertyBase>(HUD->GetClass(), TEXT("WB_ShooterHUD")) : nullptr;
+	if (auto* Widget = Root ? Cast<UCompetitiveRankingHUD>(Root->GetObjectPropertyValue_InContainer(HUD)) : nullptr)
+		if (UUserWidget* Message = Widget->FindPersonalMessage()) Widget->StylePersonalKillMessage(*Message);
+}
+
+void UCompetitiveRankingHUD::StylePersonalKillMessage(UUserWidget& Message)
+{
+	if (!ActiveStreakSettings) ActiveStreakSettings = KillMedalUISettings.LoadSynchronous();
+	const UKillMedalUISettings* Settings = ActiveStreakSettings ? ActiveStreakSettings.Get() : GetDefault<UKillMedalUISettings>();
+	if (UImage* Background = Cast<UImage>(Message.GetWidgetFromName(TEXT("Img_Blur"))))
+		Background->SetColorAndOpacity(BackgroundTint(Settings->KillMessageBackgroundColor, Settings->KillMessageBackgroundOpacity));
+	if (UWidget* BackgroundBox = Message.GetWidgetFromName(TEXT("SB_Blur")))
+		if (UOverlaySlot* BackdropSlot = Cast<UOverlaySlot>(BackgroundBox->Slot))
+		{
+			// The text group already uses the overlay's centre; remove the backdrop's asymmetric padding.
+			const FMargin BackdropPadding = BackdropSlot->GetPadding();
+			BackdropSlot->SetPadding(FMargin(BackdropPadding.Left, 0.0f, BackdropPadding.Right, 0.0f));
+			BackdropSlot->SetVerticalAlignment(VAlign_Center);
+		}
+
+	const auto* Class = Cast<UWidgetBlueprintGeneratedClass>(Message.GetClass());
+	const UWidgetTree* Template = Class ? Class->GetWidgetTreeArchetype() : nullptr;
+	const float Scale = FMath::IsFinite(Settings->KillMessageShadowScale)
+		? FMath::Clamp(Settings->KillMessageShadowScale, 0.0f, 2.0f) : 0.0f;
+	const FLinearColor Shadow = BackgroundTint(Settings->KillMessageShadowColor, Scale > 0.0f ? Settings->KillMessageShadowColor.A : 0.0f);
+	for (const FName Name : {FName(TEXT("Head1")), FName(TEXT("Head2")), FName(TEXT("Child1")), FName(TEXT("Child2"))})
+	{
+		UTextBlock* Text = Cast<UTextBlock>(Message.GetWidgetFromName(Name));
+		const UTextBlock* Original = Template ? Cast<UTextBlock>(Template->FindWidget(Name)) : nullptr;
+		if (!Text || !Original) continue;
+		Text->SetShadowColorAndOpacity(Shadow);
+		Text->SetShadowOffset(Original->GetShadowOffset() * Scale);
+	}
 }
 
 void UCompetitiveRankingHUD::HideStreakMedals()
@@ -192,6 +248,19 @@ void UCompetitiveRankingHUD::RefreshStreakMedals(int32 Count)
 		Image->SetBrushFromTexture(Texture, true);
 		UOverlay* Award = WidgetTree->ConstructWidget<UOverlay>();
 		Scale->SetContent(Award);
+		UImage* Background = WidgetTree->ConstructWidget<UImage>();
+		FSlateBrush BackdropBrush;
+		BackdropBrush.SetResourceObject(MedalBackdropTexture);
+		BackdropBrush.DrawAs = MedalBackdropTexture ? ESlateBrushDrawType::Image : ESlateBrushDrawType::NoDrawType;
+		BackdropBrush.ImageSize = FVector2D::ZeroVector;
+		Background->SetBrush(BackdropBrush);
+		Background->SetColorAndOpacity(BackgroundTint(Settings->MedalBackgroundColor, Settings->MedalBackgroundOpacity));
+		// Let the texture's feathered edges extend beyond the artwork without changing medal size or spacing.
+		Background->SetRenderTransformPivot(FVector2D(0.5f, 0.5f));
+		Background->SetRenderScale(FVector2D(1.5f, 1.8f));
+		UOverlaySlot* BackgroundSlot = Award->AddChildToOverlay(Background);
+		BackgroundSlot->SetHorizontalAlignment(HAlign_Fill);
+		BackgroundSlot->SetVerticalAlignment(VAlign_Fill);
 		Award->AddChildToOverlay(Image);
 		UHorizontalBoxSlot* IconSlot = StreakIcons->AddChildToHorizontalBox(Box);
 		IconSlot->SetVerticalAlignment(VAlign_Center);
@@ -493,9 +562,7 @@ void UCompetitiveRankingHUD::NativeTick(const FGeometry& MyGeometry, float InDel
 		UWidget* RespawnBar = DeathScreen ? DeathScreen->GetWidgetFromName(TEXT("PB_RespawnBar")) : nullptr;
 		if (DeathScreen && DeathScreen->IsInViewport() && DeathScreen->IsVisible() && RespawnBar)
 		{
-			UUserWidget* Messages = Cast<UUserWidget>(GetWidgetFromName(TEXT("WB_KillMessage")));
-			UPanelWidget* Content = Messages ? Cast<UPanelWidget>(Messages->GetWidgetFromName(TEXT("OV_Content"))) : nullptr;
-			UUserWidget* Message = Content && Content->GetChildrenCount() ? Cast<UUserWidget>(Content->GetChildAt(0)) : nullptr;
+			UUserWidget* Message = FindPersonalMessage();
 			UWidget* Text = Message ? Message->GetWidgetFromName(TEXT("VerticalBox_0")) : nullptr;
 			if (Text && RespawnBar->GetCachedGeometry().GetLocalSize().X > 0 && Text->GetCachedGeometry().GetLocalSize().Y > 0
 				&& !FMath::IsNearlyZero(MyGeometry.GetAccumulatedLayoutTransform().GetScale()))
@@ -512,9 +579,7 @@ void UCompetitiveRankingHUD::NativeTick(const FGeometry& MyGeometry, float InDel
 		}
 		else if (StreakPanel && DisplayedStreak > 0 && StreakIcons)
 		{
-			UUserWidget* Messages = Cast<UUserWidget>(GetWidgetFromName(TEXT("WB_KillMessage")));
-			UPanelWidget* Content = Messages ? Cast<UPanelWidget>(Messages->GetWidgetFromName(TEXT("OV_Content"))) : nullptr;
-			UUserWidget* Message = Content && Content->GetChildrenCount() ? Cast<UUserWidget>(Content->GetChildAt(0)) : nullptr;
+			UUserWidget* Message = FindPersonalMessage();
 			UWidget* Text = Message ? Message->GetWidgetFromName(TEXT("VerticalBox_0")) : nullptr;
 			if (Text && StreakIcons->GetCachedGeometry().GetLocalSize().Y > 0 && Text->GetCachedGeometry().GetLocalSize().Y > 0
 				&& !FMath::IsNearlyZero(MyGeometry.GetAccumulatedLayoutTransform().GetScale()))

@@ -5,12 +5,14 @@
 #include "CompetitiveRankingHUD.generated.h"
 
 class AGameStateBase;
+class APlayerController;
 class UBorder;
 class UCanvasPanelSlot;
 class UProgressBar;
 class UTextBlock;
 class UVerticalBox;
 class UHorizontalBox;
+class UTexture2D;
 class UKillMedalUISettings;
 
 /** CompShooter HUD base: compact leader/local-player standings beside its existing timer. */
@@ -20,6 +22,9 @@ class SHOOTINGARENA_API UCompetitiveRankingHUD : public UUserWidget
 	GENERATED_BODY()
 public:
 	UCompetitiveRankingHUD(const FObjectInitializer& ObjectInitializer);
+
+	UFUNCTION(BlueprintCallable, Category = "HUD|Kill Medal")
+	static void ApplyPersonalKillMessageStyle(APlayerController* Player);
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "HUD|Kill Medal", meta = (DisplayName = "연속 킬 메달 UI 설정"))
 	TSoftObjectPtr<UKillMedalUISettings> KillMedalUISettings = TSoftObjectPtr<UKillMedalUISettings>(
@@ -39,6 +44,8 @@ private:
 	void HideStreakMedals();
 	void StartMedalStamp(UWidget* Medal);
 	void UpdateMedalStamps(float DeltaTime);
+	UUserWidget* FindPersonalMessage() const;
+	void StylePersonalKillMessage(UUserWidget& Message);
 	struct FMedalStamp
 	{
 		TWeakObjectPtr<UWidget> Medal;
@@ -53,6 +60,7 @@ private:
 	bool bDisplayedLargeMedal = false;
 
 	UPROPERTY() TSubclassOf<UUserWidget> StreakHighlightClass;
+	UPROPERTY() TObjectPtr<UTexture2D> MedalBackdropTexture;
 	UPROPERTY(Transient) TObjectPtr<UUserWidget> StreakHighlight;
 	FTimerHandle StreakDisplayTimer;
 	UPROPERTY(Transient) TObjectPtr<UKillMedalUISettings> ActiveStreakSettings;
