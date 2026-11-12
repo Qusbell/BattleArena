@@ -28,6 +28,10 @@
 
 - [Lvl_02Map 밝기와 색 대비 조사](systems/Lvl02MapLighting.md) — 광원·후처리·머티리얼 조사와 Dynamic 조명 옵션.
 
+- [Lvl_PortalMap 밝기와 색 대비 조사](systems/LvlPortalMapLighting.md) — 고정 노출, Bloom, 배치 광원 및 Dynamic 조명 옵션.
+
+- [Lvl_02Map과 Lvl_PortalMap 조명 차이 및 DropItem 조사](systems/MapLightingComparison.md) — 적용값 비교와 픽업의 발광·반사·Nanite 확인 범위.
+
 | 경로 | 내용 |
 |---|---|
 | `audit/` | 조사 절차·현재 진행 상태·최초 기준선 |
