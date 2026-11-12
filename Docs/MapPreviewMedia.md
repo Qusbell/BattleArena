@@ -21,6 +21,9 @@
 2. 콘텐츠 브라우저에서 **Media → File Media Source**를 생성하고 영상 파일을 지정합니다. File Path는 `./Movies/파일명.mp4`와 같이 프로젝트 상대 경로를 사용합니다.
 3. `DT_MapPreviewMedia`의 해당 맵 행에서 `PreviewVideo`에 이 에셋을 지정하고 저장합니다. 이미지와 영상은 서로 다른 에셋으로 지정합니다.
 
+`Content/Movies`의 파일은 패키징 시 별도 설정 없이 스테이징됩니다(`bSkipMovies=False`). 다른 폴더의 mp4는 쿡 대상이 아니므로 패키지에서 재생되지 않습니다.
+2026-11-12 기준 영상은 `Content/Movies/BioTech.mp4`, `MiliTech.mp4`, `Title.mp4`이며, `GameFlow/UI/MainMenuMedia`의 `MS_BioTech`, `MS_MiliTech`, `MS_MainMenuPreview`가 각각 가리킵니다(이전 위치 `QuakeLike_1_0/MP4`에서 이동). 패키지 재생은 아직 검증하지 않았습니다.
+
 맵 목록에 표시할 맵은 기존과 같이 `DT_MapData.Map_Image`도 지정되어 있어야 합니다. 미리보기 테이블은 맵 목록이나 게임 시작 데이터를 변경하지 않습니다.
 
 - `WBP_MapSelect`: 기본 상태는 정지 이미지, 마우스를 올린 뒤 `HoverDelaySeconds` 동안 머무르면 반복 영상입니다. 대기 중 마우스가 벗어나면 재생 예약을 취소합니다. 재생 중 마우스가 벗어나면 영상은 일시정지되고 정지 이미지로 바뀝니다. 다시 올리면 설정 시간만큼 기다린 후 같은 위치부터 재생합니다.
