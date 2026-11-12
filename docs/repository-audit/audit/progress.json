@@ -1,5 +1,12 @@
 {
   "schema_version": 1,
+  "respawn_font_style": {
+    "date": "2026-11-12",
+    "report": "docs/repository-audit/systems/UIRecording.md",
+    "source_of_truth": "/Game/QuakeLike_1_0/UI/DeathUI/DA_RespawnBarStyle",
+    "change": "Apply RespawnFontColor1 and RespawnFontColor2 to the Respawn label's dynamic font material on InitDeathUI",
+    "validation": "Blueprint compile and repeated death-widget initialization in PIE verified independent color overrides and unchanged shared material defaults"
+  },
   "kill_notification_style": {
     "date": "2026-11-11",
     "report": "docs/repository-audit/systems/UIRecording.md",
