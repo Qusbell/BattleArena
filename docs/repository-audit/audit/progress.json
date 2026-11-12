@@ -25,6 +25,8 @@
     "change": "Clear personal messages before showing death; reject personal kill messages while the owning controller death screen is visible; retain existing respawn visibility lifecycle",
     "validation": "Blueprint compile passed; five controlled real-client HUD event cases passed in Lvl_PortalMap PIE; physical mutual-kill combat, screenshots and packaged runtime not exercised",
     "integration_validation": "Reapplied both functions on main 3282d7830; Editor build, Blueprint compile, all five PIE cases and BuffDurationRing passed. Main widget tree and EventGraph matched. BuffHUDStyle ring segmentation and contrast assertions failed on both the integrated HUD and pristine main.",
+    "posthumous_kill_update": "2026-11-12: BPC_Life gates the personal kill RPC on the authoritative possessed-pawn reference; the HUD also checks local pawn life independently of death-screen visibility. Blueprint compile, five UI cases, and a two-client PIE test with controlled delayed damage verified preserved kill count, blocked late UI and restored notifications after respawn.",
+    "replicated_death_notification": "2026-11-12: Remote pawn-loss replication and the named death RPC share InitDeathUI. Real client death shows You Died when no name is available, and the named handler retains Killed by. Six priority diagnostic cases and a two-client PIE death, delayed kill and respawn test passed.",
     "baseline_recollection": "not_performed; historical whole-project inventory preserved"
   },
   "aim_assist_incremental_update": {

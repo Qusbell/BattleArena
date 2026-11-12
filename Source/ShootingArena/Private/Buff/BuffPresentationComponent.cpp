@@ -612,8 +612,11 @@ void UBuffPresentationComponent::UpdateWeaponGlow()
 				}
 			}
 		}
+		const UMaterialInstanceDynamic* PreviousBodyGlow = BodyGlowMaterial;
 		if (UMaterialInstanceDynamic* BodyGlow = Ensure(BodyGlowMaterial, Profile->Body))
 		{
+			if (BodyGlow != PreviousBodyGlow)
+				BodyGlow->SetScalarParameterValue(TEXT("MinimumGlow"), FMath::Clamp(Profile->BodyMinimumGlow, 0.0f, 1.0f));
 			// Visible body parts only (death meshes stay hidden); FP_Mesh arms are skipped so first person shows just the gun.
 			TInlineComponentArray<UMeshComponent*> Meshes(Owner);
 			for (UMeshComponent* Mesh : Meshes)

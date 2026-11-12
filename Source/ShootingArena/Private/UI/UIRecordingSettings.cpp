@@ -1,4 +1,5 @@
 #include "UI/UIRecordingSettings.h"
+#include "Rendering/DrawElements.h"
 #include "Widgets/SCompoundWidget.h"
 #include "Widgets/SNullWidget.h"
 #include "Engine/World.h"
@@ -49,10 +50,18 @@ public:
 	virtual int32 OnPaint(const FPaintArgs& Args, const FGeometry& Geometry, const FSlateRect& Cull,
 		FSlateWindowElementList& Elements, int32 Layer, const FWidgetStyle& Style, bool Enabled) const override
 	{
-		// Slate runs child ticks during Paint; traverse the children even when recording hides them.
+		if (!Owner.IsValid() || Owner->IsContentShown())
+			return SCompoundWidget::OnPaint(Args, Geometry, Cull, Elements, Layer, Style, Enabled);
+
+		// Brush outlines can ignore inherited opacity. Clip the draws while Slate still runs child ticks.
 		FWidgetStyle MaskedStyle(Style);
-		if (Owner.IsValid() && !Owner->IsContentShown()) MaskedStyle.BlendOpacity(0.0f);
-		return SCompoundWidget::OnPaint(Args, Geometry, Cull, Elements, Layer, MaskedStyle, Enabled);
+		MaskedStyle.BlendOpacity(0.0f);
+		FSlateClippingZone EmptyClip(FSlateRect(0, 0, 0, 0));
+		EmptyClip.SetAlwaysClip(true);
+		Elements.PushClip(EmptyClip);
+		const int32 LastLayer = SCompoundWidget::OnPaint(Args, Geometry, Cull, Elements, Layer, MaskedStyle, Enabled);
+		Elements.PopClip();
+		return LastLayer;
 	}
 private:
 	TWeakObjectPtr<URecordingUIMask> Owner;
