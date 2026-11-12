@@ -2,6 +2,7 @@
 #include "UI/UIRecordingSettings.h"
 
 #include "Audio/BGMSubsystem.h"
+#include "Blueprint/UserWidget.h"
 #include "Loading/LoadingCoordinator.h"
 #include "MyPlayerController.h"
 #include "Containers/Ticker.h"
@@ -198,8 +199,28 @@ void ULoadingScreenSubsystem::UpdateLoadingState()
 void ULoadingScreenSubsystem::ShowLoadingScreen(const FString& StatusText)
 {
 	CurrentStatus = StatusText;
+	if (IsRunningDedicatedServer()) return;
 	if (!LoadingOverlay.IsValid())
 	{
+		// Cooked via DirectoriesToAlwaysCook (DefaultGame.ini); a missing class falls back to the text-only overlay.
+		static const TCHAR* LoadingWidgetPath = TEXT("/Game/QuakeLike_1_0/GameFlow/UI/Loading/WBP_LoadingScreen_Ref.WBP_LoadingScreen_Ref_C");
+		UClass* WidgetClass = LoadClass<UUserWidget>(nullptr, LoadingWidgetPath);
+		LoadingWidget = WidgetClass && GetGameInstance() ? CreateWidget<UUserWidget>(GetGameInstance(), WidgetClass) : nullptr;
+		if (!LoadingWidget)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[Loading] Could not create %s; using the text-only overlay."), LoadingWidgetPath);
+		}
+
+		TSharedRef<SWidget> Content = LoadingWidget
+			? LoadingWidget->TakeWidget()
+			: StaticCastSharedRef<SWidget>(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)
+			[
+				SNew(STextBlock)
+				.Text_Lambda([this]() { return GetStatusText(); })
+				.Font(FCoreStyle::GetDefaultFontStyle("Regular", 28))
+				.ColorAndOpacity(FLinearColor(0.92f, 0.72f, 0.25f, 1.0f))
+			]);
+
 		LoadingOverlay = SNew(SBorder)
 			.Visibility_Lambda([]()
 			{
@@ -208,12 +229,9 @@ void ULoadingScreenSubsystem::ShowLoadingScreen(const FString& StatusText)
 			})
 			.BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
 			.BorderBackgroundColor(FLinearColor(0.01f, 0.01f, 0.015f, 1.0f))
-			.HAlign(HAlign_Center).VAlign(VAlign_Center)
+			.Padding(0.0f)
 			[
-				SNew(STextBlock)
-				.Text_Lambda([this]() { return GetStatusText(); })
-				.Font(FCoreStyle::GetDefaultFontStyle("Regular", 28))
-				.ColorAndOpacity(FLinearColor(0.92f, 0.72f, 0.25f, 1.0f))
+				Content
 			];
 	}
 	UGameViewportClient* ViewportClient = GetGameInstance() ? GetGameInstance()->GetGameViewportClient() : nullptr;
@@ -260,6 +278,9 @@ void ULoadingScreenSubsystem::RemoveLoadingScreen(bool bRestoreBGM)
 	UGameViewportClient* ViewportClient = GetGameInstance() ? GetGameInstance()->GetGameViewportClient() : nullptr;
 	if (ViewportClient && LoadingOverlay.IsValid()) ViewportClient->RemoveViewportWidgetContent(LoadingOverlay.ToSharedRef());
 	bOverlayAddedToViewport = false;
+	// Rebuilt on the next transition so the widget's Construct reads that transition's map.
+	LoadingOverlay.Reset();
+	LoadingWidget = nullptr;
 	ReleaseInputLock();
 	if (bReportReady)
 	{
