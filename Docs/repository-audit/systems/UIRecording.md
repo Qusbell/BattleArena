@@ -97,3 +97,10 @@ PIE에서 단일·다중·큰 메달과 파란 메달/빨간 처치 알림, 배�
 최종 메달 그림자는 기본값, 불투명도 0, 파란색의 3개 PIE 조건으로 비교했습니다. 캡처와 결과는 `Saved/Diagnostics/KillNotificationSoftShadow/`에 있습니다.
 `ShootingArena.UI.KillMedalAutomaticAwards`와 `ShootingArena.UI.KillMedalBridge`가 통과했고, 재시작 로그에서 DA의 JSON 적용 성공을 확인했습니다.
 기존 중앙 알림의 사망 우선순위 5개 조건도 다시 확인했습니다. 패키징 실행과 실전 상호 처치는 검증 범위에 포함하지 않았습니다.
+
+## 2026-11-12 Respawn 글자 색상
+
+`/Game/QuakeLike_1_0/UI/DeathUI/DA_RespawnBarStyle`에서 **Respawn Font Color 1**과 **Respawn Font Color 2**를 각각 편집합니다.
+기본값은 `MI_Respawn_Font`의 기존 흰색과 회색을 상속합니다. `WBP_DeathScreen.InitDeathUI`는 사망 UI를 초기화할 때
+DA의 두 색상을 `Text_RespawnCount`의 동적 폰트 머티리얼에 적용합니다.
+PIE에서 같은 사망 위젯을 반복 초기화해 두 값의 독립 적용과 공유 머티리얼의 원래 값을 확인했습니다.
