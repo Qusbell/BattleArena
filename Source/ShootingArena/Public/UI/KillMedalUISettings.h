@@ -38,6 +38,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "You Killed|배경", meta = (DisplayName = "처치 알림 배경 불투명도", ClampMin = "0.0", ClampMax = "1.0"))
 	float KillMessageBackgroundOpacity = 0.85f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "You Killed|배경", meta = (DisplayName = "배경 그림자 위치 보정", ToolTip = "UI 단위입니다. X는 좌우, Y는 상하이며 음수는 왼쪽/위로 이동합니다."))
+	FVector2D KillMessageBackgroundOffset = FVector2D(-8.0, -9.0);
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "You Killed|그림자", meta = (DisplayName = "글자 그림자 색상 및 알파"))
 	FLinearColor KillMessageShadowColor = FLinearColor(0.0f, 0.0f, 0.0f, 0.5f);
 

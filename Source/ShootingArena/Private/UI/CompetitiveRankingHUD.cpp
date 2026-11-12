@@ -87,7 +87,10 @@ void UCompetitiveRankingHUD::StylePersonalKillMessage(UUserWidget& Message)
 	if (!ActiveStreakSettings) ActiveStreakSettings = KillMedalUISettings.LoadSynchronous();
 	const UKillMedalUISettings* Settings = ActiveStreakSettings ? ActiveStreakSettings.Get() : GetDefault<UKillMedalUISettings>();
 	if (UImage* Background = Cast<UImage>(Message.GetWidgetFromName(TEXT("Img_Blur"))))
+	{
 		Background->SetColorAndOpacity(BackgroundTint(Settings->KillMessageBackgroundColor, Settings->KillMessageBackgroundOpacity));
+		Background->SetRenderTranslation(Settings->KillMessageBackgroundOffset);
+	}
 	if (UWidget* BackgroundBox = Message.GetWidgetFromName(TEXT("SB_Blur")))
 		if (UOverlaySlot* BackdropSlot = Cast<UOverlaySlot>(BackgroundBox->Slot))
 		{
