@@ -15,7 +15,7 @@
 		"Map_Size": 1,
 		"Map_Explain": "NSLOCTEXT(\"[9702DEC0DEE0E3E2145DB69F1E91813C]\", \"06081D044470066631CB1FB2FC087DD8\", \"포탈맵입니다.\")",
 		"WinKillCount": 25,
-		"GameTimer": "(X=0.000000,Y=30.000000)",
+		"GameTimer": "(X=5.000000,Y=0.000000)",
 		"Character_Light_Channels": [ true ],
 		"Result_Image": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Map_Image/Portal_Map.Portal_Map'"
 	},
