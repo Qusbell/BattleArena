@@ -1,5 +1,9 @@
 # 설정 데이터의 원본과 편집 기준
 
+2026-11-12 보강: 언어 리소스의 native 도구는 형식을 검증한 바이트만 생성합니다. `Scripts/Localization/CompileLocalization.py`가 전체 언어 검증 후 임시 파일과 복구용 파일을 준비하고 locres를 파일별로 교체합니다. 저장 오류 시 이미 교체한 파일을 복구하며, 원본은 계속 String Table·PO입니다. 잘못된 PO와 엔진 형식 인수는 실행 파일을 수정하기 전에 거부합니다.
+
+2026-11-11 추가: 언어 목록·기본 언어·Font는 `/Game/QuakeLike_1_0/Localization/DT_Language`, 번역 원문은 같은 폴더의 `ST_Game`이 원본입니다. 번역은 `Content/Localization/Game`의 Dashboard archive/PO, 실행 산출물은 locres/locmeta입니다. 사용자 선택은 `GGameUserSettingsIni`의 `[Internationalization] Culture`이며 기존 PlayerSettings SaveGame과 분리합니다. 두 새 에셋은 JsonAssetSync에 등록하지 않았습니다. 초기 이관 seed와 스크립트는 실행·편집 원본이 아니며 저장소 밖의 작업 백업으로 분리했습니다. `DT_MapData.json`의 기존 설명 4개는 `LOCTABLE` 참조로 바꾸었으므로 에셋만 수정하지 않습니다. `DT_MultiRules.Label`은 에셋 원본이고 `Unit` 내부 String은 유지합니다. [언어 시스템](../systems/LanguageSystem.md)을 참조합니다.
+
 2026-11-10 추가: 로컬 에임 어시스트의 수렴 시간은 `UAimAssistSettings`/`DefaultGame.ini`의 `[/Script/ShootingArena.AimAssistSettings]`가 원본입니다. Project Settings > Game > Aim Assist에서 조정합니다. JsonAssetSync에 연결하지 않으며 활성화 상태는 컨트롤러별 메모리에만 보관합니다. [시스템 문서](../systems/AimAssist.md)를 참조합니다.
 
 2026-11-09 추가: 촬영용 `/Game/QuakeLike_1_0/UI/Recording/DA_UIRecordingSettings`는 DA 에셋 자체가 원본입니다. JsonAssetSync에 등록하지 않았으므로 이 에셋의 체크박스를 직접 편집·저장합니다. [촬영 UI](../systems/UIRecording.md).

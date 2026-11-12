@@ -20,6 +20,8 @@
 
 ## 폴더 구성
 
+- [언어 변경 시스템](systems/LanguageSystem.md) — 공유 설정창의 ko/en 선택, 클라이언트 저장, String Table·PO, 표시 이름·글꼴 연결과 검증 범위입니다. 전체 플레이·배포 검증은 사용자가 진행합니다.
+
 - [로컬 에임 어시스트](systems/AimAssist.md) — Shipping 지원 토글, 화면 기반 적 선택과 조준 보간.
 
 - [보고된 버프·결과창·부활 문제의 실행 조사 및 수정 검증](systems/ReportedIssues-2026-11-10.md)

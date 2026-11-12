@@ -1,4 +1,5 @@
 #include "UI/ReusableStyleHost.h"
+#include "Localization/LanguageSubsystem.h"
 #include "UI/UIPalette.h"
 
 #include "Blueprint/WidgetTree.h"
@@ -67,7 +68,7 @@ void UStyleableComboBoxString::ApplyBlueprintStyle(const UBlueprintComboStyle& I
     UUIThemePaletteLibrary::PreparePalette();
     UCommonTextStyle* Typography = InStyle.TextStyle ? InStyle.TextStyle->GetDefaultObject<UCommonTextStyle>() : nullptr;
     UUIThemePaletteLibrary::ApplyObject(Typography);
-    const FSlateFontInfo& ResolvedFont = Typography ? Typography->Font : InStyle.Font;
+    const FSlateFontInfo ResolvedFont = ULanguageLibrary::ResolveFont(Typography ? Typography->Font : InStyle.Font);
     const FSlateColor ResolvedColor = Typography ? FSlateColor(Typography->Color) : InStyle.Foreground;
     SetWidgetStyle(InStyle.Style);
     SetItemStyle(InStyle.ItemStyle);
@@ -86,6 +87,17 @@ void UStyleableComboBoxString::ApplyBlueprintStyle(const UBlueprintComboStyle& I
         Text->SetColorAndOpacity(ResolvedColor);
     }
     InvalidateLayoutAndVolatility();
+}
+
+TSharedRef<SWidget> UStyleableComboBoxString::HandleGenerateWidget(TSharedPtr<FString> Item) const
+{
+    if (Item.IsValid()) if (const FName* Key=LocalizedOptions.Find(*Item))
+    {
+        const TWeakObjectPtr<const UStyleableComboBoxString> Weak(this);
+        return SNew(STextBlock).Text(ULanguageLibrary::Text(*Key)).Font_Lambda([Weak]()
+        { return ULanguageLibrary::ResolveFont(Weak.IsValid() ? Weak->GetFont() : FSlateFontInfo()); });
+    }
+    return Super::HandleGenerateWidget(Item);
 }
 
 void UReusableStyleHost::NativePreConstruct()

@@ -1,4 +1,5 @@
 #include "Loading/LoadingScreenSubsystem.h"
+#include "Localization/LanguageSubsystem.h"
 #include "UI/UIRecordingSettings.h"
 
 #include "Audio/BGMSubsystem.h"
@@ -19,11 +20,12 @@
 void ULoadingScreenSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
-	if (IsRunningDedicatedServer())
+	if (IsRunningDedicatedServer() || GetGameInstance()->IsDedicatedServerInstance())
 	{
 		UE_LOG(LogTemp, Log, TEXT("[Loading] Screen subsystem skipped on dedicated server."));
 		return;
 	}
+	Collection.InitializeDependency<ULanguageSubsystem>();
 	Collection.InitializeDependency<UBGMSubsystem>();
 	UE_LOG(LogTemp, Log, TEXT("[Loading] Screen subsystem initialized."));
 	PreLoadMapHandle = FCoreUObjectDelegates::PreLoadMapWithContext.AddUObject(this, &ULoadingScreenSubsystem::HandlePreLoadMap);
@@ -61,7 +63,8 @@ void ULoadingScreenSubsystem::HandlePreLoadMap(const FWorldContext& WorldContext
 	bSawCoordinator = false;
 	GameplayReadyTransitionWorld.Reset();
 	SecondsSincePostLoad = 0.0f;
-	ShowLoadingScreen(TEXT("맵을 불러오는 중..."));
+	CurrentStatus = ULanguageLibrary::Text(TEXT("Loading_Map"));
+	ShowLoadingScreen(FString());
 	ApplyInputLock();
 }
 
@@ -80,7 +83,8 @@ void ULoadingScreenSubsystem::HandlePostLoadMap(UWorld* LoadedWorld)
 	if (!bTransitionActive || IsRunningDedicatedServer() || !LoadedWorld || LoadedWorld->GetGameInstance() != GetGameInstance()) return;
 	UE_LOG(LogTemp, Log, TEXT("[Loading] PostLoadMap: %s"), LoadedWorld ? *LoadedWorld->GetName() : TEXT("None"));
 	SecondsSincePostLoad = 0.0f;
-	ShowLoadingScreen(TEXT("게임 준비 중..."));
+	CurrentStatus = ULanguageLibrary::Text(TEXT("Loading_Game"));
+	ShowLoadingScreen(FString());
 	ApplyInputLock();
 }
 
@@ -157,14 +161,14 @@ void ULoadingScreenSubsystem::UpdateLoadingState()
 		switch (It->GetPhase())
 		{
 		case ELoadingCoordinatorPhase::Initializing:
-			CurrentStatus = TEXT("게임 환경을 준비하는 중..."); return;
+			CurrentStatus = ULanguageLibrary::Text(TEXT("Loading_Environment")); return;
 		case ELoadingCoordinatorPhase::WaitingForPlayers:
-			CurrentStatus = FString::Printf(TEXT("참가자 준비 대기 중... (%d / %d)"), It->GetConnectedHumanPlayers(), It->GetExpectedHumanPlayers()); return;
+			CurrentStatus = ULanguageLibrary::FormatText(TEXT("Loading_Players"), FText::AsNumber(It->GetConnectedHumanPlayers()), FText::AsNumber(It->GetExpectedHumanPlayers()), FText::GetEmpty(), FText::GetEmpty(), FText::GetEmpty(), FText::GetEmpty(), FText::GetEmpty(), FText::GetEmpty()); return;
 		case ELoadingCoordinatorPhase::ReadyToPlay:
 			GameplayReadyTransitionWorld = World;
 			HideLoadingScreen(); return;
 		default:
-			CurrentStatus = TEXT("전환을 완료하지 못했습니다."); return;
+			CurrentStatus = ULanguageLibrary::Text(TEXT("Loading_Failed")); return;
 		}
 	}
 
@@ -197,7 +201,7 @@ void ULoadingScreenSubsystem::UpdateLoadingState()
 
 void ULoadingScreenSubsystem::ShowLoadingScreen(const FString& StatusText)
 {
-	CurrentStatus = StatusText;
+	if (!StatusText.IsEmpty()) CurrentStatus = ULanguageLibrary::ReadDisplayString(StatusText);
 	if (!LoadingOverlay.IsValid())
 	{
 		LoadingOverlay = SNew(SBorder)
@@ -211,8 +215,8 @@ void ULoadingScreenSubsystem::ShowLoadingScreen(const FString& StatusText)
 			.HAlign(HAlign_Center).VAlign(VAlign_Center)
 			[
 				SNew(STextBlock)
-				.Text_Lambda([this]() { return GetStatusText(); })
-				.Font(FCoreStyle::GetDefaultFontStyle("Regular", 28))
+				.Text_UObject(this, &ThisClass::GetStatusText)
+				.Font_Lambda([]() { return ULanguageLibrary::ResolveFont(FCoreStyle::GetDefaultFontStyle("Regular", 28)); })
 				.ColorAndOpacity(FLinearColor(0.92f, 0.72f, 0.25f, 1.0f))
 			];
 	}
@@ -322,5 +326,5 @@ void ULoadingScreenSubsystem::ReleaseInputLock()
 
 FText ULoadingScreenSubsystem::GetStatusText() const
 {
-	return FText::FromString(CurrentStatus);
+	return CurrentStatus;
 }

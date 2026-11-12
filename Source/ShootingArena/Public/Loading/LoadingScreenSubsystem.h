@@ -43,7 +43,7 @@ private:
 	TSharedPtr<SWidget> LoadingOverlay;
 	TWeakObjectPtr<APlayerController> InputLockedController;
 	bool bInputLocked = false;
-	FString CurrentStatus;
+	FText CurrentStatus;
 	float SecondsSincePostLoad = 0.0f;
 	bool bStartupMapHandled = false;
 	bool bSkipStartupOverlay = false;

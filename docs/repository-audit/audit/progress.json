@@ -150,5 +150,18 @@
     "archived_documents": 21,
     "agent_instructions": "AGENTS.md",
     "archive_index": "docs/history/index.json"
+  },
+  "language_system_implementation": {
+    "date": "2026-11-11",
+    "status": "implemented; manual play and packaged validation delegated to user",
+    "report": "docs/repository-audit/systems/LanguageSystem.md",
+    "evidence": "docs/repository-audit/systems/evidence/language-implementation-2026-11-11.json",
+    "scope": "Device-local language subsystem; shared settings selector; String Table and ko/en localization; dynamic UI text/history, display-name/font boundaries, packaging settings",
+    "entries": 264,
+    "validation": "Editor Development and Shipping builds passed after decoder/lifetime/publication hardening; 4 localization automation tests passed; core 4 Blueprint compiles passed; 264-entry ko/en compilation passed; injected second-culture write failure rolled back, malformed PO and native missing/invalid formats were rejected without altering existing resources.",
+    "manual_testing": "User requested to perform play testing themselves. Limited earlier PIE text/selection/font/nickname assertions are recorded without claiming full visual/network/travel/packaged validation.",
+    "baseline_recollection": "not_performed; initial source graphs and design preserved",
+    "change_list_cleanup": "User requested necessary changes only: restore 32 further incidental Blueprint resaves; preserve actual zero-count localization changes; archive one-time scripts/design separately and retain runtime assets, translator workflow, regression tests and current architecture documentation.",
+    "safety_review_date": "2026-11-12"
   }
 }
