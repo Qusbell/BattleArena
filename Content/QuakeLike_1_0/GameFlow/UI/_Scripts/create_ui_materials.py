@@ -319,7 +319,7 @@ def main():
             ("MI_UI_Cut_Primary_Pressed",  24, 0, hex_color("E0AC00"), CLEAR),
             ("MI_UI_Cut_Primary_Selected", 24, 0, P("White"),         CLEAR),
             ("MI_UI_Cut_Primary_Disabled", 24, 0, P("AccentDim"),     CLEAR),
-            ("MI_UI_Cut_Launch",        24, 1, P("Panel94"),    P("LineStrong")),
+            ("MI_UI_Cut_Launch",         0, 1, P("Panel94"),    P("LineStrong")),
             ("MI_UI_Cut_Modal",         28, 1, P("Bg800"),      P("Line")),
         ]
         for name, c, bw, fill, border in rows:
