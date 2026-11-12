@@ -1,8 +1,10 @@
 #if WITH_DEV_AUTOMATION_TESTS
 #include "Misc/AutomationTest.h"
 #include "UI/UIRecordingSettings.h"
+#include "UI/ReusableStyleHost.h"
 #include "UObject/UnrealType.h"
 #include "Components/Border.h"
+#include "Components/Image.h"
 #include "Components/ProgressBar.h"
 #include "Engine/Texture2D.h"
 #include "Materials/MaterialInterface.h"
@@ -39,11 +41,14 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FUIRecordingPaintTest, "ShootingArena.UI.Record
 bool FUIRecordingPaintTest::RunTest(const FString&)
 {
 	UUIRecordingSettings* Settings = UUIRecordingSettings::Get();
-	if (!TestNotNull(TEXT("Recording profile is installed"), Settings)) return false;
-	TGuardValue<bool> Restore(Settings->Menus, true);
+	UClass* OutlineStyle = LoadClass<UBlueprintBrushStyle>(nullptr,
+		TEXT("/Game/QuakeLike_1_0/GameFlow/UI/02_Styles/06_WidgetStyles/04_WS_Common/WS_Common_LocalOutline.WS_Common_LocalOutline_C"));
+	if (!TestNotNull(TEXT("Recording profile is installed"), Settings)
+		|| !TestNotNull(TEXT("Actual scoreboard local-row outline style"), OutlineStyle)) return false;
+	TGuardValue<bool> Restore(Settings->Scoreboard, true);
 	UWorld* World = UWorld::CreateWorld(EWorldType::Game, false);
 	URecordingUIMask* Mask = NewObject<URecordingUIMask>(World);
-	Mask->Section = ERecordingUISection::Menus;
+	Mask->Section = ERecordingUISection::Scoreboard;
 	UBorder* Child = NewObject<UBorder>(World);
 	FSlateBrush Brush;
 	Brush.DrawAs = ESlateBrushDrawType::Image;
@@ -61,12 +66,22 @@ bool FUIRecordingPaintTest::RunTest(const FString&)
 		return Pixels.ContainsByPredicate([](const FColor& Pixel) { return Pixel.A > 0; });
 	};
 	TestTrue(TEXT("Enabled section draws its content"), Painted());
-	Settings->Menus = false;
+	Settings->Scoreboard = false;
 	TestFalse(TEXT("Disabled section draws no pixels"), Painted());
 	TestEqual(TEXT("Child visibility is preserved"), Child->GetVisibility(), ESlateVisibility::Visible);
 	TestEqual(TEXT("Child animation opacity is preserved"), Child->GetRenderOpacity(), 0.35f);
-	Settings->Menus = true;
+	Settings->Scoreboard = true;
 	TestTrue(TEXT("Re-enabling the same widget restores its drawing"), Painted());
+
+	UImage* Outline = NewObject<UImage>(World);
+	Outline->SetBrush(OutlineStyle->GetDefaultObject<UBlueprintBrushStyle>()->Brush);
+	Outline->SetRenderOpacity(0.0f);
+	Mask->SetContent(Outline);
+	TestTrue(TEXT("The scoreboard outline draws even when its widget opacity is zero"), Painted());
+	Settings->Scoreboard = false;
+	TestFalse(TEXT("Disabling the scoreboard also clips the independent outline"), Painted());
+	Settings->Scoreboard = true;
+	TestTrue(TEXT("The outline draws again when the scoreboard is enabled"), Painted());
 	Mask->ReleaseSlateResources(true);
 	World->DestroyWorld(false);
 	return true;
