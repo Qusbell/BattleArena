@@ -6,6 +6,7 @@
 #include "LoadingScreenSubsystem.generated.h"
 
 class SWidget;
+class UUserWidget;
 class APlayerController;
 class UWorld;
 struct FWorldContext;
@@ -41,6 +42,9 @@ private:
 	FDelegateHandle PostLoadMapHandle;
 	FTSTicker::FDelegateHandle TickerHandle;
 	TSharedPtr<SWidget> LoadingOverlay;
+	/** WBP_LoadingScreen_Ref instance shown inside LoadingOverlay; recreated per transition so its Construct reads the current map. */
+	UPROPERTY(Transient)
+	TObjectPtr<UUserWidget> LoadingWidget;
 	TWeakObjectPtr<APlayerController> InputLockedController;
 	bool bInputLocked = false;
 	FString CurrentStatus;
