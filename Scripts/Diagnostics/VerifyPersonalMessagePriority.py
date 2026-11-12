@@ -1,6 +1,6 @@
-"""Run through Unreal MCP in Lvl_PortalMap server/client PIE; stop PIE afterward.
+"""Run through Unreal MCP in a fresh Lvl_PortalMap server/client PIE, then stop PIE.
 
-Exercises the real personal-message widgets in both event orders and after respawn.
+Exercises the personal-message widgets in both event orders, after respawn, and on replicated death.
 Only transient PIE state changes; evidence is written under Saved/Diagnostics.
 """
 import builtins
@@ -36,8 +36,21 @@ def kill():
 
 
 def death():
-    pc.call_method('Toggle Death UI', (True,))
-    hud.call_method('ShowCompetitiveDeathMessage', (unreal.Text('PriorityKiller'), 3.0))
+    pc.call_method('ClientShowDeathScreen', (pc.get_editor_property('LastDeathInfo '), 3.0, 'PriorityKiller'))
+
+
+def replicated_death():
+    gameplay = unreal.GameplayStatics
+    server = next(w for w in unreal.EditorLevelLibrary.get_pie_worlds(True) if gameplay.get_game_mode(w))
+    player_id = pc.player_state.call_method('GetPlayerId')
+    owner = next(p for p in gameplay.get_all_actors_of_class(server, unreal.PlayerController)
+                 if p.player_state.call_method('GetPlayerId') == player_id)
+    pawn = owner.get_controlled_pawn()
+    pawn.set_editor_property('can_be_damaged', True)
+    try:
+        assert gameplay.apply_damage(pawn, 100000.0, owner, pawn, None) > 0
+    finally:
+        pawn.set_editor_property('can_be_damaged', False)
 
 
 cases = [
@@ -47,6 +60,7 @@ cases = [
     ('death_then_multiple_kills', [death, kill, kill], 'PriorityKiller'),
     ('after_respawn', [death, lambda: pc.call_method('Toggle Death UI', (False,)),
                        lambda: messages.call_method('RemoveKillMessages'), kill], 'PriorityVictim'),
+    ('replicated_death_then_kill', [replicated_death], 'You Died'),
 ]
 
 
@@ -64,6 +78,8 @@ def tick(delta):
             return
         if 'pending' in state:
             name, expected = state.pop('pending')
+            if name == 'replicated_death_then_kill':
+                kill()
             rows = []
             for i in range(content.get_children_count()):
                 item = content.get_child_at(i)
@@ -73,7 +89,7 @@ def tick(delta):
             assert len(rows) == 1, (name, rows)
             texts = list(rows[0].values())
             assert expected in texts, (name, expected, rows)
-            rejected = 'PriorityVictim' if expected == 'PriorityKiller' else 'PriorityKiller'
+            rejected = 'PriorityKiller' if expected == 'PriorityVictim' else 'PriorityVictim'
             assert rejected not in texts, (name, rows)
         if state['next'] == len(cases):
             state['passed'] = True
@@ -84,7 +100,8 @@ def tick(delta):
         pc.call_method('Toggle Death UI', (False,))
         for action in actions:
             action()
-        state.update(pending=(name, expected), ready=now + 0.6)
+        delay = 1.0 if name == 'replicated_death_then_kill' else 0.6
+        state.update(pending=(name, expected), ready=now + delay)
         state['next'] += 1
     except Exception:
         state.update(passed=False, error=traceback.format_exc())
