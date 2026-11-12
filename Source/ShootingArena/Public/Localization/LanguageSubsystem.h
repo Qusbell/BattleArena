@@ -67,6 +67,7 @@ public:
     UFUNCTION(BlueprintPure, Category="Language") static FText DisplayName(FName Domain, FName Id);
     UFUNCTION(BlueprintPure, Category="Language") static FString ParticipantDisplayString(class APlayerState* State);
     static FSlateFontInfo ResolveFont(FSlateFontInfo Existing);
+    static bool IsWidgetLocalizationExcluded(const UObject* Widget);
     static void RefreshViewportFonts(UWorld* World);
 };
 

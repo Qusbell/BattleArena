@@ -70,6 +70,20 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Arena Match Log")
     static void RecordDamageInput(AActor* Victim, float InputDamage);
 
+    // ---- Player behaviour observation (only recorded when an observation interval is configured, human players only) ----
+
+    /** The player's fire input changed: true on press (Started), false on release (Completed). Call from the player's fire input action. */
+    UFUNCTION(BlueprintCallable, Category = "Arena Match Log|Behavior")
+    static void RecordAttackInput(APawn* Pawn, bool bPressed);
+
+    /** The player pressed the jump input (Started), whether or not the jump can happen. Execution is detected automatically. */
+    UFUNCTION(BlueprintCallable, Category = "Arena Match Log|Behavior")
+    static void RecordJumpInput(APawn* Pawn);
+
+    /** Call where something other than the player's own jump launches the pawn: Cause e.g. JumpPad, Teleport, Knockback. */
+    UFUNCTION(BlueprintCallable, Category = "Arena Match Log|Behavior")
+    static void RecordForcedMovement(APawn* Pawn, FName Cause);
+
     /** Seconds since the match start used by every event, for computing ExpiresAtSeconds. */
     UFUNCTION(BlueprintPure, Category = "Arena Match Log", meta = (WorldContext = "WorldContextObject"))
     static float GetMatchElapsedSeconds(const UObject* WorldContextObject);

@@ -2,6 +2,7 @@
 
 #include "JumpPadFlightComponent.h"
 
+#include "Analyzer/ArenaMatchLogLibrary.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
@@ -39,6 +40,9 @@ void UJumpPadFlightComponent::BeginFlight(float RiseGravityScale, float FallGrav
 	{
 		return;
 	}
+
+	// 전투 기록: 플레이어의 점프가 아니라 점프패드로 인한 이동임을 알립니다(기록 중이 아니면 아무 일도 하지 않음).
+	UArenaMatchLogLibrary::RecordForcedMovement(Cast<APawn>(GetOwner()), TEXT("JumpPad"));
 
 	// 이미 비행 중이면(연속 점프패드) 원래 값은 덮어쓰지 않는다.
 	if (!bInFlight)

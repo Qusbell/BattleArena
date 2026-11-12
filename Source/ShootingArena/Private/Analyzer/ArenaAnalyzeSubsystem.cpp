@@ -356,7 +356,7 @@ int32 UArenaAnalyzeSubsystem::RecordShot(AActor* Weapon, UObject* Data, FVector 
     ShotSamples.Add(Shot); WeaponShots.Add(Weapon, Shot);
     if (Shot.ControllerId != INDEX_NONE)
     {
-        if (auto* Log = MatchLog(GetWorld())) Log->RecordFire(Shot.ShotId, Shot.ControllerId, Shot.TrackId + 1, Shot.WeaponId, Data);
+        if (auto* Log = MatchLog(GetWorld())) Log->RecordFire(Shot.ShotId, Shot.ControllerId, Shot.TrackId + 1, Shot.WeaponId, Data, Weapon);
     }
     return Shot.ShotId;
 }
@@ -454,12 +454,13 @@ float UArenaAnalyzeSubsystem::ApplyShotDamage(AActor* Victim, float Damage, ACon
             Record.AttackerParticipantId = Shot.ControllerId;
             Record.AttackerSpawnNumber = Shot.TrackId + 1;
             if (Sample.bHasInstigatorLocation) Record.Distance = FVector::Dist(Sample.InstigatorLocation, Sample.DamagedLocation);
-            if (IsValid(Instigator)) Record.AttackerBuffTag = Log->SnapshotLife(Instigator->GetPawn()).BuffTag;
+            if (IsValid(Instigator)) { Record.AttackerBuffTag = Log->SnapshotLife(Instigator->GetPawn()).BuffTag; Record.AttackerPawn = Instigator->GetPawn(); }
         }
         Record.RawDamage = Damage;
         Record.VictimActor = Victim;
         Record.Before = Log->SnapshotLife(Victim);
         Record.VictimBuffTag = Record.Before.BuffTag;
+        Log->CaptureBuffLinks(Record, Cast<APawn>(Victim));
         DamageSeq = Log->BeginDamage(Record.AttackId);
     }
     const auto PreviousVictim = ActiveVictim;

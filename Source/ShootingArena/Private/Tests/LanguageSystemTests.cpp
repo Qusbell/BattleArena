@@ -6,6 +6,8 @@
 #include "Kismet/KismetInternationalizationLibrary.h"
 #include "GameFramework/PlayerState.h"
 #include "Engine/World.h"
+#include "Blueprint/WidgetTree.h"
+#include "Components/TextBlock.h"
 #include "Misc/ScopeExit.h"
 #include "UObject/Package.h"
 #include "UObject/UnrealType.h"
@@ -123,6 +125,22 @@ bool FDisplayStringRobustnessTest::RunTest(const FString&)
     TestEqual(TEXT("Quoted nickname punctuation does not count toward parser nesting"),
         ULanguageLibrary::ReadDisplayString(Encoded).ToString(),
         ULanguageLibrary::FormatText(TEXT("Lobby_Joined"),Name,Empty,Empty,Empty,Empty,Empty,Empty,Empty).ToString());
+    return true;
+}
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FLoadingLocalizationExclusionTest,"ShootingArena.Localization.LoadingWidgetExcluded",
+    EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
+bool FLoadingLocalizationExclusionTest::RunTest(const FString&)
+{
+    UClass* LoadingClass=LoadClass<UUserWidget>(nullptr,
+        TEXT("/Game/QuakeLike_1_0/GameFlow/UI/Loading/WBP_LoadingScreen_Ref.WBP_LoadingScreen_Ref_C"));
+    if (!TestNotNull(TEXT("Main loading widget class"),LoadingClass)) return false;
+    UUserWidget* Loading=NewObject<UUserWidget>(GetTransientPackage(),LoadingClass);
+    UWidgetTree* Tree=NewObject<UWidgetTree>(Loading);
+    UTextBlock* LoadingText=NewObject<UTextBlock>(Tree);
+    TestTrue(TEXT("Loading root is excluded from localization"),ULanguageLibrary::IsWidgetLocalizationExcluded(Loading));
+    TestTrue(TEXT("Loading descendants are excluded from font replacement"),ULanguageLibrary::IsWidgetLocalizationExcluded(LoadingText));
+    TestFalse(TEXT("Other text remains eligible for font replacement"),
+        ULanguageLibrary::IsWidgetLocalizationExcluded(NewObject<UTextBlock>()));
     return true;
 }
 #endif

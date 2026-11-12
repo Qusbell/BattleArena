@@ -14,6 +14,7 @@
 | `README.md` | 이 문서. 사용법과 검증 방법 |
 | `연결표.md` | 저장 테이블별 실제 코드 연결 위치와 실행 시점 (지시서 10-2 제출 항목 1) |
 | `구현상태.md` | 확정 필요 사항별 현재 구현 상태와 알려진 한계 (제출 항목 5, 4) |
+| `extension_wiring_table.md`, `blueprint_wiring_guide.md`, `extension_queries.sql` | 수집 형식 버전 1 확장(탄약·발사 조건·적용 설정·버프 효과·플레이어 행동 관측)의 코드 연결 위치, 블루프린트 연결 방법, 조회 예시. 2026-11-11 추가, 게임 실행 검증은 사용자 확인 대기 |
 | `aggregates.sql` | 집계 조회 5종(`weapon_stats`, `character_weapon_stats`, `weapon_totals`, `character_stats`, `matchup_stats`) |
 | `verify_match.py` | 경기 기록 검증 스크립트 (누락·참조·최종 결과 대조) |
 | `ShootingArenaLog_sample.db` | 실제 경기 1개가 기록된 샘플 DB. 집계 뷰까지 들어 있어 바로 조회할 수 있습니다 |

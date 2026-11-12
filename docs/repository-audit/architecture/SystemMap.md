@@ -111,7 +111,7 @@ OneWayTeleportActor, JumpPadFlightComponent/CommonSettings는 별도 이동 기�
 
 ## UI·오디오·카메라
 
-- 2026-11-11: `ULanguageSubsystem`은 클라이언트 GameInstance 수명으로 Culture와 사용자 설정 저장을 관리합니다. 메인·일시정지 메뉴의 공유 `WBP_SettingsMenu`에 `ULanguageSelector`를 연결했으며 `DT_Language → Font`, `ST_Game + PO/locres → FText`를 사용합니다. `ULoadingScreenSubsystem`이 언어 초기화에 의존하고, 기존 String 표시 경계는 직렬화한 FText를 복원합니다. `BP_QuakePlayerState.GetDisplayName`은 표시 전용 어댑터이며 ID/점수 저장에 새로 사용하지 않습니다. 새 언어 설정 복제/RPC는 없습니다. [현행 언어 시스템과 사용자 검증 항목](../systems/LanguageSystem.md)을 참조합니다.
+- 2026-11-11: `ULanguageSubsystem`은 클라이언트 GameInstance 수명으로 Culture와 사용자 설정 저장을 관리합니다. 메인·일시정지 메뉴의 공유 `WBP_SettingsMenu`에 `ULanguageSelector`를 연결했으며 `DT_Language → Font`, `ST_Game + PO/locres → FText`를 사용합니다. 기존 String 표시 경계는 직렬화한 FText를 복원합니다. 2026-11-12 main 통합에서 로딩 WBP와 그 하위 글꼴은 사용자 요청으로 언어 패치에서 제외했으며 로딩의 언어 초기화 의존성과 StatusText 번역 연결을 제거했습니다. `BP_QuakePlayerState.GetDisplayName`은 표시 전용 어댑터이며 ID/점수 저장에 새로 사용하지 않습니다. 새 언어 설정 복제/RPC는 없습니다. [현행 언어 시스템과 사용자 검증 항목](../systems/LanguageSystem.md)을 참조합니다.
 
 - 촬영 UI는 `DA_UIRecordingSettings`의 15개 체크박스로 표시 영역별 그리기를 제어합니다. `URecordingUIMask`는 자식 위젯 상태를 유지하며 표시만 감춥니다. [연결 범위와 사용법](../systems/UIRecording.md).
 
@@ -126,6 +126,7 @@ OneWayTeleportActor, JumpPadFlightComponent/CommonSettings는 별도 이동 기�
 ## 분석·기록·디버그
 
 ArenaAnalyze의 JSON chunk 기록·시각화와 ArenaMatchLog의 SQLite 경기 기록은 서로 다른 저장 경로입니다.
+2026-11-11: ArenaMatchLog에 수집 형식 버전 1 확장(탄약 `ammo_change`, 발사 조건 `fire_context`, 참가자 적용 설정 `participant_settings`, 버프 효과 `buff_instance`/`damage_buff`, 사람 플레이어 행동 관측)이 추가되었습니다. `JumpPadFlightComponent`와 `OneWayTeleportActor`가 강제 이동을 `UArenaMatchLogLibrary::RecordForcedMovement`로 알립니다. 연결 위치는 [확장 연결표](../../../GamePlayDB/extension_wiring_table.md)를 확인합니다.
 둘 다 `Saved`를 쓰므로 캐시로 일괄 취급하지 않습니다. DebugAINetwork는 서버 수집과 소유 클라이언트 표시를 나눕니다.
 
 근거: `Public/Analyzer/`, `Public/Debug/`, [분석 카탈로그](catalogs/Telemetry-Debug.md),

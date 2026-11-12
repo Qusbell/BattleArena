@@ -1,8 +1,8 @@
 #include "Loading/LoadingScreenSubsystem.h"
-#include "Localization/LanguageSubsystem.h"
 #include "UI/UIRecordingSettings.h"
 
 #include "Audio/BGMSubsystem.h"
+#include "Blueprint/UserWidget.h"
 #include "Loading/LoadingCoordinator.h"
 #include "MyPlayerController.h"
 #include "Containers/Ticker.h"
@@ -25,7 +25,6 @@ void ULoadingScreenSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		UE_LOG(LogTemp, Log, TEXT("[Loading] Screen subsystem skipped on dedicated server."));
 		return;
 	}
-	Collection.InitializeDependency<ULanguageSubsystem>();
 	Collection.InitializeDependency<UBGMSubsystem>();
 	UE_LOG(LogTemp, Log, TEXT("[Loading] Screen subsystem initialized."));
 	PreLoadMapHandle = FCoreUObjectDelegates::PreLoadMapWithContext.AddUObject(this, &ULoadingScreenSubsystem::HandlePreLoadMap);
@@ -63,8 +62,7 @@ void ULoadingScreenSubsystem::HandlePreLoadMap(const FWorldContext& WorldContext
 	bSawCoordinator = false;
 	GameplayReadyTransitionWorld.Reset();
 	SecondsSincePostLoad = 0.0f;
-	CurrentStatus = ULanguageLibrary::Text(TEXT("Loading_Map"));
-	ShowLoadingScreen(FString());
+	ShowLoadingScreen(TEXT("맵을 불러오는 중..."));
 	ApplyInputLock();
 }
 
@@ -83,14 +81,13 @@ void ULoadingScreenSubsystem::HandlePostLoadMap(UWorld* LoadedWorld)
 	if (!bTransitionActive || IsRunningDedicatedServer() || !LoadedWorld || LoadedWorld->GetGameInstance() != GetGameInstance()) return;
 	UE_LOG(LogTemp, Log, TEXT("[Loading] PostLoadMap: %s"), LoadedWorld ? *LoadedWorld->GetName() : TEXT("None"));
 	SecondsSincePostLoad = 0.0f;
-	CurrentStatus = ULanguageLibrary::Text(TEXT("Loading_Game"));
-	ShowLoadingScreen(FString());
+	ShowLoadingScreen(TEXT("게임 준비 중..."));
 	ApplyInputLock();
 }
 
 void ULoadingScreenSubsystem::BeginExternalLoading(const FString& StatusText)
 {
-	if (IsRunningDedicatedServer()) return;
+	if (IsRunningDedicatedServer() || GetGameInstance()->IsDedicatedServerInstance()) return;
 	if (UGameInstance* GameInstance = GetGameInstance())
 	{
 		if (UBGMSubsystem* BGM = GameInstance->GetSubsystem<UBGMSubsystem>()) BGM->BeginLoadingBGM();
@@ -161,14 +158,14 @@ void ULoadingScreenSubsystem::UpdateLoadingState()
 		switch (It->GetPhase())
 		{
 		case ELoadingCoordinatorPhase::Initializing:
-			CurrentStatus = ULanguageLibrary::Text(TEXT("Loading_Environment")); return;
+			CurrentStatus = TEXT("게임 환경을 준비하는 중..."); return;
 		case ELoadingCoordinatorPhase::WaitingForPlayers:
-			CurrentStatus = ULanguageLibrary::FormatText(TEXT("Loading_Players"), FText::AsNumber(It->GetConnectedHumanPlayers()), FText::AsNumber(It->GetExpectedHumanPlayers()), FText::GetEmpty(), FText::GetEmpty(), FText::GetEmpty(), FText::GetEmpty(), FText::GetEmpty(), FText::GetEmpty()); return;
+			CurrentStatus = FString::Printf(TEXT("참가자 준비 대기 중... (%d / %d)"), It->GetConnectedHumanPlayers(), It->GetExpectedHumanPlayers()); return;
 		case ELoadingCoordinatorPhase::ReadyToPlay:
 			GameplayReadyTransitionWorld = World;
 			HideLoadingScreen(); return;
 		default:
-			CurrentStatus = ULanguageLibrary::Text(TEXT("Loading_Failed")); return;
+			CurrentStatus = TEXT("전환을 완료하지 못했습니다."); return;
 		}
 	}
 
@@ -201,9 +198,29 @@ void ULoadingScreenSubsystem::UpdateLoadingState()
 
 void ULoadingScreenSubsystem::ShowLoadingScreen(const FString& StatusText)
 {
-	if (!StatusText.IsEmpty()) CurrentStatus = ULanguageLibrary::ReadDisplayString(StatusText);
+	CurrentStatus = StatusText;
+	if (IsRunningDedicatedServer() || GetGameInstance()->IsDedicatedServerInstance()) return;
 	if (!LoadingOverlay.IsValid())
 	{
+		// Cooked via DirectoriesToAlwaysCook (DefaultGame.ini); a missing class falls back to the text-only overlay.
+		static const TCHAR* LoadingWidgetPath = TEXT("/Game/QuakeLike_1_0/GameFlow/UI/Loading/WBP_LoadingScreen_Ref.WBP_LoadingScreen_Ref_C");
+		UClass* WidgetClass = LoadClass<UUserWidget>(nullptr, LoadingWidgetPath);
+		LoadingWidget = WidgetClass && GetGameInstance() ? CreateWidget<UUserWidget>(GetGameInstance(), WidgetClass) : nullptr;
+		if (!LoadingWidget)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[Loading] Could not create %s; using the text-only overlay."), LoadingWidgetPath);
+		}
+
+		TSharedRef<SWidget> Content = LoadingWidget
+			? LoadingWidget->TakeWidget()
+			: StaticCastSharedRef<SWidget>(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)
+			[
+				SNew(STextBlock)
+				.Text_UObject(this, &ThisClass::GetStatusText)
+				.Font(FCoreStyle::GetDefaultFontStyle("Regular", 28))
+				.ColorAndOpacity(FLinearColor(0.92f, 0.72f, 0.25f, 1.0f))
+			]);
+
 		LoadingOverlay = SNew(SBorder)
 			.Visibility_Lambda([]()
 			{
@@ -212,12 +229,9 @@ void ULoadingScreenSubsystem::ShowLoadingScreen(const FString& StatusText)
 			})
 			.BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
 			.BorderBackgroundColor(FLinearColor(0.01f, 0.01f, 0.015f, 1.0f))
-			.HAlign(HAlign_Center).VAlign(VAlign_Center)
+			.Padding(0.0f)
 			[
-				SNew(STextBlock)
-				.Text_UObject(this, &ThisClass::GetStatusText)
-				.Font_Lambda([]() { return ULanguageLibrary::ResolveFont(FCoreStyle::GetDefaultFontStyle("Regular", 28)); })
-				.ColorAndOpacity(FLinearColor(0.92f, 0.72f, 0.25f, 1.0f))
+				Content
 			];
 	}
 	UGameViewportClient* ViewportClient = GetGameInstance() ? GetGameInstance()->GetGameViewportClient() : nullptr;
@@ -264,6 +278,9 @@ void ULoadingScreenSubsystem::RemoveLoadingScreen(bool bRestoreBGM)
 	UGameViewportClient* ViewportClient = GetGameInstance() ? GetGameInstance()->GetGameViewportClient() : nullptr;
 	if (ViewportClient && LoadingOverlay.IsValid()) ViewportClient->RemoveViewportWidgetContent(LoadingOverlay.ToSharedRef());
 	bOverlayAddedToViewport = false;
+	// Rebuilt on the next transition so the widget's Construct reads that transition's map.
+	LoadingOverlay.Reset();
+	LoadingWidget = nullptr;
 	ReleaseInputLock();
 	if (bReportReady)
 	{
@@ -326,5 +343,5 @@ void ULoadingScreenSubsystem::ReleaseInputLock()
 
 FText ULoadingScreenSubsystem::GetStatusText() const
 {
-	return CurrentStatus;
+	return FText::AsCultureInvariant(CurrentStatus);
 }

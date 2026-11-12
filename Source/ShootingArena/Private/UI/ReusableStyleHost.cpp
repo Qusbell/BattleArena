@@ -68,7 +68,8 @@ void UStyleableComboBoxString::ApplyBlueprintStyle(const UBlueprintComboStyle& I
     UUIThemePaletteLibrary::PreparePalette();
     UCommonTextStyle* Typography = InStyle.TextStyle ? InStyle.TextStyle->GetDefaultObject<UCommonTextStyle>() : nullptr;
     UUIThemePaletteLibrary::ApplyObject(Typography);
-    const FSlateFontInfo ResolvedFont = ULanguageLibrary::ResolveFont(Typography ? Typography->Font : InStyle.Font);
+    const FSlateFontInfo BaseFont = Typography ? Typography->Font : InStyle.Font;
+    const FSlateFontInfo ResolvedFont = ULanguageLibrary::IsWidgetLocalizationExcluded(this) ? BaseFont : ULanguageLibrary::ResolveFont(BaseFont);
     const FSlateColor ResolvedColor = Typography ? FSlateColor(Typography->Color) : InStyle.Foreground;
     SetWidgetStyle(InStyle.Style);
     SetItemStyle(InStyle.ItemStyle);

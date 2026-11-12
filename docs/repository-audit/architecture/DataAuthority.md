@@ -4,6 +4,10 @@
 
 2026-11-11 추가: 언어 목록·기본 언어·Font는 `/Game/QuakeLike_1_0/Localization/DT_Language`, 번역 원문은 같은 폴더의 `ST_Game`이 원본입니다. 번역은 `Content/Localization/Game`의 Dashboard archive/PO, 실행 산출물은 locres/locmeta입니다. 사용자 선택은 `GGameUserSettingsIni`의 `[Internationalization] Culture`이며 기존 PlayerSettings SaveGame과 분리합니다. 두 새 에셋은 JsonAssetSync에 등록하지 않았습니다. 초기 이관 seed와 스크립트는 실행·편집 원본이 아니며 저장소 밖의 작업 백업으로 분리했습니다. `DT_MapData.json`의 기존 설명 4개는 `LOCTABLE` 참조로 바꾸었으므로 에셋만 수정하지 않습니다. `DT_MultiRules.Label`은 에셋 원본이고 `Unit` 내부 String은 유지합니다. [언어 시스템](../systems/LanguageSystem.md)을 참조합니다.
 
+2026-11-11 추가. `DA_KillMedalUISettings`는 `Content/DataAssets/DA_KillMedalUISettings.json`에 연결됩니다.
+메달과 처치 알림의 색상·불투명도·그림자를 DA에서 편집하고 저장하면 JsonAssetSync가 JSON에 내보냅니다.
+다음 Editor·런타임 시작은 이 JSON을 적용합니다. [킬 알림 스타일과 검증 방법](../systems/UIRecording.md#2026-11-11-킬-메달과-처치-알림-스타일)
+
 2026-11-10 추가: 로컬 에임 어시스트의 수렴 시간은 `UAimAssistSettings`/`DefaultGame.ini`의 `[/Script/ShootingArena.AimAssistSettings]`가 원본입니다. Project Settings > Game > Aim Assist에서 조정합니다. JsonAssetSync에 연결하지 않으며 활성화 상태는 컨트롤러별 메모리에만 보관합니다. [시스템 문서](../systems/AimAssist.md)를 참조합니다.
 
 2026-11-09 추가: 촬영용 `/Game/QuakeLike_1_0/UI/Recording/DA_UIRecordingSettings`는 DA 에셋 자체가 원본입니다. JsonAssetSync에 등록하지 않았으므로 이 에셋의 체크박스를 직접 편집·저장합니다. [촬영 UI](../systems/UIRecording.md).

@@ -19,8 +19,9 @@
     "settings": "Main menu and pause menu share WBP_SettingsMenu with LanguageSelector.",
     "display_names": "Human nicknames are invariant; only bots resolve CampaignName then SelectedCharacterRow to Character_<ID>. BPC_Life display boundaries and native ShooterDisplayLibrary decode marked text history.",
     "dynamic_messages": "String-based legacy display interfaces retain String Table and formatting history; ordinary nicknames are not parsed as localization markup.",
-    "fonts": "DT_Language fonts apply to UMG, common combo/style, nickname paint, loading Slate and Canvas subtitles.",
-    "gameplay": "No localized gameplay identifiers or language replication were added."
+    "fonts": "DT_Language fonts apply to game UMG, common combo/style, nickname paint and Canvas subtitles; loading WBP and descendants are excluded.",
+    "gameplay": "No localized gameplay identifiers or language replication were added.",
+    "loading": "Main WBP_LoadingScreen_Ref is used unchanged; no translation adapter or language initialization dependency. Its descendants are excluded from language font refresh."
   },
   "json_bound_map_description_rows": [
     "Map_03",
@@ -30,8 +31,8 @@
   ],
   "direct_asset_rule_labels": 2,
   "validation": {
-    "editor_development_build": "Succeeded; trace 261112_131636; 49.77 seconds.",
-    "shipping_build": "Succeeded; trace 261112_131835; 56.08 seconds.",
+    "editor_development_build": "Succeeded after temporary helper removal; trace 261112_183649; 7.89 seconds.",
+    "shipping_build": "Succeeded; trace 261112_183822; 139.75 seconds.",
     "retained_blueprint_compilation": {
       "count": 52,
       "result": "All succeeded through MCP after the 32 incidental assets were restored.",
@@ -91,10 +92,11 @@
       ]
     },
     "unit_test_success_log_lines": [
-      "[2026.11.12-04.20.49:412][292]LogAutomationController: Display: Test Completed. Result={Success} Name={MalformedDisplayString} Path={ShootingArena.Localization.MalformedDisplayString}",
-      "[2026.11.12-04.20.49:760][294]LogAutomationController: Display: Test Completed. Result={Success} Name={ParticipantDisplayName} Path={ShootingArena.Localization.ParticipantDisplayName}",
-      "[2026.11.12-04.20.50:431][297]LogAutomationController: Display: Test Completed. Result={Success} Name={StartupSelection} Path={ShootingArena.Localization.StartupSelection}",
-      "[2026.11.12-04.20.52:097][300]LogAutomationController: Display: Test Completed. Result={Success} Name={TextHistoryAndNickname} Path={ShootingArena.Localization.TextHistoryAndNickname}"
+      "[2026.11.12-09.28.36:772][ 44]LogAutomationController: Display: Test Completed. Result={Success} Name={LoadingWidgetExcluded} Path={ShootingArena.Localization.LoadingWidgetExcluded}",
+      "[2026.11.12-09.28.37:447][ 47]LogAutomationController: Display: Test Completed. Result={Success} Name={MalformedDisplayString} Path={ShootingArena.Localization.MalformedDisplayString}",
+      "[2026.11.12-09.28.38:124][ 50]LogAutomationController: Display: Test Completed. Result={Success} Name={ParticipantDisplayName} Path={ShootingArena.Localization.ParticipantDisplayName}",
+      "[2026.11.12-09.28.38:799][ 53]LogAutomationController: Display: Test Completed. Result={Success} Name={StartupSelection} Path={ShootingArena.Localization.StartupSelection}",
+      "[2026.11.12-09.28.40:441][ 56]LogAutomationController: Display: Test Completed. Result={Success} Name={TextHistoryAndNickname} Path={ShootingArena.Localization.TextHistoryAndNickname}"
     ],
     "strict_po_validation": {
       "entries": 264,
@@ -188,11 +190,11 @@
   "source_and_localization_fingerprints": [
     {
       "path": "Source/ShootingArena/Public/Localization/LanguageSubsystem.h",
-      "sha256": "0f40a1e3476800f051610e9e441912df22a9d7b7b99dae56d24004099e24196a"
+      "sha256": "0490e5e4a56c693b5995f02375b72fa80151323fc49fd013a5caf677267a0068"
     },
     {
       "path": "Source/ShootingArena/Private/Localization/LanguageSubsystem.cpp",
-      "sha256": "6ad05d5079df8fd61d947af93a2aab1e01a70625dfa265a353f5ce26da746197"
+      "sha256": "f33e5d06798c0e75c5a49624982889735209c01afd0fe9770976002f290aa524"
     },
     {
       "path": "Source/ShootingArenaEditorTools/Private/LanguageAuthoringLibrary.h",
@@ -204,7 +206,7 @@
     },
     {
       "path": "Source/ShootingArena/Private/Tests/LanguageSystemTests.cpp",
-      "sha256": "4da6764f324e05ff037cc7059f113b35848f7e3411873a4a40210afa8c57fc67"
+      "sha256": "273c297e43abd0e0e94eb3b1100ad115d17740400028df6daea24ff71d9564b0"
     },
     {
       "path": "Source/ShootingArena/Private/Camera/ShooterDisplayLibrary.cpp",
@@ -220,7 +222,7 @@
     },
     {
       "path": "Source/ShootingArena/Private/UI/ReusableStyleHost.cpp",
-      "sha256": "8890df1d1d1a9f80cad3f0b25da01eec7429dfbdac159c073aed1a7e6bc05f91"
+      "sha256": "0e9c3cc92fc33b87de652b0f5eb03918bb11fee639e3c0d157868b66d431d63c"
     },
     {
       "path": "Source/ShootingArena/Private/UI/BuffDurationRing.cpp",
@@ -228,7 +230,7 @@
     },
     {
       "path": "Source/ShootingArena/Private/Loading/LoadingScreenSubsystem.cpp",
-      "sha256": "71a742bc4d439d705e53738604c5364686ef53d2d7ba1ff02f37444038a424cd"
+      "sha256": "2b21cdd1126a28693e010ab41ee7d6fb08be8801d3fc1e0a523dd5b53f817e60"
     },
     {
       "path": "Source/ShootingArena/Private/MyPlayerController.cpp",
@@ -240,7 +242,7 @@
     },
     {
       "path": "Config/DefaultGame.ini",
-      "sha256": "fcc9242f69b00b56c370ca54af58b1cc0c875d87fb3765daceafcaa2eb6638b3"
+      "sha256": "8e85a592f2127c73b32fdb84d4d8defadc815b307823ca0b8ff7c38fb5726be8"
     },
     {
       "path": "Config/DefaultEditor.ini",
@@ -292,7 +294,7 @@
     },
     {
       "path": "Source/ShootingArena/Public/Loading/LoadingScreenSubsystem.h",
-      "sha256": "a3d61c4f46bc6bead243d2fef3fce1a4019b9992001c9081ec615d6625029b4f"
+      "sha256": "ff31c8ccde9345ffa61a4b8df892917b960fc91a411d5d577237afdcd397cafb"
     },
     {
       "path": "Source/ShootingArena/Public/UI/ReusableStyleHost.h",
@@ -304,7 +306,15 @@
     "pie_worlds": [],
     "dirty_content": [],
     "dirty_maps": [],
-    "editor_test_threshold_restored": 10.0
+    "temporary_merge_helper_removed": true,
+    "localization_validation": {
+      "entries": 264,
+      "cultures": [
+        "ko",
+        "en"
+      ],
+      "validation": "passed"
+    }
   },
   "updated_date": "2026-11-12",
   "safety_hardening_2026_11_12": {
@@ -414,5 +424,223 @@
       }
     ],
     "limits": "No whole-screen, actual multiplayer, map travel, packaged runtime, or forced process termination during multi-file publication was exercised."
+  },
+  "main_integration_2026_11_12": {
+    "target_main": "ca10893f802ecb764e1006c598cc928bca6a659b",
+    "feature_checkpoint": "2b020e3ec77c439dcf24cb6eca7f8ed63b347541",
+    "workflow": "GitHub Desktop Fetch and Merge into current branch; main asset originals downloaded from public GitHub media and SHA-256 verified against LFS references; Blueprint resolution only through MCP.",
+    "conflicted_files": [
+      "Config/DefaultGame.ini",
+      "Content/QuakeLike_1_0/GameFlow/Lobby/WBP_MultiConnect.uasset",
+      "Content/QuakeLike_1_0/GameFlow/Lobby/WBP_MultiLobby.uasset",
+      "Content/QuakeLike_1_0/UI/DeathUI/WBP_DeathScreen.uasset",
+      "Content/QuakeLike_Base/SDM/UI/Combat_UI/WBP_PlayerHUD_sdm.uasset",
+      "Source/ShootingArena/Private/Loading/LoadingScreenSubsystem.cpp",
+      "Source/ShootingArena/Public/Loading/LoadingScreenSubsystem.h",
+      "docs/repository-audit/architecture/DataAuthority.md",
+      "docs/repository-audit/architecture/SystemMap.md",
+      "docs/repository-audit/audit/progress.json"
+    ],
+    "actual_conflicts": [
+      "Content/QuakeLike_1_0/GameFlow/Lobby/WBP_MultiConnect.uasset",
+      "Content/QuakeLike_1_0/GameFlow/Lobby/WBP_MultiLobby.uasset",
+      "Content/QuakeLike_1_0/UI/DeathUI/WBP_DeathScreen.uasset",
+      "Content/QuakeLike_Base/SDM/UI/Combat_UI/WBP_PlayerHUD_sdm.uasset",
+      "Source/ShootingArena/Private/Loading/LoadingScreenSubsystem.cpp",
+      "docs/repository-audit/architecture/DataAuthority.md"
+    ],
+    "blueprint_resolution": "Reapplied display-only localization on top of exact main originals; preserved main-authored execution connections.",
+    "blueprint_results": [
+      {
+        "path": "Content/QuakeLike_1_0/GameFlow/Lobby/WBP_MultiConnect.uasset",
+        "localization_changes": 14,
+        "loading_links_removed": 0,
+        "compile": {
+          "success": true,
+          "status": "UpToDate",
+          "message": "Blueprint compiled successfully."
+        }
+      },
+      {
+        "path": "Content/QuakeLike_1_0/GameFlow/Lobby/WBP_MultiLobby.uasset",
+        "localization_changes": 34,
+        "loading_links_removed": 0,
+        "compile": {
+          "success": true,
+          "status": "UpToDate",
+          "message": "Blueprint compiled successfully."
+        }
+      },
+      {
+        "path": "Content/QuakeLike_1_0/UI/DeathUI/WBP_DeathScreen.uasset",
+        "localization_changes": 5,
+        "loading_links_removed": 0,
+        "compile": {
+          "success": true,
+          "status": "UpToDate",
+          "message": "Blueprint compiled successfully."
+        }
+      },
+      {
+        "path": "Content/QuakeLike_Base/SDM/UI/Combat_UI/WBP_PlayerHUD_sdm.uasset",
+        "localization_changes": 2,
+        "loading_links_removed": 0,
+        "compile": {
+          "success": true,
+          "status": "UpToDate",
+          "message": "Blueprint compiled successfully."
+        }
+      }
+    ],
+    "main_execution_validation": [
+      {
+        "asset": "WBP_DeathScreen",
+        "authored_graphs": 3,
+        "authored_main_execution_pins": 56,
+        "main_execution_connections_preserved": true,
+        "compiled_transient_graphs_excluded": true
+      },
+      {
+        "asset": "WBP_MultiConnect",
+        "authored_graphs": 6,
+        "authored_main_execution_pins": 178,
+        "main_execution_connections_preserved": true,
+        "compiled_transient_graphs_excluded": true
+      },
+      {
+        "asset": "WBP_MultiLobby",
+        "authored_graphs": 19,
+        "authored_main_execution_pins": 728,
+        "main_execution_connections_preserved": true,
+        "compiled_transient_graphs_excluded": true
+      },
+      {
+        "asset": "WBP_PlayerHUD_sdm",
+        "authored_graphs": 38,
+        "authored_main_execution_pins": 640,
+        "main_execution_connections_preserved": true,
+        "compiled_transient_graphs_excluded": true
+      }
+    ],
+    "main_execution_pins_preserved": 1602,
+    "loading_exclusion": {
+      "user_requested": true,
+      "widget": "/Game/QuakeLike_1_0/GameFlow/UI/Loading/WBP_LoadingScreen_Ref",
+      "widget_unchanged_from_main": true,
+      "font_refresh_excludes_widget_and_descendants": true,
+      "language_initialization_dependency_removed": true,
+      "legacy_status_translation_links_removed": 13,
+      "affected_callers": [
+        {
+          "path": "Content/QuakeLike_1_0/GameFlow/UI/03_Widget/WBP_SinglePlay.uasset",
+          "loading_links_removed": 1,
+          "compile": {
+            "success": true,
+            "status": "UpToDate",
+            "message": "Blueprint compiled successfully."
+          }
+        },
+        {
+          "path": "Content/QuakeLike_1_0/GameFlow/UI/WBP_DifficultySelect.uasset",
+          "loading_links_removed": 1,
+          "compile": {
+            "success": true,
+            "status": "UpToDate",
+            "message": "Blueprint compiled successfully."
+          }
+        },
+        {
+          "path": "Content/QuakeLike_1_0/GameFlow/UI/WBP_DifficultySelect_SDM.uasset",
+          "loading_links_removed": 1,
+          "compile": {
+            "success": true,
+            "status": "UpToDate",
+            "message": "Blueprint compiled successfully."
+          }
+        },
+        {
+          "path": "Content/QuakeLike_1_0/GameFlow/UI/WBP_IPInput.uasset",
+          "loading_links_removed": 1,
+          "compile": {
+            "success": true,
+            "status": "UpToDate",
+            "message": "Blueprint compiled successfully."
+          }
+        },
+        {
+          "path": "Content/QuakeLike_1_0/GameFlow/UI/WBP_MainMenu.uasset",
+          "loading_links_removed": 1,
+          "compile": {
+            "success": true,
+            "status": "UpToDate",
+            "message": "Blueprint compiled successfully."
+          }
+        },
+        {
+          "path": "Content/QuakeLike_1_0/GameFlow/UI/WBP_MainMenu_SDM.uasset",
+          "loading_links_removed": 1,
+          "compile": {
+            "success": true,
+            "status": "UpToDate",
+            "message": "Blueprint compiled successfully."
+          }
+        },
+        {
+          "path": "Content/QuakeLike_1_0/GameFlow/UI/WBP_MapSelect1.uasset",
+          "loading_links_removed": 1,
+          "compile": {
+            "success": true,
+            "status": "UpToDate",
+            "message": "Blueprint compiled successfully."
+          }
+        },
+        {
+          "path": "Content/QuakeLike_1_0/GameFlow/UI/WBP_Result.uasset",
+          "loading_links_removed": 3,
+          "compile": {
+            "success": true,
+            "status": "UpToDate",
+            "message": "Blueprint compiled successfully."
+          }
+        },
+        {
+          "path": "Content/QuakeLike_1_0/GameProgressFlow/WBP_PauseMenu.uasset",
+          "loading_links_removed": 3,
+          "compile": {
+            "success": true,
+            "status": "UpToDate",
+            "message": "Blueprint compiled successfully."
+          }
+        }
+      ]
+    },
+    "editor_build": "Succeeded after temporary helper removal; trace 261112_183649; 7.89 seconds.",
+    "shipping_build": "Succeeded; trace 261112_183822; 139.75 seconds.",
+    "automation_results": [
+      "[2026.11.12-09.28.36:772][ 44]LogAutomationController: Display: Test Completed. Result={Success} Name={LoadingWidgetExcluded} Path={ShootingArena.Localization.LoadingWidgetExcluded}",
+      "[2026.11.12-09.28.37:447][ 47]LogAutomationController: Display: Test Completed. Result={Success} Name={MalformedDisplayString} Path={ShootingArena.Localization.MalformedDisplayString}",
+      "[2026.11.12-09.28.38:124][ 50]LogAutomationController: Display: Test Completed. Result={Success} Name={ParticipantDisplayName} Path={ShootingArena.Localization.ParticipantDisplayName}",
+      "[2026.11.12-09.28.38:799][ 53]LogAutomationController: Display: Test Completed. Result={Success} Name={StartupSelection} Path={ShootingArena.Localization.StartupSelection}",
+      "[2026.11.12-09.28.40:441][ 56]LogAutomationController: Display: Test Completed. Result={Success} Name={TextHistoryAndNickname} Path={ShootingArena.Localization.TextHistoryAndNickname}",
+      "[2026.11.12-09.30.13:990][335]LogAutomationController: Display: Test Completed. Result={Success} Name={KillMedalBridge} Path={ShootingArena.UI.KillMedalBridge}"
+    ],
+    "temporary_authoring_tools": "Removed from Source and final Editor module; source and raw merge evidence preserved outside repository.",
+    "manual_play": "Not run; user-owned. KillMedalBridge used its isolated automation world, not PIE.",
+    "editor_state": {
+      "world": "/Game/QuakeLike_1_0/GameFlow/MainLevel/TestMainMenu_Level.TestMainMenu_Level",
+      "pie_worlds": [],
+      "dirty_content": [],
+      "dirty_maps": [],
+      "temporary_merge_helper_removed": true,
+      "localization_validation": {
+        "entries": 264,
+        "cultures": [
+          "ko",
+          "en"
+        ],
+        "validation": "passed"
+      }
+    },
+    "remote_push_or_pr": "Not performed."
   }
 }

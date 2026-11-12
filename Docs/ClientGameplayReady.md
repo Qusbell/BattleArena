@@ -5,6 +5,17 @@
 
 # 클라이언트 로딩 완료 보고
 
+2026-11-12 언어 기능 통합: 로딩 WBP는 언어 패치 대상에서 제외합니다. 언어 subsystem 초기화 의존성·StatusText 번역 어댑터·전역 글꼴 교체를 로딩 경로에서 사용하지 않습니다. WBP 생성·전환별 배경·페이드·입력 잠금·BGM·준비 보고는 이 문서의 경로를 유지합니다.
+
+## 로딩 화면 표시 — 2026-11-12 변경
+
+`ULoadingScreenSubsystem::ShowLoadingScreen`은 전환마다
+`/Game/QuakeLike_1_0/GameFlow/UI/Loading/WBP_LoadingScreen_Ref`를 GameInstance 소유로 만들어 오버레이 안에 표시합니다.
+위젯은 Construct에서 GameInstance의 `Selected_Map_ID`로 `DT_MapData.Map_Image`를 배경에 넣습니다.
+클래스를 불러오지 못하면 경고를 남기고 기존 상태 문구 오버레이를 씁니다. 위젯 경로는 C++ 문자열이므로
+`DefaultGame.ini`의 `DirectoriesToAlwaysCook`에 `GameFlow/UI/Loading` 폴더를 등록해 쿡에 포함합니다.
+전용 서버에서는 표시하지 않습니다. 이 변경은 Game 타겟 컴파일만 확인했고 실행·패키징 검증은 하지 않았습니다.
+
 ## BGM과의 연결 — 2026-11-05 조사 보충
 
 `ULoadingScreenSubsystem`은 BGMSubsystem을 초기화 의존성으로 선언합니다.

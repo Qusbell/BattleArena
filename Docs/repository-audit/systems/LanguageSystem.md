@@ -25,7 +25,7 @@ flowchart TD
     ST[ST_Game 원문] --> Text[FText / FormatText]
     PO[ko/en PO·archive] --> LocRes[컴파일된 locres]
     LocRes --> Text
-    Text --> UI[메뉴·로비·결과·HUD·로딩]
+    Text --> UI[메뉴·로비·결과·HUD]
     DT --> Font[언어 Font 해결]
     Font --> UI
     Event[서버 사건 정보·이름 참조] --> Client[클라이언트 표시 경계]
@@ -44,7 +44,9 @@ flowchart TD
 | `Source/ShootingArenaEditorTools/Private/LanguageAuthoringLibrary.*` | 엔진 형식 검사 후 locres 바이트를 메모리에서 생성하는 에디터 전용 도구입니다. 파일을 직접 덮어쓰지 않습니다. |
 | `Scripts/Localization/CompileLocalization.py` | String Table과 PO의 누락·stale/fuzzy·치환 인수·언어 설정을 검사하고, 모든 언어의 리소스가 생성된 뒤 파일을 교체합니다. |
 
-`ULoadingScreenSubsystem`은 `ULanguageSubsystem`을 초기화 의존성으로 지정합니다. PIE 전용 서버 인스턴스도 로딩 UI·언어 처리를 건너뜁니다. 기존 BP Event Init은 새 subsystem 생성 전이므로 언어 선택 호출을 거기에 추가하지 않습니다.
+언어 처리는 클라이언트 GameInstance subsystem 초기화에서 수행합니다. 기존 BP Event Init은 새 subsystem 생성 전이므로 언어 선택 호출을 거기에 추가하지 않습니다. 로딩 subsystem과의 언어 초기화 의존성은 제거했습니다.
+
+2026-11-12 main 통합 시 사용자 요청에 따라 `/Game/QuakeLike_1_0/GameFlow/UI/Loading/WBP_LoadingScreen_Ref`는 언어 패치에서 제외했습니다. 로딩 WBP는 main의 원본을 유지하며 하위 위젯도 전역 글꼴 교체에서 제외합니다. 기존 호출자의 `StatusText` 번역 연결 13개도 해제했습니다. 전환별 위젯 재생성·배경 선택·페이드·BGM·준비 보고는 main의 구현을 유지합니다. 상세 표시 경로는 [클라이언트 로딩 문서](../../ClientGameplayReady.md)를 참조합니다.
 
 ## 저장 원본
 
@@ -79,7 +81,7 @@ flowchart TD
 
 DT_Language의 ko/en은 초기값으로 기존 `F_Pretendard`를 참조합니다. 언어별로 다른 composite font를 지정할 수 있습니다. 영어 UI에서도 한글 닉네임을 표시할 수 있도록 fallback을 포함해야 합니다.
 
-크기·외곽선·자간·단색 숫자 설정은 기존 스타일을 유지하며 FontObject와 유효한 typeface를 해결합니다. 공통 스타일·콤보, viewport의 TextBlock/입력 필드, 조준 닉네임 NativePaint, Slate 로딩·Canvas 자막을 연결했습니다. 글꼴 행 조회는 프레임·언어별로 캐시하고 실제 Font가 달라질 때만 위젯에 다시 설정합니다.
+크기·외곽선·자간·단색 숫자 설정은 기존 스타일을 유지하며 FontObject와 유효한 typeface를 해결합니다. 공통 스타일·콤보, viewport의 TextBlock/입력 필드, 조준 닉네임 NativePaint, Canvas 자막을 연결했습니다. 로딩 WBP와 하위 위젯은 제외합니다. 글꼴 행 조회는 프레임·언어별로 캐시하고 실제 Font가 달라질 때만 위젯에 다시 설정합니다.
 
 문장 길이·줄바꿈·겹침의 최종 판단은 실제 화면 확인이 필요합니다. 모든 텍스트를 일괄 축소하거나 모든 닉네임에 줄바꿈을 강제하지 않았습니다.
 
@@ -119,7 +121,7 @@ print(json.dumps(runpy.run_path(str(root / 'Scripts/Localization/CompileLocaliza
 
 - Editor Development, Shipping C++ 빌드입니다. Shipping 실행·패키지 플레이 검증과 구분합니다.
 - MCP 이관 대상 Blueprint 92개를 처리했으며 변경/저장한 에셋을 컴파일했습니다. 최초 8개와 변경 목록 정리 시 추가 32개의 기능 변경 없는 재저장은 원본으로 복구했습니다. 단순 교체 횟수가 0이어도 실제 번역 연결이 있던 설정 콤보와 IP 입력창은 유지했습니다.
-- `ShootingArena.Localization.StartupSelection`, `TextHistoryAndNickname`, `ParticipantDisplayName`, `MalformedDisplayString` 자동 테스트 4개가 통과했습니다. OS 지역 코드의 가장 구체적인 상위 코드 선택과 실제 PlayerState 클래스의 사람 닉네임·봇 이름 참조, 잘못된 직렬화 문자열도 검사합니다. 이름 검사는 PIE·BeginPlay 없이 임시 월드에서 실행합니다.
+- `ShootingArena.Localization.StartupSelection`, `TextHistoryAndNickname`, `ParticipantDisplayName`, `MalformedDisplayString`, `LoadingWidgetExcluded` 자동 테스트 5개가 통과했습니다. OS 지역 코드의 가장 구체적인 상위 코드 선택과 실제 PlayerState 클래스의 사람 닉네임·봇 이름 참조, 잘못된 직렬화 문자열, 로딩 위젯 제외 경계도 검사합니다. 이름 검사는 PIE·BeginPlay 없이 임시 월드에서 실행합니다.
 - 두 번째 언어의 파일 교체에 실패를 주입했을 때 두 언어 모두 이전 파일로 복구되고 임시 파일이 정리됨을 확인했습니다. 정상 교체, 불완전한 PO·중복 필드 거부, native 번역 누락·잘못된 인수·형식 문법 거부와 기존 리소스 보존도 확인했습니다.
 - ko/en PO와 치환 인수 검사, 번역 1개 제거 시 에디터 오류·컴파일 거부·기존 locres 보존, 인수 불일치 거부입니다.
 - 엔진 표준 Gather/Import/Compile/Export로 manifest·archive·locmeta·locres·PO를 생성했습니다.

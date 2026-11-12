@@ -16,6 +16,7 @@
 #include "Animation/WidgetAnimation.h"
 #include "Blueprint/UserWidget.h"
 #include "Components/Overlay.h"
+#include "Components/OverlaySlot.h"
 #include "Components/TextBlock.h"
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
@@ -217,6 +218,8 @@ bool FKillMedalAutomaticAwardsTest::RunTest(const FString& Parameters)
 	CustomSettings->StampImpactTime = 0.10f;
 	CustomSettings->StampImpactScale = 0.92f;
 	CustomSettings->StampSettleTime = 0.08f;
+	CustomSettings->MedalBackgroundColor = FLinearColor(0.15f, 0.03f, 0.02f, 0.9f);
+	CustomSettings->MedalBackgroundOpacity = 0.6f;
 	StreakHUD->ActiveStreakSettings = CustomSettings;
 	StreakHUD->RefreshStreakMedals(1);
 	UWidget* FirstMedal = StreakHUD->StreakIcons->GetChildAt(0);
@@ -284,12 +287,16 @@ bool FKillMedalAutomaticAwardsTest::RunTest(const FString& Parameters)
 			HiddenMedal->GetRenderTransform().Scale.Equals(FVector2D(1.0f)) && StreakHUD->MedalStamps.IsEmpty());
 		StreakHUD->RefreshStreakMedals(0);
 	}
-	auto FirstImage = [StreakHUD]() -> UImage*
+	auto MedalLayers = [StreakHUD](int32 Index) -> const UOverlay*
 	{
-		const USizeBox* Box = Cast<USizeBox>(StreakHUD->StreakIcons->GetChildAt(0));
+		const USizeBox* Box = Cast<USizeBox>(StreakHUD->StreakIcons->GetChildAt(Index));
 		const UScaleBox* Scale = Box ? Cast<UScaleBox>(Box->GetContent()) : nullptr;
-		const UOverlay* Award = Scale ? Cast<UOverlay>(Scale->GetContent()) : nullptr;
-		return Award ? Cast<UImage>(Award->GetChildAt(0)) : Scale ? Cast<UImage>(Scale->GetContent()) : nullptr;
+		return Scale ? Cast<UOverlay>(Scale->GetContent()) : nullptr;
+	};
+	auto FirstImage = [&]() -> UImage*
+	{
+		const UOverlay* Award = MedalLayers(0);
+		return Award ? Cast<UImage>(Award->GetChildAt(1)) : nullptr;
 	};
 	for (int32 Count : {1, 2, 10, 11, 25})
 	{
@@ -304,9 +311,18 @@ bool FKillMedalAutomaticAwardsTest::RunTest(const FString& Parameters)
 			&& StreakHUD->StreakHighlight->GetRenderTransformPivot().Equals(FVector2D(0.5f, 0.5f)));
 		const UOverlay* Award = StreakHUD->StreakHighlight ? Cast<UOverlay>(StreakHUD->StreakHighlight->GetParent()) : nullptr;
 		TestTrue(TEXT("Highlight draws above the artwork including the numeric large-medal stage"),
-			Award && Award->GetChildrenCount() == 2 && Cast<UImage>(Award->GetChildAt(0))
-			&& Award->GetChildAt(1) == StreakHUD->StreakHighlight);
+			Award && Award->GetChildrenCount() == 3 && Cast<UImage>(Award->GetChildAt(1))
+			&& Award->GetChildAt(2) == StreakHUD->StreakHighlight);
 		TestEqual(TEXT("Ten individual medals then one large medal"), StreakHUD->StreakIcons->GetChildrenCount(), Count > 10 ? 1 : Count);
+		for (int32 Index = 0; Index < StreakHUD->StreakIcons->GetChildrenCount(); ++Index)
+		{
+			const UOverlay* Layers = MedalLayers(Index);
+			const UImage* Background = Layers ? Cast<UImage>(Layers->GetChildAt(0)) : nullptr;
+			TestTrue(TEXT("Each medal has its own backdrop beneath the artwork with independent RGB and opacity"), Background
+				&& GetPathNameSafe(Background->GetBrush().GetResourceObject()) == TEXT("/Game/CompShooterHUD/Textures/Elements/T_Blur_800x200.T_Blur_800x200")
+				&& Background->GetRenderTransform().Scale.X > 1.0 && Background->GetRenderTransform().Scale.Y > 1.0
+				&& Background->GetColorAndOpacity().Equals(FLinearColor(0.15f, 0.03f, 0.02f, 0.6f)));
+		}
 		TestEqual(TEXT("Numeric count is visible only after ten"), StreakHUD->StreakCountLabel->GetVisibility(),
 			Count > 10 ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 		TestEqual(TEXT("Count accents share the numeric count visibility"), StreakHUD->StreakCountLabel->GetParent()->GetVisibility(),
@@ -327,7 +343,8 @@ bool FKillMedalAutomaticAwardsTest::RunTest(const FString& Parameters)
 				SmallBox->GetWidthOverride() == 30.0f && SmallBox->GetHeightOverride() == 25.0f);
 		}
 	}
-	const UCanvasPanelSlot* StreakSlot = Cast<UCanvasPanelSlot>(StreakHUD->StreakPanel->Slot);
+	const UWidget* StreakMask = StreakHUD->StreakPanel->GetParent();
+	const UCanvasPanelSlot* StreakSlot = StreakMask ? Cast<UCanvasPanelSlot>(StreakMask->Slot) : nullptr;
 	TestTrue(TEXT("Medal anchor comes from the data asset"), StreakSlot && StreakSlot->GetAnchors().Minimum.Equals(CustomSettings->MedalAnchor));
 	TestTrue(TEXT("Medal position comes from the data asset"), StreakSlot && StreakSlot->GetPosition().Equals(CustomSettings->MedalPosition));
 	TestEqual(TEXT("Text size comes from the data asset"), StreakHUD->StreakCountLabel->GetFont().Size, 31.0f);
@@ -345,6 +362,62 @@ bool FKillMedalAutomaticAwardsTest::RunTest(const FString& Parameters)
 	}
 	TestTrue(TEXT("Count color comes from the data asset"), StreakHUD->StreakCountLabel->GetColorAndOpacity().GetSpecifiedColor().Equals(CustomSettings->CountColor));
 	TestTrue(TEXT("Count and accents move together using the data asset"), CountRow->GetRenderTransform().Translation.Equals(CustomSettings->CountPosition));
+	CustomSettings->MedalBackgroundOpacity = 0.0f;
+	StreakHUD->RefreshStreakMedals(1);
+	const UOverlay* TransparentMedal = MedalLayers(0);
+	const UImage* TransparentBackground = TransparentMedal ? Cast<UImage>(TransparentMedal->GetChildAt(0)) : nullptr;
+	TestTrue(TEXT("Zero background opacity leaves the medal artwork opaque"), TransparentBackground && FirstImage()
+		&& TransparentBackground->GetColorAndOpacity().A == 0.0f && FirstImage()->GetColorAndOpacity().A == 1.0f);
+	CustomSettings->MedalBackgroundOpacity = 0.6f;
+	StreakHUD->RefreshStreakMedals(0);
+
+	UClass* MessageClass = LoadClass<UUserWidget>(nullptr,
+		TEXT("/Game/CompShooterHUD/UI/Content/Kill_Message/Childs/WB_Message1.WB_Message1_C"));
+	UUserWidget* Message = MessageClass ? CreateWidget<UUserWidget>(PC, MessageClass) : nullptr;
+	if (!TestNotNull(TEXT("Actual personal-message widget"), Message)) return false;
+	auto* MessageBackground = Cast<UImage>(Message->GetWidgetFromName(TEXT("Img_Blur")));
+	auto* Title = Cast<UTextBlock>(Message->GetWidgetFromName(TEXT("Head1")));
+	auto* Victim = Cast<UTextBlock>(Message->GetWidgetFromName(TEXT("Child1")));
+	const UWidget* BackgroundBox = Message->GetWidgetFromName(TEXT("SB_Blur"));
+	const UWidget* MessageText = Message->GetWidgetFromName(TEXT("VerticalBox_0"));
+	const auto* BackgroundSlot = BackgroundBox ? Cast<UOverlaySlot>(BackgroundBox->Slot) : nullptr;
+	const auto* TextSlot = MessageText ? Cast<UOverlaySlot>(MessageText->Slot) : nullptr;
+	if (!TestNotNull(TEXT("Backdrop image"), MessageBackground) || !TestNotNull(TEXT("Kill title"), Title)
+		|| !TestNotNull(TEXT("Victim label"), Victim) || !TestNotNull(TEXT("Backdrop overlay slot"), BackgroundSlot)
+		|| !TestNotNull(TEXT("Text overlay slot"), TextSlot)) return false;
+	const FVector2D OriginalTitleShadow = Title->GetShadowOffset();
+	const FVector2D OriginalVictimShadow = Victim->GetShadowOffset();
+	const FVector2D OriginalTitlePosition = Title->GetRenderTransform().Translation;
+	const FVector2D OriginalVictimPosition = Victim->GetRenderTransform().Translation;
+	CustomSettings->KillMessageBackgroundColor = FLinearColor(0.5f, 0.01f, 0.02f, 1.0f);
+	CustomSettings->KillMessageBackgroundOpacity = 0.35f;
+	CustomSettings->KillMessageBackgroundOffset = FVector2D(12.0, -4.0);
+	CustomSettings->KillMessageShadowColor = FLinearColor(0.02f, 0.05f, 0.4f, 0.7f);
+	CustomSettings->KillMessageShadowScale = 0.5f;
+	StreakHUD->StylePersonalKillMessage(*Message);
+	StreakHUD->StylePersonalKillMessage(*Message);
+	TestTrue(TEXT("Message background RGB and opacity come from their own DA fields"),
+		MessageBackground->GetColorAndOpacity().Equals(FLinearColor(0.5f, 0.01f, 0.02f, 0.35f)));
+	TestTrue(TEXT("The DA backdrop offset moves only the backdrop and does not accumulate"),
+		MessageBackground->GetRenderTransform().Translation.Equals(CustomSettings->KillMessageBackgroundOffset)
+		&& Title->GetRenderTransform().Translation.Equals(OriginalTitlePosition)
+		&& Victim->GetRenderTransform().Translation.Equals(OriginalVictimPosition));
+	TestTrue(TEXT("Both labels use the shadow color and an idempotent offset scale"),
+		Title->GetShadowColorAndOpacity().Equals(CustomSettings->KillMessageShadowColor)
+		&& Victim->GetShadowColorAndOpacity().Equals(CustomSettings->KillMessageShadowColor)
+		&& Title->GetShadowOffset().Equals(OriginalTitleShadow * 0.5)
+		&& Victim->GetShadowOffset().Equals(OriginalVictimShadow * 0.5));
+	TestTrue(TEXT("Text and background share the overlay's vertical centre"), BackgroundSlot->GetVerticalAlignment() == VAlign_Center
+		&& TextSlot->GetVerticalAlignment() == VAlign_Center && BackgroundSlot->GetPadding().Top == BackgroundSlot->GetPadding().Bottom);
+	CustomSettings->KillMessageBackgroundOpacity = 0.0f;
+	StreakHUD->StylePersonalKillMessage(*Message);
+	TestTrue(TEXT("Hiding the message backdrop leaves the shadow settings active"), MessageBackground->GetColorAndOpacity().A == 0.0f
+		&& Title->GetShadowColorAndOpacity().Equals(CustomSettings->KillMessageShadowColor));
+	CustomSettings->KillMessageShadowScale = 0.0f;
+	StreakHUD->StylePersonalKillMessage(*Message);
+	TestTrue(TEXT("Zero shadow scale disables both text shadows"), Title->GetShadowOffset().IsZero()
+		&& Victim->GetShadowOffset().IsZero() && Title->GetShadowColorAndOpacity().A == 0.0f && Victim->GetShadowColorAndOpacity().A == 0.0f);
+
 	CustomSettings->LargeMedalMinKills = 5;
 	CustomSettings->LargeMedalTexture = LoadObject<UTexture2D>(nullptr,
 		TEXT("/Game/QuakeLike_1_0/UI/PlayerUI/KillMedals/T_KillMedal_DoubleKill.T_KillMedal_DoubleKill"));

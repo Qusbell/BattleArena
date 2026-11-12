@@ -254,20 +254,35 @@ FSlateFontInfo ULanguageLibrary::ResolveFont(FSlateFontInfo Existing)
     return Existing;
 }
 
+bool ULanguageLibrary::IsWidgetLocalizationExcluded(const UObject* Widget)
+{
+    // The loading screen owns its presentation and is explicitly outside the language patch.
+    static const FName LoadingClassName(TEXT("WBP_LoadingScreen_Ref_C"));
+    for (const UObject* Outer = Widget; Outer; Outer = Outer->GetOuter())
+        if (const UUserWidget* UserWidget = Cast<UUserWidget>(Outer))
+            for (const UClass* Class = UserWidget->GetClass(); Class; Class = Class->GetSuperClass())
+                if (Class->GetFName() == LoadingClassName && Class->GetPathName() ==
+                    TEXT("/Game/QuakeLike_1_0/GameFlow/UI/Loading/WBP_LoadingScreen_Ref.WBP_LoadingScreen_Ref_C")) return true;
+    return false;
+}
+
 void ULanguageLibrary::RefreshViewportFonts(UWorld* World)
 {
     if (!World || !World->IsGameWorld() || World->GetNetMode() == NM_DedicatedServer) return;
     for (TObjectIterator<UTextBlock> It; It; ++It)
-        if (IsValid(*It) && !It->IsTemplate() && It->GetWorld() == World && It->GetCachedWidget().IsValid())
+        if (IsValid(*It) && !It->IsTemplate() && It->GetWorld() == World && It->GetCachedWidget().IsValid()
+            && !IsWidgetLocalizationExcluded(*It))
         {
             const FSlateFontInfo Font = ResolveFont(It->GetFont());
             if (Font != It->GetFont()) It->SetFont(Font);
         }
     for (TObjectIterator<UEditableText> It; It; ++It)
-        if (IsValid(*It) && !It->IsTemplate() && It->GetWorld()==World && It->GetCachedWidget().IsValid())
+        if (IsValid(*It) && !It->IsTemplate() && It->GetWorld()==World && It->GetCachedWidget().IsValid()
+            && !IsWidgetLocalizationExcluded(*It))
         { const auto Font=ResolveFont(It->GetFont());if(Font!=It->GetFont())It->SetFont(Font); }
     for (TObjectIterator<UEditableTextBox> It; It; ++It)
-        if (IsValid(*It) && !It->IsTemplate() && It->GetWorld()==World && It->GetCachedWidget().IsValid())
+        if (IsValid(*It) && !It->IsTemplate() && It->GetWorld()==World && It->GetCachedWidget().IsValid()
+            && !IsWidgetLocalizationExcluded(*It))
         {
             const auto Font=ResolveFont(It->WidgetStyle.TextStyle.Font);
             if(Font!=It->WidgetStyle.TextStyle.Font) {It->WidgetStyle.TextStyle.Font=Font;It->SynchronizeProperties();}

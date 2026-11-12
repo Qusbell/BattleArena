@@ -1,6 +1,7 @@
 ﻿#include "OneWayTeleportActor.h"
 
 #include "TeleportDataAsset.h"
+#include "Analyzer/ArenaMatchLogLibrary.h"
 #include "PortalTraversalGuard.h"
 #include "PortalViewSubsystem.h"
 
@@ -914,6 +915,8 @@ bool AOneWayTeleportActor::TeleportCharacter(ACharacter* character)
 	}
 
 	if (!IsValid(this) || !IsValid(character) || world->bIsTearingDown) return true;
+	// 전투 기록: 포탈 출구 발사는 플레이어의 점프가 아님을 알립니다(기록 중이 아니면 아무 일도 하지 않음).
+	UArenaMatchLogLibrary::RecordForcedMovement(character, TEXT("Teleport"));
 	character->LaunchCharacter(
 		launchVelocity,
 		true,
