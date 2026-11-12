@@ -27,7 +27,7 @@
 		},
 		"lvl_02Map":
 		{
-			"sound": "/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/026_qk_music_main_menu_win_Cue.026_qk_music_main_menu_win_Cue",
+			"sound": "/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/036_qk_music_volkerh_theme_Cue.036_qk_music_volkerh_theme_Cue",
 			"volumeMultiplier": 1,
 			"bLoop": true,
 			"fadeInTime": -1,
