@@ -387,14 +387,21 @@ bool FKillMedalAutomaticAwardsTest::RunTest(const FString& Parameters)
 		|| !TestNotNull(TEXT("Text overlay slot"), TextSlot)) return false;
 	const FVector2D OriginalTitleShadow = Title->GetShadowOffset();
 	const FVector2D OriginalVictimShadow = Victim->GetShadowOffset();
+	const FVector2D OriginalTitlePosition = Title->GetRenderTransform().Translation;
+	const FVector2D OriginalVictimPosition = Victim->GetRenderTransform().Translation;
 	CustomSettings->KillMessageBackgroundColor = FLinearColor(0.5f, 0.01f, 0.02f, 1.0f);
 	CustomSettings->KillMessageBackgroundOpacity = 0.35f;
+	CustomSettings->KillMessageBackgroundOffset = FVector2D(12.0, -4.0);
 	CustomSettings->KillMessageShadowColor = FLinearColor(0.02f, 0.05f, 0.4f, 0.7f);
 	CustomSettings->KillMessageShadowScale = 0.5f;
 	StreakHUD->StylePersonalKillMessage(*Message);
 	StreakHUD->StylePersonalKillMessage(*Message);
 	TestTrue(TEXT("Message background RGB and opacity come from their own DA fields"),
 		MessageBackground->GetColorAndOpacity().Equals(FLinearColor(0.5f, 0.01f, 0.02f, 0.35f)));
+	TestTrue(TEXT("The DA backdrop offset moves only the backdrop and does not accumulate"),
+		MessageBackground->GetRenderTransform().Translation.Equals(CustomSettings->KillMessageBackgroundOffset)
+		&& Title->GetRenderTransform().Translation.Equals(OriginalTitlePosition)
+		&& Victim->GetRenderTransform().Translation.Equals(OriginalVictimPosition));
 	TestTrue(TEXT("Both labels use the shadow color and an idempotent offset scale"),
 		Title->GetShadowColorAndOpacity().Equals(CustomSettings->KillMessageShadowColor)
 		&& Victim->GetShadowColorAndOpacity().Equals(CustomSettings->KillMessageShadowColor)
