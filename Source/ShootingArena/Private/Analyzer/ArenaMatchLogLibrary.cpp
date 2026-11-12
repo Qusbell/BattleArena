@@ -84,6 +84,21 @@ void UArenaMatchLogLibrary::RecordDamageInput(AActor* Victim, float InputDamage)
 	if (UArenaMatchLogSubsystem* Log = UArenaMatchLogSubsystem::Get(Victim)) Log->RecordDamageInput(Victim, InputDamage);
 }
 
+void UArenaMatchLogLibrary::RecordAttackInput(APawn* Pawn, bool bPressed)
+{
+	if (UArenaMatchLogSubsystem* Log = UArenaMatchLogSubsystem::Get(Pawn)) Log->RecordAttackInput(Pawn, bPressed);
+}
+
+void UArenaMatchLogLibrary::RecordJumpInput(APawn* Pawn)
+{
+	if (UArenaMatchLogSubsystem* Log = UArenaMatchLogSubsystem::Get(Pawn)) Log->RecordJumpInput(Pawn);
+}
+
+void UArenaMatchLogLibrary::RecordForcedMovement(APawn* Pawn, FName Cause)
+{
+	if (UArenaMatchLogSubsystem* Log = UArenaMatchLogSubsystem::Get(Pawn)) Log->NoteForcedMovement(Pawn, NameText(Cause));
+}
+
 float UArenaMatchLogLibrary::GetMatchElapsedSeconds(const UObject* WorldContextObject)
 {
 	const UArenaMatchLogSubsystem* Log = UArenaMatchLogSubsystem::Get(WorldContextObject);
