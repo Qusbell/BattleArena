@@ -109,6 +109,15 @@ PIE에서 같은 사망 위젯을 반복 초기화해 두 값의 독립 적용�
 기본값 `0`은 현재 위치를 사용하며, 양수는 스코어보드 아래 간격을 늘립니다. 단위는 UMG UI 단위입니다.
 PIE에서 `0`, `40`, `80`, `0`으로 반복 초기화해 위치와 카운트다운을 확인했습니다.
 
+같은 DA의 **Use Progress Gradient**를 켜면 실제 리스폰 바의 채움에 **Progress Gradient Center Color**와
+**Progress Gradient Edge Color**를 적용합니다. 현재 DA는 주황색 중앙과 밝은 주황색 양끝을 기본으로 사용합니다.
+끄면 **Progress Color**로 단색을 표시합니다. **Frame Color**와 **Shine Color**는 기존 경로에서 적용합니다.
+`StartRespawnCountdown`이 리스폰 위젯 인스턴스에 기존 채움 머티리얼을 연결하며,
+다음 카운트다운을 시작할 때 DA 변경 사항을 읽습니다.
+**Progress Gradient Start**와 **Progress Gradient End**는 중앙 `0`에서 양끝 `1`까지의 위치입니다.
+예를 들어 `0.25`와 `0.75`를 입력하면 그 사이에서만 두 색이 섞입니다. 기본값 `0`과 `1`은 전체 구간에 적용합니다.
+범위를 벗어난 값은 `0–1` 안으로 제한하며, 두 값을 거꾸로 입력하면 작은 값부터 적용합니다.
+
 ## 2026-11-12 사망 후 도착하는 개인 처치 알림
 
 `BPC_Life`는 처치자의 `possessed pawn`이 유효할 때만 `Client_ShowKillMessage`를 보냅니다.
