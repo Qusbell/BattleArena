@@ -14,6 +14,7 @@ class UVerticalBox;
 class UHorizontalBox;
 class UTexture2D;
 class UKillMedalUISettings;
+class UMatchTimerStyle;
 
 /** CompShooter HUD base: compact leader/local-player standings beside its existing timer. */
 UCLASS()
@@ -26,19 +27,27 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HUD|Kill Medal")
 	static void ApplyPersonalKillMessageStyle(APlayerController* Player);
 
+	static bool IsMatchTimerText(const UTextBlock& Text);
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "HUD|Kill Medal", meta = (DisplayName = "연속 킬 메달 UI 설정"))
 	TSoftObjectPtr<UKillMedalUISettings> KillMedalUISettings = TSoftObjectPtr<UKillMedalUISettings>(
 		FSoftObjectPath(TEXT("/Game/QuakeLike_1_0/UI/PlayerUI/KillMedals/DA_KillMedalUISettings.DA_KillMedalUISettings")));
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "HUD|Timer", meta = (DisplayName = "경기 타이머 스타일"))
+	TObjectPtr<UMatchTimerStyle> MatchTimerStyle;
+
 protected:
 	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
+
 private:
 	friend class FCompetitiveRankingPIETest;
 	friend class FKillMedalAutomaticAwardsTest;
 	UFUNCTION()
 	void RefreshRanking();
 	void BindScoreChanges(AGameStateBase* State);
+	void ApplyMatchTimerStyle();
 	void PositionBesideTimer(const FGeometry& Geometry);
 	void RefreshStreakMedals(int32 Count);
 	void HideStreakMedals();

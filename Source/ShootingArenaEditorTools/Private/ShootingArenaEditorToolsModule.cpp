@@ -17,12 +17,57 @@
 #include "Misc/ScopedSlowTask.h"
 
 #include "Editor.h"
+#include "DetailLayoutBuilder.h"
+#include "IDetailCustomization.h"
+#include "PropertyEditorModule.h"
+#include "PropertyHandle.h"
+#include "UI/MatchTimerStyle.h"
 #include "UObject/StrongObjectPtr.h"
 #include "DressSwapTool.h"
 
 
 DEFINE_LOG_CATEGORY_STATIC(LogBPRefreshTool, Log, All);
 
+namespace
+{
+    class FMatchTimerStyleDetails : public IDetailCustomization
+    {
+    public:
+        virtual void CustomizeDetails(IDetailLayoutBuilder& Layout) override
+        {
+            const auto Font = Layout.GetProperty(GET_MEMBER_NAME_CHECKED(UMatchTimerStyle, Font));
+            const auto Outline = Font->GetChildHandle(GET_MEMBER_NAME_CHECKED(FSlateFontInfo, OutlineSettings));
+
+            const auto SetTooltip = [](const IPropertyHandle& Parent, FName Property, const FText& Tooltip)
+            {
+                if (const auto Child = Parent.GetChildHandle(Property))
+                {
+                    Child->SetToolTipText(Tooltip);
+                }
+            };
+
+            SetTooltip(*Font, "FontObject", NSLOCTEXT("MatchTimerStyleDetails", "FontObject", "타이머에 사용할 글꼴 에셋을 선택합니다."));
+            SetTooltip(*Font, "TypefaceFontName", NSLOCTEXT("MatchTimerStyleDetails", "Typeface", "선택한 글꼴의 서체를 지정합니다. 서체에 따라 글자 굵기가 달라집니다."));
+            SetTooltip(*Font, "Size", NSLOCTEXT("MatchTimerStyleDetails", "Size", "타이머 글자의 크기입니다. 기본값 45는 HP 숫자와 같습니다."));
+            SetTooltip(*Font, "LetterSpacing", NSLOCTEXT("MatchTimerStyleDetails", "LetterSpacing", "글자 사이의 간격을 조절합니다."));
+            SetTooltip(*Font, "SkewAmount", NSLOCTEXT("MatchTimerStyleDetails", "SkewAmount", "글자를 기울이는 정도를 조절합니다."));
+            SetTooltip(*Font, "bForceMonospaced", NSLOCTEXT("MatchTimerStyleDetails", "Monospacing", "타이머 숫자는 시간에 따라 너비가 달라지지 않도록 항상 같은 폭으로 표시합니다."));
+            SetTooltip(*Font, "MonospacedWidth", NSLOCTEXT("MatchTimerStyleDetails", "MonospacedWidth", "타이머 숫자의 고정 폭은 선택한 글꼴과 크기에 맞춰 자동으로 계산합니다."));
+            SetTooltip(*Font, "FontMaterial", NSLOCTEXT("MatchTimerStyleDetails", "FontMaterial", "글자에 적용할 머티리얼을 선택합니다."));
+            SetTooltip(*Font, "bMaterialIsStencil", NSLOCTEXT("MatchTimerStyleDetails", "MaterialIsStencil", "글자 모양을 머티리얼에서 직접 처리하도록 합니다."));
+            SetTooltip(*Font, "OutlineSettings", NSLOCTEXT("MatchTimerStyleDetails", "OutlineSettings", "글자 외곽선의 두께, 색상, 머티리얼을 설정합니다."));
+            if (Outline)
+            {
+                SetTooltip(*Outline, "OutlineSize", NSLOCTEXT("MatchTimerStyleDetails", "OutlineSize", "글자 외곽선의 두께를 조절합니다."));
+                SetTooltip(*Outline, "bMiteredCorners", NSLOCTEXT("MatchTimerStyleDetails", "MiteredCorners", "외곽선 모서리를 뾰족하게 표시합니다. 끄면 모서리가 둥글게 표시됩니다."));
+                SetTooltip(*Outline, "bSeparateFillAlpha", NSLOCTEXT("MatchTimerStyleDetails", "SeparateFillAlpha", "글자 안쪽과 외곽선의 불투명도를 따로 적용합니다."));
+                SetTooltip(*Outline, "bApplyOutlineToDropShadows", NSLOCTEXT("MatchTimerStyleDetails", "ApplyOutlineToDropShadows", "글자에 사용한 외곽선을 그림자에도 적용합니다."));
+                SetTooltip(*Outline, "OutlineMaterial", NSLOCTEXT("MatchTimerStyleDetails", "OutlineMaterial", "외곽선에 적용할 머티리얼을 선택합니다."));
+                SetTooltip(*Outline, "OutlineColor", NSLOCTEXT("MatchTimerStyleDetails", "OutlineColor", "글자 외곽선의 색상을 설정합니다."));
+            }
+        }
+    };
+}
 
 class FShootingArenaEditorToolsModule : public IModuleInterface
 {
@@ -39,6 +84,10 @@ public:
 
         DressSwapTool = MakeUnique<FDressSwapTool>();
         DressSwapTool->Register();
+
+        FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor").RegisterCustomClassLayout(
+            TEXT("MatchTimerStyle"),
+            FOnGetDetailCustomizationInstance::CreateLambda([] { return MakeShared<FMatchTimerStyleDetails>(); }));
 
         RefreshBlueprintsCommand =
             MakeUnique<FAutoConsoleCommand>(
@@ -64,6 +113,14 @@ public:
 
     virtual void ShutdownModule() override
     {
+        if (GIsEditor)
+        {
+            if (auto* PropertyEditor = FModuleManager::GetModulePtr<FPropertyEditorModule>("PropertyEditor"))
+            {
+                PropertyEditor->UnregisterCustomClassLayout(TEXT("MatchTimerStyle"));
+            }
+        }
+
         if (DressSwapTool)
         {
             DressSwapTool->Unregister();

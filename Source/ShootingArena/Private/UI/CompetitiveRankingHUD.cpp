@@ -2,6 +2,7 @@
 #include "UI/UIRecordingSettings.h"
 #include "UI/CompetitiveRankingOrder.h"
 #include "UI/KillMedalUISettings.h"
+#include "UI/MatchTimerStyle.h"
 #include "Audio/KillStreakVoiceComponent.h"
 #include "UI/UIPalette.h"
 #include "Camera/ShooterDisplayLibrary.h"
@@ -42,6 +43,9 @@ namespace
 	constexpr float PanelHeight = 56.0f;
 	constexpr float RankingScale = 0.975f;
 	constexpr float TimerGap = 5.0f;
+	const FName TimerMinutesName(TEXT("Text_Minutes"));
+	const FName TimerSeparatorName(TEXT("Text_Points"));
+	const FName TimerSecondsName(TEXT("Text_Seconds"));
 
 	FLinearColor BackgroundTint(FLinearColor Color, float Opacity)
 	{
@@ -65,6 +69,17 @@ UCompetitiveRankingHUD::UCompetitiveRankingHUD(const FObjectInitializer& ObjectI
 	static ConstructorHelpers::FObjectFinder<UTexture2D> Backdrop(
 		TEXT("/Game/CompShooterHUD/Textures/Elements/T_Blur_800x200.T_Blur_800x200"));
 	MedalBackdropTexture = Backdrop.Object;
+}
+
+bool UCompetitiveRankingHUD::IsMatchTimerText(const UTextBlock& Text)
+{
+	const FName Name = Text.GetFName();
+	if (Name != TimerMinutesName && Name != TimerSeparatorName && Name != TimerSecondsName)
+		return false;
+
+	const UUserWidget* Owner = Text.GetTypedOuter<UUserWidget>();
+	return Owner && Owner->GetClass()->GetPathName() ==
+		TEXT("/Game/CompShooterHUD/UI/Content/Timer/WB_Timer.WB_Timer_C");
 }
 
 UUserWidget* UCompetitiveRankingHUD::FindPersonalMessage() const
@@ -309,10 +324,54 @@ void UCompetitiveRankingHUD::RefreshStreakMedals(int32 Count)
 	}
 }
 
+void UCompetitiveRankingHUD::ApplyMatchTimerStyle()
+{
+	UUserWidget* Timer = Cast<UUserWidget>(GetWidgetFromName(TEXT("WB_Timer")));
+	if (!Timer || !FSlateApplication::IsInitialized())
+		return;
+
+	UTextBlock* Minutes = Cast<UTextBlock>(Timer->GetWidgetFromName(TimerMinutesName));
+	UTextBlock* Separator = Cast<UTextBlock>(Timer->GetWidgetFromName(TimerSeparatorName));
+	UTextBlock* Seconds = Cast<UTextBlock>(Timer->GetWidgetFromName(TimerSecondsName));
+	USizeBox* Frame = Cast<USizeBox>(Timer->GetWidgetFromName(TEXT("SB_Timer")));
+	if (!Minutes || !Separator || !Seconds || !Frame)
+		return;
+
+	FSlateFontInfo Font = MatchTimerStyle ? MatchTimerStyle->Font : Minutes->GetFont();
+	const float DefaultSize = GetDefault<UMatchTimerStyle>()->Font.Size;
+	Font.Size = FMath::IsFinite(Font.Size) ? FMath::Clamp(Font.Size, 1.0f, 1000.0f) : DefaultSize;
+	Font.bForceMonospaced = false;
+	Separator->SetFont(Font);
+
+	const auto Measure = FSlateApplication::Get().GetRenderer()->GetFontMeasureService();
+	float DigitWidth = 0.0f;
+	for (TCHAR Digit = TEXT('0'); Digit <= TEXT('9'); ++Digit)
+		DigitWidth = FMath::Max(DigitWidth, float(Measure->Measure(FString::Chr(Digit), Font).X));
+
+	FSlateFontInfo DigitFont = Font;
+	DigitFont.bForceMonospaced = true;
+	DigitFont.MonospacedWidth = DigitWidth / Font.Size;
+	for (UTextBlock* Digits : {Minutes, Seconds})
+	{
+		Digits->SetFont(DigitFont);
+		Digits->SetMinDesiredWidth(2.0f * DigitWidth);
+		Digits->SetJustification(ETextJustify::Right);
+	}
+
+	// Reserve a fixed width for MM:SS using the same font that is drawn.
+	Frame->SetWidthOverride(FMath::CeilToFloat(4.0f * DigitWidth + Measure->Measure(TEXT(":"), Font).X + 4.0f));
+	if (Frame->IsHeightOverride())
+	{
+		Frame->SetMinDesiredHeight(FMath::Max(Frame->GetMinDesiredHeight(), Frame->GetHeightOverride()));
+		Frame->ClearHeightOverride();
+	}
+}
+
 void UCompetitiveRankingHUD::NativeConstruct()
 {
 	UUIThemePaletteLibrary::PreparePalette();
 	Super::NativeConstruct();
+	ApplyMatchTimerStyle();
 	UCanvasPanel* Canvas = Cast<UCanvasPanel>(GetRootWidget());
 	if (!Canvas || !WidgetTree || RankingPanel) return;
 	RankingPanel = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("CompetitiveRanking"));
@@ -336,37 +395,7 @@ void UCompetitiveRankingHUD::NativeConstruct()
 	ProgressHeight->SetContent(LeaderProgress);
 	RankingPanel->AddChildToVerticalBox(ProgressHeight);
 
-	UUserWidget* Timer = Cast<UUserWidget>(GetWidgetFromName(TEXT("WB_Timer")));
-	UTextBlock* TimerText = Timer ? Cast<UTextBlock>(Timer->GetWidgetFromName(TEXT("Text_Minutes"))) : nullptr;
-	FSlateFontInfo Font = TimerText ? TimerText->GetFont() : FCoreStyle::GetDefaultFontStyle("Regular", 16);
-	if (USizeBox* TimerBox = Timer ? Cast<USizeBox>(Timer->GetWidgetFromName(TEXT("SB_Timer"))) : nullptr)
-	{
-		const auto Measure = FSlateApplication::Get().GetRenderer()->GetFontMeasureService();
-		const auto FontCache = FSlateApplication::Get().GetRenderer()->GetFontCache();
-		const FCharacterEntry& DigitGlyph = FontCache->GetCharacterList(Font, 1.0f).GetCharacter(TEXT('0'), EFontFallback::FF_Max);
-		if (DigitGlyph.Valid && DigitGlyph.VSize > 0)
-			Font.Size = FMath::RoundToInt(Font.Size * PanelHeight * RankingScale / DigitGlyph.VSize);
-		if (UTextBlock* Colon = Cast<UTextBlock>(Timer->GetWidgetFromName(TEXT("Text_Points"))))
-			Colon->SetFont(Font);
-		float DigitWidth = 0;
-		for (TCHAR Digit = TEXT('0'); Digit <= TEXT('9'); ++Digit)
-			DigitWidth = FMath::Max(DigitWidth, float(Measure->Measure(FString::Chr(Digit), Font).X));
-		FSlateFontInfo DigitFont = Font;
-		DigitFont.bForceMonospaced = true;
-		DigitFont.MonospacedWidth = DigitWidth / Font.Size;
-		for (const TCHAR* Name : {TEXT("Text_Minutes"), TEXT("Text_Seconds")})
-			if (UTextBlock* Text = Cast<UTextBlock>(Timer->GetWidgetFromName(Name)))
-			{
-				Text->SetFont(DigitFont);
-				Text->SetMinDesiredWidth(2.0f * DigitWidth);
-				Text->SetJustification(ETextJustify::Right);
-			}
-		// Reserve the widest digits so time changes never alter the frame width.
-		const float TimerWidth = FMath::CeilToFloat(4.0f * DigitWidth + Measure->Measure(TEXT(":"), Font).X + 4.0f);
-		ensure(TimerWidth > 4.0f * DigitWidth);
-		TimerBox->SetWidthOverride(TimerWidth);
-	}
-	Font = FCoreStyle::GetDefaultFontStyle("Regular", 14);
+	const FSlateFontInfo Font = FCoreStyle::GetDefaultFontStyle("Regular", 14);
 	for (int32 Index = 0; Index < 2; ++Index)
 	{
 		UBorder* Outline = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), *FString::Printf(TEXT("RankingRow%d"), Index));
@@ -483,7 +512,7 @@ void UCompetitiveRankingHUD::PositionBesideTimer(const FGeometry& Geometry)
 {
 	UUserWidget* Timer = Cast<UUserWidget>(GetWidgetFromName(TEXT("WB_Timer")));
 	UWidget* TimerFrame = Timer ? Timer->GetWidgetFromName(TEXT("b_Timer")) : nullptr;
-	UWidget* Seconds = Timer ? Timer->GetWidgetFromName(TEXT("Text_Seconds")) : nullptr;
+	UTextBlock* Seconds = Timer ? Cast<UTextBlock>(Timer->GetWidgetFromName(TimerSecondsName)) : nullptr;
 	UWidget* TimerContainer = GetWidgetFromName(TEXT("SB_Timer"));
 	if (!Seconds || !TimerFrame || !TimerFrame->IsVisible() || !Timer->IsVisible()
 		|| !TimerContainer || !TimerContainer->IsVisible())
@@ -495,7 +524,7 @@ void UCompetitiveRankingHUD::PositionBesideTimer(const FGeometry& Geometry)
 	const FGeometry& Frame = TimerFrame->GetCachedGeometry();
 	const float Determinant = Geometry.GetAccumulatedRenderTransform().GetMatrix().Determinant();
 	if (!FMath::IsFinite(Determinant) || FMath::IsNearlyZero(Determinant) || Digits.GetLocalSize().Y <= 0 || Frame.GetLocalSize().X <= 0) return;
-	const FSlateFontInfo TimerFont = CastChecked<UTextBlock>(Seconds)->GetFont();
+	const FSlateFontInfo TimerFont = Seconds->GetFont();
 	const auto Renderer = FSlateApplication::Get().GetRenderer();
 	const auto Measure = Renderer->GetFontMeasureService();
 	const FCharacterEntry& Digit = Renderer->GetFontCache()->GetCharacterList(TimerFont, 1.0f).GetCharacter(TEXT('0'), EFontFallback::FF_Max);
