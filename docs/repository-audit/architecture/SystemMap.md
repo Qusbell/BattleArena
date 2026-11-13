@@ -57,6 +57,7 @@ flowchart LR
 - Plasma 초기 풀은 `DefaultGame.ini`에서 월드당 64개로 설정하며, 기존 프레임당 예산을 적용해 분산 생성합니다.
 - 지정된 매치 맵의 렌더링 PIE 월드에서는 `CascadeEffectPool` 설정의 Niagara 총구 효과를 월드 시작 시 컴파일 요청합니다.
 - `UProjectileConvergenceComponent`, `UProjectileWorldCollisionComponent`, `UProjectileFirstPersonRenderingComponent`는 각각 수렴·월드 충돌·1인칭 렌더링을 나눕니다.
+- 수렴점에 도달한 투사체는 해당 프레임의 이동을 마친 뒤 다음 월드 Tick 시작 시 기본 이동 컴포넌트로 복귀합니다.
 - AimAlignment, ProjectileAim, MuzzleFlash, BeamEffect, ImpactEffect, Presentation 관련 라이브러리는 조준/시각 효과의 경계입니다.
 - `UCascadeEffectPoolSubsystem`은 설정된 전투 World의 Cascade 효과 풀을 준비합니다. 일반 에셋 리소스와 transient 재생 객체를 구분합니다.
 - `UArenaCombatLibrary`와 RecentAttacker 컴포넌트는 피해·최근 공격자·분석 기록의 교차 지점입니다.
@@ -122,6 +123,7 @@ OneWayTeleportActor, JumpPadFlightComponent/CommonSettings는 별도 이동 기�
 
 - UIBackInput은 Slate 입력 선처리와 CommonUI/버튼 규칙의 뒤로가기 경계입니다. ReusableStyleHost/UIPalette는 화면 스타일을 공유합니다.
 - MapPreviewSubsystem/Widget은 미디어 소스·플레이어와 메뉴 간 미리보기를 관리합니다. HUD/CompetitiveRanking·KillMedal·RespawnCountdown·CrosshairRecoil은 표시 기능입니다.
+- `WBP_PlayerHUD_sdm`의 탄약 갱신은 소유 플레이어의 액션 바 슬롯을 사용하며, 탄약 소진·회복·무기 전환의 전체 슬롯 갱신 요청은 타이머로 합칩니다.
 - Tab 스코어보드와 서버의 매치 종료 순위는 CompetitiveRankingLibrary를 통해 킬 내림차순, 데스 오름차순, 표시 이름 대소문자 무시 오름차순으로 정렬합니다. 킬과 데스가 같으면 공동 순위를 부여합니다(예: 1, 1, 3). 결과창은 복제된 서버 순위를 표시하며, 간소화 순위 HUD도 같은 정렬 규칙을 사용합니다.
 - BGM은 GameInstance 수명이며 로딩·옵션 볼륨 경계가 있습니다. [BGM 상세 조사](../systems/BGM.md)를 참고합니다.
 - DeathCamComponent/Actor는 ViewTarget과 카메라 수명, Revenge/Outline/Nickname은 대상 표시를 담당합니다. 별도 PlayerController 수명/RPC와 연결됩니다.
@@ -132,6 +134,7 @@ OneWayTeleportActor, JumpPadFlightComponent/CommonSettings는 별도 이동 기�
 ## 분석·기록·디버그
 
 ArenaAnalyze의 JSON chunk 기록·시각화와 ArenaMatchLog의 SQLite 경기 기록은 서로 다른 저장 경로입니다.
+ArenaMatchLog는 경기 중 SQL 배치를 한 번에 하나씩 백그라운드 워커로 보내고, 재시도 배치를 후속 배치보다 먼저 처리합니다. 월드 종료 시 남은 쓰기를 처리한 후 연결을 닫습니다.
 2026-11-11: ArenaMatchLog에 수집 형식 버전 1 확장(탄약 `ammo_change`, 발사 조건 `fire_context`, 참가자 적용 설정 `participant_settings`, 버프 효과 `buff_instance`/`damage_buff`, 사람 플레이어 행동 관측)이 추가되었습니다. `JumpPadFlightComponent`와 `OneWayTeleportActor`가 강제 이동을 `UArenaMatchLogLibrary::RecordForcedMovement`로 알립니다. 연결 위치는 [확장 연결표](../../../GamePlayDB/extension_wiring_table.md)를 확인합니다.
 둘 다 `Saved`를 쓰므로 캐시로 일괄 취급하지 않습니다. DebugAINetwork는 서버 수집과 소유 클라이언트 표시를 나눕니다.
 

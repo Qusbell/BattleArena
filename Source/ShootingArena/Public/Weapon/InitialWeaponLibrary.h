@@ -5,6 +5,7 @@
 #include "InitialWeaponLibrary.generated.h"
 
 class UActorComponent;
+class UUserWidget;
 
 /** Shared default-weapon check for the firing logic. */
 UCLASS()
@@ -30,6 +31,12 @@ public:
 	/** Keep slot ammo updates connected after a weapon swap; unbind when the HUD changes its displayed pawn. */
 	UFUNCTION(BlueprintCallable, Category="Initial Weapons", meta=(DefaultToSelf="HUD"))
 	static void SetWeaponSlotConsumptionBinding(UObject* HUD, AActor* Weapon, bool bBind);
+
+	UFUNCTION(BlueprintCallable, Category="Initial Weapons", meta=(DefaultToSelf="HUD"))
+	static void UpdateDisplayedWeaponSlotAmmo(UUserWidget* HUD, int32 SlotNumber, double AmmoPercent);
+
+	UFUNCTION(BlueprintCallable, Category="Initial Weapons", meta=(DefaultToSelf="HUD"))
+	static void QueueDisplayedWeaponSlotRefresh(UUserWidget* HUD);
 
 	/** Keeps the current regular weapon when a restricted default is requested. */
 	UFUNCTION(BlueprintPure, Category="Initial Weapons")

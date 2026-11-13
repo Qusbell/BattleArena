@@ -1,7 +1,13 @@
 #include "Weapon/InitialWeaponLibrary.h"
 #include "Weapon/InitialWeaponLoadoutComponent.h"
 #include "Weapon/InitialWeaponLoadoutDataAsset.h"
+#include "Blueprint/UserWidget.h"
+#include "Components/TextBlock.h"
+#include "Engine/World.h"
 #include "GameFramework/Actor.h"
+#include "GameFramework/HUD.h"
+#include "GameFramework/PlayerController.h"
+#include "TimerManager.h"
 #include "UObject/StructOnScope.h"
 #include "UObject/UnrealType.h"
 
@@ -52,6 +58,12 @@ namespace
 			if (It->GetName().StartsWith(TEXT("SelectedIndex")))
 				return It->GetPropertyValue_InContainer(Info->ContainerPtrToValuePtr<void>(Inventory));
 		return INDEX_NONE;
+	}
+
+	UObject* ReadWeaponHUDObject(const UObject* Object, FName Name)
+	{
+		const auto* Property = IsValid(Object) ? FindFProperty<FObjectPropertyBase>(Object->GetClass(), Name) : nullptr;
+		return Property ? Property->GetObjectPropertyValue_InContainer(Object) : nullptr;
 	}
 }
 
@@ -113,6 +125,48 @@ void UInitialWeaponLibrary::SetWeaponSlotConsumptionBinding(UObject* HUD, AActor
 	Callback.BindUFunction(HUD, TEXT("RF_HandleAmmoConsumed"));
 	if (bBind) Event->AddDelegate(Callback, Weapon);
 	else Event->RemoveDelegate(Callback, Weapon);
+}
+
+void UInitialWeaponLibrary::UpdateDisplayedWeaponSlotAmmo(UUserWidget* HUD, int32 SlotNumber, double AmmoPercent)
+{
+	TRACE_CPUPROFILER_EVENT_SCOPE(WeaponHUD_UpdateSlotAmmo);
+	if (!IsValid(HUD) || SlotNumber <= 0) return;
+	const APlayerController* Player = HUD->GetOwningPlayer();
+	const auto* Root = Player ? Cast<UUserWidget>(ReadWeaponHUDObject(Player->GetHUD(), TEXT("WB_ShooterHUD"))) : nullptr;
+	const auto* Bar = Root ? Cast<UUserWidget>(Root->GetWidgetFromName(TEXT("WB_ActionBar_Base"))) : nullptr;
+	const auto* Mapping = Bar ? FindFProperty<FMapProperty>(Bar->GetClass(), TEXT("SlotMapping")) : nullptr;
+	const auto* Key = Mapping ? CastField<FObjectPropertyBase>(Mapping->KeyProp) : nullptr;
+	if (!Key) return;
+
+	const FText SlotText = FText::AsNumber(SlotNumber);
+	FScriptMapHelper Slots(Mapping, Mapping->ContainerPtrToValuePtr<void>(Bar));
+	for (FScriptMapHelper::FIterator It(Slots); It; ++It)
+	{
+		const auto* Slot = Cast<UUserWidget>(Key->GetObjectPropertyValue(Slots.GetKeyPtr(It)));
+		if (!IsValid(Slot) || !Slot->GetParent() || Slot->GetOwningPlayer() != Player) continue;
+		const auto* KeyText = Cast<UTextBlock>(Slot->GetWidgetFromName(TEXT("Text_SlotKey")));
+		if (!KeyText || !KeyText->GetText().EqualTo(SlotText)) continue;
+		auto* Progress = Slot->GetWidgetFromName(TEXT("WB_AmmoProgress_ActionSlot"));
+		UFunction* Update = IsValid(Progress) ? Progress->FindFunction(TEXT("UpdateProgress")) : nullptr;
+		const auto* Percent = Update ? FindFProperty<FNumericProperty>(Update, TEXT("InPercent")) : nullptr;
+		if (!Percent || !Percent->IsFloatingPoint()) continue;
+		FStructOnScope Parameters(Update);
+		Percent->SetFloatingPointPropertyValue(Percent->ContainerPtrToValuePtr<void>(Parameters.GetStructMemory()), AmmoPercent);
+		Progress->ProcessEvent(Update, Parameters.GetStructMemory());
+		return;
+	}
+}
+
+void UInitialWeaponLibrary::QueueDisplayedWeaponSlotRefresh(UUserWidget* HUD)
+{
+	if (!IsValid(HUD) || !HUD->GetWorld()) return;
+	FTimerDynamicDelegate Refresh;
+	Refresh.BindUFunction(HUD, TEXT("RefreshCompetitveWeaponSlots"));
+	FTimerManager& Timers = HUD->GetWorld()->GetTimerManager();
+	if (Refresh.IsBound() && !Timers.K2_FindDynamicTimerHandle(Refresh).IsValid())
+	{
+		Timers.SetTimerForNextTick(Refresh);
+	}
 }
 
 int32 UInitialWeaponLibrary::ResolveInventoryWeaponSelection(UActorComponent* Inventory, int32 RequestedIndex)

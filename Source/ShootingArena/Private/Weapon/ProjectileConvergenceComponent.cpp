@@ -1,5 +1,6 @@
 #include "Weapon/ProjectileConvergenceComponent.h"
 
+#include "Engine/World.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 
 UProjectileConvergenceComponent::UProjectileConvergenceComponent()
@@ -39,11 +40,39 @@ bool UProjectileConvergenceComponent::Initialize(UProjectileMovementComponent* I
 
 void UProjectileConvergenceComponent::ResetForPool()
 {
+	FWorldDelegates::OnWorldPreActorTick.Remove(MovementHandoff);
+	MovementHandoff.Reset();
 	SetComponentTickEnabled(false);
 	Movement = nullptr;
 	Join = FVector::ZeroVector;
 	Forward = FVector::ForwardVector;
 	bJoined = false;
+}
+
+void UProjectileConvergenceComponent::OnUnregister()
+{
+	ResetForPool();
+	Super::OnUnregister();
+}
+
+void UProjectileConvergenceComponent::ScheduleMovementHandoff()
+{
+	if (!MovementHandoff.IsValid())
+	{
+		MovementHandoff = FWorldDelegates::OnWorldPreActorTick.AddUObject(this, &ThisClass::FinishMovementHandoff);
+	}
+}
+
+void UProjectileConvergenceComponent::FinishMovementHandoff(UWorld* World, ELevelTick TickType, float DeltaTime)
+{
+	if (World != GetWorld()) return;
+	// The movement tick is enabled before the next tick groups are queued, after the split frame has ended.
+	UProjectileMovementComponent* CurrentMovement = Movement.Get();
+	ResetForPool();
+	if (IsValid(CurrentMovement) && CurrentMovement->IsActive() && CurrentMovement->UpdatedComponent)
+	{
+		CurrentMovement->SetComponentTickEnabled(true);
+	}
 }
 
 void UProjectileConvergenceComponent::TickComponent(float DeltaTime, ELevelTick TickType,
@@ -54,6 +83,7 @@ void UProjectileConvergenceComponent::TickComponent(float DeltaTime, ELevelTick 
 	if (bJoined)
 	{
 		Movement->TickComponent(DeltaTime, TickType, &Movement->PrimaryComponentTick);
+		if (IsValid(Movement)) ScheduleMovementHandoff();
 		return;
 	}
 	const double Speed = Movement->Velocity.Size();
@@ -72,5 +102,6 @@ void UProjectileConvergenceComponent::TickComponent(float DeltaTime, ELevelTick 
 			Movement->UpdatedComponent->SetWorldRotation(Forward.Rotation());
 		const float RemainingTime = DeltaTime - FirstTime;
 		if (RemainingTime > 0.f) Movement->TickComponent(RemainingTime, TickType, &Movement->PrimaryComponentTick);
+		if (IsValid(Movement)) ScheduleMovementHandoff();
 	}
 }

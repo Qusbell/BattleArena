@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Async/Future.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "TimerManager.h"
 #include "Containers/Ticker.h"
@@ -242,6 +243,7 @@ private:
     void Enqueue(const FString& Sql);
     void FlushPendingFires();
     void Flush();
+    bool CollectWrite(bool bWait);
     void Tick();
     bool ReadMatchEnded();
     void CollectAmmo(const AActor* Holder, TMap<TWeakObjectPtr<AActor>, int32>& Out) const;
@@ -263,6 +265,14 @@ private:
     void MaybeValidate();
 
     FSQLiteDatabase* Db = nullptr;
+    struct FWriteResult
+    {
+        FString TransientError;
+        TArray<FString> Rejected;
+    };
+    static FWriteResult WriteBatch(FSQLiteDatabase& Database, const TArray<FString>& Statements, bool bRetry);
+    TFuture<FWriteResult> WriteFuture;
+    TSharedPtr<const TArray<FString>, ESPMode::ThreadSafe> InFlightSql;
     FString DbPath;
     FString MatchId;
     /** Real-time ticker (not a world timer): the game pauses the world when a match ends, which would stop a world timer. */

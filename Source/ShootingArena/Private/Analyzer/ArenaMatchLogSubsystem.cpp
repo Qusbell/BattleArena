@@ -1,4 +1,5 @@
 #include "Analyzer/ArenaMatchLogSubsystem.h"
+#include "Async/Async.h"
 #include "Analyzer/ArenaLoggingSettings.h"
 
 #include "AssetRegistry/AssetRegistryModule.h"
@@ -317,7 +318,20 @@ void UArenaMatchLogSubsystem::Deinitialize()
 	{
 		EndMatch(TEXT("Forced"));
 	}
-	Flush();
+	// The database connection stays alive until the sole writer has finished.
+	while (Db && (InFlightSql || !PendingSql.IsEmpty() || !PendingFires.IsEmpty())
+		&& ActiveDamageSeqs.IsEmpty())
+	{
+		CollectWrite(true);
+		Flush();
+	}
+	CollectWrite(true);
+	if (InFlightSql)
+	{
+		Spool(*InFlightSql, TEXT("database unavailable at shutdown"));
+		FailedWrites += InFlightSql->Num();
+		InFlightSql.Reset();
+	}
 	if (!PendingSql.IsEmpty())
 	{
 		Spool(PendingSql, TEXT("database unavailable at shutdown"));
@@ -1523,7 +1537,12 @@ bool UArenaMatchLogSubsystem::ReadMatchEnded()
 
 void UArenaMatchLogSubsystem::Tick()
 {
-	if (!bMatchStarted || bMatchEnded)
+	if (bMatchEnded)
+	{
+		Flush();
+		return;
+	}
+	if (!bMatchStarted)
 	{
 		return;
 	}
@@ -1697,77 +1716,87 @@ void UArenaMatchLogSubsystem::Flush()
 	bFlushWanted = false;
 	// Fire rows wait for pellet counts; a later trace for the same attack is no longer expected.
 	FlushPendingFires();
-	if (PendingSql.IsEmpty())
+	if (!CollectWrite(false)) return;
+	if (!InFlightSql)
 	{
-		MaybeValidate();
-		return;
+		if (PendingSql.IsEmpty())
+		{
+			MaybeValidate();
+			return;
+		}
+		InFlightSql = MakeShared<TArray<FString>, ESPMode::ThreadSafe>(MoveTemp(PendingSql));
+	}
+	const bool bRetry = FlushAttempts > 0;
+	WriteFuture = Async(EAsyncExecution::ThreadPool, [Database = Db, Statements = InFlightSql, bRetry]
+	{
+		return WriteBatch(*Database, *Statements, bRetry);
+	});
+}
+
+UArenaMatchLogSubsystem::FWriteResult UArenaMatchLogSubsystem::WriteBatch(
+	FSQLiteDatabase& Database, const TArray<FString>& Statements, bool bRetry)
+{
+	TRACE_CPUPROFILER_EVENT_SCOPE(ArenaMatchLog_WriteBatch);
+	FWriteResult Result;
+	if (!Database.Execute(TEXT("BEGIN IMMEDIATE")))
+	{
+		Result.TransientError = Database.GetLastError();
+		return Result;
 	}
 
-	const bool bRetry = FlushAttempts > 0;
-	FString TransientError;
-	TArray<FString> Rejected;
-	if (!Db->Execute(TEXT("BEGIN IMMEDIATE")))
+	for (const FString& Sql : Statements)
 	{
-		TransientError = Db->GetLastError();
+		if (Database.Execute(bRetry ? *AsIdempotent(Sql) : *Sql)) continue;
+		const FString Error = Database.GetLastError();
+		if (IsTransientError(Error))
+		{
+			Result.TransientError = Error;
+			break;
+		}
+		Result.Rejected.Add(Sql + TEXT(" -- ") + Error.Replace(TEXT("\n"), TEXT(" ")));
+		UE_LOG(LogArenaMatchLog, Error, TEXT("Write rejected: %s\n  %s"), *Error, *Sql.Left(300));
+	}
+	if (Result.TransientError.IsEmpty() && !Database.Execute(TEXT("COMMIT")))
+	{
+		Result.TransientError = Database.GetLastError();
+	}
+	if (!Result.TransientError.IsEmpty()) Database.Execute(TEXT("ROLLBACK"));
+	return Result;
+}
+
+bool UArenaMatchLogSubsystem::CollectWrite(bool bWait)
+{
+	if (!WriteFuture.IsValid()) return true;
+	if (!bWait && !WriteFuture.IsReady()) return false;
+
+	FWriteResult Result = WriteFuture.Consume();
+	if (Result.TransientError.IsEmpty() && SimulatedCommitFailures > 0)
+	{
+		--SimulatedCommitFailures;
+		Result.TransientError = TEXT("simulated commit failure (batch is already stored)");
+	}
+	if (!Result.TransientError.IsEmpty())
+	{
+		++FlushAttempts;
+		UE_LOG(LogArenaMatchLog, Warning, TEXT("Flush failed (attempt %d/%d): %s"), FlushAttempts, MaxFlushAttempts, *Result.TransientError);
+		if (FlushAttempts < MaxFlushAttempts) return true;
+
+		Spool(*InFlightSql, Result.TransientError);
+		FailedWrites += InFlightSql->Num();
 	}
 	else
 	{
-		for (const FString& Sql : PendingSql)
-		{
-			if (Db->Execute(bRetry ? *AsIdempotent(Sql) : *Sql))
-			{
-				continue;
-			}
-			const FString Error = Db->GetLastError();
-			if (IsTransientError(Error))
-			{
-				TransientError = Error;
-				break;
-			}
-			++FailedWrites;
-			Rejected.Add(Sql + TEXT(" -- ") + Error.Replace(TEXT("\n"), TEXT(" ")));
-			UE_LOG(LogArenaMatchLog, Error, TEXT("Write rejected: %s\n  %s"), *Error, *Sql.Left(300));
-		}
-		if (TransientError.IsEmpty() && !Db->Execute(TEXT("COMMIT")))
-		{
-			TransientError = Db->GetLastError();
-			Db->Execute(TEXT("ROLLBACK"));
-		}
-		else if (TransientError.IsEmpty() && SimulatedCommitFailures > 0)
-		{
-			--SimulatedCommitFailures;
-			TransientError = TEXT("simulated commit failure (batch is already stored)");
-		}
-		else if (!TransientError.IsEmpty())
-		{
-			Db->Execute(TEXT("ROLLBACK"));
-		}
+		FailedWrites += Result.Rejected.Num();
+		Spool(Result.Rejected, TEXT("rejected by the database"));
 	}
-
-	if (!TransientError.IsEmpty())
-	{
-		// Nothing was committed: keep the whole batch and try again on the next flush.
-		++FlushAttempts;
-		UE_LOG(LogArenaMatchLog, Warning, TEXT("Flush failed (attempt %d/%d): %s"), FlushAttempts, MaxFlushAttempts, *TransientError);
-		if (FlushAttempts >= MaxFlushAttempts)
-		{
-			Spool(PendingSql, TransientError);
-			FailedWrites += PendingSql.Num();
-			PendingSql.Reset();
-			FlushAttempts = 0;
-		}
-		return;
-	}
-
+	InFlightSql.Reset();
 	FlushAttempts = 0;
-	PendingSql.Reset();
-	Spool(Rejected, TEXT("rejected by the database"));
-	MaybeValidate();
+	return true;
 }
 
 void UArenaMatchLogSubsystem::MaybeValidate()
 {
-	if (!Db || !bMatchEnded || bValidated || !PendingSql.IsEmpty() || !ActiveDamageSeqs.IsEmpty())
+	if (!Db || !bMatchEnded || bValidated || InFlightSql || !PendingSql.IsEmpty() || !ActiveDamageSeqs.IsEmpty())
 	{
 		return;
 	}
