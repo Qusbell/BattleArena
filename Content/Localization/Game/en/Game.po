@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-11-13 06:14\n"
-"PO-Revision-Date: 2026-11-13 06:14\n"
+"POT-Creation-Date: 2026-11-13 11:57\n"
+"PO-Revision-Date: 2026-11-13 11:57\n"
 "Language-Team: \n"
 "Language: en\n"
 "MIME-Version: 1.0\n"
@@ -367,15 +367,15 @@ msgstr "LSH_AITest"
 #. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
 #: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
 msgctxt "Game,Map_Lvl_02Map"
-msgid "Lvl_02Map"
-msgstr "Lvl_02Map"
+msgid "바이오테크"
+msgstr "Biotech"
 
 #. Key:	Map_Lvl_PortalMap
 #. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
 #: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
 msgctxt "Game,Map_Lvl_PortalMap"
-msgid "Lvl_PortalMap"
-msgstr "Lvl_PortalMap"
+msgid "밀리테크"
+msgstr "Militech"
 
 #. Key:	Map_Lvl_QuakeMap_00
 #. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
