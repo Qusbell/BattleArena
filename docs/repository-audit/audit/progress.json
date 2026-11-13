@@ -39,6 +39,13 @@
     "not_verified": "Manual gameplay, multiplayer travel, map-wide runtime and packaged execution remain user verification",
     "baseline_recollection": "not_performed; targeted incremental update only"
   },
+  "respawn_progress_size": {
+    "date": "2026-11-13",
+    "report": "docs/repository-audit/systems/UIRecording.md",
+    "source_of_truth": "/Game/QuakeLike_1_0/UI/DeathUI/DA_RespawnBarStyle",
+    "change": "Set independent frame width, height and vertical offset on the death-screen respawn progress bar at countdown start.",
+    "validation": "Editor Development build and three respawn/recording automation tests passed, including custom dimensions, authored fallback and non-accumulating offset. Live combat was not exercised."
+  },
   "respawn_progress_gradient": {
     "date": "2026-11-13",
     "report": "docs/repository-audit/systems/UIRecording.md",

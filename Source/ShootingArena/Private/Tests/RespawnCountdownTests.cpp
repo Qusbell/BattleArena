@@ -4,6 +4,7 @@
 
 #include "Blueprint/UserWidget.h"
 #include "Components/ProgressBar.h"
+#include "Components/SizeBox.h"
 #include "Engine/World.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Misc/AutomationTest.h"
@@ -87,9 +88,19 @@ bool FRespawnProgressGradientTest::RunTest(const FString&)
 	auto* Edge = FindFProperty<FStructProperty>(Settings->GetClass(), TEXT("ProgressGradientEdgeColor"));
 	auto* Start = FindFProperty<FNumericProperty>(Settings->GetClass(), TEXT("ProgressGradientStart"));
 	auto* End = FindFProperty<FNumericProperty>(Settings->GetClass(), TEXT("ProgressGradientEnd"));
+	auto* Width = FindFProperty<FNumericProperty>(Settings->GetClass(), TEXT("RespawnProgressWidth"));
+	auto* Height = FindFProperty<FNumericProperty>(Settings->GetClass(), TEXT("RespawnProgressHeight"));
+	auto* VerticalOffset = FindFProperty<FNumericProperty>(Settings->GetClass(), TEXT("RespawnProgressVerticalOffset"));
+	auto* Frame = Cast<USizeBox>(Nested->GetWidgetFromName(TEXT("SB_Base")));
+	auto* Group = Widget->GetWidgetFromName(TEXT("OV_RespawnProgress"));
 	if (!TestNotNull(TEXT("Gradient toggle"), Enabled) || !TestNotNull(TEXT("Gradient centre color"), Center)
 		|| !TestNotNull(TEXT("Gradient edge color"), Edge) || !TestNotNull(TEXT("Gradient start"), Start)
-		|| !TestNotNull(TEXT("Gradient end"), End)) return false;
+		|| !TestNotNull(TEXT("Gradient end"), End) || !TestNotNull(TEXT("Respawn width"), Width)
+		|| !TestNotNull(TEXT("Respawn height"), Height) || !TestNotNull(TEXT("Respawn vertical offset"), VerticalOffset)
+		|| !TestNotNull(TEXT("Visible frame"), Frame) || !TestNotNull(TEXT("Progress group"), Group)) return false;
+	const FVector2D OriginalScale = Nested->GetRenderTransform().Scale;
+	const FVector2D OriginalPosition = Group->GetRenderTransform().Translation;
+	const FVector2D FrameSize(Frame->GetWidthOverride(), Frame->GetHeightOverride());
 	const UObject* SolidFill = Bar->GetWidgetStyle().FillImage.GetResourceObject();
 	Enabled->SetPropertyValue_InContainer(Settings, true);
 	*Center->ContainerPtrToValuePtr<FLinearColor>(Settings) = FLinearColor::Red;
@@ -118,8 +129,21 @@ bool FRespawnProgressGradientTest::RunTest(const FString&)
 	TestEqual(TEXT("Coincident endpoints retain a positive width"), Fill->K2_GetScalarParameterValue(TEXT("GradientWidth")), 0.001f);
 
 	Enabled->SetPropertyValue_InContainer(Settings, false);
+	Width->SetFloatingPointPropertyValue(Width->ContainerPtrToValuePtr<void>(Settings), 500.0);
+	Height->SetFloatingPointPropertyValue(Height->ContainerPtrToValuePtr<void>(Settings), 30.0);
+	VerticalOffset->SetFloatingPointPropertyValue(VerticalOffset->ContainerPtrToValuePtr<void>(Settings), -35.0);
 	URespawnCountdownLibrary::StartRespawnCountdown(Widget, 3.0);
 	TestTrue(TEXT("Disabling restores the original fill"), Bar->GetWidgetStyle().FillImage.GetResourceObject() == SolidFill);
+	TestTrue(TEXT("The frame has the selected width and height with gradient disabled"),
+		(Nested->GetRenderTransform().Scale * FrameSize).Equals(FVector2D(500.0, 30.0), 0.001));
+	TestTrue(TEXT("Vertical offset moves the progress group from its original position"),
+		Group->GetRenderTransform().Translation.Equals(OriginalPosition + FVector2D(0.0, -35.0)));
+	Width->SetFloatingPointPropertyValue(Width->ContainerPtrToValuePtr<void>(Settings), 0.0);
+	Height->SetFloatingPointPropertyValue(Height->ContainerPtrToValuePtr<void>(Settings), -1.0);
+	URespawnCountdownLibrary::StartRespawnCountdown(Widget, 3.0);
+	TestTrue(TEXT("Invalid dimensions restore the authored scale"), Nested->GetRenderTransform().Scale.Equals(OriginalScale));
+	TestTrue(TEXT("Restart does not accumulate vertical offset"),
+		Group->GetRenderTransform().Translation.Equals(OriginalPosition + FVector2D(0.0, -35.0)));
 	return !HasAnyErrors();
 }
 
