@@ -75,12 +75,14 @@ PR #972 통합에서는 `main`의 `3282d7830` HUD에 중앙 알림 함수 두 �
 | 메달 → 배경 | 배경 RGB와 불투명도. 각 일반 메달과 큰 메달에 하나씩 적용합니다. |
 | You Killed → 배경 | 배경 RGB, 불투명도, 그림자 위치 보정. X는 좌우, Y는 상하이며 기본값은 (-8, -9) UI 단위입니다. 불투명도 0에서 글자만 표시합니다. |
 | You Killed → 그림자 | 그림자 색상·알파와 거리 배율. 기본값 0은 끄기, 0.5는 기존 거리의 절반입니다. |
+| Killed by → 위치 | 사망 알림 위치 보정. `Killed by`, 처치자 이름, `You Died`에 적용합니다. 기본값은 (0, 0)이며 X는 오른쪽, Y는 아래쪽이 양수입니다. |
 
 `WBP_PlayerHUD_sdm.ShowCompetitiveKillMessage`는 기존 알림을 만든 직후 현재 DA 스타일을 적용합니다.
 `You Killed`와 대상 이름을 담은 텍스트 그룹과 배경을 같은 세로 중앙에 배치합니다.
 메달마다 `CompetitiveRankingHUD`가 `You Killed`와 같은 `T_Blur_800x200` 그림자를 이미지 뒤에 표시합니다.
 그림자의 바깥쪽은 이미지보다 넓게 그려 가장자리가 자연스럽게 흐려지며, 기존 도장 애니메이션을 따라갑니다.
 DA 저장 시 JsonAssetSync가 `Content/DataAssets/DA_KillMedalUISettings.json`에 값을 내보내며 다음 시작에서 JSON을 적용합니다.
+사망 알림 위치는 점수판이 열려 있으면 점수판 위를, 닫혀 있으면 리스폰 바 쪽 기본 위치를 기준으로 보정합니다.
 
 전투 맵의 PIE에서 캐릭터가 스폰된 뒤 에디터 Output Log에 아래 명령을 입력합니다.
 
