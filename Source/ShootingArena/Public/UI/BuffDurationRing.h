@@ -233,6 +233,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "가운데 숫자", meta = (DisplayName = "숫자 글자 크기", ClampMin = "8", ClampMax = "128"))
 	int32 TimeFontSize = 44;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "가운데 숫자", meta = (DisplayName = "숫자 폰트", AllowedClasses = "/Script/Engine.Font,/Script/Engine.FontFace", ToolTip = "비워 두면 HUD의 기존 폰트를 사용합니다. Font 또는 Font Face 에셋을 지정합니다."))
+	TObjectPtr<UObject> TimeFont;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "가운데 숫자", meta = (DisplayName = "숫자 폰트 스타일", ToolTip = "Font 에셋에 등록된 Typeface 이름입니다. 비워 두면 기본 스타일을 사용합니다."))
+	FName TimeTypeface;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "가운데 숫자", meta = (DisplayName = "숫자 위치 (중앙 기준)"))
 	FVector2D TimeOffset = FVector2D::ZeroVector;
 
@@ -324,6 +330,8 @@ private:
 	double ShineStartTime = -1.0;
 
 	TWeakObjectPtr<UImage> StyledIcon;
+	TWeakObjectPtr<UTextBlock> StyledTimeText;
+	FSlateFontInfo OriginalTimeFont;
 	float AppliedProgress = -1.0f;
 	float AppliedSize = -1.0f;
 	float AppliedSteps = -1.0f;

@@ -352,10 +352,20 @@ void UBuffDurationRingWidget::ApplyStatus(double Remaining, float Progress, bool
 	const FSlateColor TimeColor(GetTimeDisplayColor(Remaining));
 	if (TimeText->GetColorAndOpacity() != TimeColor) TimeText->SetColorAndOpacity(TimeColor);
 	FSlateFontInfo Font = TimeText->GetFont();
+	if (StyledTimeText.Get() != TimeText)
+	{
+		StyledTimeText = TimeText;
+		OriginalTimeFont = Font;
+	}
+	const UObject* FontObject = Style->TimeFont ? Style->TimeFont.Get() : OriginalTimeFont.FontObject;
+	const FName Typeface = Style->TimeFont ? Style->TimeTypeface : OriginalTimeFont.TypefaceFontName;
 	const int32 Size = FMath::Clamp(Style->TimeFontSize, 8, 128);
 	const int32 Outline = FMath::Clamp(Style->TimeOutlineSize, 0, 8);
-	if (Font.Size != Size || Font.OutlineSettings.OutlineSize != Outline)
+	if (Font.Size != Size || Font.OutlineSettings.OutlineSize != Outline ||
+		Font.FontObject != FontObject || Font.TypefaceFontName != Typeface)
 	{
+		Font.FontObject = FontObject;
+		Font.TypefaceFontName = Typeface;
 		Font.Size = Size;
 		Font.OutlineSettings.OutlineSize = Outline;
 		Font.OutlineSettings.OutlineColor = FLinearColor(0.0f, 0.0f, 0.0f, 0.8f);
