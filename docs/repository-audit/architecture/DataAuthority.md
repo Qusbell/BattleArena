@@ -1,5 +1,12 @@
 # 설정 데이터의 원본과 편집 기준
 
+2026-11-13 추가. 좌하단 HP·아머 변경 연출의 원본은 `/Game/QuakeLike_1_0/Data/UI/DA_VitalsHUDFeedback`입니다.
+피격·비피격 각각에 대해 숫자 잔상과 가로 색상 잔상의 불투명도와 블러를 에디터에서 직접 편집하고 저장합니다.
+이 에셋은 JsonAssetSync에 등록하지 않습니다.
+`WB_HealthBar`와 `WB_ArmorBar`는 기존 갱신 이벤트의 피격 구분을 사용합니다.
+가로 색상 잔상은 비피격 갱신 시 `WB_HealthAnim`, 피격 시 `WB_DamageAnim`에서 재생됩니다.
+초기 불투명도는 숫자·색상 순서로 비피격 0.45·0.30, 피격 0.65·0.50입니다. 초기 블러는 모두 0입니다.
+
 2026-11-11 추가. `DA_KillMedalUISettings`는 `Content/DataAssets/DA_KillMedalUISettings.json`에 연결됩니다.
 메달과 처치 알림의 색상·불투명도·그림자를 DA에서 편집하고 저장하면 JsonAssetSync가 JSON에 내보냅니다.
 다음 Editor·런타임 시작은 이 JSON을 적용합니다. [킬 알림 스타일과 검증 방법](../systems/UIRecording.md#2026-11-11-킬-메달과-처치-알림-스타일)

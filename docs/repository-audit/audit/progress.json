@@ -1,5 +1,11 @@
 {
   "schema_version": 1,
+  "vitals_hud_feedback": {
+    "date": "2026-11-13",
+    "report": "docs/repository-audit/architecture/DataAuthority.md",
+    "source_of_truth": "/Game/QuakeLike_1_0/Data/UI/DA_VitalsHUDFeedback",
+    "validation": "Live Coding and four widget Blueprint compiles succeeded. PortalMap client PIE verified damage and non-damage opacity for both HP and armor through widget events, and verified live DA overrides for number retention and the color blur material. Physical combat, rendered blur comparison and packaged runtime were not exercised."
+  },
   "respawn_font_style": {
     "date": "2026-11-12",
     "report": "docs/repository-audit/systems/UIRecording.md",
