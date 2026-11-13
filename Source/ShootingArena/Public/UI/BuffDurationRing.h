@@ -12,6 +12,13 @@ class UTexture2D;
 class UMaterialInterface;
 class UMaterialInstanceDynamic;
 
+UENUM(BlueprintType)
+enum class EBuffRingStyle : uint8
+{
+	Connected UMETA(DisplayName = "연결형"),
+	Segmented UMETA(DisplayName = "분할형")
+};
+
 /** Independent of DA_BuffScreenEffect: these settings affect only the HUD buff indicator. */
 UCLASS(BlueprintType)
 class SHOOTINGARENA_API UBuffDurationRingSettings : public UDataAsset
@@ -38,6 +45,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "원형 게이지", meta = (DisplayName = "링 표시"))
 	bool bShowRing = true;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "원형 게이지", meta = (DisplayName = "게이지 형태"))
+	EBuffRingStyle RingStyle = EBuffRingStyle::Connected;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "원형 게이지", meta = (DisplayName = "링 두께 (1에 가까울수록 얇음)", ClampMin = "1.001", ClampMax = "2.0"))
 	float RingSize = 1.06f;
 
@@ -47,7 +57,19 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "원형 게이지", meta = (DisplayName = "윤곽선 색상", HideAlphaChannel))
 	FLinearColor RingOutlineColor = FLinearColor(0.73f, 0.80f, 0.88f);
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "원형 게이지", meta = (DisplayName = "링 패턴 반복 수", ClampMin = "1.0", ClampMax = "1000.0"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "원형 게이지|윤곽선", meta = (DisplayName = "윤곽선 불투명도 (0=투명, 1=불투명)", ClampMin = "0.0", ClampMax = "1.0"))
+	float RingOutlineOpacity = 1.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "원형 게이지|윤곽선", meta = (DisplayName = "분할 윤곽선 그라데이션 사용"))
+	bool bSegmentOutlineGradient = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "원형 게이지|윤곽선", meta = (DisplayName = "마디 중앙 윤곽선 색상", HideAlphaChannel))
+	FLinearColor SegmentOutlineCenterColor = FLinearColor(0.08f, 0.11f, 0.16f);
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "원형 게이지|윤곽선", meta = (DisplayName = "마디 끝 밝기 퍼짐 범위", ClampMin = "0.01", ClampMax = "0.5"))
+	float SegmentOutlineEndRange = 0.25f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "원형 게이지", meta = (DisplayName = "링 패턴 반복 수", ClampMin = "1.0", ClampMax = "1000.0", EditCondition = "RingStyle == EBuffRingStyle::Segmented"))
 	float RingSteps = 800.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "원형 게이지", meta = (DisplayName = "시작 각도 (-90 = 12시)"))
@@ -61,6 +83,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "원형 게이지", meta = (DisplayName = "소진된 구간 색상·불투명도"))
 	FLinearColor EmptyColor = FLinearColor(0.15f, 0.2f, 0.25f, 0.28f);
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "원형 게이지", meta = (DisplayName = "소진된 구간 배경 투명하게", ToolTip = "체크하면 감소 후 남는 어두운 트랙을 숨깁니다. 링의 안팎 윤곽선은 유지합니다."))
+	bool bTransparentEmptyTrack = false;
 
 	/** Display-only highlight on the moving end of the remaining arc. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "원형 게이지|끝부분 발광", meta = (DisplayName = "게이지 끝부분 발광 사용", ToolTip = "체크를 끄면 기존 5분할 링으로 표시합니다. 숫자, 아이콘 및 버프 기능에는 영향을 주지 않습니다."))
@@ -141,6 +166,42 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "아이콘 원형 테두리", meta = (DisplayName = "원형 테두리 지름"))
 	float IconFrameDiameter = 190.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "아이콘 배경", meta = (DisplayName = "아이콘 배경 표시"))
+	bool bShowIconBackground = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "아이콘 배경", meta = (DisplayName = "배경 색상", HideAlphaChannel))
+	FLinearColor IconBackgroundColor = FLinearColor::Black;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "아이콘 배경", meta = (DisplayName = "배경 불투명도 (0=투명, 1=불투명)", ClampMin = "0.0", ClampMax = "1.0"))
+	float IconBackgroundOpacity = 0.35f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "아이콘 배경", meta = (DisplayName = "배경 지름", ClampMin = "1.0", ClampMax = "1024.0"))
+	float IconBackgroundDiameter = 190.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "아이콘 배경", meta = (DisplayName = "배경 그라데이션 사용"))
+	bool bIconBackgroundGradient = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "아이콘 배경", meta = (DisplayName = "배경 바깥 색상", HideAlphaChannel))
+	FLinearColor IconBackgroundOuterColor = FLinearColor(0.12f, 0.04f, 0.14f);
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "아이콘 배경", meta = (DisplayName = "배경 중간 색상", HideAlphaChannel))
+	FLinearColor IconBackgroundMiddleColor = FLinearColor(0.08f, 0.015f, 0.07f);
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "아이콘 배경", meta = (DisplayName = "배경 중간 색상 위치 (%)", ToolTip = "배경 반지름 기준 위치입니다. 0=중심, 100=가장자리. 중앙 색상 유지 구간보다 안쪽으로 옮기면 유지 구간도 중간 지점 안쪽으로 제한됩니다.", ClampMin = "1.0", ClampMax = "99.0"))
+	float IconBackgroundMiddlePosition = 80.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "아이콘 배경", meta = (DisplayName = "배경 바깥 불투명도 (0=투명, 1=불투명)", ClampMin = "0.0", ClampMax = "1.0"))
+	float IconBackgroundOuterOpacity = 0.35f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "아이콘 배경", meta = (DisplayName = "중앙 색상 유지 비율", ClampMin = "0.0", ClampMax = "0.95"))
+	float IconBackgroundCenterRatio = 0.6f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "아이콘 배경", meta = (DisplayName = "바깥 번짐 범위", ClampMin = "0.0", ClampMax = "128.0"))
+	float IconBackgroundFeather = 16.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "아이콘 배경")
+	TObjectPtr<UMaterialInterface> IconBackgroundMaterial;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "링 발광", meta = (DisplayName = "링 발광 사용"))
 	bool bRingHaloEnabled = false;
@@ -252,6 +313,9 @@ private:
 
 	TWeakObjectPtr<UImage> ShineImage;
 	TWeakObjectPtr<UImage> FrameImage;
+	TWeakObjectPtr<UImage> BackgroundImage;
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> BackgroundMID;
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInstanceDynamic> FrameMID;
 	TWeakObjectPtr<const UObject> ShineBuffSource;

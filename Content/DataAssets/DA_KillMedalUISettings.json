@@ -56,7 +56,7 @@
 		"x": 180,
 		"y": 180
 	},
-	"medalGap": 4,
+	"medalGap": 1,
 	"displayDuration": 2.5999999046325684,
 	"highlightOpacity": 0.30000001192092896,
 	"stampStartScale": 3.5,
