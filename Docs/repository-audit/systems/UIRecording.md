@@ -75,12 +75,14 @@ PR #972 통합에서는 `main`의 `3282d7830` HUD에 중앙 알림 함수 두 �
 | 메달 → 배경 | 배경 RGB와 불투명도. 각 일반 메달과 큰 메달에 하나씩 적용합니다. |
 | You Killed → 배경 | 배경 RGB, 불투명도, 그림자 위치 보정. X는 좌우, Y는 상하이며 기본값은 (-8, -9) UI 단위입니다. 불투명도 0에서 글자만 표시합니다. |
 | You Killed → 그림자 | 그림자 색상·알파와 거리 배율. 기본값 0은 끄기, 0.5는 기존 거리의 절반입니다. |
+| Killed by → 위치 | 사망 알림 위치 보정. `Killed by`, 처치자 이름, `You Died`에 적용합니다. 기본값은 (0, 0)이며 X는 오른쪽, Y는 아래쪽이 양수입니다. |
 
 `WBP_PlayerHUD_sdm.ShowCompetitiveKillMessage`는 기존 알림을 만든 직후 현재 DA 스타일을 적용합니다.
 `You Killed`와 대상 이름을 담은 텍스트 그룹과 배경을 같은 세로 중앙에 배치합니다.
 메달마다 `CompetitiveRankingHUD`가 `You Killed`와 같은 `T_Blur_800x200` 그림자를 이미지 뒤에 표시합니다.
 그림자의 바깥쪽은 이미지보다 넓게 그려 가장자리가 자연스럽게 흐려지며, 기존 도장 애니메이션을 따라갑니다.
 DA 저장 시 JsonAssetSync가 `Content/DataAssets/DA_KillMedalUISettings.json`에 값을 내보내며 다음 시작에서 JSON을 적용합니다.
+사망 알림 위치는 점수판이 열려 있으면 점수판 위를, 닫혀 있으면 리스폰 바 쪽 기본 위치를 기준으로 보정합니다.
 
 전투 맵의 PIE에서 캐릭터가 스폰된 뒤 에디터 Output Log에 아래 명령을 입력합니다.
 
@@ -108,6 +110,15 @@ PIE에서 같은 사망 위젯을 반복 초기화해 두 값의 독립 적용�
 같은 DA의 **Respawn Additional Gap**은 리스폰 글자와 진행 바를 아래로 함께 옮기는 추가 간격입니다.
 기본값 `0`은 현재 위치를 사용하며, 양수는 스코어보드 아래 간격을 늘립니다. 단위는 UMG UI 단위입니다.
 PIE에서 `0`, `40`, `80`, `0`으로 반복 초기화해 위치와 카운트다운을 확인했습니다.
+
+같은 DA의 **Use Progress Gradient**를 켜면 실제 리스폰 바의 채움에 **Progress Gradient Center Color**와
+**Progress Gradient Edge Color**를 적용합니다. 현재 DA는 주황색 중앙과 밝은 주황색 양끝을 기본으로 사용합니다.
+끄면 **Progress Color**로 단색을 표시합니다. **Frame Color**와 **Shine Color**는 기존 경로에서 적용합니다.
+`StartRespawnCountdown`이 리스폰 위젯 인스턴스에 기존 채움 머티리얼을 연결하며,
+다음 카운트다운을 시작할 때 DA 변경 사항을 읽습니다.
+**Progress Gradient Start**와 **Progress Gradient End**는 중앙 `0`에서 양끝 `1`까지의 위치입니다.
+예를 들어 `0.25`와 `0.75`를 입력하면 그 사이에서만 두 색이 섞입니다. 기본값 `0`과 `1`은 전체 구간에 적용합니다.
+범위를 벗어난 값은 `0–1` 안으로 제한하며, 두 값을 거꾸로 입력하면 작은 값부터 적용합니다.
 
 ## 2026-11-12 사망 후 도착하는 개인 처치 알림
 

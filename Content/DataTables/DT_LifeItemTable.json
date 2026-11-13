@@ -76,7 +76,7 @@
 		"attributes": "(GameplayTags=((TagName=\"AITargetable.DropItem.Plate\"),(TagName=\"ID.PlatePack.middle\")))",
 		"type": "Plate",
 		"amount": 50,
-		"mesh": "/Script/Engine.StaticMesh'/Game/Shield/Shield_01/Shield.Shield'",
+		"mesh": "/Script/Engine.StaticMesh'/Game/QuakeLike_Base/SDM/SM_Weapon/Shield_01.Shield_01'",
 		"isMegaPack": false,
 		"pickupSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/_아머후보5_ar2_pkup_Cue._아머후보5_ar2_pkup_Cue'",
 		"pickupVolume": 1,

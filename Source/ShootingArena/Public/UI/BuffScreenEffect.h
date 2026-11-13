@@ -53,6 +53,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "버프 화면 효과|전기", meta = (DisplayName = "평상시 지직거림 세기", ClampMin = "0.0"))
 	float ElectricIntensity = 0.35f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "버프 화면 효과|전기", meta = (DisplayName = "번개 빈도", ClampMin = "0.1", Units = "Hz"))
+	float ElectricFrequency = 12.0f;
+
+	/** Multiplier for how far the electric effect reaches inward from the screen edges. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "버프 화면 효과|전기", meta = (DisplayName = "번개 크기 비율", ClampMin = "0.1", ClampMax = "2.0"))
+	float ElectricCoverage = 1.0f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "버프 화면 효과|전기", meta = (DisplayName = "획득 순간 세기", ClampMin = "0.0"))
 	float BurstIntensity = 1.0f;
 

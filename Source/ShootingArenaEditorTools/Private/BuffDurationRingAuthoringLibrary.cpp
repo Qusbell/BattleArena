@@ -170,7 +170,7 @@ FString UBuffDurationRingAuthoringLibrary::InstallBuffIconWhiteShine()
 	auto* Material = NewAsset<UMaterial>(FString(Folder) + TEXT("/Materials/M_UI_BuffIconWhiteShine"));
 	Material->GetExpressionCollection().Empty();
 	Material->MaterialDomain = MD_UI;
-	Material->BlendMode = BLEND_Translucent;
+	Material->BlendMode = BLEND_Additive;
 	auto* Tex = Expression<UMaterialExpressionTextureObjectParameter>(Material, -700, 0);
 	Tex->ParameterName = TEXT("IconTexture");
 	Tex->Texture = Settings->IconTexture;
@@ -414,6 +414,7 @@ FString UBuffDurationRingAuthoringLibrary::InstallBuffVisualOptions()
 
 	auto* ShineNode = Cast<UMaterialExpressionCustom>(Shine->GetEditorOnlyData()->EmissiveColor.Expression);
 	if (!ShineNode) return TEXT("ERROR: unexpected icon shine graph");
+	Shine->BlendMode = BLEND_Additive;
 	ShineNode->Inputs.RemoveAll([](const FCustomInput& Input) { return Input.InputName.IsNone(); });
 	if (ShineNode->Inputs.Num() == 3)
 	{
@@ -511,6 +512,28 @@ FString UBuffDurationRingAuthoringLibrary::InstallConnectedBuffRing()
 	auto* TipWidth = Parameters.FindRef(TEXT("EdgeGlowWidth"));
 	if (!UV || !Gradient || !Halo || !Sweep || !Size || !Percent || !Track || !TipStrength || !TipWidth)
 		return TEXT("ERROR: unexpected duration ring graph");
+	bool bHasSweepPercent = false;
+	for (auto& Input : Sweep->Inputs)
+	{
+		if (Input.InputName == TEXT("Percent"))
+		{
+			Input.Input.Connect(0, Percent);
+			bHasSweepPercent = true;
+		}
+	}
+	if (!bHasSweepPercent)
+	{
+		auto& Input = Sweep->Inputs.AddDefaulted_GetRef();
+		Input.InputName = TEXT("Percent");
+		Input.Input.Connect(0, Percent);
+	}
+	Sweep->Code = TEXT("if (Phase < 0.0 || Percent <= 0.0) return Base;\n"
+		"float2 P=UV-0.5; float A=frac(atan2(P.y,P.x)/6.28318530718+1.0);\n"
+		"float Center=saturate(Percent)*(1-saturate(Phase));\n"
+		"float Delta=abs(A-Center); Delta=min(Delta,1-Delta);\n"
+		"float Band=(1-smoothstep(0.01,0.065,Delta))*step(A,saturate(Percent));\n"
+		"float Fade=smoothstep(0,0.12,Phase)*(1-smoothstep(0.8,1,Phase));\n"
+		"return lerp(Base,float3(1,1,1),0.28*Band*Fade);");
 
 	const TCHAR* Label = TEXT("Continuous outlined duration ring");
 	auto* Core = CustomNodes.FindRef(Label);
@@ -518,6 +541,41 @@ FString UBuffDurationRingAuthoringLibrary::InstallConnectedBuffRing()
 	Core->Description = Label;
 	Core->OutputType = CMOT_Float4;
 	Core->Inputs.Reset();
+	auto* Segmented = Parameters.FindRef(TEXT("SegmentedRing"));
+	if (!Segmented)
+	{
+		auto* Toggle = Expression<UMaterialExpressionScalarParameter>(M, -600, 1200);
+		Toggle->ParameterName = TEXT("SegmentedRing");
+		Toggle->DefaultValue = 0.0f;
+		Segmented = Toggle;
+	}
+	auto* Steps = Parameters.FindRef(TEXT("Steps"));
+	auto* Gap = Parameters.FindRef(TEXT("Gap"));
+	if (!Steps || !Gap) return TEXT("ERROR: missing segment pattern parameters");
+	auto ScalarOption = [&](FName Name, float DefaultValue) -> UMaterialExpression*
+	{
+		if (auto* Existing = Parameters.FindRef(Name)) return Existing;
+		auto* Node = Expression<UMaterialExpressionScalarParameter>(M, -650, 1300);
+		Node->ParameterName = Name;
+		Node->DefaultValue = DefaultValue;
+		return Node;
+	};
+	auto* CenterColor = Parameters.FindRef(TEXT("OutlineCenterColor"));
+	if (!CenterColor)
+	{
+		auto* Node = Expression<UMaterialExpressionVectorParameter>(M, -650, 1450);
+		Node->ParameterName = TEXT("OutlineCenterColor");
+		Node->DefaultValue = DA->SegmentOutlineCenterColor;
+		CenterColor = Node;
+	}
+	auto* TransparentTrack = Parameters.FindRef(TEXT("TransparentEmptyTrack"));
+	if (!TransparentTrack)
+	{
+		auto* Toggle = Expression<UMaterialExpressionScalarParameter>(M, -600, 1150);
+		Toggle->ParameterName = TEXT("TransparentEmptyTrack");
+		Toggle->DefaultValue = 0.0f;
+		TransparentTrack = Toggle;
+	}
 	auto* Outline = Parameters.FindRef(TEXT("WhiteOutlineWidth"));
 	if (!Outline)
 	{
@@ -537,7 +595,13 @@ FString UBuffDurationRingAuthoringLibrary::InstallConnectedBuffRing()
 	for (const auto& Pair : TArray<TPair<FName, UMaterialExpression*>>{
 		{TEXT("UV"), UV}, {TEXT("Fill"), Gradient}, {TEXT("Size"), Size}, {TEXT("Percent"), Percent},
 		{TEXT("Track"), Track}, {TEXT("TipStrength"), TipStrength}, {TEXT("TipWidth"), TipWidth},
-		{TEXT("Outline"), Outline}, {TEXT("OutlineColor"), OutlineColor}})
+		{TEXT("Outline"), Outline}, {TEXT("OutlineColor"), OutlineColor},
+		{TEXT("TransparentTrack"), TransparentTrack}, {TEXT("Segmented"), Segmented},
+		{TEXT("Steps"), Steps}, {TEXT("Gap"), Gap},
+		{TEXT("OutlineOpacity"), ScalarOption(TEXT("OutlineOpacity"), 1.0f)},
+		{TEXT("OutlineGradient"), ScalarOption(TEXT("SegmentOutlineGradient"), 0.0f)},
+		{TEXT("CenterColor"), CenterColor},
+		{TEXT("EndRange"), ScalarOption(TEXT("OutlineEndRange"), 0.25f)}})
 	{
 		auto& Input = Core->Inputs.AddDefaulted_GetRef();
 		Input.InputName = Pair.Key;
@@ -547,20 +611,29 @@ FString UBuffDurationRingAuthoringLibrary::InstallConnectedBuffRing()
 		"float2 P = UV - 0.5; float R = length(P);\n"
 		"float PX = max(max(length(ddx(UV)), length(ddy(UV))), 0.000001);\n"
 		"float Outer = 0.5; float Inner = Outer - max(0.5 - 0.5/max(Size,1.001), 5.0*PX);\n"
-		"float Edge = min(Outer-R, R-Inner) / PX;\n"
-		"float Coverage = saturate(Edge+0.5); float Body = saturate(Edge-min(Outline,(Outer-Inner)/PX*0.35)+0.5);\n"
 		"float A = frac(atan2(P.y,P.x)/6.28318530718+1.0);\n"
+		"float Phase = frac(A*max(Steps,1));\n"
+		"float SegmentEdge = min(Phase-Gap,1-Gap-Phase)*6.28318530718*R/max(Steps,1);\n"
+		"float RadialEdge = min(Outer-R, R-Inner);\n"
+		"float Edge = lerp(RadialEdge,min(RadialEdge,SegmentEdge),Segmented) / PX;\n"
+		"float Coverage = saturate(Edge+0.5); float Body = saturate(Edge-min(Outline,(Outer-Inner)/PX*0.35)+0.5);\n"
 		"float ArcPX = 6.28318530718*max(R,PX)/PX;\n"
 		"float Left = (Percent-A)*ArcPX;\n"
 		"float Amount = Percent >= 1 ? 1 : (Percent > 0 ? saturate(Left+0.5) : 0);\n"
-		"float3 Rim = OutlineColor.rgb;\n"
+		"float SegmentPosition = saturate((Phase-Gap)/max(1-2*Gap,0.00001));\n"
+		"float EndDistance = min(SegmentPosition,1-SegmentPosition);\n"
+		"float EndLight = 1-smoothstep(0,max(EndRange,0.01),EndDistance);\n"
+		"float3 Rim = lerp(OutlineColor.rgb,lerp(CenterColor.rgb,OutlineColor.rgb,EndLight),Segmented*OutlineGradient);\n"
 		"float3 Empty = lerp(float3(0.018,0.024,0.035), Track.rgb, 0.55);\n"
 		"float Inward = smoothstep(0,1,saturate((R-Inner)/max(Outer-Inner,PX)));\n"
 		"float Cap = Percent > 0 && Percent < 1 ? saturate(1-abs(Left)/1.25) : 0;\n"
 		"float Tip = Percent > 0 && Percent < 1 && Left >= 0 ? TipStrength*pow(saturate(1-Left/max(TipWidth,1)),2) : 0;\n"
 		"float3 Active = lerp(Fill.rgb*lerp(0.52,1.0,Inward), float3(1,1,1), saturate(0.36*Cap+Tip));\n"
 		"float3 Color = lerp(Empty, Active, Amount);\n"
-		"return float4(lerp(Rim,Color,Body/max(Coverage,0.00001)),Coverage);");
+		"float Border = max(Coverage-Body,0)*saturate(OutlineOpacity);\n"
+		"float BodyAlpha = Body*lerp(1,Amount,saturate(TransparentTrack));\n"
+		"float Alpha = Border+BodyAlpha;\n"
+		"return float4((Rim*Border+Color*BodyAlpha)/max(Alpha,0.00001),Alpha);");
 	auto* Alpha = NewObject<UMaterialExpressionComponentMask>(M);
 	for (const auto& Input : Halo->Inputs)
 	{
@@ -592,6 +665,151 @@ FString UBuffDurationRingAuthoringLibrary::InstallConnectedBuffRing()
 	}
 	M->PostEditChange();
 	return Save(M) ? TEXT("OK: continuous ring saved") : TEXT("ERROR: ring save failed");
+}
+
+FString UBuffDurationRingAuthoringLibrary::InstallBuffIconBackground()
+{
+	auto* DA = LoadObject<UBuffDurationRingSettings>(nullptr, TEXT("/Game/QuakeLike_1_0/Data/UI/DA_BuffDurationRing.DA_BuffDurationRing"));
+	auto* HUD = LoadObject<UWidgetBlueprint>(nullptr, *(FString(Folder) + TEXT("/WBP_PlayerHUD_sdm.WBP_PlayerHUD_sdm")));
+	auto* Tree = HUD ? HUD->WidgetTree.Get() : nullptr;
+	auto* Icon = Tree ? Cast<UImage>(Tree->FindWidget(TEXT("BuffStatusIcon"))) : nullptr;
+	auto* Overlay = Icon ? Cast<UOverlay>(Icon->GetParent()) : nullptr;
+	auto* IconSlot = Icon ? Cast<UOverlaySlot>(Icon->Slot) : nullptr;
+	if (!DA || !Overlay || !IconSlot) return TEXT("ERROR: missing buff HUD");
+	auto* Material = NewAsset<UMaterial>(FString(Folder) + TEXT("/Materials/M_UI_BuffIconBackground"));
+	if (!Material->GetEditorOnlyData()->EmissiveColor.Expression)
+	{
+		Material->MaterialDomain = MD_UI;
+		Material->BlendMode = BLEND_Translucent;
+		auto* UV = Expression<UMaterialExpressionTextureCoordinate>(Material, -600, 0);
+		auto* Color = Expression<UMaterialExpressionVectorParameter>(Material, -600, 200);
+		Color->ParameterName = TEXT("BackgroundColor");
+		Color->DefaultValue = FLinearColor::Black;
+		auto* Opacity = Expression<UMaterialExpressionScalarParameter>(Material, -600, 400);
+		Opacity->ParameterName = TEXT("BackgroundOpacity");
+		Opacity->DefaultValue = 0.35f;
+		auto* Disk = Expression<UMaterialExpressionCustom>(Material, -100, 0);
+		Disk->Description = TEXT("Flat translucent circular icon background");
+		Disk->OutputType = CMOT_Float4;
+		Disk->Inputs.Reset();
+		for (const auto& Pair : TArray<TPair<FName, UMaterialExpression*>>{
+			{TEXT("UV"), UV}, {TEXT("Color"), Color}, {TEXT("Opacity"), Opacity}})
+		{
+			auto& Input = Disk->Inputs.AddDefaulted_GetRef();
+			Input.InputName = Pair.Key;
+			Input.Input.Expression = Pair.Value;
+		}
+		Disk->Code = TEXT("float R=length(UV-0.5); float AA=max(fwidth(R),0.00001); return float4(Color.rgb,saturate(Opacity)*saturate((0.5-R)/AA+0.5));");
+		auto* Alpha = Expression<UMaterialExpressionComponentMask>(Material, 200, 200);
+		Alpha->Input.Connect(0, Disk);
+		Alpha->R = Alpha->G = Alpha->B = false;
+		Alpha->A = true;
+		Material->GetEditorOnlyData()->EmissiveColor.Connect(0, Disk);
+		Material->GetEditorOnlyData()->Opacity.Connect(0, Alpha);
+		Material->PostEditChange();
+	}
+	auto* Disk = Cast<UMaterialExpressionCustom>(Material->GetEditorOnlyData()->EmissiveColor.Expression);
+	if (!Disk) return TEXT("ERROR: unexpected background material");
+	if (Disk->Inputs.Num() == 3)
+	{
+		for (const auto& Pair : TArray<TPair<FName, float>>{
+			{TEXT("BackgroundDiameter"), DA->IconBackgroundDiameter},
+			{TEXT("BackgroundFeather"), 0.0f},
+			{TEXT("BackgroundGradient"), 0.0f},
+			{TEXT("BackgroundCenterRatio"), 0.6f}})
+		{
+			auto* Parameter = Expression<UMaterialExpressionScalarParameter>(Material, -600, 600);
+			Parameter->ParameterName = Pair.Key;
+			Parameter->DefaultValue = Pair.Value;
+			auto& Input = Disk->Inputs.AddDefaulted_GetRef();
+			Input.InputName = Pair.Key;
+			Input.Input.Connect(0, Parameter);
+		}
+		auto* Outer = Expression<UMaterialExpressionVectorParameter>(Material, -600, 800);
+		Outer->ParameterName = TEXT("BackgroundOuterColor");
+		Outer->DefaultValue = DA->IconBackgroundOuterColor;
+		auto& Input = Disk->Inputs.AddDefaulted_GetRef();
+		Input.InputName = TEXT("BackgroundOuterColor");
+		Input.Input.Connect(0, Outer);
+	}
+	bool bHasOuterOpacity = false;
+	for (const auto& Input : Disk->Inputs)
+	{
+		if (Input.InputName == TEXT("BackgroundOuterOpacity")) bHasOuterOpacity = true;
+	}
+	if (!bHasOuterOpacity)
+	{
+		DA->IconBackgroundOuterOpacity = DA->IconBackgroundOpacity;
+		auto* Parameter = Expression<UMaterialExpressionScalarParameter>(Material, -600, 1000);
+		Parameter->ParameterName = TEXT("BackgroundOuterOpacity");
+		Parameter->DefaultValue = DA->IconBackgroundOpacity;
+		auto& Input = Disk->Inputs.AddDefaulted_GetRef();
+		Input.InputName = TEXT("BackgroundOuterOpacity");
+		Input.Input.Connect(0, Parameter);
+	}
+	bool bHasMiddleColor = false;
+	for (const auto& Input : Disk->Inputs)
+	{
+		if (Input.InputName == TEXT("BackgroundMiddleColor")) bHasMiddleColor = true;
+	}
+	if (!bHasMiddleColor)
+	{
+		const FLinearColor Middle = FMath::Lerp(DA->IconBackgroundColor, DA->IconBackgroundOuterColor, 0.5f);
+		DA->IconBackgroundMiddleColor = Middle;
+		auto* Parameter = Expression<UMaterialExpressionVectorParameter>(Material, -600, 1200);
+		Parameter->ParameterName = TEXT("BackgroundMiddleColor");
+		Parameter->DefaultValue = Middle;
+		auto& Input = Disk->Inputs.AddDefaulted_GetRef();
+		Input.InputName = TEXT("BackgroundMiddleColor");
+		Input.Input.Connect(0, Parameter);
+	}
+	bool bHasMiddlePosition = false;
+	for (const auto& Input : Disk->Inputs)
+	{
+		if (Input.InputName == TEXT("BackgroundMiddlePosition")) bHasMiddlePosition = true;
+	}
+	if (!bHasMiddlePosition)
+	{
+		// Preserve the previous halfway point between the central plateau and the outer edge.
+		DA->IconBackgroundMiddlePosition = (1.0f + FMath::Clamp(DA->IconBackgroundCenterRatio, 0.0f, 0.95f)) * 50.0f;
+		auto* Parameter = Expression<UMaterialExpressionScalarParameter>(Material, -600, 1400);
+		Parameter->ParameterName = TEXT("BackgroundMiddlePosition");
+		Parameter->DefaultValue = DA->IconBackgroundMiddlePosition / 100.0f;
+		auto& Input = Disk->Inputs.AddDefaulted_GetRef();
+		Input.InputName = TEXT("BackgroundMiddlePosition");
+		Input.Input.Connect(0, Parameter);
+	}
+	Disk->Code = TEXT("float Radius=max(BackgroundDiameter*0.5,0.5);"
+		"float Feather=max(BackgroundFeather,0)*saturate(BackgroundGradient);"
+		"float R=length((UV-0.5)*(2*Radius+2*Feather)); float AA=max(fwidth(R),0.0001);"
+		"float Mix=smoothstep(Radius*saturate(BackgroundCenterRatio),Radius,max(R,0))*saturate(BackgroundGradient);"
+		"float Mask=Feather>0 ? 1-smoothstep(Radius,Radius+Feather,R) : saturate((Radius-R)/AA+0.5);"
+		"float Position=clamp(BackgroundMiddlePosition,0.01,0.99);"
+		"float Start=min(saturate(BackgroundCenterRatio),Position-0.001);"
+		"float Radial=R/Radius;"
+		"float3 Inner=lerp(Color.rgb,BackgroundMiddleColor.rgb,smoothstep(Start,Position,Radial));"
+		"float3 Gradient=lerp(Inner,BackgroundOuterColor.rgb,smoothstep(Position,1,Radial));"
+		"Gradient=lerp(Color.rgb,Gradient,saturate(BackgroundGradient));"
+		"return float4(Gradient,lerp(saturate(Opacity),saturate(BackgroundOuterOpacity),Mix)*Mask);");
+	Material->PostEditChange();
+	auto* Background = Cast<UImage>(Tree->FindWidget(TEXT("BuffIconBackground")));
+	if (!Background)
+	{
+		Background = Tree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("BuffIconBackground"));
+		HUD->OnVariableAdded(Background->GetFName());
+		auto* Slot = Overlay->AddChildToOverlay(Background);
+		Slot->SetHorizontalAlignment(IconSlot->GetHorizontalAlignment());
+		Slot->SetVerticalAlignment(IconSlot->GetVerticalAlignment());
+		Slot->SetPadding(IconSlot->GetPadding());
+		Background->SetVisibility(ESlateVisibility::Collapsed);
+		Overlay->ShiftChild(0, Background);
+		FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(HUD);
+		if (!Compile(HUD)) return TEXT("ERROR: HUD compile failed");
+	}
+	const bool bFirstInstall = !DA->IconBackgroundMaterial;
+	DA->IconBackgroundMaterial = Material;
+	if (bFirstInstall) DA->bShowIconBackground = true;
+	return Save(Material) && Save(HUD) && Save(DA) ? TEXT("OK: icon background saved") : TEXT("ERROR: background save failed");
 }
 
 FString UBuffDurationRingAuthoringLibrary::CreateWhiteBuffIconTexture()
