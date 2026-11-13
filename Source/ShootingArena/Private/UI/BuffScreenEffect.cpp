@@ -58,6 +58,8 @@ bool UBuffScreenEffectWidget::InitializeEffect(UBuffPresentationComponent* Buff,
 		ElectricMID = UMaterialInstanceDynamic::Create(Settings->ElectricMaterial, this);
 		ElectricMID->SetVectorParameterValue(TEXT("Color1"), Settings->Color1);
 		ElectricMID->SetVectorParameterValue(TEXT("Color2"), Settings->Color2);
+		ElectricMID->SetScalarParameterValue(TEXT("FlickerFPS"), FMath::Max(0.1f, Settings->ElectricFrequency));
+		ElectricMID->SetScalarParameterValue(TEXT("CoverageScale"), FMath::Clamp(Settings->ElectricCoverage, 0.1f, 2.0f));
 		UImage* Electric = WidgetTree->ConstructWidget<UImage>();
 		Electric->SetBrushFromMaterial(ElectricMID);
 		AddFill(Electric);
