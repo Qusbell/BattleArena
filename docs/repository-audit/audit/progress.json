@@ -39,6 +39,13 @@
     "not_verified": "Manual gameplay, multiplayer travel, map-wide runtime and packaged execution remain user verification",
     "baseline_recollection": "not_performed; targeted incremental update only"
   },
+  "respawn_progress_gradient": {
+    "date": "2026-11-13",
+    "report": "docs/repository-audit/systems/UIRecording.md",
+    "source_of_truth": "/Game/QuakeLike_1_0/UI/DeathUI/DA_RespawnBarStyle",
+    "change": "Apply an optional center-to-edge gradient to the visible death-screen progress fill at countdown start. Designers set both colors and the normalized blend start and end in the DA.",
+    "validation": "Editor Development build and RespawnProgressGradient, RespawnCountdownStart and RecordingRespawnProgress automation passed, including custom, reversed and coincident range endpoints. Live combat and packaged runtime were not exercised."
+  },
   "respawn_font_style": {
     "date": "2026-11-12",
     "report": "docs/repository-audit/systems/UIRecording.md",
