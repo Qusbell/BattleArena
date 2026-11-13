@@ -47,7 +47,16 @@ bool FCompetitiveRankingTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Leader sees runner-up, not a duplicate self row"), Rows[1].Player == Leader && Rows[1].Rank == 2);
 	Players[2].Kills = 12;
 	Rows = BuildCompactRanking(Players, Local);
-	TestEqual(TEXT("Ties preserve Tab scoreboard ordering"), Rows[1].Rank, 3);
+	TestEqual(TEXT("Equal kills and deaths share a rank"), Rows[1].Rank, 2);
+	Players[2].Deaths = 1;
+	Rows = BuildCompactRanking(Players, Local);
+	TestEqual(TEXT("Fewer deaths win a kill tie"), Rows[1].Rank, 3);
+	Players[0].Kills = 12;
+	Players[0].DisplayName = TEXT("zulu");
+	Players[1].DisplayName = TEXT("Alpha");
+	SortCompetitiveRanking(Players);
+	TestTrue(TEXT("Tied names sort case-insensitively"), Players[0].Player == Second && Players[1].Player == Leader);
+	TestTrue(TEXT("Joint leaders leave the next player third"), Players[0].Rank == 1 && Players[1].Rank == 1 && Players[2].Rank == 3);
 	Rows = BuildCompactRanking({{Local, -1}}, Local);
 	TestTrue(TEXT("Solo/negative score is supported"), Rows.Num() == 1 && Rows[0].Kills == -1 && Rows[0].Rank == 1);
 	TestTrue(TEXT("Missing local replication hides the panel"), BuildCompactRanking(Players, nullptr).IsEmpty());
@@ -115,7 +124,7 @@ bool FCompetitiveRankingPIETest::RunTest(const FString& Parameters)
 				if (const auto* Kills = FindFProperty<FIntProperty>(Player->GetClass(), TEXT("KillCount")))
 				{
 					const int32 Value = Kills->GetPropertyValue_InContainer(Player);
-					Players.Add({Player, Value});
+					Players.Add(ReadCompetitiveRankEntry(Player));
 					const auto* Original = OriginalScores.FindByPredicate([Player](const auto& Pair)
 						{ return Pair.Key.IsValid() && Pair.Key->GetPlayerId() == Player->GetPlayerId(); });
 					if (Original)
@@ -186,9 +195,13 @@ bool FCompetitiveRankingPIETest::RunTest(const FString& Parameters)
 						if (!TestNotNull(TEXT("Existing Tab sorted result"), Sorted)) continue;
 						FScriptArrayHelper Array(Sorted, Sorted->ContainerPtrToValuePtr<void>(*Board));
 						const auto* Inner = CastFieldChecked<FObjectPropertyBase>(Sorted->Inner);
-						for (const auto& Entry : Expected)
-							TestTrue(TEXT("Compact rank matches Tab scoreboard order"), Array.IsValidIndex(Entry.Rank - 1)
-								&& Inner->GetObjectPropertyValue(Array.GetRawPtr(Entry.Rank - 1)) == Entry.Player);
+						SortCompetitiveRanking(Players);
+						TestEqual(TEXT("Tab and compact ranking use the same player count"), Array.Num(), Players.Num());
+						for (int32 Index = 0; Index < FMath::Min(Array.Num(), Players.Num()); ++Index)
+						{
+							TestTrue(TEXT("Compact rank matches Tab scoreboard order"),
+								Inner->GetObjectPropertyValue(Array.GetRawPtr(Index)) == Players[Index].Player);
+						}
 					}
 			if (UGameViewportClient* Viewport = World->GetGameViewport())
 				if (TSharedPtr<SViewport> Widget = Viewport->GetGameViewportWidget())
