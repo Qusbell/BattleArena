@@ -56,7 +56,7 @@
 	{
 		"Name": "C01",
 		"Character_Name": "Ghost",
-		"Character_Sprite": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Map_Image/메딕.메딕'",
+		"Character_Sprite": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Map_Image/Icon_Orange.Icon_Orange'",
 		"Character_Modeling": "Orange",
 		"Characteristic_ID": [
 			"BGH_Easy",
@@ -67,7 +67,7 @@
 	{
 		"Name": "C02",
 		"Character_Name": "Madness",
-		"Character_Sprite": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Map_Image/배틀크루저.배틀크루저'",
+		"Character_Sprite": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Map_Image/Icon_Aegis.Icon_Aegis'",
 		"Character_Modeling": "Aegis",
 		"Characteristic_ID": [
 			"HBC_Easy",
@@ -78,7 +78,7 @@
 	{
 		"Name": "C03",
 		"Character_Name": "Anger",
-		"Character_Sprite": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Map_Image/벌처.벌처'",
+		"Character_Sprite": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Map_Image/Icon_BlackCarbon.Icon_BlackCarbon'",
 		"Character_Modeling": "BlackCarbon",
 		"Characteristic_ID": [
 			"LJH_Easy",
@@ -89,7 +89,7 @@
 	{
 		"Name": "C04",
 		"Character_Name": "Greater",
-		"Character_Sprite": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Map_Image/제라툴.제라툴'",
+		"Character_Sprite": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Map_Image/Icon_Cobalt.Icon_Cobalt'",
 		"Character_Modeling": "Cobalt",
 		"Characteristic_ID": [
 			"PJH_Easy",
@@ -100,7 +100,7 @@
 	{
 		"Name": "C05",
 		"Character_Name": "Peacer",
-		"Character_Sprite": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Map_Image/스타크래프트.스타크래프트'",
+		"Character_Sprite": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Map_Image/Icon_Doomsday.Icon_Doomsday'",
 		"Character_Modeling": "Doomsday",
 		"Characteristic_ID": [
 			"YJS_Easy",
@@ -111,7 +111,7 @@
 	{
 		"Name": "C06",
 		"Character_Name": "Eschatologist",
-		"Character_Sprite": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Map_Image/하이템플러.하이템플러'",
+		"Character_Sprite": "/Script/Engine.Texture2D'/Game/QuakeLike_1_0/GameFlow/UI/UI_Image/Map_Image/Icon_Diesel.Icon_Diesel'",
 		"Character_Modeling": "Diesel",
 		"Characteristic_ID": [
 			"YJH_Easy",
