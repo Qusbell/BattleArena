@@ -27,6 +27,7 @@ public:
 	void EndExternalLoading() { GameplayReadyTransitionWorld.Reset(); HideLoadingScreen(); }
 
 private:
+	friend class FLoadingScreenTransitionSafetyTest;
 	void HandlePreLoadMap(const FWorldContext& WorldContext, const FString& MapName);
 	void HandlePostLoadMap(UWorld* LoadedWorld);
 	bool Tick(float DeltaSeconds);

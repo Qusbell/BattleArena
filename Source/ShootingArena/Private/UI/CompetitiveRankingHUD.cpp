@@ -442,8 +442,8 @@ void UCompetitiveRankingHUD::RefreshRanking()
 	if (State)
 		for (APlayerState* Player : State->PlayerArray)
 			if (IsValid(Player) && !Player->IsActorBeingDestroyed() && !Player->IsInactive())
-				if (const auto* Kills = FindFProperty<FIntProperty>(Player->GetClass(), TEXT("KillCount")))
-					Players.Add({Player, Kills->GetPropertyValue_InContainer(Player)});
+				if (FindFProperty<FIntProperty>(Player->GetClass(), TEXT("KillCount")))
+					Players.Add(ReadCompetitiveRankEntry(Player));
 	const TArray<FCompetitiveRankEntry> Entries = BuildCompactRanking(MoveTemp(Players), Local);
 	for (int32 Index = 0; Index < RowBorders.Num(); ++Index)
 	{
@@ -565,18 +565,27 @@ void UCompetitiveRankingHUD::NativeTick(const FGeometry& MyGeometry, float InDel
 		UWidget* RespawnBar = DeathScreen ? DeathScreen->GetWidgetFromName(TEXT("PB_RespawnBar")) : nullptr;
 		if (DeathScreen && DeathScreen->IsInViewport() && DeathScreen->IsVisible() && RespawnBar)
 		{
+			const auto* ScoreboardProperty = FindFProperty<FObjectPropertyBase>(PC->GetClass(), TEXT("ScoreboardWidget"));
+			const UUserWidget* Scoreboard = ScoreboardProperty ? Cast<UUserWidget>(ScoreboardProperty->GetObjectPropertyValue_InContainer(PC)) : nullptr;
+			const UWidget* ScorePanel = Scoreboard && Scoreboard->IsInViewport() && Scoreboard->IsVisible()
+				? Scoreboard->GetWidgetFromName(TEXT("Overlay_ScorePanelEdge")) : nullptr;
+			const bool bAboveScoreboard = ScorePanel && ScorePanel->GetCachedGeometry().GetLocalSize().X > 0;
+			const FGeometry& Anchor = (bAboveScoreboard ? ScorePanel : RespawnBar)->GetCachedGeometry();
 			UUserWidget* Message = FindPersonalMessage();
 			UWidget* Text = Message ? Message->GetWidgetFromName(TEXT("VerticalBox_0")) : nullptr;
-			if (Text && RespawnBar->GetCachedGeometry().GetLocalSize().X > 0 && Text->GetCachedGeometry().GetLocalSize().Y > 0
+			if (Text && Anchor.GetLocalSize().X > 0 && Text->GetCachedGeometry().GetLocalSize().Y > 0
 				&& !FMath::IsNearlyZero(MyGeometry.GetAccumulatedLayoutTransform().GetScale()))
 			{
 				// Use layout transforms so the previous render offset never accumulates.
 				const auto ToRoot = Inverse(MyGeometry.GetAccumulatedLayoutTransform());
-				const auto BarLayout = Concatenate(RespawnBar->GetCachedGeometry().GetAccumulatedRenderTransform(), ToRoot);
+				const auto AnchorLayout = Concatenate(Anchor.GetAccumulatedRenderTransform(), ToRoot);
 				const auto TextLayout = Concatenate(Text->GetCachedGeometry().GetAccumulatedLayoutTransform(), ToRoot);
-				const FVector2D BarTop = TransformPoint(BarLayout, FVector2D(RespawnBar->GetCachedGeometry().GetLocalSize().X * 0.5, 0));
+				const FVector2D AnchorTop = TransformPoint(AnchorLayout, FVector2D(Anchor.GetLocalSize().X * 0.5, 0));
 				const FVector2D TextBottom = TransformPoint(TextLayout, FVector2D(Text->GetCachedGeometry().GetLocalSize().X * 0.5, Text->GetCachedGeometry().GetLocalSize().Y));
-				const FVector2D Offset = BarTop - TextBottom + FVector2D(0, 16.0f);
+				const FVector2D DeathMessageOffset = ActiveStreakSettings
+					? ActiveStreakSettings->DeathMessageOffset : GetDefault<UKillMedalUISettings>()->DeathMessageOffset;
+				const FVector2D Offset = AnchorTop - TextBottom + FVector2D(0, bAboveScoreboard ? -16.0f : 16.0f)
+					+ (DeathMessageOffset.ContainsNaN() ? FVector2D::ZeroVector : DeathMessageOffset);
 				if (!Offset.ContainsNaN()) MessageArea->SetRenderTranslation(Offset);
 			}
 		}

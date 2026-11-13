@@ -1,0 +1,80 @@
+{
+  "date": "2026-11-12",
+  "base_commit": "d1b6473ffdf95d7849335559c55653d4dfc34732",
+  "scope": "Actual game Blueprints and C++; MCP/Python tool sources unchanged",
+  "runtime_fixes": [
+    "Cancel previous fade-out when another loading transition begins",
+    "Reject foreign/null worlds before consuming startup loading skip"
+  ],
+  "blueprint_repairs": [
+    "/Game/QuakeLike_1_0/GameMode/BP_QuakeGameInstance",
+    "/Game/QuakeLike_1_0/Character/BP_ShooterBase"
+  ],
+  "blueprint_compiles_passed": 7,
+  "gameinstance_graphs_before_after": {
+    "GetMapCharacterRowName": {
+      "nodes": 24,
+      "unchanged": true
+    },
+    "GetMapCharacterRowNameForDifficulty": {
+      "nodes": 25,
+      "unchanged": true
+    }
+  },
+  "builds": {
+    "editor": {
+      "result": "Succeeded",
+      "duration_seconds": 81.83
+    },
+    "shipping": {
+      "result": "Succeeded",
+      "duration_seconds": 103.54
+    }
+  },
+  "tests": [
+    {
+      "result": "Success",
+      "name": "TransitionSafety",
+      "path": "ShootingArena.Loading.TransitionSafety"
+    },
+    {
+      "result": "Success",
+      "name": "LoadingWidgetExcluded",
+      "path": "ShootingArena.Localization.LoadingWidgetExcluded"
+    },
+    {
+      "result": "Success",
+      "name": "MalformedDisplayString",
+      "path": "ShootingArena.Localization.MalformedDisplayString"
+    },
+    {
+      "result": "Success",
+      "name": "ParticipantDisplayName",
+      "path": "ShootingArena.Localization.ParticipantDisplayName"
+    },
+    {
+      "result": "Success",
+      "name": "StartupSelection",
+      "path": "ShootingArena.Localization.StartupSelection"
+    },
+    {
+      "result": "Success",
+      "name": "TextHistoryAndNickname",
+      "path": "ShootingArena.Localization.TextHistoryAndNickname"
+    }
+  ],
+  "startup_unknown_structure_errors": 0,
+  "editor": {
+    "map": "/Game/QuakeLike_1_0/GameFlow/MainLevel/TestMainMenu_Level",
+    "responding": true,
+    "dirty_content": [],
+    "dirty_maps": [],
+    "background_throttle_restored": true
+  },
+  "play_test": "not run by agent; user authorized stopping their active PIE for build/restart",
+  "limits": [
+    "No full gameplay/network/packaged execution validation",
+    "No full repository recollection"
+  ],
+  "backup_directory": "C:\\Users\\USER\\Desktop\\codex\\Backups\\ShootingArena-merge-runtime-safety-20261112"
+}

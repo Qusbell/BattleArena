@@ -1,0 +1,18 @@
+[
+	{
+		"Name": "ko",
+		"CultureCode": "ko",
+		"IsEnabled": true,
+		"DisplayName": "INVTEXT(\"한국어\")",
+		"IsDefault": true,
+		"Font": "/Script/Engine.Font'/Game/QuakeLike_1_0/GameFlow/UI/01_Fonts/F_Pretendard.F_Pretendard'"
+	},
+	{
+		"Name": "en",
+		"CultureCode": "en",
+		"IsEnabled": true,
+		"DisplayName": "INVTEXT(\"English\")",
+		"IsDefault": false,
+		"Font": "/Script/Engine.Font'/Game/QuakeLike_1_0/GameFlow/UI/01_Fonts/F_Pretendard.F_Pretendard'"
+	}
+]

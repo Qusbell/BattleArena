@@ -1,4 +1,5 @@
 #include "Camera/ShooterDisplayLibrary.h"
+#include "Localization/LanguageSubsystem.h"
 #include "GameFramework/Pawn.h"
 #include "Character/CharacterPoolComponent.h"
 #include "GameFramework/PlayerState.h"
@@ -56,8 +57,8 @@ FText UShooterDisplayLibrary::GetPlayerStateDisplayName(APlayerState* State)
 			if (!It->HasAllPropertyFlags(CPF_Parm | CPF_OutParm)) continue;
 			if (const FStrProperty* String = CastField<FStrProperty>(*It))
 			{
-				const FString Name = String->GetPropertyValue_InContainer(Parameters.GetStructMemory()).TrimStartAndEnd();
-				if (!Name.IsEmpty()) return FText::FromString(Name);
+				const FString Name = String->GetPropertyValue_InContainer(Parameters.GetStructMemory());
+				if (!Name.IsEmpty()) return ULanguageLibrary::ReadDisplayString(Name);
 			}
 			if (const FTextProperty* Text = CastField<FTextProperty>(*It))
 			{

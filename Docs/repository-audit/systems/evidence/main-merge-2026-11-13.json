@@ -1,0 +1,60 @@
+{
+  "date": "2026-11-13",
+  "branch": "PJH_20261111_Language",
+  "before_head": "d1b6473ffdf95d7849335559c55653d4dfc34732",
+  "integrated_main": "f055650810c0b0d50e9536765ef10a0053e5a985",
+  "merge_commits": ["e27153dbb", "1b8db4b3ce5d47417e3cca8957bc64c33f230092"],
+  "incoming_commits": 21,
+  "computer_use": false,
+  "push_or_pr": false,
+  "lfs": {
+    "download_method": "Public GitHub media endpoint; standard LFS batch lacked local credentials",
+    "objects_verified": 39,
+    "verification": "SHA256 and size checked against each commit's LFS pointer before checkout"
+  },
+  "resolution": {
+    "blueprint_conflicts": 8,
+    "data_table_conflicts": 1,
+    "policy": "Latest main asset plus prior localization connections, through MCP only",
+    "exec_pins_compared_to_main": 2467,
+    "changed_exec_connections": 0,
+    "map_table_source": "Content/DataTables/DT_MapData.json after automatic textual merge",
+    "map_table_rows": 10,
+    "followup_main_change": "DA_BuffDurationRing border removal from f05565081"
+  },
+  "preserved_local_work": {
+    "files_backed_up": 24,
+    "byte_identical_after_restore": 15,
+    "line_endings_only_after_restore": 7,
+    "documentation_merged_with_main": 2,
+    "stash_retained_for_recovery": "4062cc6fc4da583bac0b2c2494600b51b967665d",
+    "includes": "Language selectors, default-button fix, loading safety fixes, JsonAssetSync registry and user JSON"
+  },
+  "builds": {
+    "editor_development": {"result": "Succeeded", "seconds": 77.09},
+    "game_shipping": {"result": "Succeeded", "seconds": 91.16}
+  },
+  "blueprints_compiled_after_final_restart": 15,
+  "additional_asset_loaded": "/Game/QuakeLike_Base/EndMatch_Lvl02",
+  "automation": {
+    "passed": 14,
+    "groups": [
+      "ShootingArena.Localization (9 tests)",
+      "ShootingArena.Loading.TransitionSafety",
+      "ShootingArena.Buff.WeaponGlow",
+      "ShootingArena.UI.RecordingSettings",
+      "ShootingArena.UI.RecordingPaintMask",
+      "ShootingArena.UI.RecordingRespawnProgress"
+    ],
+    "scope": "Isolated worlds, real settings button event and offscreen widgets; no PIE or game BeginPlay"
+  },
+  "final_editor": {
+    "unknown_structure_errors": 0,
+    "dirty_content": [],
+    "dirty_maps": [],
+    "background_throttle_restored": true,
+    "temporary_merge_tool_removed": true
+  },
+  "not_verified": ["Manual gameplay", "Multiplayer travel", "Packaged execution"],
+  "backup_directory": "C:/Users/USER/Desktop/codex/Backups/ShootingArena-main-merge-20261113"
+}

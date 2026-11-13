@@ -1,5 +1,51 @@
 {
   "schema_version": 1,
+  "vitals_hud_feedback": {
+    "date": "2026-11-13",
+    "report": "docs/repository-audit/architecture/DataAuthority.md",
+    "source_of_truth": "/Game/QuakeLike_1_0/Data/UI/DA_VitalsHUDFeedback",
+    "validation": "Live Coding and four widget Blueprint compiles succeeded. PortalMap client PIE verified damage and non-damage opacity for both HP and armor through widget events, and verified live DA overrides for number retention and the color blur material. Physical combat, rendered blur comparison and packaged runtime were not exercised."
+  },
+  "main_merge_incremental_update_20261113": {
+    "date": "2026-11-13",
+    "main": "f055650810c0b0d50e9536765ef10a0053e5a985",
+    "merge_commits": ["e27153dbb", "1b8db4b3c"],
+    "report": "docs/repository-audit/systems/LanguageSystem.md",
+    "evidence": "docs/repository-audit/systems/evidence/main-merge-2026-11-13.json",
+    "scope": "Resolve eight Blueprint and one map-table conflict; retain main behavior, localization and existing uncommitted work; include follow-up buff-ring change",
+    "validation": "Editor Development and game Shipping builds passed; 15 BP compiles and one additional asset load passed; all 2467 main exec-pin connections unchanged; merged map JSON applied; 14 isolated automation tests passed; restarted Editor has no Unknown structure errors or dirty packages",
+    "baseline_recollection": "not_performed; targeted incremental update only",
+    "not_verified": "Actual gameplay, multiplayer, travel and packaged execution remain user verification; no Computer Use, push or PR"
+  },
+  "language_layout_incremental_update": {
+    "date": "2026-11-13",
+    "report": "docs/repository-audit/systems/LanguageSystem.md",
+    "evidence": "docs/repository-audit/systems/evidence/language-layout-2026-11-13.json",
+    "scope": "Content-sized reusable buttons; Korean/English shortcuts below Quit; gameplay-only language category; gameplay defaults preserve language and restore outline/aim nickname in the existing settings WBP",
+    "validation": "Editor Development and game Shipping builds passed; Settings BP recompiled after restart; nine localization automation tests passed including actual default-button reset/save/highlight regression; five offscreen designer-tree previews inspected without PIE or screen Construct",
+    "existing_user_changes": "Preserved the pre-existing JsonAssetSync registry and DT_Language/initial-loadout JSON registration",
+    "not_verified": "Actual gameplay, keyboard/controller interaction, multiplayer and packaged execution remain user verification",
+    "baseline_recollection": "not_performed; targeted incremental update only",
+    "spacing_followup": "2026-11-13: centered Auto-sized Korean/English buttons, RenderTranslation.Y=120 with unchanged menu layout; Editor/Shipping builds and offscreen ScreenLayoutPreview passed",
+    "defaults_followup": "2026-11-13: removed language-reset API and BP call; gameplay default branch reuses SetOutlineSetting(true) and SetAimNameSetting(true); ko/en preserved, defaults saved and active highlights refreshed; isolated actual-BP regression passed"
+  },
+  "merge_runtime_safety_incremental_update": {
+    "date": "2026-11-12",
+    "base_commit": "d1b6473ffdf95d7849335559c55653d4dfc34732",
+    "report": "docs/repository-audit/systems/MergeRuntimeSafety-2026-11-12.md",
+    "evidence": "docs/repository-audit/systems/evidence/merge-runtime-safety-2026-11-12.json",
+    "scope": "Game loading transition reentry and world ownership; repair serialized struct references in BP_QuakeGameInstance and BP_ShooterBase; no MCP/Python tool source changes",
+    "validation": "Editor Development and game Shipping builds passed; 7 Blueprint compiles, 1 loading state regression and 5 localization tests passed; restarted Editor has zero Unknown structure errors and zero dirty packages",
+    "not_verified": "Manual gameplay, multiplayer travel, map-wide runtime and packaged execution remain user verification",
+    "baseline_recollection": "not_performed; targeted incremental update only"
+  },
+  "respawn_progress_gradient": {
+    "date": "2026-11-13",
+    "report": "docs/repository-audit/systems/UIRecording.md",
+    "source_of_truth": "/Game/QuakeLike_1_0/UI/DeathUI/DA_RespawnBarStyle",
+    "change": "Apply an optional center-to-edge gradient to the visible death-screen progress fill at countdown start. Designers set both colors and the normalized blend start and end in the DA.",
+    "validation": "Editor Development build and RespawnProgressGradient, RespawnCountdownStart and RecordingRespawnProgress automation passed, including custom, reversed and coincident range endpoints. Live combat and packaged runtime were not exercised."
+  },
   "respawn_font_style": {
     "date": "2026-11-12",
     "report": "docs/repository-audit/systems/UIRecording.md",
@@ -14,6 +60,7 @@
     "source": "Content/DataAssets/DA_KillMedalUISettings.json (JsonAssetSync exports on DA save and applies on startup)",
     "preview": "Scripts/Diagnostics/PreviewKillNotificationUI.py",
     "medal_shadow": "One feathered T_Blur_800x200 backdrop per medal, using the You Killed texture and the existing medal DA tint/opacity. Captured default, disabled and blue shadows in client PIE.",
+    "death_message_offset": "The same DA offsets Killed by and You Died from the scoreboard or respawn bar placement. Editor build and controlled PortalMap client PIE verified both anchors, both death messages and independent You Killed placement.",
     "validation": "Development Editor build, Blueprint compile, KillMedalAutomaticAwards, KillMedalBridge, five client PIE style configurations and five death-priority cases passed. DA save export, startup JSON apply, actual PIE captures and editor console preview command verified. Packaged runtime and physical trades not exercised.",
     "baseline_recollection": "not_performed; historical whole-project inventory preserved"
   },
@@ -25,6 +72,8 @@
     "change": "Clear personal messages before showing death; reject personal kill messages while the owning controller death screen is visible; retain existing respawn visibility lifecycle",
     "validation": "Blueprint compile passed; five controlled real-client HUD event cases passed in Lvl_PortalMap PIE; physical mutual-kill combat, screenshots and packaged runtime not exercised",
     "integration_validation": "Reapplied both functions on main 3282d7830; Editor build, Blueprint compile, all five PIE cases and BuffDurationRing passed. Main widget tree and EventGraph matched. BuffHUDStyle ring segmentation and contrast assertions failed on both the integrated HUD and pristine main.",
+    "posthumous_kill_update": "2026-11-12: BPC_Life gates the personal kill RPC on the authoritative possessed-pawn reference; the HUD also checks local pawn life independently of death-screen visibility. Blueprint compile, five UI cases, and a two-client PIE test with controlled delayed damage verified preserved kill count, blocked late UI and restored notifications after respawn.",
+    "replicated_death_notification": "2026-11-12: Remote pawn-loss replication and the named death RPC share InitDeathUI. Real client death shows You Died when no name is available, and the named handler retains Killed by. Six priority diagnostic cases and a two-client PIE death, delayed kill and respawn test passed.",
     "baseline_recollection": "not_performed; historical whole-project inventory preserved"
   },
   "aim_assist_incremental_update": {
@@ -167,5 +216,19 @@
     "archived_documents": 21,
     "agent_instructions": "AGENTS.md",
     "archive_index": "docs/history/index.json"
+  },
+  "language_system_implementation": {
+    "date": "2026-11-11",
+    "status": "implemented; manual play and packaged validation delegated to user",
+    "report": "docs/repository-audit/systems/LanguageSystem.md",
+    "evidence": "docs/repository-audit/systems/evidence/language-implementation-2026-11-11.json",
+    "scope": "Device-local language subsystem; shared settings selector; String Table and ko/en localization; dynamic UI text/history, display-name/font boundaries, packaging settings",
+    "entries": 264,
+    "validation": "Final Editor Development and Shipping builds passed; localization tests 5 and main KillMedalBridge automation passed; merged BP 4 and status caller BP 9 compiled; strict 264-entry ko/en compilation passed; user-owned manual play and packaged validation remain pending.",
+    "manual_testing": "User requested to perform play testing themselves. Limited earlier PIE text/selection/font/nickname assertions are recorded without claiming full visual/network/travel/packaged validation.",
+    "baseline_recollection": "not_performed; initial source graphs and design preserved",
+    "change_list_cleanup": "User requested necessary changes only: restore 32 further incidental Blueprint resaves; preserve actual zero-count localization changes; archive one-time scripts/design separately and retain runtime assets, translator workflow, regression tests and current architecture documentation.",
+    "safety_review_date": "2026-11-12",
+    "main_integration": "Integrated main ca10893f8 via GitHub Desktop; 4 Blueprint conflicts rebuilt on main originals through MCP, 2 text conflicts resolved; 1,602 authored main exec pins preserved; loading WBP and 13 status translation links excluded at user request."
   }
 }

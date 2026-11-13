@@ -1,4 +1,5 @@
 #include "MyPlayerController.h"
+#include "Localization/LanguageSubsystem.h"
 #include "Camera/AimAssistComponent.h"
 #include "MyReconnectionGameMode.h"
 #include "Loading/LoadingScreenSubsystem.h"
@@ -40,11 +41,11 @@ AMyPlayerController::AMyPlayerController()
 		Style.PositionOffset = FVector2D(0.0f, -260.0f);
 		Style.Text = Label;
 	};
-	AddStyle(EKillMedalType::FirstBlood, Medal01.Class, NSLOCTEXT("KillMedal", "FirstBlood", "First Blood"));
-	AddStyle(EKillMedalType::DoubleKill, Medal02.Class, NSLOCTEXT("KillMedal", "DoubleKill", "Double Kill"));
-	AddStyle(EKillMedalType::TripleKill, Medal03.Class, NSLOCTEXT("KillMedal", "TripleKill", "Triple Kill"));
-	AddStyle(EKillMedalType::Rampage, Medal04.Class, NSLOCTEXT("KillMedal", "Rampage", "Rampage"));
-	AddStyle(EKillMedalType::RevengeShot, Medal05.Class, NSLOCTEXT("KillMedal", "RevengeShot", "Revenge Shot"));
+	AddStyle(EKillMedalType::FirstBlood, Medal01.Class, ULanguageLibrary::Text(TEXT("UI_155bb4d3d89d")));
+	AddStyle(EKillMedalType::DoubleKill, Medal02.Class, ULanguageLibrary::Text(TEXT("UI_926fc3bb813d")));
+	AddStyle(EKillMedalType::TripleKill, Medal03.Class, ULanguageLibrary::Text(TEXT("UI_b76ea5749ac3")));
+	AddStyle(EKillMedalType::Rampage, Medal04.Class, ULanguageLibrary::Text(TEXT("UI_a3efb7df8f74")));
+	AddStyle(EKillMedalType::RevengeShot, Medal05.Class, ULanguageLibrary::Text(TEXT("UI_f62a1250599b")));
 	KillMedalTierTypes.Add(2, EKillMedalType::DoubleKill);
 	KillMedalTierTypes.Add(3, EKillMedalType::TripleKill);
 	KillMedalTierTypes.Add(4, EKillMedalType::Rampage);
