@@ -4,11 +4,15 @@
 #include "Components/AudioComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SceneComponent.h"
+#include "Engine/CollisionProfile.h"
 #include "Engine/World.h"
 #include "GameFramework/Character.h"
+#include "GameFramework/PlayerController.h"
 #include "GameFramework/ProjectileMovementComponent.h"
+#include "HAL/IConsoleManager.h"
 #include "NiagaraComponent.h"
 #include "Particles/ParticleSystemComponent.h"
+#include "Particles/ParticleSystem.h"
 #include "TimerManager.h"
 #include "UObject/UnrealType.h"
 #include "Weapon/ProjectileConvergenceComponent.h"
@@ -17,6 +21,33 @@
 
 namespace ProjectilePoolComponentHelpers
 {
+static TAutoConsoleVariable<int32> SkipRedundantPlasmaSweep(TEXT("sa.ProjectilePool.SkipRedundantPlasmaSweep"), 1,
+	TEXT("Skip the pooled Plasma root movement sweep when it cannot produce a blocking hit or overlap event."));
+static TAutoConsoleVariable<float> PlasmaTrailDistance(TEXT("sa.ProjectileFX.PlasmaTrailDistance"), 3500.f,
+	TEXT("Distance in cm at which the secondary Cascade trail on Plasma is stopped. Zero disables the distance LOD."));
+
+bool CanSkipPlasmaMovementSweep(const AActor& Actor, const UProjectileMovementComponent& Movement)
+{
+	if (!SkipRedundantPlasmaSweep.GetValueOnGameThread() || Actor.GetClass()->GetFName() != TEXT("BP_PlasmaProjectile_C")
+		|| Movement.bShouldBounce || Movement.bIsHomingProjectile) return false;
+	const auto* Root = Cast<UPrimitiveComponent>(Movement.UpdatedComponent);
+	const UCollisionProfile* Profile = UCollisionProfile::Get();
+	if (!Root || Root != Actor.GetRootComponent() || Root->GetGenerateOverlapEvents() || Root->IsSimulatingPhysics() || !Profile)
+	{
+		return false;
+	}
+	for (int32 Index = 0; Index < ECC_MAX; ++Index)
+	{
+		const ECollisionChannel Channel = static_cast<ECollisionChannel>(Index);
+		// The current root blocks AIStuckTrace, a trace channel that other shapes cannot occupy.
+		// Retain that response for AI traces and keep sweeping if any object channel blocks.
+		if (Root->GetCollisionResponseToChannel(Channel) == ECR_Block
+			&& (Channel != ECC_GameTraceChannel3 || Profile->ConvertToTraceType(Channel) == TraceTypeQuery_MAX
+				|| Profile->ConvertToObjectType(Channel) != ObjectTypeQuery_MAX)) return false;
+	}
+	return true;
+}
+
 UObject* ObjectField(UObject* Object, FName Name)
 {
 	const auto* Property = IsValid(Object) ? FindFProperty<FObjectPropertyBase>(Object->GetClass(), Name) : nullptr;
@@ -58,6 +89,7 @@ bool UProjectilePoolComponent::Capture(UProjectilePoolSubsystem* InPool, bool bI
 		|| !Actor->GetRootComponent()) return false;
 	bRotationFollowsVelocity = Movement->bRotationFollowsVelocity;
 	bRotationRemainsVertical = Movement->bRotationRemainsVertical;
+	bDefaultMovementSweep = Movement->bSweepCollision;
 	const bool bRocket = Actor->GetClass()->GetFName() == TEXT("BP_RocketLauncherProjectile_C");
 	DelayedMesh = Cast<USceneComponent>(ProjectilePoolComponentHelpers::ObjectField(Actor,
 		bRocket ? TEXT("SkeletalMesh") : TEXT("ProjectileMesh")));
@@ -75,7 +107,16 @@ bool UProjectilePoolComponent::Capture(UProjectilePoolSubsystem* InPool, bool bI
 			Default.bHidden = Scene->bHiddenInGame;
 		}
 		if (auto* Audio = Cast<UAudioComponent>(Component)) Audio->bAutoDestroy = false;
-		if (auto* Particle = Cast<UParticleSystemComponent>(Component)) Particle->bAutoDestroy = false;
+		if (auto* Particle = Cast<UParticleSystemComponent>(Component))
+		{
+			Particle->bAutoDestroy = false;
+			if (Default.bActive && Actor->GetClass()->GetFName() == TEXT("BP_PlasmaProjectile_C")
+				&& Particle->Template && Particle->Template->GetOutermost()->GetFName()
+					== TEXT("/Game/QuakeLike_Base/SDM/Effect/Plasma_Projectile"))
+			{
+				PlasmaTrail = Particle;
+			}
+		}
 		if (auto* Niagara = Cast<UNiagaraComponent>(Component)) Niagara->SetAutoDestroy(false);
 	}
 	Convergence = NewObject<UProjectileConvergenceComponent>(Actor);
@@ -170,6 +211,12 @@ bool UProjectilePoolComponent::StartShot(const FTransform& Transform, AActor* We
 	Movement->Activate(true);
 	Movement->SetComponentTickEnabled(true);
 	Collision->ResetForPooledShot();
+	Movement->bSweepCollision = bDefaultMovementSweep;
+	if (bDefaultMovementSweep && Collision->IsComponentTickEnabled() && Collision->HasLiveContext()
+		&& ProjectilePoolComponentHelpers::CanSkipPlasmaMovementSweep(*Actor, *Movement))
+	{
+		Movement->bSweepCollision = false;
+	}
 	const uint64 ShotGeneration = Generation;
 	GetWorld()->GetTimerManager().SetTimer(ExpiryTimer, FTimerDelegate::CreateWeakLambda(this, [this, ShotGeneration]
 	{
@@ -181,7 +228,44 @@ bool UProjectilePoolComponent::StartShot(const FTransform& Transform, AActor* We
 	});
 	if (Offset > 0.0) GetWorld()->GetTimerManager().SetTimer(VisibilityTimer, Show, Offset / Speed, false);
 	else VisibilityTimer = GetWorld()->GetTimerManager().SetTimerForNextTick(Show);
+	if (PlasmaTrail && GetWorld()->GetNetMode() != NM_DedicatedServer
+		&& ProjectilePoolComponentHelpers::PlasmaTrailDistance.GetValueOnGameThread() > 0.f)
+	{
+		GetWorld()->GetTimerManager().SetTimer(TrailDetailTimer, this, &ThisClass::UpdatePlasmaTrailDetail, 0.2f, true);
+	}
 	return true;
+}
+
+void UProjectilePoolComponent::UpdatePlasmaTrailDetail()
+{
+	if (!IsShotActive() || !IsValid(PlasmaTrail)) return;
+	const float Distance = ProjectilePoolComponentHelpers::PlasmaTrailDistance.GetValueOnGameThread();
+	bool bFarFromAllViews = Distance > 0.f;
+	bool bHasLocalView = false;
+	const FVector Position = GetOwner()->GetActorLocation();
+	const double Threshold = Distance * (bPlasmaTrailSuppressed ? 0.8 : 1.0);
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It && bFarFromAllViews; ++It)
+	{
+		const APlayerController* Player = It->Get();
+		if (!IsValid(Player) || !Player->IsLocalController()) continue;
+		FVector Eye;
+		FRotator ViewRotation;
+		Player->GetPlayerViewPoint(Eye, ViewRotation);
+		bHasLocalView = true;
+		bFarFromAllViews = FVector::DistSquared(Position, Eye) > FMath::Square(Threshold);
+	}
+	const bool bSuppress = bHasLocalView && bFarFromAllViews;
+	if (bSuppress == bPlasmaTrailSuppressed) return;
+	bPlasmaTrailSuppressed = bSuppress;
+	if (bSuppress)
+	{
+		PlasmaTrail->DeactivateImmediate();
+		PlasmaTrail->SetComponentTickEnabled(false);
+	}
+	else
+	{
+		PlasmaTrail->Activate(true);
+	}
 }
 
 void UProjectilePoolComponent::StopShot()
@@ -193,8 +277,10 @@ void UProjectilePoolComponent::StopShot()
 	{
 		World->GetTimerManager().ClearTimer(ExpiryTimer);
 		World->GetTimerManager().ClearTimer(VisibilityTimer);
+		World->GetTimerManager().ClearTimer(TrailDetailTimer);
 		World->GetLatentActionManager().RemoveActionsForObject(Actor);
 	}
+	bPlasmaTrailSuppressed = false;
 	Actor->SetLifeSpan(0.f);
 	Actor->SetActorEnableCollision(false);
 	Actor->SetActorTickEnabled(false);

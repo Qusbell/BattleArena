@@ -8,6 +8,7 @@
 class UProjectilePoolSubsystem;
 class UProjectileMovementComponent;
 class UProjectileWorldCollisionComponent;
+class UParticleSystemComponent;
 class UProjectileConvergenceComponent;
 class USceneComponent;
 class FStructProperty;
@@ -45,6 +46,7 @@ private:
 	UPROPERTY(Transient) TObjectPtr<UProjectileWorldCollisionComponent> Collision;
 	UPROPERTY(Transient) TObjectPtr<UProjectileConvergenceComponent> Convergence;
 	UPROPERTY(Transient) TObjectPtr<USceneComponent> DelayedMesh;
+	UPROPERTY(Transient) TObjectPtr<UParticleSystemComponent> PlasmaTrail;
 	struct FComponentDefault
 	{
 		TWeakObjectPtr<UActorComponent> Component;
@@ -57,8 +59,12 @@ private:
 	FBoolProperty* DamageProperty = nullptr;
 	FIntProperty* IdProperty = nullptr;
 	bool bRotationFollowsVelocity = false, bRotationRemainsVertical = false;
+	bool bDefaultMovementSweep = true;
 	uint64 Generation = 0;
 	FTimerHandle ExpiryTimer, VisibilityTimer;
+	FTimerHandle TrailDetailTimer;
+	bool bPlasmaTrailSuppressed = false;
+	void UpdatePlasmaTrailDetail();
 	void SetConfig(AActor* Weapon, UObject* Data);
 	void StopShot();
 	void ResetBlueprintState();

@@ -34,6 +34,7 @@ public:
 	virtual void OnUnregister() override;
 
 private:
+	friend class UProjectilePoolComponent;
 	friend class FProjectileSplitCollisionTest;
 	struct FTravelSegment { FVector Start, End; };
 	TArray<FTravelSegment, TInlineAllocator<2>> Travel;

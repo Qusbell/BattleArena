@@ -184,13 +184,20 @@ bool UProjectileWorldCollisionComponent::FindImpact(const FVector& Start, const 
 	FCollisionResponseParams Responses(GetCollisionResponseToChannels());
 	Responses.CollisionResponse.SetResponse(ECC_Pawn, ECR_Ignore);
 	Responses.CollisionResponse.SetResponse(GetCollisionObjectType(), ECR_Ignore);
-	bool bFound = World->SweepSingleByChannel(OutHit, Start, End, FQuat::Identity, GetCollisionObjectType(),
-		FCollisionShape::MakeSphere(WallRadius), Query, Responses);
+	bool bFound;
+	{
+		TRACE_CPUPROFILER_EVENT_SCOPE(ProjectileWorldSweep);
+		bFound = World->SweepSingleByChannel(OutHit, Start, End, FQuat::Identity, GetCollisionObjectType(),
+			FCollisionShape::MakeSphere(WallRadius), Query, Responses);
+	}
 	if (bFound && !ProjectileCollisionHelpers::ValidHit(OutHit)) { OutHit = FHitResult(); return false; }
 	if (!ProjectileCollisionHelpers::CanDamage(Projectile)) return bFound;
 	TArray<FHitResult> Candidates;
-	World->SweepMultiByObjectType(Candidates, Start, End, FQuat::Identity, FCollisionObjectQueryParams(ECC_Pawn),
-		FCollisionShape::MakeSphere(PlayerRadius), Query);
+	{
+		TRACE_CPUPROFILER_EVENT_SCOPE(ProjectilePawnSweep);
+		World->SweepMultiByObjectType(Candidates, Start, End, FQuat::Identity, FCollisionObjectQueryParams(ECC_Pawn),
+			FCollisionShape::MakeSphere(PlayerRadius), Query);
+	}
 	for (const FHitResult& Candidate : Candidates)
 	{
 		if (!IsValid(Candidate.GetActor()) || !Candidate.GetActor()->IsA<ACharacter>()

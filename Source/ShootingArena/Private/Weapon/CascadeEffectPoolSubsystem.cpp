@@ -3,12 +3,55 @@
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
 #include "Misc/App.h"
+#include "NiagaraComponent.h"
 #include "NiagaraSystem.h"
 #include "Particles/ParticleSystem.h"
 #include "Particles/ParticleSystemComponent.h"
 #include "Particles/WorldPSCPool.h"
 #include "ProfilingDebugging/CpuProfilerTrace.h"
 #include "Weapon/CascadeEffectPoolSettings.h"
+
+namespace
+{
+TAutoConsoleVariable<float> PlasmaMuzzleSeconds(TEXT("sa.ProjectileFX.PlasmaMuzzleSeconds"), 0.5f,
+	TEXT("Maximum playback time for the Plasma Niagara muzzle flash. Zero keeps the asset's full lifetime."));
+}
+
+void UCascadeEffectPoolSubsystem::LimitPlasmaMuzzleLifetime(UNiagaraComponent* Effect)
+{
+	const float Lifetime = PlasmaMuzzleSeconds.GetValueOnGameThread();
+	if (Lifetime <= 0.f || !IsValid(Effect) || !Effect->IsActive() || Effect->GetWorld() != GetWorld()) return;
+	const UNiagaraSystem* System = Effect->GetAsset();
+	if (!IsValid(System) || System->GetOutermost()->GetFName()
+		!= TEXT("/Game/MuzzleFlashes/Particles/NiagaraSystems/Plasma_Flash")) return;
+
+	FTimerHandle& Timer = MuzzleTimers.FindOrAdd(Effect);
+	Effect->OnSystemFinished.AddUniqueDynamic(this, &ThisClass::OnMuzzleFinished);
+	const TWeakObjectPtr<UNiagaraComponent> WeakEffect(Effect);
+	GetWorld()->GetTimerManager().SetTimer(Timer, FTimerDelegate::CreateWeakLambda(this, [this, WeakEffect]
+	{
+		if (UNiagaraComponent* LiveEffect = WeakEffect.Get()) LiveEffect->DeactivateImmediate();
+		MuzzleTimers.Remove(WeakEffect);
+	}), Lifetime, false);
+}
+
+void UCascadeEffectPoolSubsystem::OnMuzzleFinished(UNiagaraComponent* Effect)
+{
+	FTimerHandle Timer;
+	if (MuzzleTimers.RemoveAndCopyValue(Effect, Timer)) GetWorld()->GetTimerManager().ClearTimer(Timer);
+	Effect->OnSystemFinished.RemoveDynamic(this, &ThisClass::OnMuzzleFinished);
+}
+
+void UCascadeEffectPoolSubsystem::Deinitialize()
+{
+	for (auto& Pair : MuzzleTimers)
+	{
+		GetWorld()->GetTimerManager().ClearTimer(Pair.Value);
+		if (UNiagaraComponent* Effect = Pair.Key.Get()) Effect->OnSystemFinished.RemoveDynamic(this, &ThisClass::OnMuzzleFinished);
+	}
+	MuzzleTimers.Reset();
+	Super::Deinitialize();
+}
 
 bool UCascadeEffectPoolSubsystem::DoesSupportWorldType(EWorldType::Type WorldType) const
 {
