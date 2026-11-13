@@ -25,6 +25,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Editor|Buff HUD")
 	static FString InstallConnectedBuffRing();
 
+	UFUNCTION(BlueprintCallable, Category = "Editor|Buff HUD")
+	static FString InstallBuffIconBackground();
+
 	/** Creates a separate white RGB copy with the original texture's exact source alpha. */
 	UFUNCTION(BlueprintCallable, Category = "Editor|Buff HUD")
 	static FString CreateWhiteBuffIconTexture();

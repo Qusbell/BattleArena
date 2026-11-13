@@ -64,8 +64,14 @@ void UBuffDurationRingWidget::ApplyRingStyle()
 		AppliedEmptyColor = FLinearColor(-1.0f, -1.0f, -1.0f, -1.0f);
 	}
 	if (!RingMID) return;
+	RingMID->SetScalarParameterValue(TEXT("SegmentedRing"), Style->RingStyle == EBuffRingStyle::Segmented ? 1.0f : 0.0f);
 	RingMID->SetScalarParameterValue(TEXT("WhiteOutlineWidth"), SafeValue(Style->RingWhiteOutlineWidth, 0.75f, 0.0f, 4.0f));
 	RingMID->SetVectorParameterValue(TEXT("OutlineColor"), Style->RingOutlineColor);
+	RingMID->SetScalarParameterValue(TEXT("OutlineOpacity"), SafeValue(Style->RingOutlineOpacity, 1.0f, 0.0f, 1.0f));
+	RingMID->SetScalarParameterValue(TEXT("SegmentOutlineGradient"), Style->bSegmentOutlineGradient ? 1.0f : 0.0f);
+	RingMID->SetVectorParameterValue(TEXT("OutlineCenterColor"), Style->SegmentOutlineCenterColor);
+	RingMID->SetScalarParameterValue(TEXT("OutlineEndRange"), SafeValue(Style->SegmentOutlineEndRange, 0.25f, 0.01f, 0.5f));
+	RingMID->SetScalarParameterValue(TEXT("TransparentEmptyTrack"), Style->bTransparentEmptyTrack ? 1.0f : 0.0f);
 	const float HaloRange = Style->bRingHaloEnabled && Style->RingHaloStrength > 0.0f
 		? SafeValue(Style->RingHaloRange, 10.0f, 1.0f, 48.0f) : 0.0f;
 	const float CanvasScale = 1.0f + 2.0f * HaloRange / Diameter;
@@ -181,10 +187,13 @@ void UBuffDurationRingWidget::UpdateWhiteShine(double Remaining, bool bRingVisib
 	{
 		ApplyVisibility(ShineImage.Get(), false);
 		ApplyVisibility(FrameImage.Get(), false);
+		ApplyVisibility(BackgroundImage.Get(), false);
 		ShineImage.Reset();
 		FrameImage.Reset();
+		BackgroundImage.Reset();
 		ShineMID = nullptr;
 		FrameMID = nullptr;
+		BackgroundMID = nullptr;
 		if (Overlay)
 		{
 			for (UWidget* Child : Overlay->GetAllChildren())
@@ -194,11 +203,39 @@ void UBuffDurationRingWidget::UpdateWhiteShine(double Remaining, bool bRingVisib
 					ShineImage = Cast<UImage>(Child);
 				}
 				else if (Child->GetFName() == TEXT("BuffIconFrame")) FrameImage = Cast<UImage>(Child);
+				else if (Child->GetFName() == TEXT("BuffIconBackground")) BackgroundImage = Cast<UImage>(Child);
 			}
 		}
 	}
 
 	const float FrameDiameter = SafeValue(Style->IconFrameDiameter, 190.0f, 1.0f, 1024.0f);
+	const bool bBackground = BackgroundImage.IsValid() && Style->bShowIconBackground && Style->bShowIcon &&
+		Style->IconBackgroundMaterial && FMath::IsFinite(Remaining) && Remaining > 0.0;
+	if (bBackground)
+	{
+		if (!BackgroundMID || BackgroundMID->Parent != Style->IconBackgroundMaterial)
+		{
+			BackgroundMID = UMaterialInstanceDynamic::Create(Style->IconBackgroundMaterial, this);
+			BackgroundImage->SetBrushFromMaterial(BackgroundMID);
+		}
+		const float BackgroundDiameter = SafeValue(Style->IconBackgroundDiameter, 190.0f, 1.0f, 1024.0f);
+		const float Feather = Style->bIconBackgroundGradient ? SafeValue(Style->IconBackgroundFeather, 16.0f, 0.0f, 128.0f) : 0.0f;
+		const float DrawDiameter = BackgroundDiameter + 2.0f * Feather;
+		BackgroundImage->SetDesiredSizeOverride(FVector2D(DrawDiameter));
+		BackgroundImage->SetRenderTransform(Icon->GetRenderTransform());
+		BackgroundImage->SetRenderTransformPivot(Icon->GetRenderTransformPivot());
+		BackgroundMID->SetVectorParameterValue(TEXT("BackgroundColor"), Style->IconBackgroundColor);
+		BackgroundMID->SetScalarParameterValue(TEXT("BackgroundOpacity"), SafeValue(Style->IconBackgroundOpacity, 0.35f, 0.0f, 1.0f));
+		BackgroundMID->SetScalarParameterValue(TEXT("BackgroundDiameter"), BackgroundDiameter);
+		BackgroundMID->SetScalarParameterValue(TEXT("BackgroundFeather"), Feather);
+		BackgroundMID->SetScalarParameterValue(TEXT("BackgroundGradient"), Style->bIconBackgroundGradient ? 1.0f : 0.0f);
+		BackgroundMID->SetScalarParameterValue(TEXT("BackgroundCenterRatio"), SafeValue(Style->IconBackgroundCenterRatio, 0.6f, 0.0f, 0.95f));
+		BackgroundMID->SetVectorParameterValue(TEXT("BackgroundOuterColor"), Style->IconBackgroundOuterColor);
+		BackgroundMID->SetVectorParameterValue(TEXT("BackgroundMiddleColor"), Style->IconBackgroundMiddleColor);
+		BackgroundMID->SetScalarParameterValue(TEXT("BackgroundMiddlePosition"), SafeValue(Style->IconBackgroundMiddlePosition, 80.0f, 1.0f, 99.0f) / 100.0f);
+		BackgroundMID->SetScalarParameterValue(TEXT("BackgroundOuterOpacity"), SafeValue(Style->IconBackgroundOuterOpacity, 0.35f, 0.0f, 1.0f));
+	}
+	ApplyVisibility(BackgroundImage.Get(), bBackground);
 	const bool bFrame = FrameImage.IsValid() && Style->bShowIconFrame && Style->bShowIcon && Style->IconFrameMaterial && Remaining > 0.0;
 	if (bFrame)
 	{
