@@ -72,9 +72,10 @@ void UProjectileWorldCollisionComponent::ResetForPooledShot()
 	bLastImpactWasCharacter = false;
 	bResolved = false;
 	bResolving = false;
-	Activate(true);
+	// SetComponentTickEnabled binds once the component is both active and ticking.
+	Super::Activate(true);
 	SetComponentTickEnabled(true);
-	BindPlayerCollision();
+	if (!PlayerCollision.IsValid()) BindPlayerCollision();
 }
 
 void UProjectileWorldCollisionComponent::EndPooledShot()
@@ -238,7 +239,7 @@ void UProjectileWorldCollisionComponent::ResolveImpact(const FHitResult& Hit)
 bool UProjectileWorldCollisionComponent::ResolveTravel()
 {
 	// Move the array out before calling BP: an impact may destroy this actor.
-	TArray<FTravelSegment> Segments = MoveTemp(Travel);
+	TArray<FTravelSegment, TInlineAllocator<2>> Segments = MoveTemp(Travel);
 	for (const FTravelSegment& Segment : Segments)
 	{
 		FHitResult Hit;
@@ -258,7 +259,12 @@ void UProjectileWorldCollisionComponent::TickComponent(float DeltaTime, ELevelTi
 	if (!IsActive() || !IsComponentTickEnabled()) { Unbind(); return; }
 	if (!HasLiveContext() && (!HasBegunPlay() || !BindPlayerCollision())) return;
 	if (!bHasLastPosition) { LastPosition = PlayerCollision->GetComponentLocation(); bHasLastPosition = true; }
-	if (Travel.IsEmpty()) Travel.Add({LastPosition, LastPosition});
+	if (Travel.IsEmpty())
+	{
+		FHitResult Hit;
+		if (FindImpact(LastPosition, LastPosition, Hit)) ResolveImpact(Hit);
+		return;
+	}
 	ResolveTravel();
 }
 

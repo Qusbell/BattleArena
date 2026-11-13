@@ -5,6 +5,7 @@
 #include "CascadeEffectPoolSettings.generated.h"
 
 class UParticleSystem;
+class UNiagaraSystem;
 class UWorld;
 
 USTRUCT()
@@ -38,4 +39,8 @@ public:
 	/** Idle components to prepare per effect and world, capped by the effect's Max Pool Size. */
 	UPROPERTY(Config, EditAnywhere, Category="Prewarm", meta=(TitleProperty="Effect"))
 	TArray<FCascadeEffectPrewarmEntry> Effects;
+
+	/** Niagara systems whose editor compilation should start before the first effect spawn in PIE. */
+	UPROPERTY(Config, EditAnywhere, Category="Prewarm")
+	TArray<TSoftObjectPtr<UNiagaraSystem>> PIECompileSystems;
 };

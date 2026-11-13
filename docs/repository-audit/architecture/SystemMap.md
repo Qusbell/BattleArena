@@ -54,6 +54,8 @@ flowchart LR
 두 Projectile의 `Is Pooled Projectile` 호출을 확인했습니다.
 
 - `UProjectilePoolSubsystem`/Component/Library는 World별 투사체 획득·반환과 발사자 생애 분리를 담당합니다.
+- Plasma 초기 풀은 `DefaultGame.ini`에서 월드당 64개로 설정하며, 기존 프레임당 예산을 적용해 분산 생성합니다.
+- 지정된 매치 맵의 렌더링 PIE 월드에서는 `CascadeEffectPool` 설정의 Niagara 총구 효과를 월드 시작 시 컴파일 요청합니다.
 - `UProjectileConvergenceComponent`, `UProjectileWorldCollisionComponent`, `UProjectileFirstPersonRenderingComponent`는 각각 수렴·월드 충돌·1인칭 렌더링을 나눕니다.
 - AimAlignment, ProjectileAim, MuzzleFlash, BeamEffect, ImpactEffect, Presentation 관련 라이브러리는 조준/시각 효과의 경계입니다.
 - `UCascadeEffectPoolSubsystem`은 설정된 전투 World의 Cascade 효과 풀을 준비합니다. 일반 에셋 리소스와 transient 재생 객체를 구분합니다.

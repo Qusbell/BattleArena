@@ -5,6 +5,8 @@
 UProjectileConvergenceComponent::UProjectileConvergenceComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
+	PrimaryComponentTick.bStartWithTickEnabled = false;
+	PrimaryComponentTick.SetTickFunctionEnable(false);
 	PrimaryComponentTick.TickGroup = TG_PrePhysics;
 }
 

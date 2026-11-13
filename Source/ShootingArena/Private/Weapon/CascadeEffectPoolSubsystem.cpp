@@ -3,6 +3,7 @@
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
 #include "Misc/App.h"
+#include "NiagaraSystem.h"
 #include "Particles/ParticleSystem.h"
 #include "Particles/ParticleSystemComponent.h"
 #include "Particles/WorldPSCPool.h"
@@ -33,11 +34,26 @@ void UCascadeEffectPoolSubsystem::OnWorldBeginPlay(UWorld& InWorld)
 		return;
 	}
 
+	bPrewarmed = true;
+	TRACE_CPUPROFILER_EVENT_SCOPE(CascadeEffectPool_Prewarm);
+
+#if WITH_EDITOR
+	if (InWorld.WorldType == EWorldType::PIE)
+	{
+		TRACE_CPUPROFILER_EVENT_SCOPE(WeaponEffects_RequestNiagaraCompile);
+		for (const TSoftObjectPtr<UNiagaraSystem>& Asset : Settings->PIECompileSystems)
+		{
+			if (UNiagaraSystem* System = Asset.LoadSynchronous(); IsValid(System) && System->NeedsRequestCompile())
+			{
+				System->RequestCompile(false);
+			}
+		}
+	}
+#endif
+
 	const IConsoleVariable* PoolEnabled = IConsoleManager::Get().FindConsoleVariable(TEXT("FX.ParticleSystemPool.Enable"));
 	if (!PoolEnabled || PoolEnabled->GetInt() == 0) return;
-	bPrewarmed = true;
 
-	TRACE_CPUPROFILER_EVENT_SCOPE(CascadeEffectPool_Prewarm);
 	TMap<FSoftObjectPath, int32> Counts;
 	for (const FCascadeEffectPrewarmEntry& Entry : Settings->Effects)
 	{

@@ -36,7 +36,7 @@ public:
 private:
 	friend class FProjectileSplitCollisionTest;
 	struct FTravelSegment { FVector Start, End; };
-	TArray<FTravelSegment> Travel;
+	TArray<FTravelSegment, TInlineAllocator<2>> Travel;
 	TWeakObjectPtr<USphereComponent> PlayerCollision;
 	FVector LastPosition = FVector::ZeroVector;
 	bool bResolved = false;
