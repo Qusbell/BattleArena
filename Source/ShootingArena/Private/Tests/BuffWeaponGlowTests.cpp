@@ -50,6 +50,9 @@ bool FBuffWeaponGlowTest::RunTest(const FString& Parameters)
 	Weapon->AttachToComponent(PawnRoot, FAttachmentTransformRules::KeepRelativeTransform);
 
 	UMaterialInterface* Overlay = UMaterial::GetDefaultMaterial(MD_Surface);
+	UMaterialInterface* BodyOverlay = LoadObject<UMaterialInterface>(nullptr,
+		TEXT("/Game/QuakeLike_1_0/Buff/M_BuffGlowOverlay.M_BuffGlowOverlay"));
+	if (!TestNotNull(TEXT("Body overlay material exists"), BodyOverlay)) return false;
 	UBuffWeaponGlowSettings* Glow = NewObject<UBuffWeaponGlowSettings>(GetTransientPackage());
 	Glow->Profiles.SetNum(2);
 	FBuffGlowProfile& DefProfile = Glow->Profiles[0];
@@ -57,9 +60,10 @@ bool FBuffWeaponGlowTest::RunTest(const FString& Parameters)
 	DefProfile.Gun.OverlayMaterial = Overlay;
 	DefProfile.Gun.TintStrength = 0.4f;
 	DefProfile.Gun.WaveStrength = 0.8f;
-	DefProfile.Body.OverlayMaterial = Overlay;
+	DefProfile.Body.OverlayMaterial = BodyOverlay;
 	DefProfile.Body.TintStrength = 0.08f;
 	DefProfile.Body.WaveStrength = 0.0f;
+	DefProfile.BodyMinimumGlow = 0.35f;
 	FBuffGlowProfile& AtkProfile = Glow->Profiles[1];
 	AtkProfile.BuffTag = FGameplayTag::RequestGameplayTag(TEXT("Buff.Atk"));
 	AtkProfile.Gun.OverlayMaterial = Overlay;
@@ -87,6 +91,7 @@ bool FBuffWeaponGlowTest::RunTest(const FString& Parameters)
 	if (!TestNotNull(TEXT("Body has its own glow material"), BodyMID)) return false;
 	TestTrue(TEXT("Others see the third-person body glow"), Body->GetOverlayMaterial() == BodyMID);
 	TestEqual(TEXT("Body uses its own tint"), BodyMID->K2_GetScalarParameterValue(TEXT("TintStrength")), DefProfile.Body.TintStrength);
+	TestEqual(TEXT("The profile's body glow floor reaches the material"), BodyMID->K2_GetScalarParameterValue(TEXT("MinimumGlow")), 0.35f);
 	TestEqual(TEXT("Gun uses its own tint"), MID->K2_GetScalarParameterValue(TEXT("TintStrength")), DefProfile.Gun.TintStrength);
 	TestEqual(TEXT("Designer brightness cap reaches the material"), MID->K2_GetScalarParameterValue(TEXT("MaxBrightness")), DefProfile.Gun.MaxBrightness);
 	TestEqual(TEXT("Gun wave follows the gun look"), MID->K2_GetScalarParameterValue(TEXT("ShimmerStrength")), DefProfile.Gun.WaveStrength);

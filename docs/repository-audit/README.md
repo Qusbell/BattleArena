@@ -28,6 +28,12 @@
 - [드롭 아이템 획득 판정](systems/DropItemPickup.md) — 공통 반경, 초기 접촉 처리 및 검증 범위.
 - [촬영용 UI 표시 설정](systems/UIRecording.md) — UI별 DA 체크박스, 58개 Blueprint 연결과 native 표시 경계.
 
+- [Lvl_02Map 밝기와 색 대비 조사](systems/Lvl02MapLighting.md) — 광원·후처리·머티리얼 조사와 Dynamic 조명 옵션.
+
+- [Lvl_PortalMap 밝기와 색 대비 조사](systems/LvlPortalMapLighting.md) — 고정 노출, Bloom, 배치 광원 및 Dynamic 조명 옵션.
+
+- [Lvl_02Map과 Lvl_PortalMap 조명 차이 및 DropItem 조사](systems/MapLightingComparison.md) — 적용값 비교와 픽업의 발광·반사·Nanite 확인 범위.
+
 | 경로 | 내용 |
 |---|---|
 | `audit/` | 조사 절차·현재 진행 상태·최초 기준선 |
