@@ -120,6 +120,7 @@ OneWayTeleportActor, JumpPadFlightComponent/CommonSettings는 별도 이동 기�
 
 - UIBackInput은 Slate 입력 선처리와 CommonUI/버튼 규칙의 뒤로가기 경계입니다. ReusableStyleHost/UIPalette는 화면 스타일을 공유합니다.
 - MapPreviewSubsystem/Widget은 미디어 소스·플레이어와 메뉴 간 미리보기를 관리합니다. HUD/CompetitiveRanking·KillMedal·RespawnCountdown·CrosshairRecoil은 표시 기능입니다.
+- Tab 스코어보드와 서버의 매치 종료 순위는 CompetitiveRankingLibrary를 통해 킬 내림차순, 데스 오름차순, 표시 이름 대소문자 무시 오름차순으로 정렬합니다. 킬과 데스가 같으면 공동 순위를 부여합니다(예: 1, 1, 3). 결과창은 복제된 서버 순위를 표시하며, 간소화 순위 HUD도 같은 정렬 규칙을 사용합니다.
 - BGM은 GameInstance 수명이며 로딩·옵션 볼륨 경계가 있습니다. [BGM 상세 조사](../systems/BGM.md)를 참고합니다.
 - DeathCamComponent/Actor는 ViewTarget과 카메라 수명, Revenge/Outline/Nickname은 대상 표시를 담당합니다. 별도 PlayerController 수명/RPC와 연결됩니다.
 - CharacterSpawnSound와 KillStreakVoice는 생성/연속 킬 이벤트의 오디오 컴포넌트입니다.

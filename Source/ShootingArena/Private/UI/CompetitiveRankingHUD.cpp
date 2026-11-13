@@ -442,8 +442,8 @@ void UCompetitiveRankingHUD::RefreshRanking()
 	if (State)
 		for (APlayerState* Player : State->PlayerArray)
 			if (IsValid(Player) && !Player->IsActorBeingDestroyed() && !Player->IsInactive())
-				if (const auto* Kills = FindFProperty<FIntProperty>(Player->GetClass(), TEXT("KillCount")))
-					Players.Add({Player, Kills->GetPropertyValue_InContainer(Player)});
+				if (FindFProperty<FIntProperty>(Player->GetClass(), TEXT("KillCount")))
+					Players.Add(ReadCompetitiveRankEntry(Player));
 	const TArray<FCompetitiveRankEntry> Entries = BuildCompactRanking(MoveTemp(Players), Local);
 	for (int32 Index = 0; Index < RowBorders.Num(); ++Index)
 	{
