@@ -27,7 +27,7 @@
 		},
 		"lvl_02Map":
 		{
-			"sound": "/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/036_qk_music_volkerh_theme_Cue.036_qk_music_volkerh_theme_Cue",
+			"sound": "/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/_후보2_039_qk_music_goroth_positive_loop_Cue._후보2_039_qk_music_goroth_positive_loop_Cue",
 			"volumeMultiplier": 1,
 			"bLoop": true,
 			"fadeInTime": -1,

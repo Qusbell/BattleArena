@@ -11518,6 +11518,36 @@
 							"type": "double"
 						}
 					]
+				},
+				{
+					"name": "deathMessageOffset",
+					"displayName": "사망 알림 위치 보정",
+					"cppType": "FVector2D",
+					"order": 25,
+					"tooltip": "기존 사망 알림 위치에서 이동하는 UI 단위입니다. X는 오른쪽, Y는 아래쪽이 양수입니다.",
+					"category": "Killed by|위치",
+					"advancedDisplay": false,
+					"type": "struct",
+					"structType": "Vector2D",
+					"structPath": "/Script/CoreUObject.Vector2D",
+					"properties": [
+						{
+							"name": "x",
+							"displayName": "X",
+							"cppType": "double",
+							"order": 0,
+							"advancedDisplay": false,
+							"type": "double"
+						},
+						{
+							"name": "y",
+							"displayName": "Y",
+							"cppType": "double",
+							"order": 1,
+							"advancedDisplay": false,
+							"type": "double"
+						}
+					]
 				}
 			]
 		},

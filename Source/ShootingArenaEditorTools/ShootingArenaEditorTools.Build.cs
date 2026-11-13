@@ -24,6 +24,7 @@ public class ShootingArenaEditorTools : ModuleRules
                 "KismetCompiler",
                 "Slate",
                 "SlateCore",
+                "PropertyEditor",
                 "LevelEditor",
                 "ContentBrowser",
                 "ToolMenus",

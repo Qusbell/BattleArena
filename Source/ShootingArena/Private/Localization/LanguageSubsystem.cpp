@@ -15,6 +15,7 @@
 #include "Brushes/SlateColorBrush.h"
 #include "Brushes/SlateNoResource.h"
 #include "Engine/Font.h"
+#include "UI/CompetitiveRankingHUD.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
 #include "Internationalization/Culture.h"
@@ -279,7 +280,7 @@ void ULanguageLibrary::RefreshViewportFonts(UWorld* World)
     if (!IsValid(World) || World->bIsTearingDown || !World->IsGameWorld() || World->GetNetMode() == NM_DedicatedServer) return;
     for (TObjectIterator<UTextBlock> It; It; ++It)
         if (IsValid(*It) && !It->IsTemplate() && It->GetWorld() == World && It->GetCachedWidget().IsValid()
-            && !IsWidgetLocalizationExcluded(*It))
+            && !IsWidgetLocalizationExcluded(*It) && !UCompetitiveRankingHUD::IsMatchTimerText(**It))
         {
             const FSlateFontInfo Font = ResolveFont(It->GetFont());
             if (Font != It->GetFont()) It->SetFont(Font);

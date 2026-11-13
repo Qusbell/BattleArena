@@ -120,6 +120,11 @@ PIE에서 `0`, `40`, `80`, `0`으로 반복 초기화해 위치와 카운트다�
 예를 들어 `0.25`와 `0.75`를 입력하면 그 사이에서만 두 색이 섞입니다. 기본값 `0`과 `1`은 전체 구간에 적용합니다.
 범위를 벗어난 값은 `0–1` 안으로 제한하며, 두 값을 거꾸로 입력하면 작은 값부터 적용합니다.
 
+**Respawn Progress Width**와 **Respawn Progress Height**는 진행 바 프레임의 가로·세로 크기입니다.
+단위는 UMG UI 단위입니다. 기본 너비는 스코어보드의 `SB_ScoreSurface`와 같은 `940`이며, 기본 높이는 `17.94`입니다.
+**Respawn Progress Vertical Offset**은 바만 위아래로 옮깁니다. 기본값은 `16`이며 양수는 아래쪽입니다.
+`StartRespawnCountdown`이 다음 사망 화면을 초기화할 때 세 값을 적용합니다.
+
 ## 2026-11-12 사망 후 도착하는 개인 처치 알림
 
 `BPC_Life`는 처치자의 `possessed pawn`이 유효할 때만 `Client_ShowKillMessage`를 보냅니다.

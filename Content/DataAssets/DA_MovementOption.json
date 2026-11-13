@@ -2,7 +2,7 @@
 	"maxSpeed": 1600,
 	"startSpeed": 900,
 	"timeRate": 0.29999999999999999,
-	"death Force": 0,
+	"death Force": 100000,
 	"footStepSound": "/Script/Engine.SoundCue'/Game/QuakeLike_Base/SDM/SoundPack_SDM/Cue/Footstep.Footstep'",
 	"footStepInterval": 5,
 	"footStepVolume": 1,
