@@ -6,6 +6,14 @@
 #include "Components/HorizontalBox.h"
 #include "Components/HorizontalBoxSlot.h"
 #include "Components/SizeBox.h"
+#include "Components/Button.h"
+#include "Components/ButtonSlot.h"
+#include "Components/VerticalBox.h"
+#include "Components/VerticalBoxSlot.h"
+#include "CommonTextBlock.h"
+#include "UI/ReusableStyleHost.h"
+#include "Brushes/SlateColorBrush.h"
+#include "Brushes/SlateNoResource.h"
 #include "Engine/Font.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
@@ -296,16 +304,67 @@ TSharedRef<SWidget> ULanguageSelector::RebuildWidget()
     {
         UHorizontalBox* Row = WidgetTree->ConstructWidget<UHorizontalBox>();
         WidgetTree->RootWidget = Row;
-        Label = WidgetTree->ConstructWidget<UTextBlock>();
-        Label->SetText(ULanguageLibrary::Text(TEXT("Settings_Language")));
-        FSlateFontInfo Font = Label->GetFont(); Font.Size = 20; Label->SetFont(ULanguageLibrary::ResolveFont(Font));
-        UHorizontalBoxSlot* Left = Row->AddChildToHorizontalBox(Label);
-        Left->SetSize(FSlateChildSize(ESlateSizeRule::Fill)); Left->SetVerticalAlignment(VAlign_Center); Left->SetPadding(FMargin(14, 8));
-        USizeBox* Size = WidgetTree->ConstructWidget<USizeBox>(); Size->SetWidthOverride(200); Size->SetMinDesiredHeight(40);
-        Combo = WidgetTree->ConstructWidget<UComboBoxString>(); Size->AddChild(Combo);
-        Row->AddChildToHorizontalBox(Size)->SetPadding(FMargin(8));
-        Combo->OnGenerateWidgetEvent.BindDynamic(this, &ThisClass::GenerateOption);
-        Combo->OnSelectionChanged.AddDynamic(this, &ThisClass::Selected);
+        if (bInlineChoices)
+        {
+            UVerticalBox* Layout = WidgetTree->ConstructWidget<UVerticalBox>();
+            WidgetTree->RootWidget = Layout;
+            Layout->AddChildToVerticalBox(Row)->SetHorizontalAlignment(HAlign_Center);
+            auto AddChoice = [this, Row](const TCHAR* Name, TObjectPtr<UButton>& Button, TObjectPtr<UTextBlock>& Text)
+            {
+                Button = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), FName(Name));
+                FButtonStyle Style;
+                Style.SetNormal(FSlateNoResource()).SetHovered(FSlateColorBrush(FLinearColor(1, 1, 1, 0.08f)))
+                    .SetPressed(FSlateColorBrush(FLinearColor(1, 1, 1, 0.15f)));
+                Style.SetNormalPadding(FMargin(0)).SetPressedPadding(FMargin(0));
+                Button->SetStyle(Style);
+                Text = WidgetTree->ConstructWidget<UTextBlock>();
+                FSlateFontInfo Font = Text->GetFont(); Font.Size = 22;
+                Text->SetFont(ULanguageLibrary::ResolveFont(Font));
+                Text->SetJustification(ETextJustify::Center);
+                UButtonSlot* Content = CastChecked<UButtonSlot>(Button->AddChild(Text));
+                Content->SetPadding(FMargin(12, 8));
+                Content->SetHorizontalAlignment(HAlign_Center);
+                UHorizontalBoxSlot* Slot = Row->AddChildToHorizontalBox(Button);
+                Slot->SetSize(FSlateChildSize(ESlateSizeRule::Automatic));
+                Slot->SetPadding(FMargin(4, 0));
+            };
+            AddChoice(TEXT("Language_Korean"), KoreanButton, KoreanLabel);
+            AddChoice(TEXT("Language_English"), EnglishButton, EnglishLabel);
+            KoreanButton->OnClicked.AddDynamic(this, &ThisClass::SelectKorean);
+            EnglishButton->OnClicked.AddDynamic(this, &ThisClass::SelectEnglish);
+        }
+        else
+        {
+            if (bShowSectionHeading)
+            {
+                UVerticalBox* Section = WidgetTree->ConstructWidget<UVerticalBox>();
+                WidgetTree->RootWidget = Section;
+                UCommonTextBlock* Heading = WidgetTree->ConstructWidget<UCommonTextBlock>();
+                if (HeadingStyle) Heading->SetStyle(HeadingStyle);
+                Label = Heading;
+                // Match the existing settings list category's 75-unit inset.
+                Section->AddChildToVerticalBox(Heading)->SetPadding(FMargin(75, 18, 14, 4));
+                UVerticalBoxSlot* Content = Section->AddChildToVerticalBox(Row);
+                Content->SetHorizontalAlignment(HAlign_Right);
+                Content->SetPadding(FMargin(14, 0, 14, 8));
+            }
+            else
+            {
+                Label = WidgetTree->ConstructWidget<UTextBlock>();
+                FSlateFontInfo Font = Label->GetFont(); Font.Size = 20;
+                Label->SetFont(ULanguageLibrary::ResolveFont(Font));
+                UHorizontalBoxSlot* Left = Row->AddChildToHorizontalBox(Label);
+                Left->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+                Left->SetVerticalAlignment(VAlign_Center); Left->SetPadding(FMargin(14, 8));
+            }
+            Label->SetText(ULanguageLibrary::Text(TEXT("Settings_Language")));
+            USizeBox* Size = WidgetTree->ConstructWidget<USizeBox>();
+            Size->SetMinDesiredWidth(200); Size->SetMinDesiredHeight(40);
+            Combo = WidgetTree->ConstructWidget<UStyleableComboBoxString>(); Size->AddChild(Combo);
+            Row->AddChildToHorizontalBox(Size)->SetPadding(FMargin(8, 4));
+            Combo->OnGenerateWidgetEvent.BindDynamic(this, &ThisClass::GenerateOption);
+            Combo->OnSelectionChanged.AddDynamic(this, &ThisClass::Selected);
+        }
     }
     return Super::RebuildWidget();
 }
@@ -331,21 +390,47 @@ void ULanguageSelector::NativeDestruct()
 }
 void ULanguageSelector::Refresh()
 {
-    if (!IsValid(Combo) || !IsValid(Label)) return;
     ULanguageSubsystem* Language = GetGameInstance() ? GetGameInstance()->GetSubsystem<ULanguageSubsystem>() : nullptr;
     if (!Language) return;
     TGuardValue<bool> Guard(Refreshing, true);
-    Label->SetText(ULanguageLibrary::Text(TEXT("Settings_Language")));
-    Options = Language->GetEnabledLanguages(); Combo->ClearOptions();
-    for (const FLanguageRow& Row : Options) Combo->AddOption(Row.CultureCode);
-    Combo->SetSelectedOption(Language->GetCurrentLanguageCode());
+    if (Label) Label->SetText(ULanguageLibrary::Text(TEXT("Settings_Language")));
+    Options = Language->GetEnabledLanguages();
+    if (Combo)
+    {
+        if (ComboStyle) CastChecked<UStyleableComboBoxString>(Combo)->ApplyBlueprintStyle(*ComboStyle->GetDefaultObject<UBlueprintComboStyle>());
+        Combo->ClearOptions();
+        for (const FLanguageRow& Row : Options) Combo->AddOption(Row.CultureCode);
+        Combo->SetSelectedOption(Language->GetCurrentLanguageCode());
+    }
+    auto RefreshChoice = [this, Language](UButton* Button, UTextBlock* Text, const TCHAR* Code)
+    {
+        if (!Button || !Text) return;
+        const FLanguageRow* Row = Options.FindByPredicate([Code](const FLanguageRow& R) { return R.CultureCode == Code; });
+        Button->SetIsEnabled(Row != nullptr);
+        Text->SetText(Row ? Row->DisplayName : FText::AsCultureInvariant(Code));
+        Text->SetColorAndOpacity(Language->GetCurrentLanguageCode() == Code
+            ? FLinearColor(1.0f, 0.783538f, 0.138432f) : FLinearColor::White);
+        Text->SetFont(ULanguageLibrary::ResolveFont(Text->GetFont()));
+    };
+    RefreshChoice(KoreanButton, KoreanLabel, TEXT("ko"));
+    RefreshChoice(EnglishButton, EnglishLabel, TEXT("en"));
     InvalidateLayoutAndVolatility();
 }
 void ULanguageSelector::Selected(FString Item, ESelectInfo::Type SelectionType)
 {
     if (Refreshing || SelectionType == ESelectInfo::Direct) return;
+    ApplyChoice(Item);
+}
+void ULanguageSelector::ApplyChoice(const FString& Code)
+{
     if (UGameInstance* GI = GetGameInstance()) if (ULanguageSubsystem* Language = GI->GetSubsystem<ULanguageSubsystem>())
-        if (!Language->SetLanguage(Item)) Refresh();
+        if (!Language->SetLanguage(Code)) Refresh();
+}
+void ULanguageSelector::SelectKorean() { ApplyChoice(TEXT("ko")); }
+void ULanguageSelector::SelectEnglish() { ApplyChoice(TEXT("en")); }
+void ULanguageSelector::SetSettingsTab(int32 TabIndex)
+{
+    SetVisibility(TabIndex == 0 ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 }
 UWidget* ULanguageSelector::GenerateOption(FString Item)
 {

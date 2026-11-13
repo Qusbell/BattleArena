@@ -25,6 +25,7 @@ flowchart LR
 - `ALobbyGameMode`, `ALobbyGameState`, `ALobbyPlayerController`, `ALobbyPlayerState`는 로비 참가자/방장/RPC 상태를 담당합니다. 경기 Controller와 동일하다고 가정하지 않습니다.
 - `AMyReconnectionGameMode`와 `AMyPlayerController`는 재접속과 플레이 준비 보고의 native 경계입니다. `BP_QuakeGameMode`의 native 부모이며, `BP_MultiplayerAIGameMode`/`BP_QuakeAIGameMode`는 그 Blueprint 파생입니다.
 - 두 AI GameMode의 EventGraph에서 `Mark Server World Ready` 호출 노드를 확인했습니다. 로딩 Coordinator의 서버 준비와 클라이언트 오버레이 제거 후 보고를 구분합니다.
+- 2026-11-12: 로딩 화면은 새 전환 시작 시 이전 페이드아웃을 취소하며, PostLoadMap은 해당 GameInstance의 월드만 처리합니다. [병합 후 안전성 점검](../systems/MergeRuntimeSafety-2026-11-12.md)에 BP 점검과 검증 범위를 기록합니다.
 - `AMatchRulesInfo`/`UMatchRulesSubsystem`과 GameMode/GameState는 경기 시간·종료 조건을 연결합니다. 실제 타이머 개시 시점은 [기존 준비 보고 문서](../../../Docs/ClientGameplayReady.md)를 함께 읽습니다.
 
 근거: `Source/ShootingArena/Public/Loading/`, `Private/Loading/`, `Public/MyReconnectionGameMode.h`,
@@ -110,6 +111,8 @@ OneWayTeleportActor, JumpPadFlightComponent/CommonSettings는 별도 이동 기�
 [이동·월드 카탈로그](catalogs/Movement-World.md). 맵별 충돌/내비메시 실제 배치 검증은 기존 수정 이력과 구분합니다.
 
 ## UI·오디오·카메라
+
+2026-11-13 UI 부분 갱신: 언어 선택은 메인 메뉴 나가기 아래의 한국어/English 바로가기와 공유 설정창의 게임 플레이 탭 목록에 있습니다. `ULanguageSelector`가 같은 GameInstance subsystem에 구독하며 탭 변경·즉시 적용을 연결합니다. 게임 플레이 기본값 복원은 언어를 유지하고 윤곽선·조준 시 닉네임을 켜기로 복원합니다. 공통 버튼은 MinWidth를 고정 너비로 사용하지 않아 번역 문구에 따라 늘어납니다. [언어 UI 배치와 검증 범위](../systems/LanguageSystem.md)를 참조합니다.
 
 - 2026-11-11: `ULanguageSubsystem`은 클라이언트 GameInstance 수명으로 Culture와 사용자 설정 저장을 관리합니다. 메인·일시정지 메뉴의 공유 `WBP_SettingsMenu`에 `ULanguageSelector`를 연결했으며 `DT_Language → Font`, `ST_Game + PO/locres → FText`를 사용합니다. 기존 String 표시 경계는 직렬화한 FText를 복원합니다. 2026-11-12 main 통합에서 로딩 WBP와 그 하위 글꼴은 사용자 요청으로 언어 패치에서 제외했으며 로딩의 언어 초기화 의존성과 StatusText 번역 연결을 제거했습니다. `BP_QuakePlayerState.GetDisplayName`은 표시 전용 어댑터이며 ID/점수 저장에 새로 사용하지 않습니다. 새 언어 설정 복제/RPC는 없습니다. [현행 언어 시스템과 사용자 검증 항목](../systems/LanguageSystem.md)을 참조합니다.
 

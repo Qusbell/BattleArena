@@ -68,6 +68,9 @@ void ULoadingScreenSubsystem::HandlePreLoadMap(const FWorldContext& WorldContext
 
 void ULoadingScreenSubsystem::HandlePostLoadMap(UWorld* LoadedWorld)
 {
+	// PostLoadMap is process-wide; another client's world must not consume our
+	// startup skip or restore our BGM while this instance is still loading.
+	if (IsRunningDedicatedServer() || !LoadedWorld || LoadedWorld->GetGameInstance() != GetGameInstance()) return;
 	if (bSkipStartupOverlay)
 	{
 		// 오버레이가 없으므로 BGMSubsystem 이 PreLoadMap 에서 켠 로딩 볼륨 상태를 직접 되돌립니다.
@@ -78,7 +81,7 @@ void ULoadingScreenSubsystem::HandlePostLoadMap(UWorld* LoadedWorld)
 		}
 		return;
 	}
-	if (!bTransitionActive || IsRunningDedicatedServer() || !LoadedWorld || LoadedWorld->GetGameInstance() != GetGameInstance()) return;
+	if (!bTransitionActive) return;
 	UE_LOG(LogTemp, Log, TEXT("[Loading] PostLoadMap: %s"), LoadedWorld ? *LoadedWorld->GetName() : TEXT("None"));
 	SecondsSincePostLoad = 0.0f;
 	ShowLoadingScreen(TEXT("게임 준비 중..."));
@@ -200,6 +203,16 @@ void ULoadingScreenSubsystem::ShowLoadingScreen(const FString& StatusText)
 {
 	CurrentStatus = StatusText;
 	if (IsRunningDedicatedServer() || GetGameInstance()->IsDedicatedServerInstance()) return;
+	// A new transition can begin before the previous overlay finishes fading.
+	// Cancel that removal, otherwise Tick would release the new transition's
+	// input lock and BGM state when the old fade reaches zero.
+	if (bFadingOut)
+	{
+		bFadingOut = false;
+		bFadingIn = false;
+		FadeElapsedSeconds = 0.0f;
+		if (LoadingOverlay.IsValid()) LoadingOverlay->SetRenderOpacity(1.0f);
+	}
 	if (!LoadingOverlay.IsValid())
 	{
 		// Cooked via DirectoriesToAlwaysCook (DefaultGame.ini); a missing class falls back to the text-only overlay.

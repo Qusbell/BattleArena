@@ -186,8 +186,9 @@ void UReusableStyleHost::ApplyStyle()
         {
             Bounds->SetMinDesiredWidth(Style->MinWidth);
             Bounds->SetMinDesiredHeight(Style->MinHeight);
-            if (Style->MinWidth > 0) Bounds->SetWidthOverride(Style->MinWidth);
-            else Bounds->ClearWidthOverride();
+            // MinWidth is a lower bound. Translated text and its padding must
+            // remain free to increase the button's desired width.
+            Bounds->ClearWidthOverride();
         }
     }
     if (USlider* Slider = Cast<USlider>(Content); Slider && SliderStyle)

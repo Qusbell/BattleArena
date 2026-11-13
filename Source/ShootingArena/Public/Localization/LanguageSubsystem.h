@@ -10,6 +10,9 @@
 
 class UFont;
 class UTextBlock;
+class UButton;
+class UBlueprintComboStyle;
+class UCommonTextStyle;
 
 USTRUCT(BlueprintType)
 struct SHOOTINGARENA_API FLanguageRow : public FTableRowBase
@@ -76,16 +79,32 @@ UCLASS()
 class SHOOTINGARENA_API ULanguageSelector : public UUserWidget
 {
     GENERATED_BODY()
+public:
+    /** Compact Korean/English shortcuts used below Quit on the main menu. */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Language|Appearance") bool bInlineChoices = false;
+    /** A separate Language heading inside the gameplay settings list. */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Language|Appearance") bool bShowSectionHeading = false;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Language|Appearance") TSubclassOf<UBlueprintComboStyle> ComboStyle;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Language|Appearance") TSubclassOf<UCommonTextStyle> HeadingStyle;
+    UFUNCTION(BlueprintCallable, Category="Language") void SetSettingsTab(int32 TabIndex);
 protected:
     virtual TSharedRef<SWidget> RebuildWidget() override;
     virtual void NativeConstruct() override;
     virtual void NativeDestruct() override;
 private:
+    friend class FLanguageSelectorPlacementTest;
     UFUNCTION() void Refresh();
     UFUNCTION() void Selected(FString Item, ESelectInfo::Type SelectionType);
     UFUNCTION() UWidget* GenerateOption(FString Item);
+    UFUNCTION() void SelectKorean();
+    UFUNCTION() void SelectEnglish();
+    void ApplyChoice(const FString& Code);
     UPROPERTY(Transient) TObjectPtr<UComboBoxString> Combo;
     UPROPERTY(Transient) TObjectPtr<UTextBlock> Label;
+    UPROPERTY(Transient) TObjectPtr<UButton> KoreanButton;
+    UPROPERTY(Transient) TObjectPtr<UButton> EnglishButton;
+    UPROPERTY(Transient) TObjectPtr<UTextBlock> KoreanLabel;
+    UPROPERTY(Transient) TObjectPtr<UTextBlock> EnglishLabel;
     TWeakObjectPtr<ULanguageSubsystem> BoundLanguage;
     TArray<FLanguageRow> Options;
     bool Refreshing = false;
