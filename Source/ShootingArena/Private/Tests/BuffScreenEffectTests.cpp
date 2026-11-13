@@ -55,6 +55,8 @@ bool FBuffScreenEffectTest::RunTest(const FString& Parameters)
 	Settings->PulsePeriod = 4.0f;
 	Settings->Color1 = FLinearColor(0.05f, 0.3f, 0.9f);
 	Settings->ElectricIntensity = 0.3f;
+	Settings->ElectricFrequency = 7.0f;
+	Settings->ElectricCoverage = 0.6f;
 	Settings->BurstIntensity = 1.0f;
 	Settings->BurstSeconds = 0.5f;
 	Buff->Presentation.Tag = FGameplayTag::RequestGameplayTag(TEXT("Buff.Atk"));
@@ -99,6 +101,10 @@ bool FBuffScreenEffectTest::RunTest(const FString& Parameters)
 		Widget->ElectricMID->K2_GetVectorParameterValue(TEXT("Color1")).Equals(Settings->Color1));
 	TestTrue(TEXT("Electric inner glow receives the secondary colour"),
 		Widget->ElectricMID->K2_GetVectorParameterValue(TEXT("Color2")).Equals(Settings->Color2));
+	TestTrue(TEXT("Designer frequency reaches the electric material"),
+		FMath::IsNearlyEqual(Widget->ElectricMID->K2_GetScalarParameterValue(TEXT("FlickerFPS")), Settings->ElectricFrequency));
+	TestTrue(TEXT("Designer coverage reaches the electric material"),
+		FMath::IsNearlyEqual(Widget->ElectricMID->K2_GetScalarParameterValue(TEXT("CoverageScale")), Settings->ElectricCoverage));
 	UMaterialInstanceDynamic* OriginalElectricMID = Widget->ElectricMID;
 	auto Burst = [Widget] { return Widget->ElectricMID->K2_GetScalarParameterValue(TEXT("Burst")); };
 	auto Intensity = [Widget] { return Widget->ElectricMID->K2_GetScalarParameterValue(TEXT("Intensity")); };
