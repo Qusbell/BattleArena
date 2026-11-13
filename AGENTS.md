@@ -19,6 +19,10 @@
 - plan 모드 사용 시, MCP가 사용 가능한 상태인지 확인하세요.
 - Blueprint 조작은 MCP로만 접근하고, 만약 MCP에 접근할 수 없다면 우회하지 말고 사용자에게 실패 및 그 이유를 보고하세요.
 
+## PIE 실행 모드
+- 이 프로젝트의 게임을 PIE에서 실행하거나 검증할 때는 `Net Mode`를 반드시 `Play As Client`로 설정합니다. 레벨을 직접 열어 시작하는 경우에도 같은 설정을 사용합니다.
+- `Play Standalone`과 `Play As Listen Server`에서는 게임이 정상적으로 동작하지 않으므로 게임 동작 검증에 사용하지 않습니다.
+
 ## Live Coding
 - Editor를 켠 상태로 Live Coding 사용 시 Editor가 영구 정지하는 문제가 반복적으로 관찰되고 있습니다.
 - Live Coding을 사용했다면 모든 작업을 마친 이후 Editor 상태를 확인하고, `응답 없음` 상태가 지속된다면 임의로 Editor를 종료해도 좋습니다. 사용자의 작업물은 Git으로 보존되며 현 세션에서의 변경점은 없습니다.
