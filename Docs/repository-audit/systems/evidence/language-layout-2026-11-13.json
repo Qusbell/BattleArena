@@ -1,0 +1,162 @@
+{
+  "date": "2026-11-13",
+  "base_commit": "d1b6473ffdf95d7849335559c55653d4dfc34732",
+  "modified_blueprints": [
+    "/Game/QuakeLike_1_0/GameFlow/UI/WBP_MainMenu_SDM",
+    "/Game/QuakeLike_1_0/GameProgressFlow/WBP_SettingsMenu"
+  ],
+  "blueprint_compile": "Both UpToDate in restarted Editor",
+  "existing_exec_pin_comparison": {
+    "existing_exec_pins": 544,
+    "changed": [
+      {
+        "graph": "EventGraph",
+        "node": "K2Node_SwitchInteger_0",
+        "pin": "0"
+      },
+      {
+        "graph": "SelectTab",
+        "node": "K2Node_VariableSet_1",
+        "pin": "then"
+      },
+      {
+        "graph": "SelectTab",
+        "node": "K2Node_SwitchInteger_0",
+        "pin": "execute"
+      }
+    ]
+  },
+  "builds": {
+    "editor": {
+      "result": "Succeeded",
+      "incremental_seconds": 10.86
+    },
+    "shipping": {
+      "result": "Succeeded",
+      "incremental_seconds": 20.23
+    }
+  },
+  "tests": [
+    {
+      "result": "Success",
+      "name": "ButtonContentSizing",
+      "path": "ShootingArena.Localization.ButtonContentSizing"
+    },
+    {
+      "result": "Success",
+      "name": "LoadingWidgetExcluded",
+      "path": "ShootingArena.Localization.LoadingWidgetExcluded"
+    },
+    {
+      "result": "Success",
+      "name": "MalformedDisplayString",
+      "path": "ShootingArena.Localization.MalformedDisplayString"
+    },
+    {
+      "result": "Success",
+      "name": "ParticipantDisplayName",
+      "path": "ShootingArena.Localization.ParticipantDisplayName"
+    },
+    {
+      "result": "Success",
+      "name": "ScreenLayoutPreview",
+      "path": "ShootingArena.Localization.ScreenLayoutPreview"
+    },
+    {
+      "result": "Success",
+      "name": "SelectorPlacementAndImmediateApply",
+      "path": "ShootingArena.Localization.SelectorPlacementAndImmediateApply"
+    },
+    {
+      "result": "Success",
+      "name": "StartupSelection",
+      "path": "ShootingArena.Localization.StartupSelection"
+    },
+    {
+      "result": "Success",
+      "name": "TextHistoryAndNickname",
+      "path": "ShootingArena.Localization.TextHistoryAndNickname"
+    }
+  ],
+  "screens": [
+    {
+      "file": "Saved/Diagnostics/LanguageLayout/main-ko.png",
+      "sha256": "5fb212094bd0b901b188edb61303d40d142e204a07893c78e9d1fa3e4f51a66a",
+      "inspected": true
+    },
+    {
+      "file": "Saved/Diagnostics/LanguageLayout/main-en.png",
+      "sha256": "25a21df1917d029b11b812d3cf78f019413f20291375df345bb6d54d8f3e0636",
+      "inspected": true
+    },
+    {
+      "file": "Saved/Diagnostics/LanguageLayout/settings-gameplay-ko.png",
+      "sha256": "32e1a37736cd20aa729b7a1c0bcc45b6ca3d1d3cc50120a7e74e8b4b6f9d7981",
+      "inspected": true
+    },
+    {
+      "file": "Saved/Diagnostics/LanguageLayout/settings-gameplay-en.png",
+      "sha256": "482d9bb6239eef80b7bfec432d8ba194d5b226e63acc15afddb391203c82b397",
+      "inspected": true
+    },
+    {
+      "file": "Saved/Diagnostics/LanguageLayout/settings-control-en.png",
+      "sha256": "9c41e0ad4adf08b855bdc3006092428796228e9c49801ad606b5a05c95b8475e",
+      "inspected": true
+    }
+  ],
+  "preview_scope": "Initialized designer WidgetTrees and existing SelectTab; no screen Construct, BeginPlay, PIE, network connection or media playback",
+  "editor_map": "/Game/QuakeLike_1_0/GameFlow/MainLevel/TestMainMenu_Level",
+  "dirty_content": [],
+  "dirty_maps": [],
+  "background_throttle_restored": true,
+  "preserved_existing_user_changes": [
+    "Content/JsonAssetSync/DA_JsonApplyRegistry.uasset",
+    "Content/DataAssets/DA_InitialWeaponLoadout.json",
+    "Content/DataTables/DT_Language.json",
+    "ExternalData/JsonAssetSyncManifest.json",
+    "Previous loading transition and BP struct safety repairs"
+  ],
+  "limitations": [
+    "Physical mouse/keyboard/controller interaction remains user verification",
+    "No gameplay, multiplayer, travel, or packaged-runtime validation"
+  ],
+  "backup_directory": "C:\\Users\\USER\\Desktop\\codex\\Backups\\ShootingArena-language-layout-20261112",
+  "gameplay_defaults_adjustment": {
+    "date": "2026-11-13",
+    "asset": "/Game/QuakeLike_1_0/GameProgressFlow/WBP_SettingsMenu",
+    "behavior": "Preserve language; restore outline and aim nickname to current BP defaults (both true) through existing apply/save/visual handlers",
+    "removed_api": "ULanguageSelector::ResetToDefaultLanguage",
+    "changed_existing_pin": "EventGraph.K2Node_SwitchInteger_0.0",
+    "removed_nodes": ["K2Node_VariableGet_65", "K2Node_CallFunction_130"],
+    "added_nodes": ["K2Node_CallFunction_131:SetOutlineSetting(true)", "K2Node_CallFunction_132:SetAimNameSetting(true)"],
+    "editor_build": "Succeeded; 72.61 seconds",
+    "shipping_build": "Succeeded; 75.89 seconds",
+    "blueprint_compile": "UpToDate before and after native rebuild/restart",
+    "automation": "All nine ShootingArena.Localization tests passed; includes GameplayDefaultsPreserveLanguage",
+    "regression_scope": "Actual Btn_Default OnClicked on initialized BP designer tree; ko/en unchanged, both BP values restored, temporary-slot SaveGame readback, active toggle colors, repeated reset",
+    "limitations": "No BP game Init, screen Construct, BeginPlay, PIE, actual player presentation or packaged execution",
+    "backup_directory": "C:/Users/USER/Desktop/codex/Backups/ShootingArena-gameplay-reset-20261113"
+  },
+  "main_menu_spacing_adjustment": {
+    "date": "2026-11-13",
+    "translation_y": 120,
+    "layout_padding_top": 0,
+    "button_slots": "Automatic instead of Fill",
+    "alignment": "Centered, content-sized group",
+    "preserved": "Existing four menu button layout and input hit geometry follow the render transform",
+    "builds": {
+      "editor": {
+        "result": "Succeeded",
+        "incremental_seconds": 6.83
+      },
+      "shipping": {
+        "result": "Succeeded",
+        "incremental_seconds": 22.15
+      }
+    },
+    "final_test": "ShootingArena.Localization.ScreenLayoutPreview passed; original eight-test suite predates this spacing-only adjustment",
+    "visual_verification": "Main menu ko/en offscreen previews; unchanged menu positions, language row moved down, reduced gap",
+    "backup_directory": "C:\\Users\\USER\\Desktop\\codex\\Backups\\ShootingArena-language-spacing-20261113"
+  }
+}

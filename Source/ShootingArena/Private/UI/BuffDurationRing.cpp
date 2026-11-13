@@ -1,4 +1,5 @@
 #include "UI/BuffDurationRing.h"
+#include "Localization/LanguageSubsystem.h"
 
 #include "Components/Image.h"
 #include "Components/Overlay.h"
@@ -309,7 +310,7 @@ void UBuffDurationRingWidget::ApplyStatus(double Remaining, float Progress, bool
 	const int32 Seconds = FMath::CeilToInt(FMath::Min(Remaining, static_cast<double>(MAX_int32 - 1)));
 	const FText Number = FText::AsNumber(Seconds);
 	const FText Text = Style->bShowSecondsSuffix
-		? FText::Format(NSLOCTEXT("Buff", "SecondsRemaining", "{0}s"), Number) : Number;
+		? FText::Format(ULanguageLibrary::Text(TEXT("HUD_Seconds")), Number) : Number;
 	if (!TimeText->GetText().EqualTo(Text)) TimeText->SetText(Text);
 	const FSlateColor TimeColor(GetTimeDisplayColor(Remaining));
 	if (TimeText->GetColorAndOpacity() != TimeColor) TimeText->SetColorAndOpacity(TimeColor);

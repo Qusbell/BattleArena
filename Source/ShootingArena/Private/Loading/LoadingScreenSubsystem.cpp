@@ -20,7 +20,7 @@
 void ULoadingScreenSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
-	if (IsRunningDedicatedServer())
+	if (IsRunningDedicatedServer() || GetGameInstance()->IsDedicatedServerInstance())
 	{
 		UE_LOG(LogTemp, Log, TEXT("[Loading] Screen subsystem skipped on dedicated server."));
 		return;
@@ -68,6 +68,9 @@ void ULoadingScreenSubsystem::HandlePreLoadMap(const FWorldContext& WorldContext
 
 void ULoadingScreenSubsystem::HandlePostLoadMap(UWorld* LoadedWorld)
 {
+	// PostLoadMap is process-wide; another client's world must not consume our
+	// startup skip or restore our BGM while this instance is still loading.
+	if (IsRunningDedicatedServer() || !LoadedWorld || LoadedWorld->GetGameInstance() != GetGameInstance()) return;
 	if (bSkipStartupOverlay)
 	{
 		// 오버레이가 없으므로 BGMSubsystem 이 PreLoadMap 에서 켠 로딩 볼륨 상태를 직접 되돌립니다.
@@ -78,7 +81,7 @@ void ULoadingScreenSubsystem::HandlePostLoadMap(UWorld* LoadedWorld)
 		}
 		return;
 	}
-	if (!bTransitionActive || IsRunningDedicatedServer() || !LoadedWorld || LoadedWorld->GetGameInstance() != GetGameInstance()) return;
+	if (!bTransitionActive) return;
 	UE_LOG(LogTemp, Log, TEXT("[Loading] PostLoadMap: %s"), LoadedWorld ? *LoadedWorld->GetName() : TEXT("None"));
 	SecondsSincePostLoad = 0.0f;
 	ShowLoadingScreen(TEXT("게임 준비 중..."));
@@ -87,18 +90,19 @@ void ULoadingScreenSubsystem::HandlePostLoadMap(UWorld* LoadedWorld)
 
 void ULoadingScreenSubsystem::BeginExternalLoading(const FString& StatusText)
 {
-	if (IsRunningDedicatedServer()) return;
-	if (UGameInstance* GameInstance = GetGameInstance())
-	{
-		if (UBGMSubsystem* BGM = GameInstance->GetSubsystem<UBGMSubsystem>()) BGM->BeginLoadingBGM();
-	}
+	UGameInstance* GameInstance = GetGameInstance();
+	if (!IsValid(GameInstance) || IsRunningDedicatedServer() || GameInstance->IsDedicatedServerInstance()) return;
+	UWorld* World = GameInstance->GetWorld();
+	// A pending connection/menu callback can arrive while its world is closing.
+	if (World && (!IsValid(World) || World->bIsTearingDown)) return;
+	if (UBGMSubsystem* BGM = GameInstance->GetSubsystem<UBGMSubsystem>()) BGM->BeginLoadingBGM();
 	UE_LOG(LogTemp, Log, TEXT("[Loading] External loading requested."));
 	bTransitionActive = true;
 	bExternalLoadingRequested = true;
 	GameplayReadyTransitionWorld.Reset();
 	bSawCoordinator = false;
 	SecondsSincePostLoad = 0.0f;
-	ExternalLoadingStartWorld = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
+	ExternalLoadingStartWorld = World;
 	ShowLoadingScreen(StatusText);
 	ApplyInputLock();
 }
@@ -198,14 +202,27 @@ void ULoadingScreenSubsystem::UpdateLoadingState()
 
 void ULoadingScreenSubsystem::ShowLoadingScreen(const FString& StatusText)
 {
+	UGameInstance* GameInstance = GetGameInstance();
+	if (!IsValid(GameInstance) || IsRunningDedicatedServer() || GameInstance->IsDedicatedServerInstance()) return;
+	UWorld* World = GameInstance->GetWorld();
+	if (World && (!IsValid(World) || World->bIsTearingDown)) return;
 	CurrentStatus = StatusText;
-	if (IsRunningDedicatedServer()) return;
+	// A new transition can begin before the previous overlay finishes fading.
+	// Cancel that removal, otherwise Tick would release the new transition's
+	// input lock and BGM state when the old fade reaches zero.
+	if (bFadingOut)
+	{
+		bFadingOut = false;
+		bFadingIn = false;
+		FadeElapsedSeconds = 0.0f;
+		if (LoadingOverlay.IsValid()) LoadingOverlay->SetRenderOpacity(1.0f);
+	}
 	if (!LoadingOverlay.IsValid())
 	{
 		// Cooked via DirectoriesToAlwaysCook (DefaultGame.ini); a missing class falls back to the text-only overlay.
 		static const TCHAR* LoadingWidgetPath = TEXT("/Game/QuakeLike_1_0/GameFlow/UI/Loading/WBP_LoadingScreen_Ref.WBP_LoadingScreen_Ref_C");
 		UClass* WidgetClass = LoadClass<UUserWidget>(nullptr, LoadingWidgetPath);
-		LoadingWidget = WidgetClass && GetGameInstance() ? CreateWidget<UUserWidget>(GetGameInstance(), WidgetClass) : nullptr;
+		LoadingWidget = WidgetClass ? CreateWidget<UUserWidget>(GameInstance, WidgetClass) : nullptr;
 		if (!LoadingWidget)
 		{
 			UE_LOG(LogTemp, Warning, TEXT("[Loading] Could not create %s; using the text-only overlay."), LoadingWidgetPath);
@@ -216,7 +233,7 @@ void ULoadingScreenSubsystem::ShowLoadingScreen(const FString& StatusText)
 			: StaticCastSharedRef<SWidget>(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)
 			[
 				SNew(STextBlock)
-				.Text_Lambda([this]() { return GetStatusText(); })
+				.Text_UObject(this, &ThisClass::GetStatusText)
 				.Font(FCoreStyle::GetDefaultFontStyle("Regular", 28))
 				.ColorAndOpacity(FLinearColor(0.92f, 0.72f, 0.25f, 1.0f))
 			]);
@@ -234,7 +251,7 @@ void ULoadingScreenSubsystem::ShowLoadingScreen(const FString& StatusText)
 				Content
 			];
 	}
-	UGameViewportClient* ViewportClient = GetGameInstance() ? GetGameInstance()->GetGameViewportClient() : nullptr;
+	UGameViewportClient* ViewportClient = GameInstance->GetGameViewportClient();
 	if (ViewportClient && !bOverlayAddedToViewport)
 	{
 		LoadingOverlay->SetRenderOpacity(0.0f);
@@ -343,5 +360,5 @@ void ULoadingScreenSubsystem::ReleaseInputLock()
 
 FText ULoadingScreenSubsystem::GetStatusText() const
 {
-	return FText::FromString(CurrentStatus);
+	return FText::AsCultureInvariant(CurrentStatus);
 }

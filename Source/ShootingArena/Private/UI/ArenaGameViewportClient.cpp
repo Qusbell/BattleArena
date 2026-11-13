@@ -1,6 +1,7 @@
 #include "UI/ArenaGameViewportClient.h"
 
 #include "UI/BuffDurationRing.h"
+#include "Localization/LanguageSubsystem.h"
 #include "CanvasItem.h"
 #include "CanvasTypes.h"
 #include "Engine/Canvas.h"
@@ -19,6 +20,7 @@ UArenaGameViewportClient::UArenaGameViewportClient()
 
 void UArenaGameViewportClient::Draw(FViewport* InViewport, FCanvas* SceneCanvas)
 {
+	ULanguageLibrary::RefreshViewportFonts(GetWorld());
 	FSubtitleManager* Manager = FSubtitleManager::GetSubtitleManager();
 	// Bind only during this viewport's draw. Leave any other subtitle display in charge.
 	if (!SceneCanvas || !SubtitleSettings || Manager->OnSetSubtitleText().IsBound())
@@ -43,6 +45,7 @@ void UArenaGameViewportClient::DrawSubtitleText(const FText& Text)
 	if (!SubtitleCanvas || !SubtitleSettings || !SubtitleSettings->bShowSubtitles || Text.IsEmpty() || !GEngine
 		|| GEngine->bSubtitlesForcedOff || !GEngine->bSubtitlesEnabled) return;
 	UFont* Font = GEngine->GetSubtitleFont();
+	Font = const_cast<UFont*>(Cast<UFont>(ULanguageLibrary::ResolveFont(FSlateFontInfo(Font, 24)).FontObject));
 	if (!Font) return;
 	const float Scale = FMath::IsFinite(SubtitleSettings->SubtitleTextScale)
 		? FMath::Clamp(SubtitleSettings->SubtitleTextScale, 0.25f, 4.0f) : 1.0f;
