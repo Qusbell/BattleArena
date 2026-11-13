@@ -1,4 +1,5 @@
 #include "Camera/ShooterNicknameWidget.h"
+#include "Localization/LanguageSubsystem.h"
 #include "UI/UIRecordingSettings.h"
 #include "Camera/ShooterNicknameComponent.h"
 #include "Blueprint/SlateBlueprintLibrary.h"
@@ -33,7 +34,8 @@ int32 UShooterNicknameWidget::NativePaint(const FPaintArgs& Args, const FGeometr
 		|| Component->GetDisplayedNickname().IsEmpty() || !FSlateApplication::IsInitialized()) return BaseLayer;
 	FSlateRenderer* Renderer = FSlateApplication::Get().GetRenderer();
 	if (!Renderer) return BaseLayer;
-	const FShooterNicknameStyle Style = Component->GetNicknameStyle();
+	FShooterNicknameStyle Style = Component->GetNicknameStyle();
+	Style.Font = ULanguageLibrary::ResolveFont(Style.Font);
 	if (!Style.bEnabled) return BaseLayer;
 	const UWorld* World = PC->GetWorld();
 	UGameViewportClient* Viewport = World ? World->GetGameViewport() : nullptr;

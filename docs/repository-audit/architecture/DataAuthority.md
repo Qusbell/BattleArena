@@ -7,6 +7,10 @@
 가로 색상 잔상은 비피격 갱신 시 `WB_HealthAnim`, 피격 시 `WB_DamageAnim`에서 재생됩니다.
 초기 불투명도는 숫자·색상 순서로 비피격 0.45·0.30, 피격 0.65·0.50입니다. 초기 블러는 모두 0입니다.
 
+2026-11-12 보강: 언어 리소스의 native 도구는 형식을 검증한 바이트만 생성합니다. `Scripts/Localization/CompileLocalization.py`가 전체 언어 검증 후 임시 파일과 복구용 파일을 준비하고 locres를 파일별로 교체합니다. 저장 오류 시 이미 교체한 파일을 복구하며, 원본은 계속 String Table·PO입니다. 잘못된 PO와 엔진 형식 인수는 실행 파일을 수정하기 전에 거부합니다.
+
+2026-11-13 현황: 언어 목록·기본 언어·Font는 `/Game/QuakeLike_1_0/Localization/DT_Language`이며 현재 JsonAssetSync Registry의 `Content/DataTables/DT_Language.json`과 연결되어 있습니다. 이 등록은 UI 배치 수정 시작 전에 이미 존재했으므로 보존했습니다. 번역 원문은 같은 폴더의 `ST_Game`, 번역은 `Content/Localization/Game`의 Dashboard archive/PO, 실행 산출물은 locres/locmeta입니다. 사용자 선택은 `GGameUserSettingsIni`의 `[Internationalization] Culture`이며 기존 PlayerSettings SaveGame과 분리합니다. 메인 메뉴 바로가기와 게임 플레이 탭은 같은 저장값을 사용합니다. 초기 이관 seed와 스크립트는 실행·편집 원본이 아니며 저장소 밖의 작업 백업으로 분리했습니다. `DT_MapData.json`의 기존 설명 4개는 `LOCTABLE` 참조로 바꾸었으므로 에셋만 수정하지 않습니다. `DT_MultiRules.Label`은 에셋 원본이고 `Unit` 내부 String은 유지합니다. [언어 시스템](../systems/LanguageSystem.md)을 참조합니다.
+
 2026-11-11 추가. `DA_KillMedalUISettings`는 `Content/DataAssets/DA_KillMedalUISettings.json`에 연결됩니다.
 메달과 처치 알림의 색상·불투명도·그림자를 DA에서 편집하고 저장하면 JsonAssetSync가 JSON에 내보냅니다.
 다음 Editor·런타임 시작은 이 JSON을 적용합니다. [킬 알림 스타일과 검증 방법](../systems/UIRecording.md#2026-11-11-킬-메달과-처치-알림-스타일)

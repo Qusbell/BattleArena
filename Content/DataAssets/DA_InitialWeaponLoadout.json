@@ -1,0 +1,18 @@
+{
+	"weaponTable": "/Game/QuakeLike_1_0/Data/Item/DropTable/DT_HeldItemTable.DT_HeldItemTable",
+	"defaultWeapons": [
+		{
+			"weaponName": "ID.Fist",
+			"weaponClass": "None",
+			"weaponData": "None"
+		}
+	],
+	"grantedWeapons": [
+		{
+			"weaponName": "ID.MachineGun",
+			"weaponClass": "None",
+			"weaponData": "None"
+		}
+	],
+	"bRestrictDefaultWeaponSelection": true
+}
