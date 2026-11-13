@@ -582,7 +582,10 @@ void UCompetitiveRankingHUD::NativeTick(const FGeometry& MyGeometry, float InDel
 				const auto TextLayout = Concatenate(Text->GetCachedGeometry().GetAccumulatedLayoutTransform(), ToRoot);
 				const FVector2D AnchorTop = TransformPoint(AnchorLayout, FVector2D(Anchor.GetLocalSize().X * 0.5, 0));
 				const FVector2D TextBottom = TransformPoint(TextLayout, FVector2D(Text->GetCachedGeometry().GetLocalSize().X * 0.5, Text->GetCachedGeometry().GetLocalSize().Y));
-				const FVector2D Offset = AnchorTop - TextBottom + FVector2D(0, bAboveScoreboard ? -16.0f : 16.0f);
+				const FVector2D DeathMessageOffset = ActiveStreakSettings
+					? ActiveStreakSettings->DeathMessageOffset : GetDefault<UKillMedalUISettings>()->DeathMessageOffset;
+				const FVector2D Offset = AnchorTop - TextBottom + FVector2D(0, bAboveScoreboard ? -16.0f : 16.0f)
+					+ (DeathMessageOffset.ContainsNaN() ? FVector2D::ZeroVector : DeathMessageOffset);
 				if (!Offset.ContainsNaN()) MessageArea->SetRenderTranslation(Offset);
 			}
 		}
