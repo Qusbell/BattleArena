@@ -90,6 +90,10 @@ struct FBuffGlowProfile
 	/** The owner's body is Owner No See, so this only shows to other players. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "발광", meta = (DisplayName = "몸 (3인칭)"))
 	FBuffGlowLook Body;
+
+	/** Lower bound on the body glow after the pulse, tint and rim have been combined. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "발광", meta = (DisplayName = "몸 발광 최저 세기", ClampMin = "0.0", ClampMax = "1.0"))
+	float BodyMinimumGlow = 0.2f;
 };
 
 /** Gun and third-person body overlay glow per buff. */

@@ -67,6 +67,9 @@ class SHOOTINGARENA_API UStyleableComboBoxString : public UComboBoxString
     GENERATED_BODY()
 public:
     void ApplyBlueprintStyle(const UBlueprintComboStyle& Style);
+    UPROPERTY(EditAnywhere, Category="Language") TMap<FString,FName> LocalizedOptions;
+protected:
+    virtual TSharedRef<SWidget> HandleGenerateWidget(TSharedPtr<FString> Item) const override;
 };
 
 /** Reusable WBP components contain StyleBounds + a NamedSlot called Content.

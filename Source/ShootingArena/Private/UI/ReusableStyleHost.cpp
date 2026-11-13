@@ -1,4 +1,5 @@
 #include "UI/ReusableStyleHost.h"
+#include "Localization/LanguageSubsystem.h"
 #include "UI/UIPalette.h"
 
 #include "Blueprint/WidgetTree.h"
@@ -67,7 +68,8 @@ void UStyleableComboBoxString::ApplyBlueprintStyle(const UBlueprintComboStyle& I
     UUIThemePaletteLibrary::PreparePalette();
     UCommonTextStyle* Typography = InStyle.TextStyle ? InStyle.TextStyle->GetDefaultObject<UCommonTextStyle>() : nullptr;
     UUIThemePaletteLibrary::ApplyObject(Typography);
-    const FSlateFontInfo& ResolvedFont = Typography ? Typography->Font : InStyle.Font;
+    const FSlateFontInfo BaseFont = Typography ? Typography->Font : InStyle.Font;
+    const FSlateFontInfo ResolvedFont = ULanguageLibrary::IsWidgetLocalizationExcluded(this) ? BaseFont : ULanguageLibrary::ResolveFont(BaseFont);
     const FSlateColor ResolvedColor = Typography ? FSlateColor(Typography->Color) : InStyle.Foreground;
     SetWidgetStyle(InStyle.Style);
     SetItemStyle(InStyle.ItemStyle);
@@ -86,6 +88,17 @@ void UStyleableComboBoxString::ApplyBlueprintStyle(const UBlueprintComboStyle& I
         Text->SetColorAndOpacity(ResolvedColor);
     }
     InvalidateLayoutAndVolatility();
+}
+
+TSharedRef<SWidget> UStyleableComboBoxString::HandleGenerateWidget(TSharedPtr<FString> Item) const
+{
+    if (Item.IsValid()) if (const FName* Key=LocalizedOptions.Find(*Item))
+    {
+        const TWeakObjectPtr<const UStyleableComboBoxString> Weak(this);
+        return SNew(STextBlock).Text(ULanguageLibrary::Text(*Key)).Font_Lambda([Weak]()
+        { return ULanguageLibrary::ResolveFont(Weak.IsValid() ? Weak->GetFont() : FSlateFontInfo()); });
+    }
+    return Super::HandleGenerateWidget(Item);
 }
 
 void UReusableStyleHost::NativePreConstruct()
@@ -173,8 +186,9 @@ void UReusableStyleHost::ApplyStyle()
         {
             Bounds->SetMinDesiredWidth(Style->MinWidth);
             Bounds->SetMinDesiredHeight(Style->MinHeight);
-            if (Style->MinWidth > 0) Bounds->SetWidthOverride(Style->MinWidth);
-            else Bounds->ClearWidthOverride();
+            // MinWidth is a lower bound. Translated text and its padding must
+            // remain free to increase the button's desired width.
+            Bounds->ClearWidthOverride();
         }
     }
     if (USlider* Slider = Cast<USlider>(Content); Slider && SliderStyle)

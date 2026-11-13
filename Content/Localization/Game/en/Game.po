@@ -1,0 +1,1863 @@
+﻿# Game English translation.
+# Fill out your copyright notice in the Description page of Project Settings.
+# 
+msgid ""
+msgstr ""
+"Project-Id-Version: Game\n"
+"POT-Creation-Date: 2026-11-13 06:14\n"
+"PO-Revision-Date: 2026-11-13 06:14\n"
+"Language-Team: \n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. Key:	Bot_Anger
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Bot_Anger"
+msgid "Anger"
+msgstr "Anger"
+
+#. Key:	Bot_Dummy_1
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Bot_Dummy_1"
+msgid "Dummy_1"
+msgstr "Dummy_1"
+
+#. Key:	Bot_Dummy_2
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Bot_Dummy_2"
+msgid "Dummy_2"
+msgstr "Dummy_2"
+
+#. Key:	Bot_Dummy_3
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Bot_Dummy_3"
+msgid "Dummy_3"
+msgstr "Dummy_3"
+
+#. Key:	Bot_Dummy_4
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Bot_Dummy_4"
+msgid "Dummy_4"
+msgstr "Dummy_4"
+
+#. Key:	Bot_Dummy_5
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Bot_Dummy_5"
+msgid "Dummy_5"
+msgstr "Dummy_5"
+
+#. Key:	Bot_Dummy_6
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Bot_Dummy_6"
+msgid "Dummy_6"
+msgstr "Dummy_6"
+
+#. Key:	Bot_Eschatologist
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Bot_Eschatologist"
+msgid "Eschatologist"
+msgstr "Eschatologist"
+
+#. Key:	Bot_Ghost
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Bot_Ghost"
+msgid "Ghost"
+msgstr "Ghost"
+
+#. Key:	Bot_Greater
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Bot_Greater"
+msgid "Greater"
+msgstr "Greater"
+
+#. Key:	Bot_Madness
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Bot_Madness"
+msgid "Madness"
+msgstr "Madness"
+
+#. Key:	Bot_Peacer
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Bot_Peacer"
+msgid "Peacer"
+msgstr "Peacer"
+
+#. Key:	Character_C01
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Character_C01"
+msgid "Ghost"
+msgstr "Ghost"
+
+#. Key:	Character_C02
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Character_C02"
+msgid "Madness"
+msgstr "Madness"
+
+#. Key:	Character_C03
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Character_C03"
+msgid "Anger"
+msgstr "Anger"
+
+#. Key:	Character_C04
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Character_C04"
+msgid "Greater"
+msgstr "Greater"
+
+#. Key:	Character_C05
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Character_C05"
+msgid "Peacer"
+msgstr "Peacer"
+
+#. Key:	Character_C06
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Character_C06"
+msgid "Eschatologist"
+msgstr "Eschatologist"
+
+#. Key:	Character_D01
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Character_D01"
+msgid "Dummy_1"
+msgstr "Dummy_1"
+
+#. Key:	Character_D02
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Character_D02"
+msgid "Dummy_2"
+msgstr "Dummy_2"
+
+#. Key:	Character_D03
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Character_D03"
+msgid "Dummy_3"
+msgstr "Dummy_3"
+
+#. Key:	Character_D04
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Character_D04"
+msgid "Dummy_4"
+msgstr "Dummy_4"
+
+#. Key:	Character_D05
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Character_D05"
+msgid "Dummy_5"
+msgstr "Dummy_5"
+
+#. Key:	Character_D06
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Character_D06"
+msgid "Dummy_6"
+msgstr "Dummy_6"
+
+#. Key:	Common_Concat
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Common_Concat"
+msgid "{A}{B}"
+msgstr "{A}{B}"
+
+#. Key:	Common_Count
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Common_Count"
+msgid "{A} / {B}"
+msgstr "{A} / {B}"
+
+#. Key:	Common_NameNumber
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Common_NameNumber"
+msgid "{A} {B}"
+msgstr "{A} {B}"
+
+#. Key:	Common_Percent
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Common_Percent"
+msgid "{A}%"
+msgstr "{A}%"
+
+#. Key:	HUD_Enemy
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,HUD_Enemy"
+msgid "적"
+msgstr "Enemy"
+
+#. Key:	HUD_RespawnCountdown
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,HUD_RespawnCountdown"
+msgid "리스폰까지 {A}초"
+msgstr "Respawning in {A} seconds"
+
+#. Key:	HUD_Seconds
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,HUD_Seconds"
+msgid "{0}초"
+msgstr "{0}s"
+
+#. Key:	HUD_Suicide
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,HUD_Suicide"
+msgid "자폭"
+msgstr "Self-destruct"
+
+#. Key:	HUD_Trap
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,HUD_Trap"
+msgid "함정"
+msgstr "Environment"
+
+#. Key:	Loading_Environment
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Loading_Environment"
+msgid "게임 환경을 준비하는 중..."
+msgstr "Preparing game environment..."
+
+#. Key:	Loading_Failed
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Loading_Failed"
+msgid "전환을 완료하지 못했습니다."
+msgstr "Unable to complete the transition."
+
+#. Key:	Loading_Game
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Loading_Game"
+msgid "게임 준비 중..."
+msgstr "Preparing game..."
+
+#. Key:	Loading_Map
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Loading_Map"
+msgid "맵을 불러오는 중..."
+msgstr "Loading map..."
+
+#. Key:	Loading_Players
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Loading_Players"
+msgid "참가자 준비 대기 중... ({A} / {B})"
+msgstr "Waiting for players... ({A} / {B})"
+
+#. Key:	Lobby_Capacity
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Lobby_Capacity"
+msgid "최대 {A}명"
+msgstr "Up to {A} players"
+
+#. Key:	Lobby_Joined
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Lobby_Joined"
+msgid "{A} 님이 입장했습니다"
+msgstr "{A} joined the lobby"
+
+#. Key:	Lobby_KickConfirm
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Lobby_KickConfirm"
+msgid "{A} 님을 내보낼까요?"
+msgstr "Remove {A} from the lobby?"
+
+#. Key:	Lobby_Kicked
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Lobby_Kicked"
+msgid "{A} 님을 내보냈습니다"
+msgstr "{A} was removed from the lobby"
+
+#. Key:	Lobby_KillCondition
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Lobby_KillCondition"
+msgid "킬 조건"
+msgstr "Kill Target"
+
+#. Key:	Lobby_LaunchSummary
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Lobby_LaunchSummary"
+msgid "{A}{B} · {C}{D} · 플레이어 {E}명 · 봇 {F}명"
+msgstr "{A}{B} · {C}{D} · {E} players · {F} bots"
+
+#. Key:	Lobby_Left
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Lobby_Left"
+msgid "{A} 님이 나갔습니다"
+msgstr "{A} left the lobby"
+
+#. Key:	Lobby_NewHost
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Lobby_NewHost"
+msgid "방장 권한이 {A} 님에게 넘어갑니다."
+msgstr "{A} is now the host."
+
+#. Key:	Lobby_ReadyCount
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Lobby_ReadyCount"
+msgid "준비 완료 {A} / {B}"
+msgstr "Ready {A} / {B}"
+
+#. Key:	Map_AI_Test_Level
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Map_AI_Test_Level"
+msgid "AI_Test_Level"
+msgstr "AI_Test_Level"
+
+#. Key:	Map_Lobby_Level
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Map_Lobby_Level"
+msgid "Lobby_Level"
+msgstr "Lobby_Level"
+
+#. Key:	Map_LSH_AITest
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Map_LSH_AITest"
+msgid "LSH_AITest"
+msgstr "LSH_AITest"
+
+#. Key:	Map_Lvl_02Map
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Map_Lvl_02Map"
+msgid "Lvl_02Map"
+msgstr "Lvl_02Map"
+
+#. Key:	Map_Lvl_PortalMap
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Map_Lvl_PortalMap"
+msgid "Lvl_PortalMap"
+msgstr "Lvl_PortalMap"
+
+#. Key:	Map_Lvl_QuakeMap_00
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Map_Lvl_QuakeMap_00"
+msgid "Lvl_QuakeMap_00"
+msgstr "Lvl_QuakeMap_00"
+
+#. Key:	Map_Lvl_QuakeMap_02
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Map_Lvl_QuakeMap_02"
+msgid "Lvl_QuakeMap_02"
+msgstr "Lvl_QuakeMap_02"
+
+#. Key:	Map_Lvl_QuakeMap_04
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Map_Lvl_QuakeMap_04"
+msgid "Lvl_QuakeMap_04"
+msgstr "Lvl_QuakeMap_04"
+
+#. Key:	Map_MainMenu_Level
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Map_MainMenu_Level"
+msgid "MainMenu_Level"
+msgstr "MainMenu_Level"
+
+#. Key:	Map_TestMainMenu_Level
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Map_TestMainMenu_Level"
+msgid "TestMainMenu_Level"
+msgstr "TestMainMenu_Level"
+
+#. Key:	MapDescription_Map_01
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,MapDescription_Map_01"
+msgid "테스트 레벨입니다.글10자기준으로줄바꿈이됩니다..줄바꿈되나요"
+msgstr "This is a test level. Text wraps every 10 characters. Does it wrap?"
+
+#. Key:	MapDescription_Map_02
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,MapDescription_Map_02"
+msgid "02맵입니다."
+msgstr "Arena 02."
+
+#. Key:	MapDescription_Map_03
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,MapDescription_Map_03"
+msgid "포탈맵입니다."
+msgstr "An arena connected by portals."
+
+#. Key:	MapDescription_Map_04
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,MapDescription_Map_04"
+msgid "04맵입니다."
+msgstr "Arena 04."
+
+#. Key:	Menu_Start
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Menu_Start"
+msgid "게임 시작"
+msgstr "Start Game"
+
+#. Key:	Result_ReturnLobby
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Result_ReturnLobby"
+msgid "로비로 돌아가기"
+msgstr "Return to Lobby"
+
+#. Key:	Result_ReturnVotes
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Result_ReturnVotes"
+msgid "로비 복귀  {A} / {B}"
+msgstr "Return to Lobby  {A} / {B}"
+
+#. Key:	Settings_Help
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Settings_Help"
+msgid "설정 항목에 마우스를 올리면\n자세한 설명을 볼 수 있습니다."
+msgstr "Hover over an option\nto see its description."
+
+#. Key:	Settings_Language
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Settings_Language"
+msgid "언어"
+msgstr "Language"
+
+#. Key:	UI_007ee3d0dca8
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_007ee3d0dca8"
+msgid "메인 메뉴로 돌아가시겠습니까?"
+msgstr "Return to the main menu?"
+
+#. Key:	UI_00f03137e155
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_00f03137e155"
+msgid "쉬움"
+msgstr "Easy"
+
+#. Key:	UI_02d40d127fad
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_02d40d127fad"
+msgid "킬"
+msgstr "Kills"
+
+#. Key:	UI_064f899e8c9a
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_064f899e8c9a"
+msgid "메인 메뉴로 돌아가는 중..."
+msgstr "Returning to main menu..."
+
+#. Key:	UI_0bd3d65b3f57
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_0bd3d65b3f57"
+msgid "서버와 연결이 끊겼습니다."
+msgstr "Disconnected from the server."
+
+#. Key:	UI_0e807616c5b5
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_0e807616c5b5"
+msgid "포트"
+msgstr "Port"
+
+#. Key:	UI_0ea2b7790fc0
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_0ea2b7790fc0"
+msgid "준비"
+msgstr "Ready"
+
+#. Key:	UI_116d75a25418
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_116d75a25418"
+msgid "마우스 수직 감도"
+msgstr "Vertical Sensitivity"
+
+#. Key:	UI_155bb4d3d89d
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_155bb4d3d89d"
+msgid "선취점"
+msgstr "First Blood"
+
+#. Key:	UI_19b2d19bc141
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_19b2d19bc141"
+msgid "취소"
+msgstr "Cancel"
+
+#. Key:	UI_19e1cc02fa7e
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_19e1cc02fa7e"
+msgid "수직 감도 조정. 마우스를 상하로 움직일 때 시점이 회전하는 속도를 조절합니다"
+msgstr "Adjust how quickly the view turns when moving the mouse vertically."
+
+#. Key:	UI_1a13e0266e8b
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_1a13e0266e8b"
+msgid "밝기"
+msgstr "Brightness"
+
+#. Key:	UI_1a7f31cadb8c
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_1a7f31cadb8c"
+msgid "돌아가기"
+msgstr "Back"
+
+#. Key:	UI_1b89053c5eb5
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_1b89053c5eb5"
+msgid "서버 인원이 가득 찼습니다."
+msgstr "The server is full."
+
+#. Key:	UI_1dc155ce35a1
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_1dc155ce35a1"
+msgid "밝게"
+msgstr "Bright"
+
+#. Key:	UI_1e90fe89eed1
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_1e90fe89eed1"
+msgid "Enter 준비 취소    ESC 나가기"
+msgstr "Enter Cancel ready    ESC Leave"
+
+#. Key:	UI_20a89915f18c
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_20a89915f18c"
+msgid "어려움"
+msgstr "Hard"
+
+#. Key:	UI_2179da2cffa2
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_2179da2cffa2"
+msgid "보통"
+msgstr "Normal"
+
+#. Key:	UI_217f7f08dd03
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_217f7f08dd03"
+msgid "점프"
+msgstr "Jump"
+
+#. Key:	UI_2395ba340f11
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_2395ba340f11"
+msgid "싱글 플레이"
+msgstr "Single Player"
+
+#. Key:	UI_285e27a6a7bf
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_285e27a6a7bf"
+msgid "모션 블러"
+msgstr "Motion Blur"
+
+#. Key:	UI_2d2b727ba867
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_2d2b727ba867"
+msgid "조작"
+msgstr "Controls"
+
+#. Key:	UI_2ef608f3be55
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_2ef608f3be55"
+msgid "Enter 준비    ESC 나가기"
+msgstr "Enter Ready    ESC Leave"
+
+#. Key:	UI_32e52b4ae5f2
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_32e52b4ae5f2"
+msgid "로비로 이동하는 중..."
+msgstr "Returning to lobby..."
+
+#. Key:	UI_336aa8d5bba8
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_336aa8d5bba8"
+msgid "캐릭터 음량"
+msgstr "Character Volume"
+
+#. Key:	UI_3516f41ce3ee
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_3516f41ce3ee"
+msgid "레벨 선택 화면으로 돌아가시겠습니까?"
+msgstr "Return to level select?"
+
+#. Key:	UI_38500696f4e2
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_38500696f4e2"
+msgid "난이도 선택"
+msgstr "Select Difficulty"
+
+#. Key:	UI_389b82de7bd6
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_389b82de7bd6"
+msgid "시작하기"
+msgstr "Start"
+
+#. Key:	UI_38e94aa6b240
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_38e94aa6b240"
+msgid "닉네임"
+msgstr "Nickname"
+
+#. Key:	UI_3b69928d3bd0
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_3b69928d3bd0"
+msgid "일시정지"
+msgstr "Paused"
+
+#. Key:	UI_3c7dbce65d69
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_3c7dbce65d69"
+msgid "옵션"
+msgstr "Options"
+
+#. Key:	UI_3e1fc2fe5317
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_3e1fc2fe5317"
+msgid "제한 시간"
+msgstr "Time Limit"
+
+#. Key:	UI_3eebcb9a6894
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_3eebcb9a6894"
+msgid "맵이 바뀌어 준비가 해제되었습니다"
+msgstr "The map changed. Ready up again."
+
+#. Key:	UI_437ac8ceeb09
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_437ac8ceeb09"
+msgid "낮음"
+msgstr "Low"
+
+#. Key:	UI_43935e3f399c
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_43935e3f399c"
+msgid "멀티 로비"
+msgstr "Multi Lobby"
+
+#. Key:	UI_439878dfb9b5
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_439878dfb9b5"
+msgid "준비 완료"
+msgstr "Ready"
+
+#. Key:	UI_43ad8d49faae
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_43ad8d49faae"
+msgid "버튼"
+msgstr "Button"
+
+#. Key:	UI_43f4456efb08
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_43f4456efb08"
+msgid "서버 맵 변경 실패"
+msgstr "Failed to change the server map"
+
+#. Key:	UI_4459ec31d675
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_4459ec31d675"
+msgid "이어하기"
+msgstr "Resume"
+
+#. Key:	UI_4499400ccd18
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_4499400ccd18"
+msgid "설정 항목에 마우스를 올리면 자세한 설명을 볼 수 있습니다."
+msgstr "Hover over an option to see its description."
+
+#. Key:	UI_45e118d0563e
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_45e118d0563e"
+msgid "보통"
+msgstr "Normal"
+
+#. Key:	UI_468266d639b5
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_468266d639b5"
+msgid "확인"
+msgstr "Confirm"
+
+#. Key:	UI_468470e67653
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_468470e67653"
+msgid "데스"
+msgstr "Deaths"
+
+#. Key:	UI_47e564641be6
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_47e564641be6"
+msgid "무기 변경"
+msgstr "Switch Weapon"
+
+#. Key:	UI_485e4f6a0dfc
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_485e4f6a0dfc"
+msgid "어려움"
+msgstr "Hard"
+
+#. Key:	UI_49c5f6fb07d3
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_49c5f6fb07d3"
+msgid "조작 안내"
+msgstr "Controls"
+
+#. Key:	UI_4a021545f6c8
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_4a021545f6c8"
+msgid "선택 완료"
+msgstr "Confirm Selection"
+
+#. Key:	UI_4e843f51d169
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_4e843f51d169"
+msgid "조준 시 닉네임"
+msgstr "Aimed Player Name"
+
+#. Key:	UI_500a45ffe1fe
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_500a45ffe1fe"
+msgid "맵 선택으로 이동"
+msgstr "Go to Map Select"
+
+#. Key:	UI_55c4f555ea4f
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_55c4f555ea4f"
+msgid "매우 밝게"
+msgstr "Very Bright"
+
+#. Key:	UI_55e71528fa33
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_55e71528fa33"
+msgid "레벨 선택으로 돌아가는 중..."
+msgstr "Returning to level select..."
+
+#. Key:	UI_560380ceaa49
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_560380ceaa49"
+msgid "게임을 종료하시겠습니까?"
+msgstr "Quit the game?"
+
+#. Key:	UI_562b27e031b5
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_562b27e031b5"
+msgid "UI 효과음 음량 조절. 버튼 클릭 등 인터페이스 효과음의 크기를 조정합니다."
+msgstr "Adjust interface sounds, including button clicks."
+
+#. Key:	UI_57a4964c362d
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_57a4964c362d"
+msgid "나를 처치한 플레이어"
+msgstr "Killed by "
+
+#. Key:	UI_57d99cb42a0a
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_57d99cb42a0a"
+msgid "휠 / 숫자키"
+msgstr "Mouse Wheel / Number Keys"
+
+#. Key:	UI_59642514826d
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_59642514826d"
+msgid "커스터마이즈"
+msgstr "Customize"
+
+#. Key:	UI_61f484e462f8
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_61f484e462f8"
+msgid "멀티 플레이로 이동하는 중..."
+msgstr "Opening Multiplayer..."
+
+#. Key:	UI_64d3de670d59
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_64d3de670d59"
+msgid "IP를 재입력 하세요"
+msgstr "Re-enter the IP address"
+
+#. Key:	UI_653c6e1291dd
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_653c6e1291dd"
+msgid "이지"
+msgstr "Easy"
+
+#. Key:	UI_6800e2f73ebc
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_6800e2f73ebc"
+msgid "IP입력"
+msgstr "Enter IP"
+
+#. Key:	UI_69604a83111c
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_69604a83111c"
+msgid "전체 음량 조절. 게임 내 모든 소리의 크기를 조정합니다."
+msgstr "Adjust the volume of all game sounds."
+
+#. Key:	UI_6ff46de10597
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_6ff46de10597"
+msgid "중형"
+msgstr "Medium"
+
+#. Key:	UI_7049fbd2e000
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_7049fbd2e000"
+msgid "조준 시 해당 캐릭터 닉네임이 표시 됩니다."
+msgstr "Show the name of the character you are aiming at."
+
+#. Key:	UI_709a23220f2c
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_709a23220f2c"
+msgid "이름"
+msgstr "Name"
+
+#. Key:	UI_71d855acd9ec
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_71d855acd9ec"
+msgid "결과"
+msgstr "Results"
+
+#. Key:	UI_724127cdab8b
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_724127cdab8b"
+msgid "레벨 선택으로"
+msgstr "Level Select"
+
+#. Key:	UI_7281f2bb3e92
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_7281f2bb3e92"
+msgid "대형"
+msgstr "Large"
+
+#. Key:	UI_729221b17a0e
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_729221b17a0e"
+msgid "하드"
+msgstr "Hard"
+
+#. Key:	UI_74fe171c0ec2
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_74fe171c0ec2"
+msgid "레벨 선택으로 이동하는 중..."
+msgstr "Opening level select..."
+
+#. Key:	UI_75820d24f77c
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_75820d24f77c"
+msgid "{0} 킬"
+msgstr "{0} kills"
+
+#. Key:	UI_75d1798f03c1
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_75d1798f03c1"
+msgid "스코어보드"
+msgstr "Scoreboard"
+
+#. Key:	UI_7958f718d23b
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_7958f718d23b"
+msgid "재시작 중..."
+msgstr "Restarting..."
+
+#. Key:	UI_7a4c10e25918
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_7a4c10e25918"
+msgid "출격 준비 중..."
+msgstr "Preparing to launch..."
+
+#. Key:	UI_7b932e7704c5
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_7b932e7704c5"
+msgid "킬"
+msgstr "Kills"
+
+#. Key:	UI_7bdfebc7f297
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_7bdfebc7f297"
+msgid "메인 메뉴로 이동하는 중..."
+msgstr "Opening main menu..."
+
+#. Key:	UI_7dc52032f0ae
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_7dc52032f0ae"
+msgid "IP입력: xx.xx.xx.xx"
+msgstr "IP address: xx.xx.xx.xx"
+
+#. Key:	UI_7f1d8c413d3d
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_7f1d8c413d3d"
+msgid "기본"
+msgstr "Default"
+
+#. Key:	UI_7f553f919ec4
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_7f553f919ec4"
+msgid "캐릭터 윤곽선이 표시됩니다."
+msgstr "Show character outlines."
+
+#. Key:	UI_811e02934458
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_811e02934458"
+msgid "나"
+msgstr "You"
+
+#. Key:	UI_815c6121d885
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_815c6121d885"
+msgid "마우스 수평 감도"
+msgstr "Horizontal Sensitivity"
+
+#. Key:	UI_8411beea5e0d
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_8411beea5e0d"
+msgid "뒤로"
+msgstr "Back"
+
+#. Key:	UI_845f43f432bf
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_845f43f432bf"
+msgid "배경 음악"
+msgstr "Music"
+
+#. Key:	UI_849c0a785bc8
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_849c0a785bc8"
+msgid "로비에서 나갈까요?"
+msgstr "Leave the lobby?"
+
+#. Key:	UI_856832edcaae
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_856832edcaae"
+msgid "기본값으로"
+msgstr "Reset to Default"
+
+#. Key:	UI_8655f37dd94c
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_8655f37dd94c"
+msgid "{0}위"
+msgstr "Rank {0}"
+
+#. Key:	UI_8a0c65f9e179
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_8a0c65f9e179"
+msgid "내용"
+msgstr "Details"
+
+#. Key:	UI_8beb3ca0fab5
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_8beb3ca0fab5"
+msgid "어둡게"
+msgstr "Dark"
+
+#. Key:	UI_8df91f539d34
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_8df91f539d34"
+msgid "수평 감도 조정. 마우스를 좌우로 움직일 때 시점이 회전하는 속도를 조절합니다"
+msgstr "Adjust how quickly the view turns when moving the mouse horizontally."
+
+#. Key:	UI_8f39b330de66
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_8f39b330de66"
+msgid "설정 안내"
+msgstr "Settings Help"
+
+#. Key:	UI_9063fe2afb5a
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_9063fe2afb5a"
+msgid "마우스 좌클릭"
+msgstr "Left Mouse Button"
+
+#. Key:	UI_9120423983b0
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_9120423983b0"
+msgid "상세 정보"
+msgstr "DETAILS"
+
+#. Key:	UI_913ed14107b4
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_913ed14107b4"
+msgid "펼치기 ▼"
+msgstr "Expand ▼"
+
+#. Key:	UI_926fc3bb813d
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_926fc3bb813d"
+msgid "더블 킬"
+msgstr "Double Kill"
+
+#. Key:	UI_93afe0a3b2c2
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_93afe0a3b2c2"
+msgid "리스폰"
+msgstr "RESPAWN"
+
+#. Key:	UI_95fc280992a5
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_95fc280992a5"
+msgid "로비에 입장했습니다"
+msgstr "You joined the lobby"
+
+#. Key:	UI_962636f483b3
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_962636f483b3"
+msgid "높음"
+msgstr "High"
+
+#. Key:	UI_9645e0af7d36
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_9645e0af7d36"
+msgid "조준 감도"
+msgstr "Aim Sensitivity"
+
+#. Key:	UI_9795ae6e24b9
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_9795ae6e24b9"
+msgid "캐릭터명"
+msgstr "Character Name"
+
+#. Key:	UI_98fbb09631f7
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_98fbb09631f7"
+msgid "효과음 음량 조절. 총격, 발소리 등 효과음의 크기를 조정합니다."
+msgstr "Adjust sound effects, including gunfire and footsteps."
+
+#. Key:	UI_991911ab6d7f
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_991911ab6d7f"
+msgid "끄기"
+msgstr "Off"
+
+#. Key:	UI_99cd5aa320e4
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_99cd5aa320e4"
+msgid "배경 음악 음량 조절. 게임 내 배경 음악의 크기를 조정합니다."
+msgstr "Adjust the volume of background music."
+
+#. Key:	UI_9aa18e507125
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_9aa18e507125"
+msgid "이름"
+msgstr "Name"
+
+#. Key:	UI_9afb12b25beb
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_9afb12b25beb"
+msgid "방장이 되었습니다"
+msgstr "You are now the host"
+
+#. Key:	UI_9c16685440a1
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_9c16685440a1"
+msgid "등장 AI"
+msgstr "Opponents"
+
+#. Key:	UI_9c24201adba8
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_9c24201adba8"
+msgid "효과음"
+msgstr "Sound Effects"
+
+#. Key:	UI_9d3fe51f1d2a
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_9d3fe51f1d2a"
+msgid "서버에 접속하는 중..."
+msgstr "Connecting to server..."
+
+#. Key:	UI_9f8a2190aac1
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_9f8a2190aac1"
+msgid "방장"
+msgstr "Host"
+
+#. Key:	UI_9fc4bc5828b4
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_9fc4bc5828b4"
+msgid "시야각 조정. 화면에 보이는 시야의 넓이를 조절합니다."
+msgstr "Adjust how much of the world is visible on screen."
+
+#. Key:	UI_a0e5c6ecbc60
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_a0e5c6ecbc60"
+msgid "서버 준비 시간 초과"
+msgstr "Server preparation timed out"
+
+#. Key:	UI_a145f7c0ed2f
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_a145f7c0ed2f"
+msgid "다음 설정 탭"
+msgstr "Next settings tab"
+
+#. Key:	UI_a18ce2ca97c4
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_a18ce2ca97c4"
+msgid "이전 설정 탭"
+msgstr "Previous settings tab"
+
+#. Key:	UI_a2832839395c
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_a2832839395c"
+msgid "전체 음량"
+msgstr "Master Volume"
+
+#. Key:	UI_a3efb7df8f74
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_a3efb7df8f74"
+msgid "학살"
+msgstr "Rampage"
+
+#. Key:	UI_a5616c90ec61
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_a5616c90ec61"
+msgid "올바른 IP 주소가 아닙니다."
+msgstr "Enter a valid IP address."
+
+#. Key:	UI_a57a2d9af9cc
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_a57a2d9af9cc"
+msgid "켜기"
+msgstr "On"
+
+#. Key:	UI_a899f54d9f30
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_a899f54d9f30"
+msgid "봇 제거"
+msgstr "Remove Bot"
+
+#. Key:	UI_a90872c15ce3
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_a90872c15ce3"
+msgid "[ ESC ] 뒤로가기"
+msgstr "[ ESC ] Back"
+
+#. Key:	UI_a96d1677f668
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_a96d1677f668"
+msgid "시야각 (FOV)"
+msgstr "Field of View (FOV)"
+
+#. Key:	UI_a971773e8aa3
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_a971773e8aa3"
+msgid "내가 방장이 되었습니다"
+msgstr "You are now the host"
+
+#. Key:	UI_ad3a95bc9048
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_ad3a95bc9048"
+msgid "멀티 플레이"
+msgstr "Multiplayer"
+
+#. Key:	UI_aeb16cc30090
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_aeb16cc30090"
+msgid "쉬움"
+msgstr "Easy"
+
+#. Key:	UI_b176c38713c4
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_b176c38713c4"
+msgid "UI 효과음"
+msgstr "UI Sounds"
+
+#. Key:	UI_b37b7b42a11a
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_b37b7b42a11a"
+msgid "나가기"
+msgstr "Exit"
+
+#. Key:	UI_b3e752de4e3c
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_b3e752de4e3c"
+msgid "{0} 데스"
+msgstr "{0} deaths"
+
+#. Key:	UI_b4b74cd3902e
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_b4b74cd3902e"
+msgid "격발"
+msgstr "Fire"
+
+#. Key:	UI_b76ea5749ac3
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_b76ea5749ac3"
+msgid "트리플 킬"
+msgstr "Triple Kill"
+
+#. Key:	UI_b8f31b8aa6bf
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_b8f31b8aa6bf"
+msgid "입력:"
+msgstr "Input:"
+
+#. Key:	UI_b90290a0de36
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_b90290a0de36"
+msgid "+ 봇 추가"
+msgstr "+ Add Bot"
+
+#. Key:	UI_bb9ba96c0b7a
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_bb9ba96c0b7a"
+msgid "밝기 조절. 화면 전체의 밝기를 조정합니다."
+msgstr "Adjust the overall screen brightness."
+
+#. Key:	UI_bfbe5f8a721b
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_bfbe5f8a721b"
+msgid "나를 처치한 플레이어"
+msgstr "Killed by"
+
+#. Key:	UI_c03a98220ef8
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_c03a98220ef8"
+msgid "접기 ▼"
+msgstr "Collapse ▼"
+
+#. Key:	UI_c0fec2e80754
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_c0fec2e80754"
+msgid "처치했습니다"
+msgstr "You Killed"
+
+#. Key:	UI_c105818626aa
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_c105818626aa"
+msgid "Q / E 맵 변경    Enter 게임 시작    ESC 나가기"
+msgstr "Q / E Change map    Enter Start game    ESC Leave"
+
+#. Key:	UI_c14319b84c26
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_c14319b84c26"
+msgid "맵 선택"
+msgstr "Select Map"
+
+#. Key:	UI_c14a567ea996
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_c14a567ea996"
+msgid "설정"
+msgstr "Settings"
+
+#. Key:	UI_c17ab0172e6f
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_c17ab0172e6f"
+msgid "처치했습니다"
+msgstr "YOU KILLED"
+
+#. Key:	UI_c3a6ac356a63
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_c3a6ac356a63"
+msgid "내보내기"
+msgstr "Kick"
+
+#. Key:	UI_c3b5e815351c
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_c3b5e815351c"
+msgid "서버를 준비하는 중..."
+msgstr "Preparing server..."
+
+#. Key:	UI_c47d0151c396
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_c47d0151c396"
+msgid "게임 플레이"
+msgstr "Gameplay"
+
+#. Key:	UI_c4b924327206
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_c4b924327206"
+msgid "설정"
+msgstr "SETTINGS"
+
+#. Key:	UI_c5a5fe0ad879
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_c5a5fe0ad879"
+msgid "점프 패드"
+msgstr "Jump Pad"
+
+#. Key:	UI_c5e0cc2c0090
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_c5e0cc2c0090"
+msgid "Q / E 맵 변경   ESC 나가기   Enter 시작/준비"
+msgstr "Q / E Change map   ESC Leave   Enter Start / Ready"
+
+#. Key:	UI_c63a99c3c142
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_c63a99c3c142"
+msgid "소형"
+msgstr "Small"
+
+#. Key:	UI_c67ed36ba334
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_c67ed36ba334"
+msgid "게임 종료"
+msgstr "Quit Game"
+
+#. Key:	UI_c686d05434a6
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_c686d05434a6"
+msgid "이동"
+msgstr "Move"
+
+#. Key:	UI_c7aed5192fbc
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_c7aed5192fbc"
+msgid "포탈"
+msgstr "Portal"
+
+#. Key:	UI_c7cad5ad9b93
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_c7cad5ad9b93"
+msgid "선택됨"
+msgstr "Selected"
+
+#. Key:	UI_c7d8d1ec2e46
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_c7d8d1ec2e46"
+msgid "이동할맵"
+msgstr "Destination Map"
+
+#. Key:	UI_cac76c49978f
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_cac76c49978f"
+msgid "< 뒤로가기"
+msgstr "< Back"
+
+#. Key:	UI_cafdc61bbf9e
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_cafdc61bbf9e"
+msgid "종료"
+msgstr "Quit"
+
+#. Key:	UI_cc81cc50f5ce
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_cc81cc50f5ce"
+msgid "레벨 설명"
+msgstr "Level Description"
+
+#. Key:	UI_cca3195fa98d
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_cca3195fa98d"
+msgid "리스폰"
+msgstr "Respawn"
+
+#. Key:	UI_cec9407aab1c
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_cec9407aab1c"
+msgid "서버에 연결할 수 없습니다. 주소와 포트를 확인하세요."
+msgstr "Unable to connect. Check the address and port."
+
+#. Key:	UI_cf7848ce8fcc
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_cf7848ce8fcc"
+msgid "레벨 선택"
+msgstr "Select Level"
+
+#. Key:	UI_d058fb4cc49b
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_d058fb4cc49b"
+msgid "방장이 로비에서 내보냈습니다."
+msgstr "The host removed you from the lobby."
+
+#. Key:	UI_d15876f1e814
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_d15876f1e814"
+msgid "순위"
+msgstr "Rank"
+
+#. Key:	UI_d34df544dce4
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_d34df544dce4"
+msgid "목표 킬 수"
+msgstr "Kill Target"
+
+#. Key:	UI_d3f5d3afe5a6
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_d3f5d3afe5a6"
+msgid "IP 주소"
+msgstr "IP Address"
+
+#. Key:	UI_d49a5f821d50
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_d49a5f821d50"
+msgid "준비 완료 "
+msgstr "Ready "
+
+#. Key:	UI_d5bfc6690bf0
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_d5bfc6690bf0"
+msgid "노말"
+msgstr "Normal"
+
+#. Key:	UI_d62045e1d60e
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_d62045e1d60e"
+msgid "나를 처치한 플레이어"
+msgstr "FRAGGED BY"
+
+#. Key:	UI_d8c7d877ba61
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_d8c7d877ba61"
+msgid "데스"
+msgstr "Deaths"
+
+#. Key:	UI_d8d2ef430184
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_d8d2ef430184"
+msgid "모션 블러 켜기/끄기. 카메라를 빠르게 움직일 때 화면이 번지는 효과를 조절합니다."
+msgstr "Enable or disable the blur effect during fast camera movement."
+
+#. Key:	UI_da30a6e4f86a
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_da30a6e4f86a"
+msgid "비디오"
+msgstr "Video"
+
+#. Key:	UI_dd48a1149548
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_dd48a1149548"
+msgid "순위"
+msgstr "Rank"
+
+#. Key:	UI_DomainExpansion
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_DomainExpansion"
+msgid "영역전개"
+msgstr "Domain Expansion"
+
+#. Key:	UI_e01dd02f527f
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_e01dd02f527f"
+msgid "적용"
+msgstr "Apply"
+
+#. Key:	UI_e40849f0836f
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_e40849f0836f"
+msgid "메인 메뉴로"
+msgstr "Main Menu"
+
+#. Key:	UI_e4f7e01ef570
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_e4f7e01ef570"
+msgid "로컬 서버가 실행 중이 아닙니다"
+msgstr "The local server is not running"
+
+#. Key:	UI_e53412128379
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_e53412128379"
+msgid "서버 시작"
+msgstr "Start Server"
+
+#. Key:	UI_e70104fecdc2
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_e70104fecdc2"
+msgid "접기 ▲"
+msgstr "Collapse ▲"
+
+#. Key:	UI_e7865e59d34d
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_e7865e59d34d"
+msgid "현재 레벨을 다시 시작하시겠습니까?"
+msgstr "Restart the current level?"
+
+#. Key:	UI_e82144144693
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_e82144144693"
+msgid "사운드"
+msgstr "Audio"
+
+#. Key:	UI_e89cc866baab
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_e89cc866baab"
+msgid "시작"
+msgstr "Start"
+
+#. Key:	UI_e8ee93fa564a
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_e8ee93fa564a"
+msgid "난이도"
+msgstr "Difficulty"
+
+#. Key:	UI_ea56f5e97842
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_ea56f5e97842"
+msgid "총기 줌 감도 조정. 조준경 사용 중 마우스 감도를 조절합니다."
+msgstr "Adjust mouse sensitivity while aiming through a scope."
+
+#. Key:	UI_ec425b26f23e
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_ec425b26f23e"
+msgid "대기 중"
+msgstr "Waiting"
+
+#. Key:	UI_f0c84f8555ac
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_f0c84f8555ac"
+msgid "재시작"
+msgstr "Restart"
+
+#. Key:	UI_f111b7210667
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_f111b7210667"
+msgid "캐릭터 윤곽선"
+msgstr "Character Outline"
+
+#. Key:	UI_f50aeb370737
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_f50aeb370737"
+msgid "참가자"
+msgstr "Participants"
+
+#. Key:	UI_f62a1250599b
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_f62a1250599b"
+msgid "복수"
+msgstr "Revenge Shot"
+
+#. Key:	UI_f80a47db5424
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_f80a47db5424"
+msgid "캐릭터 음량 조절. 캐릭터의 목소리, 발자국 등 소리의 크기를 조정합니다."
+msgstr "Adjust character voices and movement sounds."
+
+#. Key:	UI_f8d3164a1cd1
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_f8d3164a1cd1"
+msgid "포트는 1~65535 사이의 숫자입니다."
+msgstr "The port must be a number from 1 to 65535."
+
+#. Key:	UI_fb0869e2e0a9
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_fb0869e2e0a9"
+msgid "닉네임 입력"
+msgstr "Enter nickname"
+
+#. Key:	UI_fd970c66be1c
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_fd970c66be1c"
+msgid "접속"
+msgstr "Connect"
+
+#. Key:	UI_ff0066a1a534
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_ff0066a1a534"
+msgid "봇 변경"
+msgstr "Change Bot"
+
+#. Key:	UI_Placeholder
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_Placeholder"
+msgid "임시"
+msgstr "Placeholder"
+
+#. Key:	UI_ServerStart
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_ServerStart"
+msgid "서버 시작"
+msgstr "Start Server"
+
+#. Key:	UI_Slider
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,UI_Slider"
+msgid "슬라이더"
+msgstr "Slider"
+
+#. Key:	Unit_분
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Unit_분"
+msgid "분"
+msgstr " min"
+
+#. Key:	Unit_킬
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Unit_킬"
+msgid "킬"
+msgstr " kills"
+
+#. Key:	Weapon_Fist
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Weapon_Fist"
+msgid "주먹"
+msgstr "Fist"
+
+#. Key:	Weapon_MachineGun
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Weapon_MachineGun"
+msgid "머신건"
+msgstr "Machine Gun"
+
+#. Key:	Weapon_Pistol
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Weapon_Pistol"
+msgid "피스톨"
+msgstr "Pistol"
+
+#. Key:	Weapon_PlasmaGun
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Weapon_PlasmaGun"
+msgid "플라즈마 건"
+msgstr "Plasma Gun"
+
+#. Key:	Weapon_RailGun
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Weapon_RailGun"
+msgid "레일건"
+msgstr "Rail Gun"
+
+#. Key:	Weapon_RocketLauncher
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Weapon_RocketLauncher"
+msgid "로켓 런처"
+msgstr "Rocket Launcher"
+
+#. Key:	Weapon_ShotGun
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,Weapon_ShotGun"
+msgid "샷건"
+msgstr "Shot Gun"
+

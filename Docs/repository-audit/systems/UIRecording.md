@@ -9,7 +9,7 @@ Tab 점수판, 조준점·히트마커·줌, 킬 알림, 메달, 버프, 피격 
 바꾸면 생성된 패널도 다음 그리기부터 반영합니다. 패키징 실행은 시작 시 저장된 DA 값을 사용합니다.
 별도 런타임 체크 메뉴·단축키는 추가하지 않았습니다.
 
-`URecordingUIMask`는 기존 위젯 바깥에서 Slate 그리기 스타일의 투명도를 0으로 만듭니다. 자식 위젯의 Visibility,
+`URecordingUIMask`는 기존 위젯 바깥에서 Slate 그리기 스타일의 투명도를 0으로 만들고 그리기 영역을 비웁니다. 자식 위젯의 Visibility,
 RenderOpacity, 애니메이션 값·타이머·생성/삭제 흐름과 게임 상태를 변경하지 않습니다.
 따라서 감춘 메뉴도 원래대로 입력과 포커스를 처리합니다. 보이지 않는 메뉴를 닫으려면 기존 F10/뒤로가기를
 사용합니다. 커스텀 UI 커서 설정은 OS/하드웨어 마우스 커서를 제어하지 않습니다.
@@ -75,12 +75,14 @@ PR #972 통합에서는 `main`의 `3282d7830` HUD에 중앙 알림 함수 두 �
 | 메달 → 배경 | 배경 RGB와 불투명도. 각 일반 메달과 큰 메달에 하나씩 적용합니다. |
 | You Killed → 배경 | 배경 RGB, 불투명도, 그림자 위치 보정. X는 좌우, Y는 상하이며 기본값은 (-8, -9) UI 단위입니다. 불투명도 0에서 글자만 표시합니다. |
 | You Killed → 그림자 | 그림자 색상·알파와 거리 배율. 기본값 0은 끄기, 0.5는 기존 거리의 절반입니다. |
+| Killed by → 위치 | 사망 알림 위치 보정. `Killed by`, 처치자 이름, `You Died`에 적용합니다. 기본값은 (0, 0)이며 X는 오른쪽, Y는 아래쪽이 양수입니다. |
 
 `WBP_PlayerHUD_sdm.ShowCompetitiveKillMessage`는 기존 알림을 만든 직후 현재 DA 스타일을 적용합니다.
 `You Killed`와 대상 이름을 담은 텍스트 그룹과 배경을 같은 세로 중앙에 배치합니다.
 메달마다 `CompetitiveRankingHUD`가 `You Killed`와 같은 `T_Blur_800x200` 그림자를 이미지 뒤에 표시합니다.
 그림자의 바깥쪽은 이미지보다 넓게 그려 가장자리가 자연스럽게 흐려지며, 기존 도장 애니메이션을 따라갑니다.
 DA 저장 시 JsonAssetSync가 `Content/DataAssets/DA_KillMedalUISettings.json`에 값을 내보내며 다음 시작에서 JSON을 적용합니다.
+사망 알림 위치는 점수판이 열려 있으면 점수판 위를, 닫혀 있으면 리스폰 바 쪽 기본 위치를 기준으로 보정합니다.
 
 전투 맵의 PIE에서 캐릭터가 스폰된 뒤 에디터 Output Log에 아래 명령을 입력합니다.
 
@@ -97,3 +99,49 @@ PIE에서 단일·다중·큰 메달과 파란 메달/빨간 처치 알림, 배�
 최종 메달 그림자는 기본값, 불투명도 0, 파란색의 3개 PIE 조건으로 비교했습니다. 캡처와 결과는 `Saved/Diagnostics/KillNotificationSoftShadow/`에 있습니다.
 `ShootingArena.UI.KillMedalAutomaticAwards`와 `ShootingArena.UI.KillMedalBridge`가 통과했고, 재시작 로그에서 DA의 JSON 적용 성공을 확인했습니다.
 기존 중앙 알림의 사망 우선순위 5개 조건도 다시 확인했습니다. 패키징 실행과 실전 상호 처치는 검증 범위에 포함하지 않았습니다.
+
+## 2026-11-12 Respawn 글자 색상
+
+`/Game/QuakeLike_1_0/UI/DeathUI/DA_RespawnBarStyle`에서 **Respawn Font Color 1**과 **Respawn Font Color 2**를 각각 편집합니다.
+기본값은 `MI_Respawn_Font`의 기존 흰색과 회색을 상속합니다. `WBP_DeathScreen.InitDeathUI`는 사망 UI를 초기화할 때
+DA의 두 색상을 `Text_RespawnCount`의 동적 폰트 머티리얼에 적용합니다.
+PIE에서 같은 사망 위젯을 반복 초기화해 두 값의 독립 적용과 공유 머티리얼의 원래 값을 확인했습니다.
+
+같은 DA의 **Respawn Additional Gap**은 리스폰 글자와 진행 바를 아래로 함께 옮기는 추가 간격입니다.
+기본값 `0`은 현재 위치를 사용하며, 양수는 스코어보드 아래 간격을 늘립니다. 단위는 UMG UI 단위입니다.
+PIE에서 `0`, `40`, `80`, `0`으로 반복 초기화해 위치와 카운트다운을 확인했습니다.
+
+같은 DA의 **Use Progress Gradient**를 켜면 실제 리스폰 바의 채움에 **Progress Gradient Center Color**와
+**Progress Gradient Edge Color**를 적용합니다. 현재 DA는 주황색 중앙과 밝은 주황색 양끝을 기본으로 사용합니다.
+끄면 **Progress Color**로 단색을 표시합니다. **Frame Color**와 **Shine Color**는 기존 경로에서 적용합니다.
+`StartRespawnCountdown`이 리스폰 위젯 인스턴스에 기존 채움 머티리얼을 연결하며,
+다음 카운트다운을 시작할 때 DA 변경 사항을 읽습니다.
+**Progress Gradient Start**와 **Progress Gradient End**는 중앙 `0`에서 양끝 `1`까지의 위치입니다.
+예를 들어 `0.25`와 `0.75`를 입력하면 그 사이에서만 두 색이 섞입니다. 기본값 `0`과 `1`은 전체 구간에 적용합니다.
+범위를 벗어난 값은 `0–1` 안으로 제한하며, 두 값을 거꾸로 입력하면 작은 값부터 적용합니다.
+
+## 2026-11-12 사망 후 도착하는 개인 처치 알림
+
+`BPC_Life`는 처치자의 `possessed pawn`이 유효할 때만 `Client_ShowKillMessage`를 보냅니다.
+이 참조는 서버의 `OnPawnDeath`에서 비우고 `On Possess`에서 채웁니다.
+`WBP_PlayerHUD_sdm.ShowCompetitiveKillMessage`는 기존 사망 위젯 확인에 더해 로컬 플레이어의 Pawn과
+`BPC_Life.Is Death`를 확인하므로 위젯이 먼저 접혀도 늦게 도착한 개인 알림을 차단합니다.
+
+`Lvl_PortalMap` 서버와 클라이언트 2개로 PIE를 실행해 사망 후 지연 피해로 상대가 사망하면 처치 수가 증가하고
+중앙 사망 알림이 유지되는 것을 확인했습니다. 사망 위젯을 접은 상태에서 직접 전달한 알림 차단과 부활 후 표시도 확인했습니다.
+
+## 2026-11-12 원격 클라이언트의 사망 알림 복구
+
+`BP_QuakePlayerController.OnRep_possessed pawn`의 사망 분기가 `WBP_DeathScreen.InitDeathUI`를 호출합니다.
+`InitDeathUI`는 카운트다운과 중앙 사망 알림을 함께 시작합니다. 이름이 없으면 `You Died`를 표시하고,
+처치자 이름이 전달되면 기존 `Killed by`와 이름을 표시합니다. 이름이 있는 알림을 이미 초기화한 경우에는
+복제 알림에서 사망 위젯을 다시 초기화하지 않습니다.
+
+전투 맵 서버·클라이언트 PIE에서 실제 사망, 지연 처치 시 점수 집계와 중앙 알림 유지, 부활 후 처치 알림을 확인했습니다.
+`VerifyPersonalMessagePriority.py`는 사망 RPC 처리 경로와 서버에서 피해를 입혀 발생시킨 복제 사망을 포함해 6개 조건을 검사합니다.
+
+## 2026-11-12 점수판 강조 테두리 잔상
+
+포탈맵 PIE에서 촬영용 체크를 모두 끄고 사망 점수판을 열면 `Img_ScoreLocalOutline`의 파란 테두리가 남았습니다.
+`WS_Common_LocalOutline`의 테두리 알파가 위젯의 알파와 별도로 적용됩니다. **Tab 점수판**을 끄면
+촬영 마스크가 Slate 그리기 영역도 비워 테두리까지 숨깁니다. 실제 강조 스타일을 사용하는 렌더 회귀 검사를 추가했습니다.

@@ -7,7 +7,7 @@
 
 class UTexture2D;
 
-/** Designer settings for the consecutive-kill medals and personal kill message. */
+/** Designer settings for consecutive-kill medals and personal kill and death messages. */
 UCLASS(BlueprintType)
 class SHOOTINGARENA_API UKillMedalUISettings : public UDataAsset
 {
@@ -96,4 +96,7 @@ public:
 	/** Offset from the centre above the medal row; +X right, +Y down. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "문구", meta = (DisplayName = "킬 수 문구 위치 보정"))
 	FVector2D CountPosition = FVector2D::ZeroVector;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Killed by|위치", meta = (DisplayName = "사망 알림 위치 보정", ToolTip = "기존 사망 알림 위치에서 이동하는 UI 단위입니다. X는 오른쪽, Y는 아래쪽이 양수입니다."))
+	FVector2D DeathMessageOffset = FVector2D::ZeroVector;
 };
