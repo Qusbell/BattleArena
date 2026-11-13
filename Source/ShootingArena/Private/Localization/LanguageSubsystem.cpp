@@ -276,7 +276,7 @@ bool ULanguageLibrary::IsWidgetLocalizationExcluded(const UObject* Widget)
 
 void ULanguageLibrary::RefreshViewportFonts(UWorld* World)
 {
-    if (!World || !World->IsGameWorld() || World->GetNetMode() == NM_DedicatedServer) return;
+    if (!IsValid(World) || World->bIsTearingDown || !World->IsGameWorld() || World->GetNetMode() == NM_DedicatedServer) return;
     for (TObjectIterator<UTextBlock> It; It; ++It)
         if (IsValid(*It) && !It->IsTemplate() && It->GetWorld() == World && It->GetCachedWidget().IsValid()
             && !IsWidgetLocalizationExcluded(*It))
