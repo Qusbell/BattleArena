@@ -242,7 +242,7 @@ void ULoadingScreenSubsystem::ShowLoadingScreen(const FString& StatusText)
 			.Visibility_Lambda([]()
 			{
 				const UUIRecordingSettings* Recording = UUIRecordingSettings::Get();
-				return Recording && !Recording->Loading ? EVisibility::Hidden : EVisibility::HitTestInvisible;
+				return Recording && !Recording->Loading ? EVisibility::Hidden : EVisibility::Visible;
 			})
 			.BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
 			.BorderBackgroundColor(FLinearColor(0.01f, 0.01f, 0.015f, 1.0f))
