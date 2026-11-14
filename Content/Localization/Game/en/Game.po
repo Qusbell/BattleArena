@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-11-13 11:57\n"
-"PO-Revision-Date: 2026-11-13 11:57\n"
+"POT-Creation-Date: 2026-11-14 02:50\n"
+"PO-Revision-Date: 2026-11-14 02:50\n"
 "Language-Team: \n"
 "Language: en\n"
 "MIME-Version: 1.0\n"
@@ -858,7 +858,7 @@ msgstr "Killed by "
 #: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
 msgctxt "Game,UI_57d99cb42a0a"
 msgid "휠 / 숫자키"
-msgstr "Mouse Wheel / Number Keys"
+msgstr "Mouse Wheel   Number Keys"
 
 #. Key:	UI_59642514826d
 #. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
