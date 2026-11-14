@@ -18,6 +18,8 @@
 
 ## Blueprint 정의
 
+`BP_QuakeAIController2`의 `Set LTG Timer`는 0.2초 반복 주기를 사용합니다. 타이머를 생성할 때 명시적인 첫 호출 오프셋 ±0.1초로 평가가 같은 프레임에 몰리는 빈도를 낮춥니다. `Get Goal Weight`는 기존 양수 점수 조건을 경로 거리 조회 전에 검사합니다. 무효 후보의 반환값은 -1이며, 양수 후보는 기존 PathLink 거리로 감쇠합니다.
+
 | 객체 경로 | 상속 / 정의 역할 | 확인한 그래프 |
 |---|---|---|
 | `/Game/QuakeLike_1_0/AI/AIC/BP_QuakeAIController2.BP_QuakeAIController2` | Blueprint; /Script/CoreUObject.Class'/Script/ShootingArena.QuakeTargetSelectionAIController' | Can Arrive In Time, Clear Target Lost Timer, Debug, Debug_Chase Points, Debug_LTG, Debug_Perceived, Debug_STGtLine, EventGraph, Filtering STG, Forget Blackboard Info, Get Aggression Goal Weight, Get Aggression Score, Get Attacker Pawn, Get Best Goal, Get Goal Weight, Get Height Score, Get SelfPreservation Goal Weight, Get Survive Score, Get Weapon Score, Is Shorter Then LTG, Pop Chase Point, Push Chase Point, Set Current Target, Set LTG, Set LTG Timer, Set STG, SetupCharacteristic, Start Target Lost Timer, Target Lost, Update Goal Valid, UserConstructionScript |

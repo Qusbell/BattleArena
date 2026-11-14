@@ -7,6 +7,7 @@
 #include "Components/ActorComponent.h"
 #include "Engine/World.h"
 #include "GameFramework/GameStateBase.h"
+#include "ProfilingDebugging/CpuProfilerTrace.h"
 #include "UObject/StructOnScope.h"
 #include "UObject/UnrealType.h"
 
@@ -60,22 +61,33 @@ namespace
 	{
 		FDataTableRowHandle Result;
 		if (!Table || !Table->GetRowStruct() || (!WeaponClass && !WeaponData)) return Result;
+		TArray<const FObjectPropertyBase*, TInlineAllocator<8>> ObjectFields;
+		TArray<const FObjectPropertyBase*, TInlineAllocator<4>> ItemDataFields;
+		for (TFieldIterator<FObjectPropertyBase> It(Table->GetRowStruct()); It; ++It)
+		{
+			ObjectFields.Add(*It);
+			if (WeaponData)
+			{
+				const FString Name = It->GetName().Replace(TEXT(" "), TEXT(""));
+				if (Name.StartsWith(TEXT("WeaponDA")) || Name.StartsWith(TEXT("ItemDA")))
+					ItemDataFields.Add(*It);
+			}
+		}
+
 		FName ClassMatch;
 		for (const TPair<FName, uint8*>& Row : Table->GetRowMap())
 		{
-			for (TFieldIterator<FProperty> It(Table->GetRowStruct()); It; ++It)
+			for (const FObjectPropertyBase* Field : ItemDataFields)
 			{
-				FObjectPropertyBase* Object = CastField<FObjectPropertyBase>(*It);
-				if (!Object) continue;
-				UObject* Value = Object->GetObjectPropertyValue_InContainer(Row.Value);
-				FString Name = It->GetName().Replace(TEXT(" "), TEXT(""));
-				if (WeaponData && Value == WeaponData &&
-					(Name.StartsWith(TEXT("WeaponDA")) || Name.StartsWith(TEXT("ItemDA"))))
+				if (Field->GetObjectPropertyValue_InContainer(Row.Value) == WeaponData)
 				{
 					Result.DataTable = Table; Result.RowName = Row.Key; return Result;
 				}
-				if (WeaponClass && Value == WeaponClass) ClassMatch = Row.Key;
 			}
+			if (WeaponClass)
+				for (const FObjectPropertyBase* Field : ObjectFields)
+					if (Field->GetObjectPropertyValue_InContainer(Row.Value) == WeaponClass)
+					{ ClassMatch = Row.Key; break; }
 		}
 		if (!ClassMatch.IsNone()) { Result.DataTable = Table; Result.RowName = ClassMatch; }
 		return Result;
@@ -125,10 +137,11 @@ void UDeathDropSubsystem::HandleFatalDamage(AActor* Character, double NewHealth,
 	for (auto It = Subsystem->ProcessedDeaths.CreateIterator(); It; ++It)
 		if (!It->IsValid()) It.RemoveCurrent();
 	Subsystem->ProcessedDeaths.Add(Character);
+	TRACE_CPUPROFILER_EVENT_SCOPE(DeathDrop_HandleFatalDamage);
 	const FDeathDropSettings Drop = *Config;
 	const FVector DeathCenter = Character->GetActorLocation();
 	const double Now = World->GetGameState() ? World->GetGameState()->GetServerWorldTimeSeconds() : World->GetTimeSeconds();
-	TArray<FCandidate> Candidates;
+	TArray<FCandidate, TInlineAllocator<4>> Candidates;
 	auto Add = [&Candidates](UClass* Class, const FDataTableRowHandle& Item, bool bBuff = false, double EndTime = 0.0)
 	{
 		if (Class && Class->IsChildOf(AActor::StaticClass()) && ValidItem(Item))
@@ -179,7 +192,7 @@ void UDeathDropSubsystem::HandleFatalDamage(AActor* Character, double NewHealth,
 	if (Count == 0) return;
 
 	// Spawn successfully first so direction spacing uses the number that actually launches.
-	TArray<ADeathDropCarrier*> Carriers;
+	TArray<ADeathDropCarrier*, TInlineAllocator<4>> Carriers;
 	for (const FCandidate& Candidate : Candidates)
 	{
 		const FTransform Transform(FRotator::ZeroRotator, DeathCenter);
