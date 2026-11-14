@@ -5,6 +5,24 @@
 
 `BPC_VirtualInputAIMovement`의 `Stuck Trace`는 Stuck 판정과 탈출 방향 탐색에 `AIStuckTrace` 채널을 사용합니다. 채널은 `Config/DefaultEngine.ini`에서 기본 Block으로 정의하며 Trigger 프로필은 Ignore입니다. 개별 컴포넌트의 커스텀 응답은 이 기본값을 덮어쓸 수 있습니다. 채널 추가 후 에디터 재시작 및 Pawn·벽 실제 트레이스 검증은 아직 수행하지 않았습니다.
 
+## Jump PathLink
+
+`UPathLinkSubsystem`의 `JumpAgent`는 NavMesh 쿼리의 `PathfindingContext`와 별도입니다. `BP_AIShooter`의 `NPC Limited Speed Cached`를 사용하며, 양수로 초기화된 값이 없으면 `CharacterMovement.MaxWalkSpeed`를 사용합니다. 실제 `JumpZVelocity`와 중력으로 도착 높이의 하강 시각을 계산하고, 수평 속도 한도에 그 시각을 곱해도 도착 지점에 미달하면 해당 방향을 건너뜁니다. JumpAgent가 없는 기존 호출은 전체 링크를 평가합니다. [점프 판정](../../../../Source/ShootingArena/Private/AI/PathLink/Internal/PathLinkJumpCapability.cpp)
+
+상세·추정·도달성 탐색은 첫 링크와 링크 간 전이 모두에서 같은 판정을 적용합니다. 이 계산은 이륙 시 제한 속도를 확보할 수 있다고 가정합니다. 실제 성공에는 도움닫기, 이륙 시점, 공중 조향 및 착지 구간이 영향을 줍니다. JumpPad, Drop, Teleport는 각 타입의 기존 이동 처리를 사용합니다.
+
+2026-11-14 `Lvl_PortalMap` 검증은 `Play As Client`에서 난이도별로 새 PIE를 시작하고 서버에 `YJS_Easy`, `YJS_Normal`, `YJS_Hard` 중 한 봇만 생성해 수행했습니다. 제한 속도는 각각 800, 1,066.7, 1,600 cm/s였습니다. 플레이어를 이동 구간에서 격리하고 실제 이동 컴포넌트에 목표 좌표를 전달해 경로와 위치를 관찰했습니다.
+
+| 링크 | 난이도별 결과 |
+|---|---|
+| `BP_PathLink16` 정방향 | Easy·Normal은 우회 경로를 선택했습니다. Hard는 Jump를 선택해 약 430 cm 뒤에서 출발한 시도에서 목표 플랫폼에 착지했습니다. 약 160 cm 뒤에서 출발한 시도는 착지에 실패했습니다. |
+| `BP_PathLink34` 정방향 | Easy는 우회 경로를 반환했습니다. Normal·Hard는 Jump를 반환했습니다. |
+| `BP_PathLink29` 정방향 | Easy의 상세 탐색·거리 추정·도달성 조회는 모두 실패했습니다. Normal·Hard의 세 조회는 모두 성공했고 상세 경로에 Jump가 포함됐습니다. |
+| `BP_PathLink14` 양방향 | 세 난이도에서 모두 우회 경로를 반환했습니다. Hard의 정방향 이동 요청에서도 해당 링크가 제외됐습니다. |
+| `BP_PathLink7`, `BP_PathLink20` | 세 난이도 모두 정방향 Jump를 사용할 수 있었고, 높이 제한을 넘는 역방향은 우회했습니다. |
+
+Editor Development 빌드, 관련 Blueprint 2종 컴파일, `ShootingArena.PathLink.BakedRouting` 자동 검증을 통과했습니다. 테스트는 고정 목표를 사용한 단일 봇 검증 범위입니다.
+
 ## C++ 선언
 
 | 타입 | 역할 근거 / 헤더 함수 검색어 | 선언 위치 |

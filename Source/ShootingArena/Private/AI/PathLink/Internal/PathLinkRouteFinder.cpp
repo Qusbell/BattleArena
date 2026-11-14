@@ -1,6 +1,7 @@
 #include "AI/PathLink/Internal/PathLinkRouteFinder.h"
 
 #include "AI/PathLink/PathLink.h"
+#include "AI/PathLink/Internal/PathLinkJumpCapability.h"
 #include "AI/PathLink/Internal/PathLinkLazySearch.h"
 #include "AI/PathLink/Internal/PathLinkNavigation.h"
 #include "Engine/World.h"
@@ -327,6 +328,7 @@ bool FPathLinkRouteFinder::FindShortestRoute(
     const FVector& TargetLocation,
     const FPathLinkStaticGraph& StaticGraph,
     AActor* PathfindingContext,
+    const FPathLinkJumpCapability& JumpCapability,
     FPathLinkRouteResult& OutResult,
     bool bBuildSegments,
     FPathLinkQueryStats* OutStats,
@@ -393,10 +395,13 @@ bool FPathLinkRouteFinder::FindShortestRoute(
     AddDynamicEdge(StartNode, TargetNode, StartNavLocation, TargetNavLocation,
         EDynamicRouteEdgeType::DirectToTarget, INDEX_NONE, 0, Estimates ? Estimates->DirectDistance : -1,
         Estimates && Estimates->bDirectDisconnected);
+    TArray<bool, TInlineAllocator<64>> Allowed;
+    Allowed.Reserve(TraversalCount);
     for (int32 I = 0; I < TraversalCount; ++I)
     {
         const auto& T = StaticGraph.Traversals[I];
-        if (!T.Link.IsValid()) continue;
+        Allowed.Add(T.Link.IsValid() && JumpCapability.Allows(T.LinkType, T.EntryLocation, T.ExitLocation));
+        if (!Allowed[I]) continue;
         AddDynamicEdge(StartNode, FirstTraversalNode + I, StartNavLocation, T.EntryNavLocation,
             EDynamicRouteEdgeType::EnterTraversal, I, T.LinkCost,
             Estimates && Estimates->StartDistances.IsValidIndex(I) ? Estimates->StartDistances[I] : -1,
@@ -407,11 +412,12 @@ bool FPathLinkRouteFinder::FindShortestRoute(
             Estimates && Estimates->EndDisconnected.IsValidIndex(I) && Estimates->EndDisconnected[I]);
     }
     for (int32 From = 0; From < TraversalCount; ++From)
+    {
+        if (!Allowed[From]) continue;
         for (int32 To = 0; To < TraversalCount; ++To)
         {
             const auto* Transition = StaticGraph.GetTransition(From, To);
-            if (!Transition || !Transition->Reachable || !StaticGraph.Traversals[From].Link.IsValid()
-                || !StaticGraph.Traversals[To].Link.IsValid()) continue;
+            if (!Allowed[To] || !Transition || !Transition->Reachable) continue;
             FDynamicRouteEdge Edge;
             Edge.From = FirstTraversalNode + From; Edge.To = FirstTraversalNode + To;
             Edge.Type = EDynamicRouteEdgeType::EnterTraversal; Edge.TraversalIndex = To;
@@ -423,6 +429,7 @@ bool FPathLinkRouteFinder::FindShortestRoute(
             Search.Cost = Search.LowerBound = Search.Estimate = Edge.Cost;
             SearchEdges.Add(Search);
         }
+    }
     Stats.CandidateMilliseconds += (FPlatformTime::Seconds() - CandidateStart) * 1000.0;
     auto Resolve = [&](int32 Index, double& Cost)
     {

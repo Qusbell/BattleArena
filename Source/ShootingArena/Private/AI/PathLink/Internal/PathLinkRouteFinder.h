@@ -6,6 +6,7 @@
 class AActor;
 class APathLink;
 class UWorld;
+struct FPathLinkJumpCapability;
 
 /** Optional baked estimates aligned with StaticGraph.Traversals; negative means unavailable, never unreachable. */
 struct FPathLinkRouteEstimates
@@ -54,6 +55,7 @@ public:
         const FVector& TargetLocation,
         const FPathLinkStaticGraph& StaticGraph,
         AActor* PathfindingContext,
+        const FPathLinkJumpCapability& JumpCapability,
         FPathLinkRouteResult& OutResult,
         bool bBuildSegments = true,
         FPathLinkQueryStats* OutStats = nullptr,

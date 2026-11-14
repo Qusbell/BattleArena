@@ -96,6 +96,8 @@ flowchart LR
 AIController, BehaviorTree/Blackboard, Task/Service, 가상 입력 이동 컴포넌트를 구분합니다.
 `BPC_VirtualInputAIMovement.Build Path`의 `Find Shortest Route` 호출이 `UPathLinkSubsystem`에 연결됩니다.
 
+- 상세 이동의 `Build Path`와 목표 평가의 `BP_QuakeAIController2.Get Goal Weight`·`Filtering STG`는 `JumpAgent`를 전달합니다. Jump는 봇의 제한 속도, 점프 초기 수직 속도, 유효 중력으로 각 방향의 도달 범위를 계산합니다. 상세 경로, 거리 추정, `CanReach`는 공통 판정을 사용하며, 월드의 공유 그래프와 baked 캐시는 에이전트별로 수정하지 않습니다. [구현 및 검증 범위](catalogs/AI-Navigation.md#jump-pathlink)
+
 - `AQuakeTargetSelectionAIController`는 대상 목록·선택의 native Controller입니다. `BTService_SelectTarget_R`, FireCycle, Blueprint Task/Service와 함께 읽습니다.
 - `UPathLinkSubsystem`과 `APathLink`는 Area 위험도와 독립된 경로 연결/최단 경로 계층입니다. RuntimeCache, RouteFinder, LazySearch, NavSnapshot으로 계산 책임을 나눕니다.
 - 현행 baked 캐시 저장은 WorldSettings의 `UPathLinkCacheStorageComponent`입니다. `APathLinkRoutingCache` Actor는 마이그레이션 호환용 선언이 남아 있습니다.

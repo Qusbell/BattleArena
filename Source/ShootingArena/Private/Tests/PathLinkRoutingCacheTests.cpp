@@ -1,6 +1,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 #include "AI/PathLink/PathLinkRoutingCache.h"
 #include "AI/PathLink/PathLink.h"
+#include "AI/PathLink/Internal/PathLinkJumpCapability.h"
 #include "AI/PathLink/Internal/PathLinkNavSnapshot.h"
 #include "AI/PathLink/Internal/PathLinkRuntimeCache.h"
 #include "Engine/World.h"
@@ -90,6 +91,20 @@ bool FPathLinkRoutingCacheTest::RunTest(const FString& Parameters)
     Cache->TransitionDistances[1] = 0;
     Cache->EstimateRoute(0, FVector(0,0,0), 2, FVector(2037,0,0), Distance);
     TestEqual(TEXT("Multiple links, teleport zero cost, dynamic dropped item"), Distance, 52.0);
+    const FPathLinkJumpCapability Slow{FVector::UpVector, 1274, 500, 800};
+    const FPathLinkJumpCapability Fast{FVector::UpVector, 1274, 500, 1600};
+    Cache->Traversals[1].LinkType = EPathLinkType::Jump;
+    TestFalse(TEXT("Slow bot cannot cross a Jump in the middle of a route"),
+        Cache->EstimateRoute(0, FVector::ZeroVector, 2, FVector(2000,0,0), Distance, &Slow));
+    TestTrue(TEXT("Fast bot can cross the same Jump"),
+        Cache->EstimateRoute(0, FVector::ZeroVector, 2, FVector(2000,0,0), Distance, &Fast));
+    const FVector LowerEnd(594, 0, -148);
+    TestTrue(TEXT("Jump towards lower platform fits the slow bot"),
+        Slow.Allows(EPathLinkType::Jump, FVector::ZeroVector, LowerEnd));
+    TestFalse(TEXT("Reverse Jump exceeds even the fast bot's jump height"),
+        Fast.Allows(EPathLinkType::Jump, LowerEnd, FVector::ZeroVector));
+    TestTrue(TEXT("A JumpPad is independent of ordinary jump capability"),
+        Slow.Allows(EPathLinkType::JumpPad, LowerEnd, FVector::ZeroVector));
     TestFalse(TEXT("Disconnected islands cannot walk directly"), Cache->EstimateRoute(2, FVector(2000,0,0), 0, FVector::ZeroVector, Distance));
 
     Cache->Traversals.Reset();

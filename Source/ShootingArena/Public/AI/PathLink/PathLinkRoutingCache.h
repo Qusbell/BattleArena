@@ -7,6 +7,7 @@
 #include "PathLinkRoutingCache.generated.h"
 
 class ARecastNavMesh;
+struct FPathLinkJumpCapability;
 
 USTRUCT()
 struct FPathLinkBakedPoly
@@ -90,7 +91,7 @@ public:
     bool IsBaked() const;
     double EstimateNormalDistance(int32 FromPoly, const FVector& From, int32 ToPoly, const FVector& To) const;
     bool EstimateRoute(int32 StartPoly, const FVector& Start, int32 TargetPoly, const FVector& Target,
-        double& OutDistance) const;
+        double& OutDistance, const FPathLinkJumpCapability* JumpCapability = nullptr) const;
     void ExportStaticGraph(FPathLinkStaticGraph& Out) const;
     SIZE_T GetCacheAllocatedSize() const;
     bool GetNormalDepartureDirection(int32 FromPoly, int32 ToPoly, FVector& OutDirection) const;
