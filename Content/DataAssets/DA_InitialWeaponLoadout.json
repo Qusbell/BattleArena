@@ -14,5 +14,5 @@
 			"weaponData": "None"
 		}
 	],
-	"bRestrictDefaultWeaponSelection": true
+	"bRestrictDefaultWeaponSelection": false
 }
