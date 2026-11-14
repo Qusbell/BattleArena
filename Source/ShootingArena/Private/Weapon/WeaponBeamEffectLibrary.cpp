@@ -117,6 +117,12 @@ namespace
 
 	void SuppressNiagaraEmitter(UNiagaraComponent* Component, FName Emitter)
 	{
+		const UNiagaraSystem* System = Component->GetAsset();
+		if (!System || !System->GetEmitterHandles().ContainsByPredicate([Emitter](const FNiagaraEmitterHandle& Handle)
+		{
+			return Handle.GetName() == Emitter;
+		})) return;
+
 		Component->SetEmitterEnable(Emitter, false);
 		// SetEmitterEnable only records the override on a completed instance. An existing
 		// pooled controller also needs the flag before activation and any warmup tick.

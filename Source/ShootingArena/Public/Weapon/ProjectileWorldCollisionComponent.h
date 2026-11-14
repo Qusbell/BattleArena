@@ -49,5 +49,7 @@ private:
 	void RecordTravel(USceneComponent* Updated, EUpdateTransformFlags Flags, ETeleportType Teleport);
 	bool ResolveTravel();
 	bool FindImpact(const FVector& Start, const FVector& End, FHitResult& OutHit) const;
+	// The tick and standalone query entry points validate the component context first.
+	bool SweepImpact(const FVector& Start, const FVector& End, FHitResult& OutHit) const;
 	void ResolveImpact(const FHitResult& Hit);
 };

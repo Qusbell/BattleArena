@@ -169,14 +169,17 @@ void UProjectileWorldCollisionComponent::RecordTravel(USceneComponent* Updated, 
 bool UProjectileWorldCollisionComponent::FindImpact(const FVector& Start, const FVector& End, FHitResult& OutHit) const
 {
 	OutHit = FHitResult();
-	if (!HasLiveContext()) return false;
+	return HasLiveContext() && SweepImpact(Start, End, OutHit);
+}
+
+bool UProjectileWorldCollisionComponent::SweepImpact(const FVector& Start, const FVector& End, FHitResult& OutHit) const
+{
 	const AActor* Projectile = GetOwner();
 	const USphereComponent* Player = PlayerCollision.Get();
 	UWorld* World = GetWorld();
 	const float WallRadius = GetScaledSphereRadius();
-	const float PlayerRadius = IsValid(Player) ? Player->GetScaledSphereRadius() : 0.f;
-	if (!IsValid(Projectile) || Projectile->IsActorBeingDestroyed() || !IsValid(Player) || !IsValid(World)
-		|| World->bIsTearingDown || Start.ContainsNaN() || End.ContainsNaN()
+	const float PlayerRadius = Player->GetScaledSphereRadius();
+	if (Start.ContainsNaN() || End.ContainsNaN()
 		|| !FMath::IsFinite(WallRadius) || WallRadius <= UE_SMALL_NUMBER
 		|| !FMath::IsFinite(PlayerRadius) || PlayerRadius <= UE_SMALL_NUMBER) return false;
 	FCollisionQueryParams Query = ProjectileCollisionHelpers::QueryFor(Projectile);
@@ -250,7 +253,7 @@ bool UProjectileWorldCollisionComponent::ResolveTravel()
 	for (const FTravelSegment& Segment : Segments)
 	{
 		FHitResult Hit;
-		if (FindImpact(Segment.Start, Segment.End, Hit))
+		if (SweepImpact(Segment.Start, Segment.End, Hit))
 		{
 			ResolveImpact(Hit);
 			return bResolved;
@@ -269,7 +272,7 @@ void UProjectileWorldCollisionComponent::TickComponent(float DeltaTime, ELevelTi
 	if (Travel.IsEmpty())
 	{
 		FHitResult Hit;
-		if (FindImpact(LastPosition, LastPosition, Hit)) ResolveImpact(Hit);
+		if (SweepImpact(LastPosition, LastPosition, Hit)) ResolveImpact(Hit);
 		return;
 	}
 	ResolveTravel();
