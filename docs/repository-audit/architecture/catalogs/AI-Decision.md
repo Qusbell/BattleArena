@@ -20,6 +20,8 @@
 
 `BP_QuakeAIController2`의 `Set LTG Timer`는 0.2초 반복 주기를 사용합니다. 타이머를 생성할 때 명시적인 첫 호출 오프셋 ±0.1초로 평가가 같은 프레임에 몰리는 빈도를 낮춥니다. `Get Goal Weight`는 기존 양수 점수 조건을 경로 거리 조회 전에 검사합니다. 무효 후보의 반환값은 -1이며, 양수 후보는 기존 PathLink 거리로 감쇠합니다.
 
+`Update Goal Valid`는 LTG와 STG에 공통으로 적용합니다. 현재 목표가 획득된 `BP_BuffItem`이면 `MyOwner`가 자신의 Pawn일 때 곧바로 블랙보드의 목표 액터와 위치를 비웁니다. 다른 캐릭터가 획득한 버프는 저장한 위치를 향한 시야가 트일 때 해제합니다. `Get Goal Weight`의 Buff 분기는 이미 획득된 `BP_BuffItem`을 -1로 평가합니다. 다른 아이템에는 기존 시야, 액터 유효성 및 가중치 규칙을 적용합니다. `Lvl_PortalMap`의 `Play As Client`에서 실제 Overlap 획득과 목표 갱신 타이머, 시야별 LTG/STG 판정, 새 후보 제외를 검증했습니다.
+
 | 객체 경로 | 상속 / 정의 역할 | 확인한 그래프 |
 |---|---|---|
 | `/Game/QuakeLike_1_0/AI/AIC/BP_QuakeAIController2.BP_QuakeAIController2` | Blueprint; /Script/CoreUObject.Class'/Script/ShootingArena.QuakeTargetSelectionAIController' | Can Arrive In Time, Clear Target Lost Timer, Debug, Debug_Chase Points, Debug_LTG, Debug_Perceived, Debug_STGtLine, EventGraph, Filtering STG, Forget Blackboard Info, Get Aggression Goal Weight, Get Aggression Score, Get Attacker Pawn, Get Best Goal, Get Goal Weight, Get Height Score, Get SelfPreservation Goal Weight, Get Survive Score, Get Weapon Score, Is Shorter Then LTG, Pop Chase Point, Push Chase Point, Set Current Target, Set LTG, Set LTG Timer, Set STG, SetupCharacteristic, Start Target Lost Timer, Target Lost, Update Goal Valid, UserConstructionScript |
