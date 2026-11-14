@@ -12,6 +12,7 @@
 #include "Components/VerticalBoxSlot.h"
 #include "CommonTextBlock.h"
 #include "UI/ReusableStyleHost.h"
+#include "UI/UIPalette.h"
 #include "Brushes/SlateColorBrush.h"
 #include "Brushes/SlateNoResource.h"
 #include "Engine/Font.h"
@@ -282,6 +283,11 @@ void ULanguageLibrary::RefreshViewportFonts(UWorld* World)
         if (IsValid(*It) && !It->IsTemplate() && It->GetWorld() == World && It->GetCachedWidget().IsValid()
             && !IsWidgetLocalizationExcluded(*It) && !UCompetitiveRankingHUD::IsMatchTimerText(**It))
         {
+            // The kill notification nickname uses the font authored in its text style.
+            if (It->GetFName() == TEXT("Child1"))
+                if (const UUserWidget* Owner = It->GetTypedOuter<UUserWidget>(); Owner && Owner->GetClass()->GetPathName() ==
+                    TEXT("/Game/CompShooterHUD/UI/Content/Kill_Message/Childs/WB_Message1.WB_Message1_C"))
+                    continue;
             const FSlateFontInfo Font = ResolveFont(It->GetFont());
             if (Font != It->GetFont()) It->SetFont(Font);
         }
@@ -361,7 +367,18 @@ TSharedRef<SWidget> ULanguageSelector::RebuildWidget()
             Label->SetText(ULanguageLibrary::Text(TEXT("Settings_Language")));
             USizeBox* Size = WidgetTree->ConstructWidget<USizeBox>();
             Size->SetMinDesiredWidth(200); Size->SetMinDesiredHeight(40);
-            Combo = WidgetTree->ConstructWidget<UStyleableComboBoxString>(); Size->AddChild(Combo);
+            UStyleableComboBoxString* StyledCombo = WidgetTree->ConstructWidget<UStyleableComboBoxString>();
+            Combo = StyledCombo;
+            if (ComboStyle)
+            {
+                UUIThemePaletteLibrary::PreparePalette();
+                UBlueprintComboStyle* Style = ComboStyle->GetDefaultObject<UBlueprintComboStyle>();
+                UUIThemePaletteLibrary::ApplyObject(Style);
+                StyledCombo->ApplyBlueprintStyle(*Style);
+                Size->SetMinDesiredWidth(Style->DesiredSize.X);
+                Size->SetMinDesiredHeight(Style->DesiredSize.Y);
+            }
+            Size->AddChild(Combo);
             Row->AddChildToHorizontalBox(Size)->SetPadding(FMargin(8, 4));
             Combo->OnGenerateWidgetEvent.BindDynamic(this, &ThisClass::GenerateOption);
             Combo->OnSelectionChanged.AddDynamic(this, &ThisClass::Selected);
@@ -398,7 +415,6 @@ void ULanguageSelector::Refresh()
     Options = Language->GetEnabledLanguages();
     if (Combo)
     {
-        if (ComboStyle) CastChecked<UStyleableComboBoxString>(Combo)->ApplyBlueprintStyle(*ComboStyle->GetDefaultObject<UBlueprintComboStyle>());
         Combo->ClearOptions();
         for (const FLanguageRow& Row : Options) Combo->AddOption(Row.CultureCode);
         Combo->SetSelectedOption(Language->GetCurrentLanguageCode());
@@ -439,7 +455,7 @@ UWidget* ULanguageSelector::GenerateOption(FString Item)
     UTextBlock* Result = WidgetTree->ConstructWidget<UTextBlock>();
     const FLanguageRow* Row = Options.FindByPredicate([&](const FLanguageRow& R) { return R.CultureCode == Item; });
     Result->SetText(Row ? Row->DisplayName : FText::AsCultureInvariant(Item));
-    FSlateFontInfo Font = Result->GetFont(); Font.Size = 18;
-    Result->SetFont(ULanguageLibrary::ResolveFont(Font));
+    Result->SetFont(ULanguageLibrary::ResolveFont(Combo->GetFont()));
+    Result->SetColorAndOpacity(FSlateColor::UseForeground());
     return Result;
 }
