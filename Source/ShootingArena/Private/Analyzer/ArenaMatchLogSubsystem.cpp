@@ -338,6 +338,7 @@ void UArenaMatchLogSubsystem::Deinitialize()
 		FailedWrites += PendingSql.Num();
 		PendingSql.Reset();
 	}
+	if (ValidationFuture.IsValid()) MaybeValidate(true);
 	CloseDatabase();
 	GLooseCache.Structs.Reset();
 	Super::Deinitialize();
@@ -1708,6 +1709,12 @@ void UArenaMatchLogSubsystem::Flush()
 	{
 		return;
 	}
+	if (ValidationFuture.IsValid())
+	{
+		// The validator has exclusive use of this connection until its result is collected.
+		MaybeValidate();
+		if (ValidationFuture.IsValid()) return;
+	}
 	if (!ActiveDamageSeqs.IsEmpty())
 	{
 		bFlushWanted = true; // a damage event is mid-flight; its detail row is not queued yet
@@ -1794,17 +1801,39 @@ bool UArenaMatchLogSubsystem::CollectWrite(bool bWait)
 	return true;
 }
 
-void UArenaMatchLogSubsystem::MaybeValidate()
+void UArenaMatchLogSubsystem::MaybeValidate(bool bWait)
 {
+	if (ValidationFuture.IsValid())
+	{
+		if (!bWait && !ValidationFuture.IsReady()) return;
+		const TArray<FString> Findings = ValidationFuture.Consume();
+		LastValidationIssues = Findings.Num();
+		if (Findings.IsEmpty())
+		{
+			UE_LOG(LogArenaMatchLog, Log, TEXT("Match %s validated: no missing events or references"), *MatchId);
+		}
+		else
+		{
+			UE_LOG(LogArenaMatchLog, Error, TEXT("Match %s validation found: %s"), *MatchId, *FString::Join(Findings, TEXT(", ")));
+		}
+		return;
+	}
 	if (!Db || !bMatchEnded || bValidated || InFlightSql || !PendingSql.IsEmpty() || !ActiveDamageSeqs.IsEmpty())
 	{
 		return;
 	}
 	bValidated = true;
+	ValidationFuture = Async(EAsyncExecution::ThreadPool, [Database = Db, Id = MatchId, WriteFailures = FailedWrites]
+	{
+		return ValidateStoredMatch(*Database, Id, WriteFailures);
+	});
+}
 
-	// Everything is stored: check references and counts of this match against the stored rows.
+TArray<FString> UArenaMatchLogSubsystem::ValidateStoredMatch(FSQLiteDatabase& Database, const FString& Id, int32 WriteFailures)
+{
+	TRACE_CPUPROFILER_EVENT_SCOPE(ArenaMatchLog_ValidateStoredMatch);
 	TArray<FString> Findings;
-	Db->Execute(*FString::Printf(TEXT("SELECT Code, COUNT(*) FROM v_record_issues WHERE MatchId=%s AND Severity='ERROR' GROUP BY Code"), *Q(MatchId)),
+	Database.Execute(*FString::Printf(TEXT("SELECT Code, COUNT(*) FROM v_record_issues WHERE MatchId=%s AND Severity='ERROR' GROUP BY Code"), *Q(Id)),
 		[&Findings](const FSQLitePreparedStatement& Row)
 		{
 			FString Code;
@@ -1815,7 +1844,7 @@ void UArenaMatchLogSubsystem::MaybeValidate()
 			return ESQLitePreparedStatementExecuteRowResult::Continue;
 		});
 	int64 DanglingReferences = 0;
-	Db->Execute(TEXT("PRAGMA foreign_key_check"), [&DanglingReferences](const FSQLitePreparedStatement&)
+	Database.Execute(TEXT("PRAGMA foreign_key_check"), [&DanglingReferences](const FSQLitePreparedStatement&)
 	{
 		++DanglingReferences;
 		return ESQLitePreparedStatementExecuteRowResult::Continue;
@@ -1824,19 +1853,11 @@ void UArenaMatchLogSubsystem::MaybeValidate()
 	{
 		Findings.Add(FString::Printf(TEXT("dangling references x%lld"), DanglingReferences));
 	}
-	if (FailedWrites > 0)
+	if (WriteFailures > 0)
 	{
-		Findings.Add(FString::Printf(TEXT("failed writes x%d"), FailedWrites));
+		Findings.Add(FString::Printf(TEXT("failed writes x%d"), WriteFailures));
 	}
-	LastValidationIssues = Findings.Num();
-	if (Findings.IsEmpty())
-	{
-		UE_LOG(LogArenaMatchLog, Log, TEXT("Match %s validated: no missing events or references"), *MatchId);
-	}
-	else
-	{
-		UE_LOG(LogArenaMatchLog, Error, TEXT("Match %s validation found: %s"), *MatchId, *FString::Join(Findings, TEXT(", ")));
-	}
+	return Findings;
 }
 
 bool UArenaMatchLogSubsystem::DescribeDropItem(AActor* Item, FString& OutCategory, FString& OutRowName, double& OutAmount, bool& bOutHasAmount) const

@@ -8,6 +8,7 @@
 #include "NiagaraEmitterHandle.h"
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraSystem.h"
+#include "NiagaraSystemInstance.h"
 #include "NiagaraSystemInstanceController.h"
 #include "NiagaraTypes.h"
 #include "Particles/ParticleEmitter.h"
@@ -103,7 +104,8 @@ namespace
 		if (Component)
 		{
 			Component->SetFirstPersonPrimitiveType(EFirstPersonPrimitiveType::None);
-			if (const auto Controller = Component->GetSystemInstanceController(); Controller && Controller->IsValid())
+			if (const auto Controller = Component->GetSystemInstanceController();
+				Controller && Controller->IsValid() && !Controller->GetSystemInstance_Unsafe()->GetEmitters().IsEmpty())
 			{
 				for (const FNiagaraEmitterHandle& Emitter : System->GetEmitterHandles())
 				{
@@ -120,14 +122,15 @@ namespace
 		const UNiagaraSystem* System = Component->GetAsset();
 		if (!System || !System->GetEmitterHandles().ContainsByPredicate([Emitter](const FNiagaraEmitterHandle& Handle)
 		{
-			return Handle.GetName() == Emitter;
+			return Handle.GetName() == Emitter && Handle.GetIsEnabled();
 		})) return;
 
 		Component->SetEmitterEnable(Emitter, false);
 		// SetEmitterEnable only records the override on a completed instance. An existing
 		// pooled controller also needs the flag before activation and any warmup tick.
 		if (const auto Controller = Component->GetSystemInstanceController();
-			Controller && Controller->IsValid() && Controller->IsComplete())
+			Controller && Controller->IsValid() && Controller->IsComplete()
+			&& !Controller->GetSystemInstance_Unsafe()->GetEmitters().IsEmpty())
 		{
 			Controller->SetEmitterEnable(Emitter, false);
 		}

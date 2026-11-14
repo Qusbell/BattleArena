@@ -136,7 +136,7 @@ OneWayTeleportActor, JumpPadFlightComponent/CommonSettings는 별도 이동 기�
 ## 분석·기록·디버그
 
 ArenaAnalyze의 JSON chunk 기록·시각화와 ArenaMatchLog의 SQLite 경기 기록은 서로 다른 저장 경로입니다.
-ArenaMatchLog는 경기 중 SQL 배치를 한 번에 하나씩 백그라운드 워커로 보내고, 재시도 배치를 후속 배치보다 먼저 처리합니다. 월드 종료 시 남은 쓰기를 처리한 후 연결을 닫습니다.
+ArenaMatchLog는 경기 중 SQL 배치를 한 번에 하나씩 백그라운드 워커로 보내고, 재시도 배치를 후속 배치보다 먼저 처리합니다. 마지막 배치가 끝나면 백그라운드 워커가 같은 SQLite 연결에서 경기 기록과 외래 키를 검증합니다. 게임 스레드는 결과를 수집해 로그에 남기고, 월드 종료 시 남은 쓰기와 진행 중인 검증을 마친 후 연결을 닫습니다.
 2026-11-11: ArenaMatchLog에 수집 형식 버전 1 확장(탄약 `ammo_change`, 발사 조건 `fire_context`, 참가자 적용 설정 `participant_settings`, 버프 효과 `buff_instance`/`damage_buff`, 사람 플레이어 행동 관측)이 추가되었습니다. `JumpPadFlightComponent`와 `OneWayTeleportActor`가 강제 이동을 `UArenaMatchLogLibrary::RecordForcedMovement`로 알립니다. 연결 위치는 [확장 연결표](../../../GamePlayDB/extension_wiring_table.md)를 확인합니다.
 둘 다 `Saved`를 쓰므로 캐시로 일괄 취급하지 않습니다. DebugAINetwork는 서버 수집과 소유 클라이언트 표시를 나눕니다.
 
