@@ -9,12 +9,12 @@ Unreal MCP에서 UE의 그래프 복사 API로 `WBP_DifficultySelect_SDM`의 시
 | 위젯 | 부모 | 화면 위치와 크기 |
 | --- | --- | --- |
 | Overlay_3 | CanvasPanel_32 | (120, 116), 620×44 |
-| BackButtonBox | CanvasPanel_32 | (1520, 116), 280×44 |
+| BackButtonBounds | CanvasPanel_32 | (120, 988), 158×44 |
 | SinglePlayMapHeading | CanvasPanel_32 | (120, 224), 520×32 |
 | LvlImageBox | CanvasPanel_1 | (120, 272), 1680×500 |
 | Overlay_110, Overlay | LvlImageBox | (120, 272), (972, 272), 각각 828×500 |
-| SinglePlayDifficultyHeading | CanvasPanel_32 | (120, 828), 520×32 |
-| Button_Easy, Button_Normal, Button_Hard | SinglePlayControls | (120, 876), (336, 876), (552, 876), 각각 200×88 |
+| SinglePlayDifficultyHeading | CanvasPanel_32 | (120, 823), 520×32 |
+| Button_Easy, Button_Normal, Button_Hard | SinglePlayControls | (120, 876), (330, 876), (540, 876), 각각 209×88 |
 | Btn_Start | SinglePlayControls | (1440, 876), 360×88 |
 
 ## 검증 범위
@@ -28,7 +28,7 @@ Unreal MCP에서 UE의 그래프 복사 API로 `WBP_DifficultySelect_SDM`의 시
 
 최종 저장본의 첫 진입은 Map_03 / 보통이었습니다. 난이도 원본의 SHA-256은 작업 전후 모두 `c38c08bf1e8eb651b1a7ee5b12ec83d1a787bfaae04c158dbf9e45a7f773b270`입니다.
 
-기존 `M_UI_MapFade`는 카드 하단에 사용합니다. 통합 화면 전용 `M_UI_SinglePlayC2`는 Retainer Box가 렌더링한 미리보기의 채도·밝기, 전체 배경의 78–97% 그라데이션, 2px 꺾쇠·포커스 외곽선을 처리합니다. 미리보기 재생과 해제는 기존 `MapPreviewLibrary`가 담당합니다. 표시 중인 맵과 선택한 맵이 일치하면 `ConfigureMapPreview`의 `bAlwaysPlay`를 켜 반복 재생합니다. 비선택 맵은 기존 호버 지연 후 재생합니다. 위젯 Tick은 선택·포커스 표시를 갱신하고, 0.2초 동안 카드 색을 보간하며, 맵 변경 시 이전 배경을 0.24초 동안 페이드아웃합니다. 맵과 난이도의 테두리는 현재 선택을 표시합니다. 마우스를 올리거나 포커스를 옮겨도 선택 테두리는 유지되며, 선택이 바뀌면 새 항목으로 이동합니다. 비선택 맵의 기본 외곽선은 무채색 LineStrong입니다. 참조 이미지가 없어 나란히 비교하는 검증은 진행하지 않았습니다.
+카드 하단에는 `M_UI_MapFade`를 사용합니다. `M_UI_SinglePlayC2`는 Retainer Box 미리보기의 채도·밝기와 난이도 포커스 외곽선을 처리합니다. 맵 배경에는 `BackgroundBlur`와 어두운 스크림을 적용합니다. 미리보기 재생과 해제는 `MapPreviewLibrary`가 담당합니다. 선택된 맵은 `ConfigureMapPreview`의 `bAlwaysPlay`로 반복 재생하며, 비선택 맵은 기존 호버 지연 후 재생합니다. 맵 변경 시 이전 배경은 0.24초 동안 페이드아웃합니다. 선택한 맵은 흰색 하단 바로, 선택한 난이도는 팔레트 색의 밑줄로 표시합니다. 난이도 버튼의 키보드·패드 탐색 포커스는 `Accent` 테두리로 표시하며 이동 중에도 선택 밑줄은 유지합니다.
 
 C2 시각 검증은 1920×1080, DPI 1.0의 Play As Client 뷰포트를 PNG로 직접 캡처해 진행했습니다. 첫 맵·보통·시작 포커스와 두 번째 맵·어려움 포커스 상태를 각각 확인했습니다. 맵 변경 직후 이전 배경의 알파는 1.0, 전환 완료 후 0.0이며 위젯은 Hidden입니다.
 

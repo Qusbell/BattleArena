@@ -9,6 +9,7 @@
 #include "Engine/Texture2D.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "UI/UIPalette.h"
+#include "Widgets/SWidget.h"
 
 namespace
 {
@@ -90,8 +91,9 @@ void UReusableStyleLibrary::UpdateSinglePlaySelectionVisuals(UUserWidget* Screen
     static const FName Buttons[] = { TEXT("Button_Easy"), TEXT("Button_Normal"), TEXT("Button_Hard"),
         TEXT("Btn_Start"), TEXT("Btn_Back") };
     static const FName Selection[] = { TEXT("C2EasySelect"), TEXT("C2NormalSelect"), TEXT("C2HardSelect") };
+    static const FName Focus[] = { TEXT("C2EasyFocus"), TEXT("C2NormalFocus"), TEXT("C2HardFocus") };
     static const FName Labels[] = { TEXT("TextBlock_1"), TEXT("TextBlock_2"), TEXT("TextBlock_3") };
-    static const FName Roles[] = { TEXT("DiffEasy"), TEXT("DiffNormal"), TEXT("DiffHard") };
+    static const FName Roles[] = { TEXT("DiffEasy"), TEXT("DiffNormalGlowBlue"), TEXT("DiffHard") };
     for (int32 Index = 0; Index < UE_ARRAY_COUNT(Buttons); ++Index)
     {
         UButton* Button = FindWidget<UButton>(Screen, Buttons[Index]);
@@ -101,9 +103,13 @@ void UReusableStyleLibrary::UpdateSinglePlaySelectionVisuals(UUserWidget* Screen
         if (Index < UE_ARRAY_COUNT(Selection))
         {
             const bool bSelected = Index == SelectedDifficulty;
-            UpdateOutline(Screen, Selection[Index], bSelected, Roles[Index], Index == 0);
+            UpdateOutline(Screen, Selection[Index], bSelected, Roles[Index]);
+            const TSharedPtr<SWidget> SlateButton = Button->GetCachedWidget();
+            const bool bNavigationFocus = SlateButton.IsValid()
+                && SlateButton->HasAnyUserFocus() == EFocusCause::Navigation;
+            UpdateOutline(Screen, Focus[Index], bNavigationFocus, TEXT("Accent"));
             if (UTextBlock* Text = FindWidget<UTextBlock>(Screen, Labels[Index]))
-                Text->SetColorAndOpacity(FSlateColor(UUIThemePaletteLibrary::GetColor(bSelected ? Roles[Index] : FName(TEXT("Text2")))));
+                Text->SetColorAndOpacity(FSlateColor(UUIThemePaletteLibrary::GetColor(bSelected ? TEXT("Text1") : TEXT("Text2"))));
             const FLinearColor Base = UUIThemePaletteLibrary::GetColor(TEXT("Bg800"));
             const FLinearColor Selected = UUIThemePaletteLibrary::GetColor(TEXT("Bg700"));
             Button->SetBackgroundColor(bSelected ? FLinearColor(Selected.R / Base.R, Selected.G / Base.G,
