@@ -1,5 +1,11 @@
 # 설정 데이터의 원본과 편집 기준
 
+2026-11-15 추가. AI 난이도별 피해 증감의 원본은 `/Game/QuakeLike_1_0/Data/AI/DA_AIDifficultyDamageSettings`입니다.
+기획자는 이 Data Asset의 Easy·Normal·Hard에서 `Damage Dealt Percent`와 `Damage Taken Percent`를 편집하여 저장합니다.
+초기값은 모두 0%이며 하한은 -99%입니다. 이 에셋은 JsonAssetSync에 등록하지 않으며 기존 Data/AI Cook 경로에 포함됩니다.
+싱글·멀티 GameMode가 AI 컨트롤러에 선택 난이도를 설정합니다. 서버의 `BPC_Life`는 AI와 인간 플레이어 사이의 피해에만
+버프 처리 후 배율을 적용하며 같은 수치를 체력·아머 분배와 매치 분석에 사용합니다. [설계 결정](../../../Decision/003-ai-difficulty-damage.md)을 참조합니다.
+
 2026-11-13 추가. 좌하단 HP·아머 변경 연출의 원본은 `/Game/QuakeLike_1_0/Data/UI/DA_VitalsHUDFeedback`입니다.
 피격·비피격 각각에 대해 숫자 잔상과 가로 색상 잔상의 불투명도와 블러를 에디터에서 직접 편집하고 저장합니다.
 이 에셋은 JsonAssetSync에 등록하지 않습니다.

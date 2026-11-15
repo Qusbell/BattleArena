@@ -1,5 +1,14 @@
 {
   "schema_version": 1,
+  "ai_difficulty_damage": {
+    "date": "2026-11-15",
+    "report": "Decision/003-ai-difficulty-damage.md",
+    "source_of_truth": "/Game/QuakeLike_1_0/Data/AI/DA_AIDifficultyDamageSettings",
+    "scope": "Share damage dealt and taken percentages by bot difficulty across solo and multiplayer GameModes. Apply the server-side multiplier after existing buffs and before the Life component distributes damage.",
+    "validation": "Editor Development build and three Blueprint compiles passed. PortalMap Play As Client verified both damage directions, mixed difficulty spawns in multiplayer, health and armor distribution, -99 percent clamp, unassigned difficulty, AI versus AI, self-damage, environmental damage and adjusted damage in SQLite.",
+    "not_verified": "Weapon firing integration for each weapon, lobby UI launch, and packaged runtime were not exercised.",
+    "baseline_recollection": "not_performed; targeted incremental update only"
+  },
   "vitals_hud_feedback": {
     "date": "2026-11-13",
     "report": "docs/repository-audit/architecture/DataAuthority.md",
