@@ -61,6 +61,7 @@ flowchart LR
 - `BP_PlayerShooter.FP_Mesh`의 `Arm_Steel`은 `Positive Bounds Extension`의 로컬 Y·Z를 확장합니다. `ID.Fist`의 대기 및 공격 자세에서 팔의 바운드가 카메라 뒤로 빠져 프러스텀 컬링되는 현상을 막습니다.
 - `DA_Fist.EquipMontage`는 주먹 전용 `AM_FP_Fist_Equip`을 참조합니다. `BP_HeldItem.ChangeAnim`이 1인칭 `Arms` 슬롯에서 0.34초 동안 재생하며, `AS_FP_Fist_Equip`의 마지막 자세는 `Steel_Idle_Combat`의 가드 자세에 맞췄습니다.
 - `BP_WeaponBase.[S] TryFire`는 `ID.Fist`의 히트스캔과 피해 적용을 서버에서 0.20초 늦춥니다. 기준은 `Steel_FP_RightPowerSmash`에서 처음 오른팔이 최대 신전에 도달하는 프레임입니다. 타격 시점의 조준을 사용하고 `DA_Fist.hitscanEffectDelay`는 0으로 설정합니다. `BP_HeldItem.Unequip`이 예약을 취소하며, 서버는 타격 직전 장착 상태와 소유 캐릭터의 생존 여부를 확인합니다. 다른 무기는 공통 서버 판정 경로를 즉시 실행합니다.
+- `BP_Weapon_Fist.StartFire`는 구체를 조준 방향으로 스윕해 첫 번째 blocking hit를 처리합니다. 구체 앞면의 전방 최대 거리는 `DA_Fist.range`이며, 스윕 중심은 `range - 반경`만큼 이동합니다. 기본 반경은 40cm이고, `range`가 80cm 미만이면 양의 사거리에서 스윕 길이를 확보하도록 `range`의 절반을 반경으로 사용합니다.
 - 풀에서 활성화된 Plasma는 루트에 오버랩 이벤트와 물체 채널 Block 응답이 없고 별도 충돌 컴포넌트가 준비된 경우 루트 이동 sweep을 생략합니다. `AIStuckTrace` 응답과 벽·캐릭터 판정 sweep은 유지합니다.
 - 수렴점에 도달한 투사체는 해당 프레임의 이동을 마친 뒤 다음 월드 Tick 시작 시 기본 이동 컴포넌트로 복귀합니다.
 - AimAlignment, ProjectileAim, MuzzleFlash, BeamEffect, ImpactEffect, Presentation 관련 라이브러리는 조준/시각 효과의 경계입니다.
