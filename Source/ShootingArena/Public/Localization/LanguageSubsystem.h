@@ -23,6 +23,7 @@ struct SHOOTINGARENA_API FLanguageRow : public FTableRowBase
     UPROPERTY(EditAnywhere, BlueprintReadOnly) FText DisplayName;
     UPROPERTY(EditAnywhere, BlueprintReadOnly) bool IsDefault = false;
     UPROPERTY(EditAnywhere, BlueprintReadOnly) TObjectPtr<UFont> Font;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly) TObjectPtr<UFont> DescriptionFont;
 #if WITH_EDITOR
     virtual EDataValidationResult IsDataValid(class FDataValidationContext& Context) const override;
 #endif
