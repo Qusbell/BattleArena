@@ -35,7 +35,7 @@ flowchart TD
 | 위치 | 책임 |
 |---|---|
 | `Source/ShootingArena/Public/Localization/LanguageSubsystem.h` 및 대응 cpp | 언어 행 자료형, 시작 언어 결정, 저장, 선택 UI, Text/표시 이름·글꼴 API입니다. |
-| `/Game/QuakeLike_1_0/Localization/DT_Language` | 사용 언어, 기본 언어, 고정 언어 이름, 언어별 UFont를 편집합니다. 2026-11-13 UI 수정 시작 시 이미 JsonAssetSync에 등록되어 있었으며 `Content/DataTables/DT_Language.json`과 함께 관리합니다. 이번 UI 수정에서 Registry를 변경하지 않았습니다. |
+| `/Game/QuakeLike_1_0/Localization/DT_Language` | 사용 언어, 기본 언어, 고정 언어 이름, 언어별 기본 글꼴(`Font`)과 설명 글꼴(`DescriptionFont`)을 편집합니다. JsonAssetSync에 등록되어 있으며 `Content/DataTables/DT_Language.json`과 함께 관리합니다. |
 | `/Game/QuakeLike_1_0/Localization/ST_Game` | 번역 원문과 안정된 문구 키를 편집합니다. |
 | `Content/Localization/Game/` | 엔진 표준 manifest, ko/en archive·PO·locres, locmeta입니다. |
 | `Config/Localization/Game.ini` | String Table 범위의 표준 Gather → Import → Compile → Export 작업입니다. |
@@ -67,6 +67,7 @@ flowchart TD
 - 무기 7종의 이름 키에는 `Fist`도 포함합니다. 맵 설명 4개의 JSON 원본은 `LOCTABLE` 참조로 바꾸고 실제 DT에도 반영했습니다.
 - 기존 메달 CDO의 Text override 5개도 연결했습니다. native 기본값만 변경하면 기존 Blueprint override가 남기 때문에 별도로 확인했습니다.
 - 기존 HUD가 아이콘·수치만 표시하는 아이템/버프에 새 설명 화면을 만들지는 않았습니다. 향후 표시 이름·설명 UI를 추가하면 같은 String Table의 키로 연결해야 합니다.
+- 공유 `WBP_QuitDialog`는 `WBP_MainMenu_SDM`의 게임 종료와 `WBP_PauseMenu`의 레벨 재시작·레벨 선택·메인 메뉴 복귀에 쓰입니다. 호출부는 `SetConfirmationCopy`로 상황별 제목과 보조 안내를 `ST_Game`의 `FText`로 전달합니다. `ShowConfirmation`은 확인창을 열고 포커스를 설정하며, 버튼은 공용 취소·확인 키를 사용합니다.
 
 ### 기존 String 표시 인터페이스
 
@@ -81,9 +82,13 @@ flowchart TD
 
 ## 글꼴
 
-DT_Language의 ko/en은 초기값으로 기존 `F_Pretendard`를 참조합니다. 언어별로 다른 composite font를 지정할 수 있습니다. 영어 UI에서도 한글 닉네임을 표시할 수 있도록 fallback을 포함해야 합니다.
+DT_Language의 ko/en은 모두 `Font`에 `F_BITCORE1`, `DescriptionFont`에 `F_BITSPACE1`을 지정합니다. 설명 글꼴이 지정된 텍스트에는 현재 언어의 설명 글꼴을 적용합니다. 두 글꼴에 없는 글자는 각각 Pretendard Bold와 Regular로 표시합니다.
 
 크기·외곽선·자간·단색 숫자 설정은 기존 스타일을 유지하며 FontObject와 유효한 typeface를 해결합니다. 공통 스타일·콤보, viewport의 TextBlock/입력 필드, 조준 닉네임 NativePaint, Canvas 자막을 연결했습니다. 로딩 WBP와 하위 위젯은 제외합니다. 글꼴 행 조회는 프레임·언어별로 캐시하고 실제 Font가 달라질 때만 위젯에 다시 설정합니다.
+
+제목, 버튼, 항목명, 입력란, 목록, 수치와 키 안내에는 `F_BITCORE1`을 사용합니다. `F_BITSPACE1`은 튜토리얼 지문, 확인창의 설명, 난이도 설명, 설정 상세 설명과 적용 안내에 사용합니다. 설정의 설명 두 곳은 `TS_UI_Description`을 공유하며 기존 캡션의 색상과 글자 크기를 사용합니다. 화면의 로딩 문구는 로딩 위젯에서 직접 글꼴을 지정합니다.
+
+CommonButton은 hover·선택 상태가 바뀔 때 `OnCurrentTextStyleChanged`로 라벨에 텍스트 스타일을 다시 적용합니다. `WBP_QuitDialog`에서는 이때 `TS_Pause_Menu`의 글꼴과 언어 폰트가 달라 순간적으로 글자 크기가 변했습니다. 현재 두 언어의 기본 글꼴과 해당 스타일에 동일한 `F_BITCORE1`을 사용합니다.
 
 공통 버튼의 `UReusableStyleHost::ApplyStyle`은 `UCommonButtonStyle.MinWidth`를 최소 너비로만 적용하고 고정 WidthOverride는 제거합니다. 번역된 Text와 기존 버튼 padding이 더 넓은 경우 버튼의 원하는 너비가 커집니다. 글꼴 크기·높이·기존 부모 배치 규칙은 유지합니다. 특수한 고정 부모 영역·긴 문장의 전체 화면 겹침은 별도 확인이 필요합니다.
 

@@ -5,7 +5,8 @@
 		"IsEnabled": true,
 		"DisplayName": "INVTEXT(\"한국어\")",
 		"IsDefault": true,
-		"Font": "/Script/Engine.Font'/Game/QuakeLike_1_0/GameFlow/UI/01_Fonts/F_Pretendard.F_Pretendard'"
+		"Font": "/Script/Engine.Font'/Game/QuakeLike_Base/SDM/F_BITCORE1.F_BITCORE1'",
+		"DescriptionFont": "/Script/Engine.Font'/Game/QuakeLike_Base/SDM/F_BITSPACE1.F_BITSPACE1'"
 	},
 	{
 		"Name": "en",
@@ -13,6 +14,7 @@
 		"IsEnabled": true,
 		"DisplayName": "INVTEXT(\"English\")",
 		"IsDefault": false,
-		"Font": "/Script/Engine.Font'/Game/QuakeLike_1_0/GameFlow/UI/01_Fonts/F_Pretendard.F_Pretendard'"
+		"Font": "/Script/Engine.Font'/Game/QuakeLike_Base/SDM/F_BITCORE1.F_BITCORE1'",
+		"DescriptionFont": "/Script/Engine.Font'/Game/QuakeLike_Base/SDM/F_BITSPACE1.F_BITSPACE1'"
 	}
 ]

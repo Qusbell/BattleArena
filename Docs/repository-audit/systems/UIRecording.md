@@ -112,11 +112,11 @@ PIE에서 같은 사망 위젯을 반복 초기화해 두 값의 독립 적용�
 PIE에서 `0`, `40`, `80`, `0`으로 반복 초기화해 위치와 카운트다운을 확인했습니다.
 
 같은 DA의 **Use Progress Gradient**를 켜면 실제 리스폰 바의 채움에 **Progress Gradient Center Color**와
-**Progress Gradient Edge Color**를 적용합니다. 현재 DA는 주황색 중앙과 밝은 주황색 양끝을 기본으로 사용합니다.
+**Progress Gradient Edge Color**를 적용합니다. 2026-11-15부터 머티리얼이 가로 UV를 그대로 사용하므로, Center Color는 바 왼쪽(시작) 색, Edge Color는 오른쪽(끝) 색입니다(이름은 기존 변수명을 유지합니다). 현재 DA는 `#F03E4A`에서 `#FF7480`으로 이어지는 밝은 빨강 계열을 사용하고, Frame은 흰색 20%, Shine은 `#FF7480` 45%입니다.
 끄면 **Progress Color**로 단색을 표시합니다. **Frame Color**와 **Shine Color**는 기존 경로에서 적용합니다.
 `StartRespawnCountdown`이 리스폰 위젯 인스턴스에 기존 채움 머티리얼을 연결하며,
 다음 카운트다운을 시작할 때 DA 변경 사항을 읽습니다.
-**Progress Gradient Start**와 **Progress Gradient End**는 중앙 `0`에서 양끝 `1`까지의 위치입니다.
+**Progress Gradient Start**와 **Progress Gradient End**는 바 왼쪽 `0`에서 오른쪽 `1`까지의 위치입니다.
 예를 들어 `0.25`와 `0.75`를 입력하면 그 사이에서만 두 색이 섞입니다. 기본값 `0`과 `1`은 전체 구간에 적용합니다.
 범위를 벗어난 값은 `0–1` 안으로 제한하며, 두 값을 거꾸로 입력하면 작은 값부터 적용합니다.
 
