@@ -1,35 +1,17 @@
 # 싱글플레이 선택 화면
 
-`/Game/QuakeLike_1_0/GameFlow/UI/WBP_MapSelect_SDM`에서 맵과 난이도를 선택하고 게임을 시작합니다. 기존 두 메인 메뉴의 진입 에셋 경로를 유지했습니다. `SelectMapByIndex`는 GameInstance에 선택을 반영한 뒤 같은 위젯의 `RefreshMapPage`를 호출합니다. `Btn_Back`과 `Destruct → ReleaseMapPreviews`는 기존 경로를 사용합니다.
+`/Game/QuakeLike_1_0/GameFlow/UI/WBP_MapSelect_SDM`은 맵 선택 레이아웃과 공통 배경을 관리합니다. `SelectMapByIndex`는 GameInstance의 맵을 갱신합니다. `WBP_SinglePlayDifficulty_SDM`은 별도의 뷰포트 위젯으로 열리며, 난이도 선택과 선택한 맵·난이도로 로컬 서버를 전환하고 접속하는 그래프를 소유합니다. 맵 화면을 열 때 로컬 서버를 미리 준비합니다. 두 메인 메뉴의 진입 경로와 기존 `WBP_DifficultySelect_SDM`은 유지합니다.
 
-Unreal MCP에서 UE의 그래프 복사 API로 `WBP_DifficultySelect_SDM`의 시작 노드와 핀 연결 및 `RefreshDifficultyStyle`을 옮겼습니다. 시작 그래프는 기존 로컬 서버 맵 설정, 준비 확인 및 타임아웃, `Get Login Command`와 `?Difficulty=` 전달을 사용합니다. 통합 화면에는 닉네임 입력란이 없으므로 시작 시 GameInstance의 기존 닉네임을 사용합니다. 서버 요청 실패와 준비 타임아웃에는 `ST_Game.Loading_Failed`를 표시합니다. 첫 진입 시 첫 번째 맵과 보통을 사용하고, 기존 맵 선택이 유효하면 GameInstance의 맵과 난이도를 읽습니다.
+## 화면 배치
 
-## 1920×1080 기준 슬롯
+1920×1080 기준으로 맵 카드 두 장은 (120, 307), (972, 307)에 각각 828×466으로 배치하며 간격은 24입니다. 화면 비율이 바뀌면 맵 선택 제목의 왼쪽 여백을 기준으로 두 카드에 같은 배율을 적용합니다. 카드 위쪽 위치를 기준으로 아래로 확장하며 뒤로 안내에 필요한 공간을 남깁니다. 난이도 목록은 (120, 300)부터 640×112 행 세 개를 사용합니다. 시작은 (1497, 936)에 320×80으로 배치합니다. 시작과 바깥 테두리는 화면 오른쪽 아래에 고정하며 기본 테두리의 오른쪽 여백은 96입니다. 뒤로 안내의 높이는 32입니다. 맵에서 Enter로 다음 단계에 진입할 수 있으며 화면의 Enter 안내는 숨깁니다.
 
-| 위젯 | 부모 | 화면 위치와 크기 |
-| --- | --- | --- |
-| Overlay_3 | CanvasPanel_32 | (120, 116), 620×44 |
-| BackButtonBounds | CanvasPanel_32 | (120, 988), 158×44 |
-| SinglePlayMapHeading | CanvasPanel_32 | (120, 224), 520×32 |
-| LvlImageBox | CanvasPanel_1 | (120, 272), 1680×500 |
-| Overlay_110, Overlay | LvlImageBox | (120, 272), (972, 272), 각각 828×500 |
-| SinglePlayDifficultyHeading | CanvasPanel_32 | (120, 823), 520×32 |
-| Button_Easy, Button_Normal, Button_Hard | SinglePlayControls | (120, 876), (330, 876), (540, 876), 각각 209×88 |
-| Btn_Start | SinglePlayControls | (1440, 876), 360×88 |
+`USinglePlaySteps`가 두 화면의 위치, 불투명도, 포커스를 관리합니다. 화면 전환은 0.32초 동안 진행하며, 맵 화면으로 돌아가는 전환이 끝나면 난이도 위젯을 뷰포트에서 제거합니다. ESC 키와 화면의 뒤로 버튼은 난이도에서 맵 선택으로, 맵 선택에서 메인 메뉴로 돌아갑니다. 난이도 단계에서 Enter는 소비하고, 패드 확인과 시작 버튼의 클릭 경로를 별도로 유지합니다. 난이도 색은 `DiffEasy`, `DiffNormalGlowBlue`, `DiffHard`로 읽습니다. 선택이 바뀌면 0.56초 동안 새 줄의 그라데이션을 펼쳤다가 감추고, 막대·이름·설명을 함께 전환합니다.
 
-## 검증 범위
+## 영상과 배경
 
-`Play As Client`에서 메인 메뉴의 싱글플레이 버튼, 맵 카드 두 장, 난이도 버튼 세 개, 시작 버튼에 연결된 실제 클릭 델리게이트를 호출했습니다. 맵 카드를 바꿔도 같은 위젯이 유지됐습니다. 두 서버 이동 요청과 클라이언트 참가를 로그에서 확인했습니다.
+`RefreshMapPage`는 화면을 열 때 기존 카드 두 장을 구성하고 `ConfigureMapPreview`에 각각 `bAlwaysPlay`를 전달합니다. 맵 선택이 바뀌면 재생 바인딩을 유지한 채 처음에 저장한 정지 배경을 선택합니다. 난이도 화면을 열면 맵 위젯은 배경 레이어로 남아 선택 카드에 연결된 영상 브러시를 전체 화면에 표시합니다. 단계 전환 중 배경 블러 강도를 0으로 낮추고 배경 변경에는 0.24초 페이드를 적용합니다. 메뉴로 돌아갈 때 맵 위젯의 Destruct에서 `ReleaseMapPreviews`가 바인딩을 해제하고 플레이어를 일시 정지하며, 게임 이동 시 기존 미리보기 서브시스템이 플레이어를 닫습니다.
 
-| 선택 | 서버 이동 | 로그 |
-| --- | --- | --- |
-| Map_03 / 쉬움 | `Lvl_PortalMap?Difficulty=0` | `Saved/Logs/ShootingArena_2.log` 1134, 3691행, 클라이언트 `ShootingArena.log` 3963행 |
-| Map_06 / 어려움 | `Lvl_02Map?Difficulty=2` | `Saved/Logs/ShootingArena_3.log` 1134, 1589행, 클라이언트 `ShootingArena-backup-2026.11.14-07.06.10.log` 1849행 |
+`M_UI_SinglePlaySteps`와 머티리얼 인스턴스가 그라데이션, 테두리 및 시작 버튼의 절단 모서리를 렌더링합니다. 색상은 기존 `PDA_UIPalette`를 사용합니다. 난이도 설명은 지시서의 임시 문구를 사용하며, 경로와 설명은 `ST_Game`에 연결합니다.
 
-최종 저장본의 첫 진입은 Map_03 / 보통이었습니다. 난이도 원본의 SHA-256은 작업 전후 모두 `c38c08bf1e8eb651b1a7ee5b12ec83d1a787bfaae04c158dbf9e45a7f773b270`입니다.
-
-카드 하단에는 `M_UI_MapFade`를 사용합니다. `M_UI_SinglePlayC2`는 Retainer Box 미리보기의 채도·밝기와 난이도 포커스 외곽선을 처리합니다. 맵 배경에는 `BackgroundBlur`와 어두운 스크림을 적용합니다. 미리보기 재생과 해제는 `MapPreviewLibrary`가 담당합니다. 선택된 맵은 `ConfigureMapPreview`의 `bAlwaysPlay`로 반복 재생하며, 비선택 맵은 기존 호버 지연 후 재생합니다. 맵 변경 시 이전 배경은 0.24초 동안 페이드아웃합니다. 선택한 맵은 흰색 하단 바로, 선택한 난이도는 팔레트 색의 밑줄로 표시합니다. 난이도 버튼의 키보드·패드 탐색 포커스는 `Accent` 테두리로 표시하며 이동 중에도 선택 밑줄은 유지합니다.
-
-C2 시각 검증은 1920×1080, DPI 1.0의 Play As Client 뷰포트를 PNG로 직접 캡처해 진행했습니다. 첫 맵·보통·시작 포커스와 두 번째 맵·어려움 포커스 상태를 각각 확인했습니다. 맵 변경 직후 이전 배경의 알파는 1.0, 전환 완료 후 0.0이며 위젯은 Hidden입니다.
-
-Designer에서 MapName_1 또는 MapName_2의 글꼴, 색상, 그림자, 텍스트 정렬 등 서식을 수정하면 편집기 모듈이 변경한 속성을 상대쪽에도 적용합니다. 두 이름 위젯은 일반 Text Block이므로 카드의 공용 버튼 스타일이 글꼴을 덮어쓰지 않습니다. 카드 슬롯 위치와 표시 문구는 개별로 유지하며, 표시 문구는 RefreshMapPage가 계속 갱신합니다.
+Designer에서 `MapName_1` 또는 `MapName_2`의 글꼴·색상·그림자·정렬을 수정하면 편집기 모듈이 상대쪽에도 적용합니다. 위젯의 표시 문구는 `RefreshMapPage`가 갱신합니다.

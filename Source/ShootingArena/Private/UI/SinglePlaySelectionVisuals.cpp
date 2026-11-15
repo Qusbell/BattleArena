@@ -9,6 +9,7 @@
 #include "Engine/Texture2D.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "UI/UIPalette.h"
+#include "UI/SinglePlaySteps.h"
 
 namespace
 {
@@ -56,6 +57,12 @@ void UReusableStyleLibrary::UpdateSinglePlaySelectionVisuals(UUserWidget* Screen
 {
     if (!Screen || !Screen->GetOwningPlayer())
         return;
+
+    if (USinglePlaySteps* Steps = Cast<USinglePlaySteps>(Screen))
+    {
+        Steps->UpdateStepVisuals(SelectedMap, SelectedDifficulty, DeltaTime);
+        return;
+    }
 
     static const FName MapButtons[] = { TEXT("LevelFrame"), TEXT("LevelFrame_2") };
     static const FName MapRetainers[] = { TEXT("C2Preview1"), TEXT("C2Preview2") };
@@ -123,6 +130,12 @@ void UReusableStyleLibrary::UpdateSinglePlaySelectionVisuals(UUserWidget* Screen
 
 void UReusableStyleLibrary::SetSinglePlayBackground(UUserWidget* Screen, UImage* Background, UTexture2D* Texture)
 {
+    if (USinglePlaySteps* Steps = Cast<USinglePlaySteps>(Screen))
+    {
+        Steps->SetMapBackdrop(Texture);
+        return;
+    }
+
     if (!Screen || !Background || !Texture || Background->GetBrush().GetResourceObject() == Texture)
         return;
 
