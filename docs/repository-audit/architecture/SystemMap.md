@@ -130,6 +130,7 @@ OneWayTeleportActor, JumpPadFlightComponent/CommonSettings는 별도 이동 기�
 - `WBP_PlayerHUD_sdm`의 탄약 갱신은 소유 플레이어의 액션 바 슬롯을 사용하며, 탄약 소진·회복·무기 전환의 전체 슬롯 갱신 요청은 타이머로 합칩니다.
 - Tab 스코어보드와 서버의 매치 종료 순위는 CompetitiveRankingLibrary를 통해 킬 내림차순, 데스 오름차순, 표시 이름 대소문자 무시 오름차순으로 정렬합니다. 킬과 데스가 같으면 공동 순위를 부여합니다(예: 1, 1, 3). 결과창은 복제된 서버 순위를 표시하며, 간소화 순위 HUD도 같은 정렬 규칙을 사용합니다.
 - BGM은 GameInstance 수명이며 로딩·옵션 볼륨 경계가 있습니다. [BGM 상세 조사](../systems/BGM.md)를 참고합니다.
+- `ID.Fist`의 공격 음성 재생 간격은 `DA_Fist.FireSound`가 참조하는 `fist_sound_Cue`의 `Retrigger Time`(2.5초)에서 설정합니다. `BP_WeaponBase.[M]FireEffect`는 발사음의 `OwningActor`에 무기 소유자를 전달해 캐릭터별로 음성 재생 간격을 적용합니다.
 - DeathCamComponent/Actor는 ViewTarget과 카메라 수명, Revenge/Outline/Nickname은 대상 표시를 담당합니다. 별도 PlayerController 수명/RPC와 연결됩니다.
 - CharacterSpawnSound와 KillStreakVoice는 생성/연속 킬 이벤트의 오디오 컴포넌트입니다.
 
