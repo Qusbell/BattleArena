@@ -15,6 +15,7 @@
 #include "SceneViewExtension.h"
 #include "UObject/UnrealType.h"
 #include "Weapon/FirstPersonRenderingMath.h"
+#include "Weapon/CascadeEffectPoolSubsystem.h"
 
 namespace
 {
@@ -385,6 +386,8 @@ bool UProjectileFirstPersonRenderingComponent::ApplyFirstPersonView(const APlaye
 void UProjectileFirstPersonRenderingComponent::ApplyFirstPersonMuzzleEffect(AActor* Weapon, UPrimitiveComponent* Effect)
 {
 	if (!Eligible(Weapon) || !LiveComponent(Effect)) return;
+	if (auto* Niagara = Cast<UNiagaraComponent>(Effect); Niagara && Niagara->GetWorld())
+		if (auto* Effects = Niagara->GetWorld()->GetSubsystem<UCascadeEffectPoolSubsystem>()) Effects->LimitPlasmaMuzzleLifetime(Niagara);
 	UPrimitiveComponent* Gun = Cast<UPrimitiveComponent>(Field(Weapon, TEXT("FP_Mesh")));
 	if (!LiveComponent(Gun) || Effect->GetAttachParent() != Gun) return;
 	const USceneComponent* Parent = Gun->GetAttachParent();

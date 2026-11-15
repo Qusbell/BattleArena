@@ -34,9 +34,10 @@ public:
 	virtual void OnUnregister() override;
 
 private:
+	friend class UProjectilePoolComponent;
 	friend class FProjectileSplitCollisionTest;
 	struct FTravelSegment { FVector Start, End; };
-	TArray<FTravelSegment> Travel;
+	TArray<FTravelSegment, TInlineAllocator<2>> Travel;
 	TWeakObjectPtr<USphereComponent> PlayerCollision;
 	FVector LastPosition = FVector::ZeroVector;
 	bool bResolved = false;
@@ -48,5 +49,7 @@ private:
 	void RecordTravel(USceneComponent* Updated, EUpdateTransformFlags Flags, ETeleportType Teleport);
 	bool ResolveTravel();
 	bool FindImpact(const FVector& Start, const FVector& End, FHitResult& OutHit) const;
+	// The tick and standalone query entry points validate the component context first.
+	bool SweepImpact(const FVector& Start, const FVector& End, FHitResult& OutHit) const;
 	void ResolveImpact(const FHitResult& Hit);
 };

@@ -1,6 +1,7 @@
 #include "AI/PathLink/PathLinkRoutingCache.h"
 #include "AI/PathLink/PathLink.h"
 #include "AI/PathLink/PathLinkSubsystem.h"
+#include "AI/PathLink/Internal/PathLinkJumpCapability.h"
 #include "AI/PathLink/Internal/PathLinkNavSnapshot.h"
 #include "AI/PathLink/Internal/PathLinkNavigation.h"
 #include "AI/PathLink/Internal/PathLinkRouteFinder.h"
@@ -148,21 +149,25 @@ double UPathLinkRoutingCacheData::EstimateNormalDistance(int32 FromPoly, const F
 }
 
 bool UPathLinkRoutingCacheData::EstimateRoute(int32 StartPoly, const FVector& Start,
-    int32 TargetPoly, const FVector& Target, double& OutDistance) const
+    int32 TargetPoly, const FVector& Target, double& OutDistance, const FPathLinkJumpCapability* JumpCapability) const
 {
     OutDistance = 0;
     const int32 Count = Traversals.Num();
     const double Infinity = TNumericLimits<double>::Max();
     TArray<double, TInlineAllocator<64>> Distances;
     TArray<bool, TInlineAllocator<64>> Visited;
+    TArray<bool, TInlineAllocator<64>> Allowed;
+    Allowed.Reserve(Count);
     Distances.Init(Infinity, Count); Visited.Init(false, Count);
     double Best = EstimateNormalDistance(StartPoly, Start, TargetPoly, Target);
     if (Best < 0) Best = Infinity;
     for (int32 I = 0; I < Count; ++I)
     {
         const FPathLinkBakedTraversal& T = Traversals[I];
+        Allowed.Add(IsValid(T.Link) && (!JumpCapability || JumpCapability->Allows(T.LinkType, T.Entry, T.Exit)));
+        if (!Allowed[I]) continue;
         const double Distance = EstimateNormalDistance(StartPoly, Start, T.EntryPoly, T.EntryNav);
-        if (IsValid(T.Link) && Distance >= 0) Distances[I] = Distance + T.LinkCost;
+        if (Distance >= 0) Distances[I] = Distance + T.LinkCost;
     }
     for (int32 Pass = 0; Pass < Count; ++Pass)
     {
@@ -178,7 +183,7 @@ bool UPathLinkRoutingCacheData::EstimateRoute(int32 StartPoly, const FVector& St
         for (int32 To = 0; To < Count; ++To)
         {
             const double Transition = TransitionDistances[Current * Count + To];
-            if (!Visited[To] && Transition >= 0 && IsValid(Traversals[To].Link))
+            if (Allowed[To] && !Visited[To] && Transition >= 0)
                 Distances[To] = FMath::Min(Distances[To], Minimum + Transition + Traversals[To].LinkCost);
         }
     }

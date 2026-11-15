@@ -319,6 +319,7 @@ void UCharacterPoolComponent::ResetAnimationForLife()
 
 void UCharacterPoolComponent::StopDeathPhysics()
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(CharacterPool_StopDeathPhysics);
 	// Static cut caps detach when they start simulating too. Stop all bodies before
 	// disabling Actor collision; otherwise the engine reports incompatible simulate options.
 	TInlineComponentArray<UPrimitiveComponent*> Bodies(GetOwner());
@@ -335,8 +336,8 @@ void UCharacterPoolComponent::StopDeathPhysics()
 
 void UCharacterPoolComponent::RestorePresentation(bool bEnableCollision)
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(CharacterPool_RestorePresentation);
 	AActor* Actor = GetOwner();
-	StopDeathPhysics();
 	if (auto* Rendering = Actor->FindComponentByClass<UProjectileFirstPersonRenderingComponent>()) Rendering->ResetForPooledLife();
 	Actor->SetActorEnableCollision(false);
 	for (const FPresentation& P : Presentation)
@@ -344,7 +345,6 @@ void UCharacterPoolComponent::RestorePresentation(bool bEnableCollision)
 		UActorComponent* C = P.Component.Get(); if (!IsValid(C)) continue;
 		if (auto* Mesh = Cast<USkeletalMeshComponent>(C))
 		{
-			Mesh->SetSimulatePhysics(false); Mesh->SetAllBodiesSimulatePhysics(false);
 			// New equip replication may already have played an FP montage. Do not cancel it.
 			if (Mesh->GetFName() != TEXT("FP_Mesh"))
 				if (auto* Anim = Mesh->GetAnimInstance()) Anim->StopAllMontages(0.f);
@@ -460,6 +460,7 @@ void UCharacterPoolComponent::OnRep_Life()
 		if (auto* Skill = CharacterPoolReflection::Component(GetOwner(), TEXT("BPC_TeleportSkill_C"))) CharacterPoolReflection::Call(Skill, TEXT("StopTravelLoopSound"));
 		if (auto* Flight = GetOwner()->FindComponentByClass<UJumpPadFlightComponent>()) Flight->EndFlight();
 		if (auto* Projectiles = GetWorld()->GetSubsystem<UProjectilePoolSubsystem>()) Projectiles->DetachInstigatorForLife(Cast<APawn>(GetOwner()));
+		StopDeathPhysics();
 		RestorePresentation(false);
 		GetOwner()->SetActorTransform(Life.SpawnTransform, false, nullptr, ETeleportType::TeleportPhysics);
 		ResetAnimationForLife();

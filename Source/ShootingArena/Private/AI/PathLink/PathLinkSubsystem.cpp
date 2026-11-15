@@ -1,6 +1,7 @@
 #include "AI/PathLink/PathLinkSubsystem.h"
 
 #include "AI/PathLink/PathLink.h"
+#include "AI/PathLink/Internal/PathLinkJumpCapability.h"
 #include "AI/PathLink/Internal/PathLinkRouteFinder.h"
 #include "AI/PathLink/Internal/PathLinkNavigation.h"
 #include "AI/PathLink/Internal/PathLinkNavSnapshot.h"
@@ -342,7 +343,7 @@ const UPathLinkRoutingCacheData* UPathLinkSubsystem::GetValidatedRoutingCache() 
 }
 
 bool UPathLinkSubsystem::GetEstimatedRouteDistance(const FVector& StartLocation, const FVector& TargetLocation,
-    double& OutDistance, AActor* PathfindingContext) const
+    double& OutDistance, AActor* PathfindingContext, AActor* JumpAgent) const
 {
     TRACE_CPUPROFILER_EVENT_SCOPE(PathLink_EstimatedDistance);
     LastEstimateStats = {}; OutDistance = 0;
@@ -404,7 +405,8 @@ bool UPathLinkSubsystem::GetEstimatedRouteDistance(const FVector& StartLocation,
     if (!A) { LastEstimateStatus = EPathLinkEstimateStatus::StartPolygonMissing; return false; }
     if (!B) { LastEstimateStatus = EPathLinkEstimateStatus::TargetPolygonMissing; return false; }
     const double Solve = FPlatformTime::Seconds();
-    const bool bFound = Bake->EstimateRoute(*A, Start.Location, *B, Target.Location, OutDistance);
+    const auto JumpCapability = FPathLinkJumpCapability::FromAgent(JumpAgent);
+    const bool bFound = Bake->EstimateRoute(*A, Start.Location, *B, Target.Location, OutDistance, &JumpCapability);
     LastEstimateStats.DijkstraMilliseconds = (FPlatformTime::Seconds() - Solve) * 1000.0;
     LastEstimateStats.SolveCount = 1;
     LastEstimateStatus = bFound ? EPathLinkEstimateStatus::Success : EPathLinkEstimateStatus::Unreachable;
@@ -874,13 +876,14 @@ bool UPathLinkSubsystem::FindShortestRoute(
     const FVector& StartLocation,
     const FVector& TargetLocation,
     FPathLinkRouteResult& OutResult,
-    AActor* PathfindingContext) const
+    AActor* PathfindingContext,
+    AActor* JumpAgent) const
 {
-    return CalculateRoute(StartLocation, TargetLocation, OutResult, PathfindingContext, true);
+    return CalculateRoute(StartLocation, TargetLocation, OutResult, PathfindingContext, true, JumpAgent);
 }
 
 bool UPathLinkSubsystem::CalculateRoute(const FVector& StartLocation, const FVector& TargetLocation,
-    FPathLinkRouteResult& OutResult, AActor* PathfindingContext, bool bBuildSegments) const
+    FPathLinkRouteResult& OutResult, AActor* PathfindingContext, bool bBuildSegments, AActor* JumpAgent) const
 {
     TRACE_CPUPROFILER_EVENT_SCOPE(PathLink_RouteRequest);
     const double Begin = FPlatformTime::Seconds();
@@ -970,6 +973,7 @@ bool UPathLinkSubsystem::CalculateRoute(const FVector& StartLocation, const FVec
         TargetLocation,
         *RouteGraph,
         PathfindingContext,
+        FPathLinkJumpCapability::FromAgent(JumpAgent),
         OutResult, bBuildSegments, &LastRouteStats, EstimatePtr, bSafeBounds);
     LastRouteStats.CandidateMilliseconds += EstimateMilliseconds;
     return bFound;
@@ -979,7 +983,8 @@ bool UPathLinkSubsystem::FindShortestRouteToActor(
     const FVector& StartLocation,
     AActor* TargetActor,
     FPathLinkRouteResult& OutResult,
-    AActor* PathfindingContext) const
+    AActor* PathfindingContext,
+    AActor* JumpAgent) const
 {
     if (!IsValid(TargetActor))
     {
@@ -991,19 +996,21 @@ bool UPathLinkSubsystem::FindShortestRouteToActor(
         StartLocation,
         TargetActor->GetActorLocation(),
         OutResult,
-        PathfindingContext);
+        PathfindingContext,
+        JumpAgent);
 }
 
 bool UPathLinkSubsystem::GetRouteDistance(
     const FVector& StartLocation,
     const FVector& TargetLocation,
     double& OutDistance,
-    AActor* PathfindingContext) const
+    AActor* PathfindingContext,
+    AActor* JumpAgent) const
 {
     OutDistance = 0.0;
 
     FPathLinkRouteResult RouteResult;
-    if (!CalculateRoute(StartLocation, TargetLocation, RouteResult, PathfindingContext, false))
+    if (!CalculateRoute(StartLocation, TargetLocation, RouteResult, PathfindingContext, false, JumpAgent))
     {
         return false;
     }
@@ -1015,7 +1022,8 @@ bool UPathLinkSubsystem::GetRouteDistance(
 bool UPathLinkSubsystem::CanReach(
     const FVector& StartLocation,
     const FVector& TargetLocation,
-    AActor* PathfindingContext) const
+    AActor* PathfindingContext,
+    AActor* JumpAgent) const
 {
     UWorld* World = GetWorld();
     if (!IsValid(World) || World->GetNetMode() == NM_Client)
@@ -1064,6 +1072,9 @@ bool UPathLinkSubsystem::CanReach(
     }
 
     const int32 Count = Graph->GetTraversalCount();
+    const auto JumpCapability = FPathLinkJumpCapability::FromAgent(JumpAgent);
+    TArray<bool, TInlineAllocator<64>> Allowed;
+    Allowed.Reserve(Count);
     TArray<bool> Visited;
     Visited.Init(false, Count);
     TArray<int32> Queue;
@@ -1072,7 +1083,9 @@ bool UPathLinkSubsystem::CanReach(
     // 거리로 후보를 제한하지 않고 연결된 모든 Start Link를 수집합니다.
     for (int32 Index = 0; Index < Count; ++Index)
     {
-        if (HasNavConnection(StartNavLocation, Graph->Traversals[Index].EntryNavLocation))
+        const auto& T = Graph->Traversals[Index];
+        Allowed.Add(T.Link.IsValid() && JumpCapability.Allows(T.LinkType, T.EntryLocation, T.ExitLocation));
+        if (Allowed[Index] && HasNavConnection(StartNavLocation, T.EntryNavLocation))
         {
             Visited[Index] = true;
             Queue.Add(Index);
@@ -1091,7 +1104,7 @@ bool UPathLinkSubsystem::CanReach(
         for (int32 To = 0; To < Count; ++To)
         {
             const FPathLinkCachedTransition* Transition = Graph->GetTransition(From, To);
-            if (!Visited[To] && Transition && Transition->Reachable)
+            if (Allowed[To] && !Visited[To] && Transition && Transition->Reachable)
             {
                 Visited[To] = true;
                 Queue.Add(To);

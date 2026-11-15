@@ -111,37 +111,41 @@ public:
 
     /**
      * 메인 함수입니다.
-     * NavMesh 일반 이동 + 현재 Enabled PathLink를 모두 비교해 순수 이동거리가 가장 짧은 Route를 반환합니다.
+     * NavMesh 일반 이동과 사용 가능한 PathLink를 비교해 이동거리가 가장 짧은 Route를 반환합니다.
+     * JumpAgent가 있으면 점프 능력으로 각 Jump 방향을 제한합니다.
      */
-    UFUNCTION(BlueprintCallable, Category = "AI|PathLink|Route", meta = (AdvancedDisplay = "PathfindingContext"))
+    UFUNCTION(BlueprintCallable, Category = "AI|PathLink|Route", meta = (AdvancedDisplay = "PathfindingContext,JumpAgent"))
     bool FindShortestRoute(
         const FVector& StartLocation,
         const FVector& TargetLocation,
         FPathLinkRouteResult& OutResult,
-        AActor* PathfindingContext = nullptr) const;
+        AActor* PathfindingContext = nullptr,
+        AActor* JumpAgent = nullptr) const;
 
     /** Actor를 Target으로 사용하는 FindShortestRoute 편의 함수입니다. */
-    UFUNCTION(BlueprintCallable, Category = "AI|PathLink|Route", meta = (AdvancedDisplay = "PathfindingContext"))
+    UFUNCTION(BlueprintCallable, Category = "AI|PathLink|Route", meta = (AdvancedDisplay = "PathfindingContext,JumpAgent"))
     bool FindShortestRouteToActor(
         const FVector& StartLocation,
         AActor* TargetActor,
         FPathLinkRouteResult& OutResult,
-        AActor* PathfindingContext = nullptr) const;
+        AActor* PathfindingContext = nullptr,
+        AActor* JumpAgent = nullptr) const;
 
     /** 최단 Route 전체 거리만 필요할 때 사용하는 편의 함수입니다. */
-    UFUNCTION(BlueprintCallable, Category = "AI|PathLink|Route", meta = (AdvancedDisplay = "PathfindingContext"))
+    UFUNCTION(BlueprintCallable, Category = "AI|PathLink|Route", meta = (AdvancedDisplay = "PathfindingContext,JumpAgent"))
     bool GetRouteDistance(
         const FVector& StartLocation,
         const FVector& TargetLocation,
         double& OutDistance,
-        AActor* PathfindingContext = nullptr) const;
+        AActor* PathfindingContext = nullptr,
+        AActor* JumpAgent = nullptr) const;
 
     /** Cheap baked estimate in cm; false means unavailable/unsupported/unreachable, not an exact reachability proof.
      * Two projections, no synchronous path search and no PathPoints. Detailed route generation remains FindShortestRoute.
      */
-    UFUNCTION(BlueprintCallable, Category = "AI|PathLink|Route", meta = (AdvancedDisplay = "PathfindingContext"))
+    UFUNCTION(BlueprintCallable, Category = "AI|PathLink|Route", meta = (AdvancedDisplay = "PathfindingContext,JumpAgent"))
     bool GetEstimatedRouteDistance(const FVector& StartLocation, const FVector& TargetLocation,
-        double& OutDistance, AActor* PathfindingContext = nullptr) const;
+        double& OutDistance, AActor* PathfindingContext = nullptr, AActor* JumpAgent = nullptr) const;
 
     UFUNCTION(BlueprintPure, Category = "AI|PathLink|Performance") FPathLinkQueryStats GetLastRouteStats() const { return LastRouteStats; }
     UFUNCTION(BlueprintPure, Category = "AI|PathLink|Performance") FPathLinkQueryStats GetLastEstimateStats() const { return LastEstimateStats; }
@@ -156,11 +160,12 @@ public:
     UFUNCTION(BlueprintPure, Category = "AI|PathLink|Debug") EPathLinkEstimateStatus GetLastEstimateStatus() const { return LastEstimateStatus; }
 
     /** NavMesh + Link를 사용했을 때 목표 위치까지 도달 가능한지만 검사합니다. */
-    UFUNCTION(BlueprintCallable, Category = "AI|PathLink|Route", meta = (AdvancedDisplay = "PathfindingContext"))
+    UFUNCTION(BlueprintCallable, Category = "AI|PathLink|Route", meta = (AdvancedDisplay = "PathfindingContext,JumpAgent"))
     bool CanReach(
         const FVector& StartLocation,
         const FVector& TargetLocation,
-        AActor* PathfindingContext = nullptr) const;
+        AActor* PathfindingContext = nullptr,
+        AActor* JumpAgent = nullptr) const;
 
     /**
      * FindShortestRoute가 선택한 최종 Route의 Segments를 월드에 Debug Line으로 표시합니다.
@@ -213,7 +218,7 @@ private:
     void OnNavMeshUpdated();
     bool RefreshBakedNavigationReferences() const;
     bool CalculateRoute(const FVector& Start, const FVector& Target, FPathLinkRouteResult& Out,
-        AActor* Context, bool bBuildSegments) const;
+        AActor* Context, bool bBuildSegments, AActor* JumpAgent) const;
     void RecordRouteStats() const;
     /**
      * Link 등록/해제 또는 Refresh가 발생했을 때 정적 Route Cache를 무효화합니다.

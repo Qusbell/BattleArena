@@ -58,6 +58,12 @@ namespace
 		const FIntProperty* Property = IsValid(Object) ? FindFProperty<FIntProperty>(Object->GetClass(), Name) : nullptr;
 		return Property ? Property->GetPropertyValue_InContainer(Object) : 0;
 	}
+
+	void SetTranslationIfChanged(UWidget& Widget, const FVector2D& Translation)
+	{
+		if (!Widget.GetRenderTransform().Translation.Equals(Translation, KINDA_SMALL_NUMBER))
+			Widget.SetRenderTranslation(Translation);
+	}
 }
 
 UCompetitiveRankingHUD::UCompetitiveRankingHUD(const FObjectInitializer& ObjectInitializer)
@@ -376,6 +382,7 @@ void UCompetitiveRankingHUD::NativeConstruct()
 	if (!Canvas || !WidgetTree || RankingPanel) return;
 	RankingPanel = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("CompetitiveRanking"));
 	RankingPanel->SetVisibility(ESlateVisibility::HitTestInvisible);
+	RankingPanel->SetRenderTransformPivot(FVector2D::ZeroVector);
 	URecordingUIMask* RecordingMask = WidgetTree->ConstructWidget<URecordingUIMask>();
 	RecordingMask->Section = ERecordingUISection::Ranking;
 	RecordingMask->SetContent(RankingPanel);
@@ -517,7 +524,8 @@ void UCompetitiveRankingHUD::PositionBesideTimer(const FGeometry& Geometry)
 	if (!Seconds || !TimerFrame || !TimerFrame->IsVisible() || !Timer->IsVisible()
 		|| !TimerContainer || !TimerContainer->IsVisible())
 	{
-		RankingPanel->SetVisibility(ESlateVisibility::Hidden);
+		if (RankingPanel->GetVisibility() != ESlateVisibility::Hidden)
+			RankingPanel->SetVisibility(ESlateVisibility::Hidden);
 		return;
 	}
 	const FGeometry& Digits = Seconds->GetCachedGeometry();
@@ -564,15 +572,18 @@ void UCompetitiveRankingHUD::PositionBesideTimer(const FGeometry& Geometry)
 		}
 	}
 	const double Shift = (Geometry.GetLocalSize().X - (Left.X + Right.X + TimerGap + PanelWidth * Scale)) * 0.5;
-	TimerContainer->SetRenderTranslation(FVector2D(Shift, TimerContainer->GetRenderTransform().Translation.Y));
-	RankingPanel->SetVisibility(ESlateVisibility::HitTestInvisible);
-	RankingPanel->SetRenderTransformPivot(FVector2D::ZeroVector);
-	RankingPanel->SetRenderScale(FVector2D(1.0f));
+	SetTranslationIfChanged(*TimerContainer, FVector2D(Shift, TimerContainer->GetRenderTransform().Translation.Y));
+	if (RankingPanel->GetVisibility() != ESlateVisibility::HitTestInvisible)
+		RankingPanel->SetVisibility(ESlateVisibility::HitTestInvisible);
 	const FVector2D Position(FMath::Clamp(Right.X + Shift + TimerGap, 0.0,
 		FMath::Max(0.0, Geometry.GetLocalSize().X - PanelWidth * Scale - 8.0)),
 		FMath::Max(0.0, (Top.Y + Bottom.Y - PanelHeight * Scale) * 0.5));
 	const FVector2D Absolute = Geometry.LocalToAbsolute(Position);
-	RankingSlot->SetPosition(Geometry.AbsoluteToLocal(FVector2D(FMath::RoundToDouble(Absolute.X), FMath::RoundToDouble(Absolute.Y))));
+	const FVector2D AlignedPosition = Geometry.AbsoluteToLocal(
+		FVector2D(FMath::RoundToDouble(Absolute.X), FMath::RoundToDouble(Absolute.Y)));
+	// Canvas slots store float coordinates. Compare at that precision to avoid redundant Slate writes.
+	if (RankingSlot->GetPosition() != FVector2D(FVector2f(AlignedPosition)))
+		RankingSlot->SetPosition(AlignedPosition);
 }
 
 void UCompetitiveRankingHUD::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
@@ -615,7 +626,7 @@ void UCompetitiveRankingHUD::NativeTick(const FGeometry& MyGeometry, float InDel
 					? ActiveStreakSettings->DeathMessageOffset : GetDefault<UKillMedalUISettings>()->DeathMessageOffset;
 				const FVector2D Offset = AnchorTop - TextBottom + FVector2D(0, bAboveScoreboard ? -16.0f : 16.0f)
 					+ (DeathMessageOffset.ContainsNaN() ? FVector2D::ZeroVector : DeathMessageOffset);
-				if (!Offset.ContainsNaN()) MessageArea->SetRenderTranslation(Offset);
+				if (!Offset.ContainsNaN()) SetTranslationIfChanged(*MessageArea, Offset);
 			}
 		}
 		else if (StreakPanel && DisplayedStreak > 0 && StreakIcons)
@@ -631,10 +642,10 @@ void UCompetitiveRankingHUD::NativeTick(const FGeometry& MyGeometry, float InDel
 				const FVector2D IconsBottom = TransformPoint(IconsLayout, FVector2D(StreakIcons->GetCachedGeometry().GetLocalSize().X * 0.5, StreakIcons->GetCachedGeometry().GetLocalSize().Y));
 				const FVector2D TextTop = TransformPoint(TextLayout, FVector2D(Text->GetCachedGeometry().GetLocalSize().X * 0.5, 0));
 				const FVector2D Offset = IconsBottom - TextTop + FVector2D(0, 8);
-				if (!Offset.ContainsNaN()) MessageArea->SetRenderTranslation(Offset);
+				if (!Offset.ContainsNaN()) SetTranslationIfChanged(*MessageArea, Offset);
 			}
 		}
-		else MessageArea->SetRenderTranslation(FVector2D::ZeroVector);
+		else SetTranslationIfChanged(*MessageArea, FVector2D::ZeroVector);
 	}
 	RefreshElapsed += InDeltaTime;
 	// Player joins/leaves and late replication can arrive without a score-change broadcast.

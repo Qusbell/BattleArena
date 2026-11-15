@@ -57,6 +57,7 @@ public:
 	UProjectileConvergenceComponent();
 	bool Initialize(UProjectileMovementComponent* InMovement, FVector InJoin, FVector InForward);
 	void ResetForPool();
+	virtual void OnUnregister() override;
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 private:
 	UPROPERTY(Transient)
@@ -64,4 +65,7 @@ private:
 	FVector Join = FVector::ZeroVector;
 	FVector Forward = FVector::ForwardVector;
 	bool bJoined = false;
+	FDelegateHandle MovementHandoff;
+	void ScheduleMovementHandoff();
+	void FinishMovementHandoff(UWorld* World, ELevelTick TickType, float DeltaTime);
 };

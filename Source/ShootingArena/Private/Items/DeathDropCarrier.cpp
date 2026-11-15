@@ -6,6 +6,7 @@
 #include "Engine/World.h"
 #include "GameFramework/GameStateBase.h"
 #include "Net/UnrealNetwork.h"
+#include "ProfilingDebugging/CpuProfilerTrace.h"
 #include "UObject/UnrealType.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogDeathDropCarrier, Log, All);
@@ -122,6 +123,7 @@ bool ADeathDropCarrier::ConfigurePickup(AActor* Item, bool bUpdateMesh)
 
 void ADeathDropCarrier::SpawnPickup()
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(DeathDrop_SpawnPickup);
 	if (!PickupActorClass) { Destroy(); return; }
 	const FTransform Transform(FRotator::ZeroRotator, GetActorLocation());
 	AActor* Item = GetWorld()->SpawnActorDeferred<AActor>(PickupActorClass, Transform,

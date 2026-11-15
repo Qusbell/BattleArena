@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Async/Future.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "TimerManager.h"
 #include "Containers/Ticker.h"
@@ -242,6 +243,7 @@ private:
     void Enqueue(const FString& Sql);
     void FlushPendingFires();
     void Flush();
+    bool CollectWrite(bool bWait);
     void Tick();
     bool ReadMatchEnded();
     void CollectAmmo(const AActor* Holder, TMap<TWeakObjectPtr<AActor>, int32>& Out) const;
@@ -260,9 +262,19 @@ private:
     void CollectHeldWeapons(APawn* Pawn, TArray<FString>& OutIds, TArray<bool>& OutDefaults) const;
     void TryAnchorClock();
     void Spool(const TArray<FString>& Statements, const FString& Reason);
-    void MaybeValidate();
+    void MaybeValidate(bool bWait = false);
+    static TArray<FString> ValidateStoredMatch(FSQLiteDatabase& Database, const FString& Id, int32 WriteFailures);
 
     FSQLiteDatabase* Db = nullptr;
+    struct FWriteResult
+    {
+        FString TransientError;
+        TArray<FString> Rejected;
+    };
+    static FWriteResult WriteBatch(FSQLiteDatabase& Database, const TArray<FString>& Statements, bool bRetry);
+    TFuture<FWriteResult> WriteFuture;
+    TFuture<TArray<FString>> ValidationFuture;
+    TSharedPtr<const TArray<FString>, ESPMode::ThreadSafe> InFlightSql;
     FString DbPath;
     FString MatchId;
     /** Real-time ticker (not a world timer): the game pauses the world when a match ends, which would stop a world timer. */

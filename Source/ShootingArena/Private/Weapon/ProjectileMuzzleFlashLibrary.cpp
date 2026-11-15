@@ -1,4 +1,5 @@
 #include "Weapon/ProjectileMuzzleFlashLibrary.h"
+#include "Weapon/CascadeEffectPoolSubsystem.h"
 
 #include "Components/SceneComponent.h"
 #include "Engine/World.h"
@@ -85,5 +86,7 @@ bool UProjectileMuzzleFlashLibrary::SpawnProjectileMuzzleFlash(AActor* Weapon,
 	Effect->SetAbsolute(false, true, false);
 	Effect->SetWorldRotation(Rotation);
 	Effect->Activate(true);
+	if (auto* Niagara = Cast<UNiagaraComponent>(Effect))
+		if (auto* Effects = Weapon->GetWorld()->GetSubsystem<UCascadeEffectPoolSubsystem>()) Effects->LimitPlasmaMuzzleLifetime(Niagara);
 	return true;
 }

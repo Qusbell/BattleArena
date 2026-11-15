@@ -72,9 +72,10 @@ void UProjectileWorldCollisionComponent::ResetForPooledShot()
 	bLastImpactWasCharacter = false;
 	bResolved = false;
 	bResolving = false;
-	Activate(true);
+	// SetComponentTickEnabled binds once the component is both active and ticking.
+	Super::Activate(true);
 	SetComponentTickEnabled(true);
-	BindPlayerCollision();
+	if (!PlayerCollision.IsValid()) BindPlayerCollision();
 }
 
 void UProjectileWorldCollisionComponent::EndPooledShot()
@@ -168,14 +169,17 @@ void UProjectileWorldCollisionComponent::RecordTravel(USceneComponent* Updated, 
 bool UProjectileWorldCollisionComponent::FindImpact(const FVector& Start, const FVector& End, FHitResult& OutHit) const
 {
 	OutHit = FHitResult();
-	if (!HasLiveContext()) return false;
+	return HasLiveContext() && SweepImpact(Start, End, OutHit);
+}
+
+bool UProjectileWorldCollisionComponent::SweepImpact(const FVector& Start, const FVector& End, FHitResult& OutHit) const
+{
 	const AActor* Projectile = GetOwner();
 	const USphereComponent* Player = PlayerCollision.Get();
 	UWorld* World = GetWorld();
 	const float WallRadius = GetScaledSphereRadius();
-	const float PlayerRadius = IsValid(Player) ? Player->GetScaledSphereRadius() : 0.f;
-	if (!IsValid(Projectile) || Projectile->IsActorBeingDestroyed() || !IsValid(Player) || !IsValid(World)
-		|| World->bIsTearingDown || Start.ContainsNaN() || End.ContainsNaN()
+	const float PlayerRadius = Player->GetScaledSphereRadius();
+	if (Start.ContainsNaN() || End.ContainsNaN()
 		|| !FMath::IsFinite(WallRadius) || WallRadius <= UE_SMALL_NUMBER
 		|| !FMath::IsFinite(PlayerRadius) || PlayerRadius <= UE_SMALL_NUMBER) return false;
 	FCollisionQueryParams Query = ProjectileCollisionHelpers::QueryFor(Projectile);
@@ -183,13 +187,20 @@ bool UProjectileWorldCollisionComponent::FindImpact(const FVector& Start, const 
 	FCollisionResponseParams Responses(GetCollisionResponseToChannels());
 	Responses.CollisionResponse.SetResponse(ECC_Pawn, ECR_Ignore);
 	Responses.CollisionResponse.SetResponse(GetCollisionObjectType(), ECR_Ignore);
-	bool bFound = World->SweepSingleByChannel(OutHit, Start, End, FQuat::Identity, GetCollisionObjectType(),
-		FCollisionShape::MakeSphere(WallRadius), Query, Responses);
+	bool bFound;
+	{
+		TRACE_CPUPROFILER_EVENT_SCOPE(ProjectileWorldSweep);
+		bFound = World->SweepSingleByChannel(OutHit, Start, End, FQuat::Identity, GetCollisionObjectType(),
+			FCollisionShape::MakeSphere(WallRadius), Query, Responses);
+	}
 	if (bFound && !ProjectileCollisionHelpers::ValidHit(OutHit)) { OutHit = FHitResult(); return false; }
 	if (!ProjectileCollisionHelpers::CanDamage(Projectile)) return bFound;
 	TArray<FHitResult> Candidates;
-	World->SweepMultiByObjectType(Candidates, Start, End, FQuat::Identity, FCollisionObjectQueryParams(ECC_Pawn),
-		FCollisionShape::MakeSphere(PlayerRadius), Query);
+	{
+		TRACE_CPUPROFILER_EVENT_SCOPE(ProjectilePawnSweep);
+		World->SweepMultiByObjectType(Candidates, Start, End, FQuat::Identity, FCollisionObjectQueryParams(ECC_Pawn),
+			FCollisionShape::MakeSphere(PlayerRadius), Query);
+	}
 	for (const FHitResult& Candidate : Candidates)
 	{
 		if (!IsValid(Candidate.GetActor()) || !Candidate.GetActor()->IsA<ACharacter>()
@@ -238,11 +249,11 @@ void UProjectileWorldCollisionComponent::ResolveImpact(const FHitResult& Hit)
 bool UProjectileWorldCollisionComponent::ResolveTravel()
 {
 	// Move the array out before calling BP: an impact may destroy this actor.
-	TArray<FTravelSegment> Segments = MoveTemp(Travel);
+	TArray<FTravelSegment, TInlineAllocator<2>> Segments = MoveTemp(Travel);
 	for (const FTravelSegment& Segment : Segments)
 	{
 		FHitResult Hit;
-		if (FindImpact(Segment.Start, Segment.End, Hit))
+		if (SweepImpact(Segment.Start, Segment.End, Hit))
 		{
 			ResolveImpact(Hit);
 			return bResolved;
@@ -258,7 +269,12 @@ void UProjectileWorldCollisionComponent::TickComponent(float DeltaTime, ELevelTi
 	if (!IsActive() || !IsComponentTickEnabled()) { Unbind(); return; }
 	if (!HasLiveContext() && (!HasBegunPlay() || !BindPlayerCollision())) return;
 	if (!bHasLastPosition) { LastPosition = PlayerCollision->GetComponentLocation(); bHasLastPosition = true; }
-	if (Travel.IsEmpty()) Travel.Add({LastPosition, LastPosition});
+	if (Travel.IsEmpty())
+	{
+		FHitResult Hit;
+		if (SweepImpact(LastPosition, LastPosition, Hit)) ResolveImpact(Hit);
+		return;
+	}
 	ResolveTravel();
 }
 
