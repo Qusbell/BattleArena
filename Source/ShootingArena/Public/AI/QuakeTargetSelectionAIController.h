@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "../../MyAIController.h"
+#include "LobbyTypes.h"
 #include "Perception/AIPerceptionTypes.h"
 #include "QuakeTargetSelectionAIController.generated.h"
 
@@ -26,6 +27,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "AI|Target Selection")
 	void SelectBestTarget();
 
+	/** The spawn path supplies the same difficulty index it uses for character traits. */
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "AI|Difficulty")
+	void SetDamageDifficultyIndex(int32 DifficultyIndex);
+
+	TOptional<ELobbyDifficulty> GetDamageDifficulty() const { return DamageDifficulty; }
+
 protected:
 	virtual void OnPossess(APawn* InPawn) override;
 	virtual void OnUnPossess() override;
@@ -46,6 +53,8 @@ protected:
 	float RecentDamageExpireTime = 0.0f;
 
 private:
+	TOptional<ELobbyDifficulty> DamageDifficulty;
+
 	UFUNCTION()
 	void HandleTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus);
 

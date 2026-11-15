@@ -515,3 +515,16 @@ void AQuakeTargetSelectionAIController::ApplySelectedTarget(ACharacter* Target)
 		ProcessEvent(ClearTimerNativeName, nullptr);
 	}
 }
+
+void AQuakeTargetSelectionAIController::SetDamageDifficultyIndex(int32 DifficultyIndex)
+{
+	if (HasAuthority())
+	{
+		DamageDifficulty.Reset();
+		if (DifficultyIndex >= static_cast<int32>(ELobbyDifficulty::Easy)
+			&& DifficultyIndex <= static_cast<int32>(ELobbyDifficulty::Hard))
+		{
+			DamageDifficulty = static_cast<ELobbyDifficulty>(DifficultyIndex);
+		}
+	}
+}

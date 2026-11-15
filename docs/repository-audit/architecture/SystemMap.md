@@ -58,6 +58,10 @@ flowchart LR
 - Plasma 총구 Niagara는 재생 시간을 0.5초로 제한합니다. 렌더링 월드에서는 로컬 시점에서 35m 밖의 Plasma 보조 Cascade 트레일을 끄고 가까워지면 복원합니다. 주 비행 이펙트와 충돌은 계속 동작합니다.
 - 지정된 매치 맵의 렌더링 PIE 월드에서는 `CascadeEffectPool` 설정의 Niagara 총구 효과를 월드 시작 시 컴파일 요청합니다.
 - `UProjectileConvergenceComponent`, `UProjectileWorldCollisionComponent`, `UProjectileFirstPersonRenderingComponent`는 각각 수렴·월드 충돌·1인칭 렌더링을 나눕니다.
+- `BP_PlayerShooter.FP_Mesh`의 `Arm_Steel`은 `Positive Bounds Extension`의 로컬 Y·Z를 확장합니다. `ID.Fist`의 대기 및 공격 자세에서 팔의 바운드가 카메라 뒤로 빠져 프러스텀 컬링되는 현상을 막습니다.
+- `DA_Fist.EquipMontage`는 주먹 전용 `AM_FP_Fist_Equip`을 참조합니다. `BP_HeldItem.ChangeAnim`이 1인칭 `Arms` 슬롯에서 0.34초 동안 재생하며, `AS_FP_Fist_Equip`의 마지막 자세는 `Steel_Idle_Combat`의 가드 자세에 맞췄습니다.
+- `BP_WeaponBase.[S] TryFire`는 `ID.Fist`의 히트스캔과 피해 적용을 서버에서 0.20초 늦춥니다. 기준은 `Steel_FP_RightPowerSmash`에서 처음 오른팔이 최대 신전에 도달하는 프레임입니다. 타격 시점의 조준을 사용하고 `DA_Fist.hitscanEffectDelay`는 0으로 설정합니다. `BP_HeldItem.Unequip`이 예약을 취소하며, 서버는 타격 직전 장착 상태와 소유 캐릭터의 생존 여부를 확인합니다. 다른 무기는 공통 서버 판정 경로를 즉시 실행합니다.
+- `BP_Weapon_Fist.StartFire`는 구체를 조준 방향으로 스윕해 첫 번째 blocking hit를 처리합니다. 구체 앞면의 전방 최대 거리는 `DA_Fist.range`이며, 스윕 중심은 `range - 반경`만큼 이동합니다. 기본 반경은 40cm이고, `range`가 80cm 미만이면 양의 사거리에서 스윕 길이를 확보하도록 `range`의 절반을 반경으로 사용합니다.
 - 풀에서 활성화된 Plasma는 루트에 오버랩 이벤트와 물체 채널 Block 응답이 없고 별도 충돌 컴포넌트가 준비된 경우 루트 이동 sweep을 생략합니다. `AIStuckTrace` 응답과 벽·캐릭터 판정 sweep은 유지합니다.
 - 수렴점에 도달한 투사체는 해당 프레임의 이동을 마친 뒤 다음 월드 Tick 시작 시 기본 이동 컴포넌트로 복귀합니다.
 - AimAlignment, ProjectileAim, MuzzleFlash, BeamEffect, ImpactEffect, Presentation 관련 라이브러리는 조준/시각 효과의 경계입니다.
@@ -130,6 +134,7 @@ OneWayTeleportActor, JumpPadFlightComponent/CommonSettings는 별도 이동 기�
 - `WBP_PlayerHUD_sdm`의 탄약 갱신은 소유 플레이어의 액션 바 슬롯을 사용하며, 탄약 소진·회복·무기 전환의 전체 슬롯 갱신 요청은 타이머로 합칩니다.
 - Tab 스코어보드와 서버의 매치 종료 순위는 CompetitiveRankingLibrary를 통해 킬 내림차순, 데스 오름차순, 표시 이름 대소문자 무시 오름차순으로 정렬합니다. 킬과 데스가 같으면 공동 순위를 부여합니다(예: 1, 1, 3). 결과창은 복제된 서버 순위를 표시하며, 간소화 순위 HUD도 같은 정렬 규칙을 사용합니다.
 - BGM은 GameInstance 수명이며 로딩·옵션 볼륨 경계가 있습니다. [BGM 상세 조사](../systems/BGM.md)를 참고합니다.
+- `ID.Fist`의 공격 음성 재생 간격은 `DA_Fist.FireSound`가 참조하는 `fist_sound_Cue`의 `Retrigger Time`(2.5초)에서 설정합니다. `BP_WeaponBase.[M]FireEffect`는 발사음의 `OwningActor`에 무기 소유자를 전달해 캐릭터별로 음성 재생 간격을 적용합니다.
 - DeathCamComponent/Actor는 ViewTarget과 카메라 수명, Revenge/Outline/Nickname은 대상 표시를 담당합니다. 별도 PlayerController 수명/RPC와 연결됩니다.
 - CharacterSpawnSound와 KillStreakVoice는 생성/연속 킬 이벤트의 오디오 컴포넌트입니다.
 
