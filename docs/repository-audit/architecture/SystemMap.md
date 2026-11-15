@@ -59,6 +59,7 @@ flowchart LR
 - 지정된 매치 맵의 렌더링 PIE 월드에서는 `CascadeEffectPool` 설정의 Niagara 총구 효과를 월드 시작 시 컴파일 요청합니다.
 - `UProjectileConvergenceComponent`, `UProjectileWorldCollisionComponent`, `UProjectileFirstPersonRenderingComponent`는 각각 수렴·월드 충돌·1인칭 렌더링을 나눕니다.
 - `BP_PlayerShooter.FP_Mesh`의 `Arm_Steel`은 `Positive Bounds Extension`의 로컬 Y·Z를 확장합니다. `ID.Fist`의 대기 및 공격 자세에서 팔의 바운드가 카메라 뒤로 빠져 프러스텀 컬링되는 현상을 막습니다.
+- `DA_Fist.EquipMontage`는 주먹 전용 `AM_FP_Fist_Equip`을 참조합니다. `BP_HeldItem.ChangeAnim`이 1인칭 `Arms` 슬롯에서 0.34초 동안 재생하며, `AS_FP_Fist_Equip`의 마지막 자세는 `Steel_Idle_Combat`의 가드 자세에 맞췄습니다.
 - 풀에서 활성화된 Plasma는 루트에 오버랩 이벤트와 물체 채널 Block 응답이 없고 별도 충돌 컴포넌트가 준비된 경우 루트 이동 sweep을 생략합니다. `AIStuckTrace` 응답과 벽·캐릭터 판정 sweep은 유지합니다.
 - 수렴점에 도달한 투사체는 해당 프레임의 이동을 마친 뒤 다음 월드 Tick 시작 시 기본 이동 컴포넌트로 복귀합니다.
 - AimAlignment, ProjectileAim, MuzzleFlash, BeamEffect, ImpactEffect, Presentation 관련 라이브러리는 조준/시각 효과의 경계입니다.
