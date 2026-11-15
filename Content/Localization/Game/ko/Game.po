@@ -1861,3 +1861,28 @@ msgctxt "Game,Weapon_ShotGun"
 msgid "샷건"
 msgstr "샷건"
 
+
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,SinglePlay_Next"
+msgid "다음"
+msgstr "다음"
+
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,SinglePlay_MapBreadcrumb"
+msgid "{0} > {1}"
+msgstr "{0} > {1}"
+
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,SinglePlay_DescriptionEasy"
+msgid "조작에 쉽게 적응하며 부담 없이 즐길 수 있는 입문자용 난이도입니다."
+msgstr "조작에 쉽게 적응하며 부담 없이 즐길 수 있는 입문자용 난이도입니다."
+
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,SinglePlay_DescriptionNormal"
+msgid "적들과 대등한 조건에서 기본적인 전투 감각을 익히기 적합한 난이도입니다."
+msgstr "적들과 대등한 조건에서 기본적인 전투 감각을 익히기 적합한 난이도입니다."
+
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,SinglePlay_DescriptionHard"
+msgid "정밀한 사격과 빠른 상황 판단이 생존을 좌우하는 난이도입니다."
+msgstr "정밀한 사격과 빠른 상황 판단이 생존을 좌우하는 난이도입니다."
