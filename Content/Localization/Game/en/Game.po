@@ -367,14 +367,14 @@ msgstr "LSH_AITest"
 #. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
 #: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
 msgctxt "Game,Map_Lvl_02Map"
-msgid "바이오테크"
+msgid "Lvl_02Map"
 msgstr "Biotech"
 
 #. Key:	Map_Lvl_PortalMap
 #. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
 #: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
 msgctxt "Game,Map_Lvl_PortalMap"
-msgid "밀리테크"
+msgid "Lvl_PortalMap"
 msgstr "Militech"
 
 #. Key:	Map_Lvl_QuakeMap_00
@@ -1861,3 +1861,28 @@ msgctxt "Game,Weapon_ShotGun"
 msgid "샷건"
 msgstr "Shot Gun"
 
+
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,SinglePlay_Next"
+msgid "다음"
+msgstr "Next"
+
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,SinglePlay_MapBreadcrumb"
+msgid "{0} > {1}"
+msgstr "{0} > {1}"
+
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,SinglePlay_DescriptionEasy"
+msgid "조작에 쉽게 적응하며 부담 없이 즐길 수 있는 입문자용 난이도입니다."
+msgstr "A beginner difficulty for getting used to the controls and playing at your own pace."
+
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,SinglePlay_DescriptionNormal"
+msgid "적들과 대등한 조건에서 기본적인 전투 감각을 익히기 적합한 난이도입니다."
+msgstr "Learn the basics of combat on equal footing with enemies."
+
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,SinglePlay_DescriptionHard"
+msgid "정밀한 사격과 빠른 상황 판단이 생존을 좌우하는 난이도입니다."
+msgstr "Survival depends on precise shooting and quick decisions."

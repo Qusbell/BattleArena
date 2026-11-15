@@ -160,6 +160,17 @@ public:
     static FString BuildBlueprintGraph(UBlueprint* Blueprint, const FString& GraphName,
         const FString& GraphJson);
 
+    /** Copy selected graph nodes and their internal pin links between Blueprints. */
+    UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
+    static FString CopyBlueprintNodes(UBlueprint* Source, const FString& SourceGraphName,
+        UBlueprint* Target, const FString& TargetGraphName, const TArray<FString>& NodeNames, int32 OffsetY = 0);
+
+    UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
+    static bool StartClientPreview(int32 Width, int32 Height);
+
+    UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
+    static FString CaptureClientPreview(const FString& Filename);
+
     /** Compile a Blueprint and return the result */
     UFUNCTION(BlueprintCallable, Category="Editor|MCPython")
     static FString CompileBlueprint(UBlueprint* Blueprint);
