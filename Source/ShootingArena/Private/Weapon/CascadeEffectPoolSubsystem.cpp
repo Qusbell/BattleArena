@@ -30,8 +30,13 @@ void UCascadeEffectPoolSubsystem::LimitPlasmaMuzzleLifetime(UNiagaraComponent* E
 	const TWeakObjectPtr<UNiagaraComponent> WeakEffect(Effect);
 	GetWorld()->GetTimerManager().SetTimer(Timer, FTimerDelegate::CreateWeakLambda(this, [this, WeakEffect]
 	{
-		if (UNiagaraComponent* LiveEffect = WeakEffect.Get()) LiveEffect->DeactivateImmediate();
 		MuzzleTimers.Remove(WeakEffect);
+		if (UNiagaraComponent* LiveEffect = WeakEffect.Get())
+		{
+			// Deactivation broadcasts OnSystemFinished synchronously. Detach before it can clear this timer.
+			LiveEffect->OnSystemFinished.RemoveDynamic(this, &ThisClass::OnMuzzleFinished);
+			LiveEffect->DeactivateImmediate();
+		}
 	}), Lifetime, false);
 }
 
