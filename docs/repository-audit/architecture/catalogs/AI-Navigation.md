@@ -23,6 +23,12 @@
 
 Editor Development 빌드, 관련 Blueprint 2종 컴파일, `ShootingArena.PathLink.BakedRouting` 자동 검증을 통과했습니다. 테스트는 고정 목표를 사용한 단일 봇 검증 범위입니다.
 
+## 패키징 사전 처리
+
+`PackageAll.bat`과 `PackageAllShipping.bat`은 Cook 전에 `PreparePathLinkCaches` 커맨드릿을 실행합니다. 커맨드릿은 `UCascadeEffectPoolSettings.MatchMaps`의 레벨에서 기존 PathLink 캐시를 검증하고, 필요한 경우 다시 베이크해 맵에 저장합니다. 대상 맵을 열거나 캐시를 준비·저장할 수 없으면 Cook을 시작하지 않습니다. [공통 사전 단계](../../../../Scripts/PreparePackagePathLinkCaches.bat) · [커맨드릿](../../../../Source/ShootingArenaEditorTools/Private/PreparePathLinkCachesCommandlet.cpp)
+
+맵에 저장된 캐시는 현재 기본 NavMesh의 구조와 PathLink 배치가 베이크와 일치하면 재사용합니다. 월드 로드 시 기본 NavMesh 액터가 다시 생성된 경우에도 이 검증을 통과하면 현재 액터를 사용합니다. [서버 캐시 검증](../../../../Source/ShootingArena/Private/AI/PathLink/PathLinkSubsystem.cpp)
+
 ## C++ 선언
 
 | 타입 | 역할 근거 / 헤더 함수 검색어 | 선언 위치 |

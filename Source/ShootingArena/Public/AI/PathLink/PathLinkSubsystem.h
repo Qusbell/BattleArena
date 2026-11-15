@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "AI/PathLink/PathLinkTypes.h"
+#include "AI/Navigation/NavQueryFilter.h"
 #include "AI/Navigation/NavigationTypes.h"
 #include "PathLinkSubsystem.generated.h"
 

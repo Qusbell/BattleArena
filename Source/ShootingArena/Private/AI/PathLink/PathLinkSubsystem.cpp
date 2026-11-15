@@ -169,6 +169,8 @@ void UPathLinkSubsystem::TickRuntimeCache()
         RuntimeCacheState = EPathLinkRuntimeCacheState::Ready; RuntimeCacheDetail = TEXT("Map routing cache ready.");
         UE_LOG(LogPathLinkSubsystem, Display, TEXT("%s"), *RuntimeCacheDetail); return;
     }
+    UE_LOG(LogPathLinkSubsystem, Display, TEXT("Map routing cache unavailable for %s: %s"),
+        *World->GetName(), *RoutingCacheStatus);
     FPathLinkNavSnapshot Snapshot; FString Error;
     if (!PathLinkBake::ReadNavigation(Nav, Snapshot, Error))
     { RuntimeCacheDetail = TEXT("Waiting for navigation: ") + Error; return; }
@@ -294,13 +296,20 @@ const UPathLinkRoutingCacheData* UPathLinkSubsystem::GetValidatedRoutingCache() 
             }
         }
         if (!Bake || !Bake->IsBaked()) { RoutingCacheStatus = TEXT("No complete baked routing cache."); return nullptr; }
-        if (Bake->NavigationData && !ObservedNavMeshes.Contains(Bake->NavigationData.Get()))
+        ARecastNavMesh* Nav = Bake->NavigationData;
+        if (Storage && Bake == Storage->Cache.Get())
         {
-            ObservedNavMeshes.Add(Bake->NavigationData);
-            Bake->NavigationData->OnNavMeshUpdate.AddUObject(const_cast<UPathLinkSubsystem*>(this), &UPathLinkSubsystem::OnNavMeshUpdated);
+            // Managed bakes use the default NavMesh, which can be recreated when the world loads.
+            auto* NavSystem = UNavigationSystemV1::GetCurrent(World);
+            Nav = NavSystem ? Cast<ARecastNavMesh>(NavSystem->GetDefaultNavDataInstance(FNavigationSystem::DontCreate)) : nullptr;
+        }
+        if (Nav && !ObservedNavMeshes.Contains(Nav))
+        {
+            ObservedNavMeshes.Add(Nav);
+            Nav->OnNavMeshUpdate.AddUObject(const_cast<UPathLinkSubsystem*>(this), &UPathLinkSubsystem::OnNavMeshUpdated);
         }
         FPathLinkNavSnapshot Snapshot;
-        if (!PathLinkBake::ReadNavigation(Bake->NavigationData, Snapshot, RoutingCacheStatus))
+        if (!PathLinkBake::ReadNavigation(Nav, Snapshot, RoutingCacheStatus))
         { bBakeValidationPending = World->IsGameWorld(); return nullptr; }
         if (Snapshot.Signature != Bake->NavigationSignature || Snapshot.Refs.Num() != Bake->Polygons.Num())
         { RoutingCacheStatus = TEXT("NavMesh signature mismatch; rebake the level."); return nullptr; }
@@ -309,6 +318,7 @@ const UPathLinkRoutingCacheData* UPathLinkSubsystem::GetValidatedRoutingCache() 
         for (const auto& T : Bake->Traversals)
             if (!IsValid(T.Link) || !Bake->Polygons.IsValidIndex(T.EntryPoly) || !Bake->Polygons.IsValidIndex(T.ExitPoly))
             { RoutingCacheStatus = TEXT("Baked PathLink reference/endpoint is invalid; rebake the level."); return nullptr; }
+        Bake->NavigationData = Nav;
         for (int32 I = 0; I < Snapshot.Refs.Num(); ++I) BakedPolyIndexByRef.Add(Snapshot.Refs[I], I);
         ValidatedNavTileRefs = MoveTemp(Snapshot.TileRefs);
         NavigationReferenceCheckFrame = GFrameCounter;
@@ -1509,16 +1519,20 @@ bool UPathLinkSubsystem::PrepareRoutingCacheForEditor(bool bForceRebuild)
     for (const auto& T : Data->Traversals)
         bReferencesValid &= IsValid(T.Link) && T.Link->GetWorld() == World
             && Data->Polygons.IsValidIndex(T.EntryPoly) && Data->Polygons.IsValidIndex(T.ExitPoly);
-    const bool bCurrent = !bForceRebuild && bReferencesValid && Data->IsBaked() && Data->NavigationData == Nav
-        && Snapshot.Signature == Data->NavigationSignature
-        && Snapshot.Refs.Num() == Data->Polygons.Num()
-        && UPathLinkRoutingCacheData::ComputeLinkSignature(World) == Data->LinkSignature;
-    if (!bCurrent)
+    const TCHAR* RebuildReason = nullptr;
+    if (bForceRebuild) RebuildReason = TEXT("forced");
+    else if (!Data->IsBaked()) RebuildReason = TEXT("no complete bake");
+    else if (Snapshot.Signature != Data->NavigationSignature || Snapshot.Refs.Num() != Data->Polygons.Num())
+        RebuildReason = TEXT("NavMesh signature mismatch");
+    else if (!bReferencesValid) RebuildReason = TEXT("invalid cached PathLink references");
+    else if (UPathLinkRoutingCacheData::ComputeLinkSignature(World) != Data->LinkSignature)
+        RebuildReason = TEXT("PathLink placement signature mismatch");
+    if (RebuildReason)
     {
         Data->Modify(); Data->DataVersion = 0;
         Data->NavigationData = Nav;
         NotifyRoutingCacheChanged();
-        UE_LOG(LogPathLinkSubsystem, Display, TEXT("Routing cache build requested (missing, changed or forced): %s."), *World->GetName());
+        UE_LOG(LogPathLinkSubsystem, Display, TEXT("Routing cache build requested (%s): %s."), RebuildReason, *World->GetName());
         Data->BakeRoutingCache();
         Settings->MarkPackageDirty();
     }

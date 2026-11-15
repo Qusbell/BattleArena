@@ -28,6 +28,13 @@ if not exist "%RUNUAT%" (
     exit /b 1
 )
 
+call "%~dp0Scripts\PreparePackagePathLinkCaches.bat" "%ENGINE_ROOT%" "%PROJECT%"
+if errorlevel 1 (
+    echo [ERROR] PathLink routing cache preparation failed. Packaging stopped before cook.
+    pause
+    exit /b 1
+)
+
 echo.
 echo === [1/2] Packaging Shipping Server (WindowsServer) ===
 echo.
