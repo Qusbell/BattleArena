@@ -332,6 +332,14 @@ namespace
 
 		TArray<FString> Candidates;
 
+#if PLATFORM_WINDOWS && UE_BUILD_SHIPPING
+		// Launch the server binary directly so the handle belongs to the server process.
+		Candidates.Add(FPaths::Combine(
+			FPaths::GetPath(ClientExePath), TEXT("../../../.."), TEXT("WindowsServer"),
+			FApp::GetProjectName(), TEXT("Binaries"), TEXT("Win64"),
+			FString(FApp::GetProjectName()) + TEXT("Server-Win64-Shipping.exe")));
+#endif
+
 		// 1) 전체 경로에서 마지막 "/Windows/" 스테이징 폴더를 "/WindowsServer/" 로 치환하고
 		//    실행 파일 이름을 <Project>Server.exe 로 교체.
 		//    (Deep 레이아웃과 Flat 런처 레이아웃 모두 커버)
