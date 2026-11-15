@@ -3,6 +3,8 @@
 #include "Camera/AimAssistComponent.h"
 #include "MyReconnectionGameMode.h"
 #include "Loading/LoadingScreenSubsystem.h"
+#include "ShootingArenaGameInstance.h"
+#include "Kismet/GameplayStatics.h"
 #include "Engine/GameInstance.h"
 #include "GameFramework/Pawn.h"
 #include "Blueprint/UserWidget.h"
@@ -328,6 +330,23 @@ void AMyPlayerController::SetGamePausedByGameMode(bool bShouldPause)
 // 같은 이전 레벨의 URL 옵션이 그대로 이어져서, Lobby_Level이 엉뚱한 GameMode(그리고 그에 딸린
 // BP_QuakePlayerController)로 열려버립니다 — 그러면 BP_LobbyPlayerController가 안 쓰여서
 // WBP_Lobby가 아예 생성되지 않고 화면이 검게 보이는 버그로 이어집니다.
+void AMyPlayerController::ClientTravelInternal_Implementation(const FString& URL, ETravelType TravelType,
+	bool bSeamless, FGuid MapPackageGuid)
+{
+	int32 OptionsStart = INDEX_NONE;
+	if (GetNetMode() == NM_Client && URL.FindChar(TEXT('?'), OptionsStart)
+		&& URL.Left(OptionsStart).EndsWith(TEXT("Lobby_Level"))
+		&& UGameplayStatics::HasOption(URL.Mid(OptionsStart), TEXT("LobbyReturn")))
+	{
+		if (UShootingArenaGameInstance* GameInstance = GetGameInstance<UShootingArenaGameInstance>())
+		{
+			if (GameInstance->IsExitingToMenu(GetWorld())) return;
+			GameInstance->BeginLobbyReturn(GetWorld());
+		}
+	}
+	Super::ClientTravelInternal_Implementation(URL, TravelType, bSeamless, MapPackageGuid);
+}
+
 void AMyPlayerController::ServerReturnToLobby_Implementation()
 {
 	UWorld* World = GetWorld();
@@ -346,7 +365,7 @@ void AMyPlayerController::ServerReturnToLobby_Implementation()
 	// bAbsolute=true 필수 — 매치 시작 때 붙였던 "?Game=BP_MultiplayerAIGameMode" 같은
 	// 이전 레벨의 URL 옵션이 이어지면 Lobby_Level 이 엉뚱한 GameMode 로 열립니다.
 	// (Lobby_Level 의 World Settings > GameMode Override 가 BP_LobbyGameMode 여야 함)
-	World->ServerTravel(TEXT("/Game/QuakeLike_1_0/GameFlow/Lobby/Lobby_Level"), true);
+	World->ServerTravel(TEXT("/Game/QuakeLike_1_0/GameFlow/Lobby/Lobby_Level?LobbyReturn"), true);
 }
 
 // GetNetMode()는 블루프린트에 노출되어 있지 않아서 감싸둔 함수입니다.

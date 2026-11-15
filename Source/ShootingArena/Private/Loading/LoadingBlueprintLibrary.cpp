@@ -4,12 +4,14 @@
 #include "Loading/LoadingCoordinator.h"
 #include "Loading/LoadingScreenSubsystem.h"
 #include "LocalDedicatedServerLibrary.h"
+#include "ShootingArenaGameInstance.h"
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Kismet/GameplayStatics.h"
 #include "Containers/Ticker.h"
 #include "EngineUtils.h"
 #include "Engine/World.h"
+#include "GameMapsSettings.h"
 #include "GameFramework/GameStateBase.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerState.h"
@@ -65,6 +67,10 @@ void ULoadingBlueprintLibrary::BeginLoadingAndReturnToMainMenu(const UObject* Wo
 {
 	UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull) : nullptr;
 	if (!World) return;
+	if (UShootingArenaGameInstance* GameInstance = World->GetGameInstance<UShootingArenaGameInstance>())
+	{
+		GameInstance->BeginIntentionalMenuExit(World);
+	}
 	BeginLoadingScreen(WorldContextObject, StatusText);
 	if (UGameInstance* GameInstance = World->GetGameInstance())
 	{
@@ -84,7 +90,8 @@ void ULoadingBlueprintLibrary::BeginLoadingAndReturnToMainMenu(const UObject* Wo
 	}
 
 	TWeakObjectPtr<UGameInstance> WeakGameInstance = World->GetGameInstance();
-	FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([WeakGameInstance](float)
+	const TWeakObjectPtr<UWorld> ExitWorld = World;
+	FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([WeakGameInstance, ExitWorld](float)
 	{
 		// StopLocalDedicatedServer는 프로세스 종료를 기다릴 수 있습니다. 화면이 먼저
 		// 그려진 다음 호출해야 기존 게임 화면이 멈춘 채 노출되지 않습니다.
@@ -92,14 +99,14 @@ void ULoadingBlueprintLibrary::BeginLoadingAndReturnToMainMenu(const UObject* Wo
 		// 여기서 하면 그 사이 맵 선택 화면이 새로 띄운 서버까지 죽입니다.
 		UGameInstance* GameInstance = WeakGameInstance.Get();
 		UWorld* CurrentWorld = GameInstance ? GameInstance->GetWorld() : nullptr;
-		if (CurrentWorld)
+		if (IsValid(CurrentWorld) && CurrentWorld == ExitWorld.Get() && !CurrentWorld->bIsTearingDown)
 		{
 			UGameplayStatics::SetGamePaused(CurrentWorld, false);
 			// disconnect 가 이미 MainMenu_Level(GameDefaultMap)로 이동시켰다면 다시 열지 않습니다.
 			// 두 번 로드되면 첫 로드에서 bOpenMapSelectDirectly 가 소비돼 "레벨 선택"이 메인화면으로 보입니다.
 			if (!CurrentWorld->GetMapName().EndsWith(TEXT("MainMenu_Level")))
 			{
-				UGameplayStatics::OpenLevel(CurrentWorld, FName(TEXT("MainMenu_Level")));
+				UGameplayStatics::OpenLevel(CurrentWorld, FName(*UGameMapsSettings::GetGameDefaultMap()));
 			}
 		}
 		return false;
@@ -110,6 +117,10 @@ void ULoadingBlueprintLibrary::BeginLoadingAndLeaveMatchToMainMenu(const UObject
 {
 	UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull) : nullptr;
 	if (!World) return;
+	if (UShootingArenaGameInstance* GameInstance = World->GetGameInstance<UShootingArenaGameInstance>())
+	{
+		GameInstance->BeginIntentionalMenuExit(World);
+	}
 	BeginLoadingScreen(WorldContextObject, StatusText);
 	if (UGameInstance* GameInstance = World->GetGameInstance())
 	{
@@ -126,20 +137,21 @@ void ULoadingBlueprintLibrary::BeginLoadingAndLeaveMatchToMainMenu(const UObject
 	}
 
 	TWeakObjectPtr<UGameInstance> WeakGameInstance = World->GetGameInstance();
-	FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([WeakGameInstance](float)
+	const TWeakObjectPtr<UWorld> ExitWorld = World;
+	FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([WeakGameInstance, ExitWorld](float)
 	{
 		// StopMatchServer는 프로세스 종료를 기다릴 수 있으므로, 오버레이가 렌더링된 뒤 실행합니다.
 		ULocalDedicatedServerLibrary::StopMatchServer();
 		UGameInstance* GameInstance = WeakGameInstance.Get();
 		UWorld* CurrentWorld = GameInstance ? GameInstance->GetWorld() : nullptr;
-		if (CurrentWorld)
+		if (IsValid(CurrentWorld) && CurrentWorld == ExitWorld.Get() && !CurrentWorld->bIsTearingDown)
 		{
 			UGameplayStatics::SetGamePaused(CurrentWorld, false);
 			// disconnect 가 이미 MainMenu_Level(GameDefaultMap)로 이동시켰다면 다시 열지 않습니다.
 			// 두 번 로드되면 첫 로드에서 bOpenMapSelectDirectly 가 소비돼 "레벨 선택"이 메인화면으로 보입니다.
 			if (!CurrentWorld->GetMapName().EndsWith(TEXT("MainMenu_Level")))
 			{
-				UGameplayStatics::OpenLevel(CurrentWorld, FName(TEXT("MainMenu_Level")));
+				UGameplayStatics::OpenLevel(CurrentWorld, FName(*UGameMapsSettings::GetGameDefaultMap()));
 			}
 		}
 		return false;

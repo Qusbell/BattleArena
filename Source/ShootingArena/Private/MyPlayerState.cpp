@@ -12,6 +12,17 @@ void AMyPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(AMyPlayerState, bWantsReturnToLobby);
 	DOREPLIFETIME(AMyPlayerState, bIsHumanPlayer);
+	DOREPLIFETIME(AMyPlayerState, LobbyBotCharacterId);
+	DOREPLIFETIME(AMyPlayerState, LobbyBotNameNumber);
+}
+
+void AMyPlayerState::SetLobbyBotIdentity(FName CharacterId, int32 NameNumber)
+{
+	if (!HasAuthority() || !IsABot()) return;
+	LobbyBotCharacterId = CharacterId;
+	LobbyBotNameNumber = NameNumber;
+	FlushNetDormancy();
+	ForceNetUpdate();
 }
 
 void AMyPlayerState::SetOwner(AActor* NewOwner)
@@ -90,6 +101,11 @@ void AMyPlayerState::ComputeReturnToLobbyVotes(const UWorld* World, int32& OutVo
 		if (!MyPS || !MyPS->bIsHumanPlayer)
 		{
 			continue;
+		}
+		if (World->GetNetMode() != NM_Client)
+		{
+			const APlayerController* Controller = MyPS->GetPlayerController();
+			if (!IsValid(Controller) || Controller->IsActorBeingDestroyed()) continue;
 		}
 		++OutEligibleCount;
 		if (MyPS->bWantsReturnToLobby)

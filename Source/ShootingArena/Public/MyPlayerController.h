@@ -94,6 +94,8 @@ public:
 	void ServerShutdownMatchServer();
 
 protected:
+	virtual void ClientTravelInternal_Implementation(const FString& URL, ETravelType TravelType,
+		bool bSeamless, FGuid MapPackageGuid) override;
 	virtual void OnUnPossess() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 

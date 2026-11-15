@@ -89,6 +89,8 @@ void USeamlessPortalTraversalSubsystem::NotifyEntry(ASeamlessPortalActor* portal
 	if (PortalTraversalGuard::IsLocked(character,GetWorld()->GetTimeSeconds())) return;
 	NotifyNearby(portal,character,true);
 	const auto* state=travellers.Find(character);
+	if (state && entryEvents.ContainsByPredicate([&](const FEntryEvent& event)
+	{ return event.character == character && event.portal == portal && event.revision == state->revision; })) return;
 	entryEvents.Add({portal,character,state ? state->revision : 0});
 }
 
@@ -239,6 +241,7 @@ void USeamlessPortalTraversalSubsystem::Tick(float deltaTime)
 	{
 		TGuardValue<bool> updating(bUpdatingTravellers,true);
 		Swap(entryEvents,entryWork); entryEvents.Reset();
+		const double now = GetWorld()->GetTimeSeconds();
 		for (const FEntryEvent event:entryWork)
 		{
 			auto* character=event.character.Get(); auto* portal=event.portal.Get();
@@ -246,15 +249,25 @@ void USeamlessPortalTraversalSubsystem::Tick(float deltaTime)
 			const auto* found=travellers.Find(event.character);
 			if (!CanTrack(character) || !IsValid(portal) || !portals.Contains(portal)
 				|| !found || (event.revision && found->revision!=event.revision)) continue;
+			if (event.retryAt > 0.0)
+			{
+				if (!portal->IsCharacterInEntry(character) || !portal->CanTraverse()) continue;
+				if (now < event.retryAt) { entryEvents.Add(event); continue; }
+			}
 			FTraveller state=*found;
 			FVector safeExit;
-			if (portal->TryTraverseFromOverlap(character,safeExit))
+			bool bPawnBlocked = false;
+			if (portal->TryTraverseFromOverlap(character,safeExit,&bPawnBlocked))
 			{
 				if (!CanTrack(character)) continue;
 				const auto* current=travellers.Find(event.character);
 				if (!current || current->revision!=state.revision) continue;
 				RestoreIgnores(character,state); state.nearbyPortals.Empty(); state.safeLocation=safeExit;
 				state.exitGrace=IsValid(portal) ? Cast<ASeamlessPortalActor>(portal->GetExitTarget()) : nullptr;
+			}
+			else if (bPawnBlocked && CanTrack(character) && IsValid(portal) && portal->IsCharacterInEntry(character))
+			{
+				entryEvents.Add({portal,character,state.revision,now + 0.1});
 			}
 			else if (CanTrack(character) && !PortalTraversalGuard::IsLocked(character,GetWorld()->GetTimeSeconds()) && !state.ownedIgnores.IsEmpty())
 			{

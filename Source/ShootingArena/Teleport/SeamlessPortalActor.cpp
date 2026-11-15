@@ -1,4 +1,6 @@
 #include "SeamlessPortalActor.h"
+#include "Algo/Find.h"
+#include "Engine/OverlapResult.h"
 
 #include "SeamlessPortalMath.h"
 #include "SeamlessPortalTraversalSubsystem.h"
@@ -568,8 +570,15 @@ double ASeamlessPortalActor::GetPassageFrontExtent() const
 	return extent;
 }
 
-bool ASeamlessPortalActor::TryTraverseFromOverlap(ACharacter* character, FVector& safeExit) const
+bool ASeamlessPortalActor::IsCharacterInEntry(const ACharacter* character) const
 {
+	return IsValid(entryCollision) && IsValid(character) && IsValid(character->GetCapsuleComponent())
+		&& entryCollision->IsOverlappingComponent(character->GetCapsuleComponent());
+}
+
+bool ASeamlessPortalActor::TryTraverseFromOverlap(ACharacter* character, FVector& safeExit, bool* outPawnBlocked) const
+{
+	if (outPawnBlocked) *outPawnBlocked = false;
 	FTransform destination;
 	UWorld* world = GetWorld();
 	if (!IsValid(this) || !HasAuthority() || !IsValid(character) || !character->HasAuthority() || !IsValid(world) || world->bIsTearingDown
@@ -624,13 +633,57 @@ bool ASeamlessPortalActor::TryTraverseFromOverlap(ACharacter* character, FVector
 	if (exitPortal) for (AActor* wall : exitPortal->passageWalls) if (IsValid(wall)) query.AddIgnoredActor(wall);
 	const FCollisionResponseParams responses(capsule->GetCollisionResponseToChannels());
 	const FCollisionShape shape = FCollisionShape::MakeCapsule(capsule->GetScaledCapsuleRadius(), capsule->GetScaledCapsuleHalfHeight());
-	if (world->OverlapBlockingTestByChannel(position, facing.Quaternion(), capsule->GetCollisionObjectType(), shape, query, responses)) return false;
-	// A swept overlap can finish far past the entry. Keep the exit-side path check so an
-	// empty landing point cannot tunnel through an intervening destination obstruction.
+	// Reject obstructions both at the landing point and along the path from the exit plane.
 	const double clearDistance=extent+(exitPortal ? exitPortal->GetPassageFrontExtent() : 0)+2.0;
-	const FVector sweepStart=position+normal*(clearDistance-FVector::DotProduct(position-destination.GetLocation(),normal));
-	FHitResult hit;
-	if (world->SweepSingleByChannel(hit,sweepStart,position,facing.Quaternion(),capsule->GetCollisionObjectType(),shape,query,responses)) return false;
+	enum class EExitObstruction { None, Pawn, Geometry };
+	const FQuat rotation = facing.Quaternion();
+	const ECollisionChannel channel = capsule->GetCollisionObjectType();
+	TArray<FOverlapResult> overlaps;
+	auto CheckExit = [&](const FVector& candidate)
+	{
+		overlaps.Reset();
+		bool bPawnBlocked = false;
+		world->OverlapMultiByChannel(overlaps, candidate, rotation, channel, shape, query, responses);
+		for (const FOverlapResult& overlap : overlaps)
+		{
+			if (!overlap.bBlockingHit) continue;
+			if (!Cast<APawn>(overlap.GetActor())) return EExitObstruction::Geometry;
+			bPawnBlocked = true;
+		}
+		const FVector sweepStart = candidate + normal * (clearDistance - FVector::DotProduct(candidate - destination.GetLocation(), normal));
+		FHitResult hit;
+		if (world->SweepSingleByChannel(hit, sweepStart, candidate, rotation, channel, shape, query, responses))
+		{
+			if (!Cast<APawn>(hit.GetActor())) return EExitObstruction::Geometry;
+			bPawnBlocked = true;
+		}
+		return bPawnBlocked ? EExitObstruction::Pawn : EExitObstruction::None;
+	};
+
+	const EExitObstruction obstruction = CheckExit(position);
+	if (obstruction == EExitObstruction::Geometry) return false;
+	if (obstruction == EExitObstruction::Pawn)
+	{
+		const double spacing = 2.0 * capsule->GetScaledCapsuleRadius() + 2.0;
+		const FVector offsets[] = {right * spacing, -right * spacing, normal * spacing,
+			(right + normal) * spacing, (normal - right) * spacing};
+		FCollisionResponseParams geometryResponses = responses;
+		geometryResponses.CollisionResponse.SetResponse(ECC_Pawn, ECR_Ignore);
+		const FVector* available = Algo::FindByPredicate(offsets, [&](const FVector& offset)
+		{
+			// A lateral fallback must stay on the same side of adjacent geometry as the original exit.
+			FHitResult hit;
+			return CheckExit(position + offset) == EExitObstruction::None
+				&& !world->SweepSingleByChannel(hit, position, position + offset, rotation, channel, shape, query, geometryResponses);
+		});
+		if (!available)
+		{
+			if (outPawnBlocked) *outPawnBlocked = true;
+			return false;
+		}
+		position += *available;
+		safeExit = position;
+	}
 	PortalTraversalGuard::Lock(character, world->GetTimeSeconds() + FMath::Max(0.01f, reentryLockDuration));
 	if (!character->TeleportTo(position, facing, false, true))
 	{

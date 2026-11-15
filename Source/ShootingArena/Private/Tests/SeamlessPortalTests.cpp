@@ -615,6 +615,34 @@ bool FSpatialPortalOverlapSafetyTest::RunTest(const FString&)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSpatialPortalPawnContentionTest,"ShootingArena.Portal.Spatial.PawnContention",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FSpatialPortalPawnContentionTest::RunTest(const FString&)
+{
+	PortalOverlapTests::FWorld f;
+	auto* second = f.SpawnCharacter(FVector(500, 0, 0));
+	f.Move(FVector(15, 0, 0));
+	second->SetActorLocation(FVector(15, 100, 0));
+	f.Tick();
+	const FVector firstArrival = f.character->GetActorLocation();
+	const FVector secondArrival = second->GetActorLocation();
+	TestTrue(TEXT("Both entrants find distinct landing positions in the same tick"),
+		firstArrival.X > 1000 && secondArrival.X > 1000 && FVector::Dist2D(firstArrival, secondArrival) >= 40.0);
+
+	PortalTraversalGuard::Unlock(f.character);
+	f.Move(FVector(500, 0, 0));
+	second->SetActorLocation(FVector(1022, 0, 0));
+	second->GetCapsuleComponent()->SetCapsuleSize(100, 100);
+	f.Move(FVector(15, 0, 0));
+	f.Tick();
+	TestTrue(TEXT("An occupied exit waits with the entrant still in the trigger"), f.entry->IsCharacterInEntry(f.character));
+	second->SetActorLocation(FVector(1700, 0, 0));
+	f.world->Tick(LEVELTICK_TimeOnly, 0.2f);
+	f.Tick();
+	TestTrue(TEXT("Clearing the exit allows traversal without a new overlap event"), f.character->GetActorLocation().X > 1000);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSpatialPortalOverlapWallsTest,"ShootingArena.Portal.Spatial.OverlapWallLifetime",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 bool FSpatialPortalOverlapWallsTest::RunTest(const FString&)

@@ -8,6 +8,7 @@
 #include "ShootingArenaGameInstance.generated.h"
 
 class UNetDriver;
+struct FWorldContext;
 class UBGMSettingsDataAsset;
 class UPlayerDefaultNameSettings;
 
@@ -55,6 +56,9 @@ public:
 	UPROPERTY(BlueprintReadWrite, Category = "Lobby")
 	TArray<FName> PendingBotCharacterIds;
 
+	UFUNCTION(BlueprintPure, Category = "Lobby")
+	FName ResolveMatchBotCharacter(FName MapCharacterId, int32 SpawnIndex) const;
+
 	// 로비에서 정한 규칙 단계 (DT_MultiRules 의 옵션 인덱스). 서버 전용입니다.
 	UPROPERTY(BlueprintReadWrite, Category = "Lobby")
 	int32 PendingTimeIdx = 0;
@@ -88,6 +92,9 @@ public:
 
 	// 로비에 들어왔을 때 호출됩니다 (ALobbyPlayerController::BeginPlay).
 	void NotifyLobbyJoined();
+	void BeginLobbyReturn(UWorld* World);
+	void BeginIntentionalMenuExit(UWorld* World);
+	bool IsExitingToMenu(const UWorld* World) const { return MenuExitWorld.Get() == World; }
 
 	// 접속 화면이 띄울 메시지 키 (ip/port/fail/full/kicked/lost). 이미 값이 있으면 덮어쓰지 않습니다 —
 	// 강퇴(kicked)가 뒤따르는 연결 끊김(lost)으로 바뀌지 않게 하기 위함입니다.
@@ -101,6 +108,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Multi|Connect")
 	bool HasPendingConnectMessage() const { return !PendingConnectMessage.IsNone(); }
 
+	UFUNCTION(BlueprintPure, Category = "Multi|Connect")
+	bool HasPendingLobbyReturnFailure() const { return bLobbyReturnFailed && HasPendingConnectMessage(); }
+
 	// 현재 접속 상태 (UI 의 ConnectState 가 참고).
 	UFUNCTION(BlueprintPure, Category = "Multi|Connect")
 	ELobbyConnectState GetConnectState() const { return ConnectState; }
@@ -113,16 +123,22 @@ private:
 
 	void HandleNetworkFailure(UWorld* World, UNetDriver* NetDriver, ENetworkFailure::Type FailureType, const FString& ErrorString);
 	void HandleTravelFailure(UWorld* World, ETravelFailure::Type FailureType, const FString& ErrorString);
+	void SetSuppressAutomaticReconnect(bool bSuppress);
+	void HandleLobbyReturnFailure();
 
 	FName PendingConnectMessage;
+	bool bLobbyReturnInProgress = false;
+	bool bLobbyReturnFailed = false;
+	TWeakObjectPtr<UWorld> MenuExitWorld;
+	TWeakObjectPtr<UNetDriver> MatchNetDriver;
 	ELobbyConnectState ConnectState = ELobbyConnectState::Idle;
 	FDelegateHandle NetworkFailureHandle;
 	FDelegateHandle TravelFailureHandle;
 
 	// 메인 메뉴 레벨 진입 시 로컬 싱글 서버를 종료하기 위한 맵 로드 콜백.
-	void HandlePreLoadMap(const FString& MapName);
+	void HandlePreLoadMap(const FWorldContext& LoadingContext, const FString& MapName);
 
-	FDelegateHandle PostLoadMapHandle;
+	FDelegateHandle PreLoadMapHandle;
 
 	UPROPERTY()
 	TMap<FString, FString> NicknameByNetworkAddress;

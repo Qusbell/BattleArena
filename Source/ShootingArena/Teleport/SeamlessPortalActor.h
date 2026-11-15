@@ -87,7 +87,8 @@ public:
 	bool GetDestinationFrame(FTransform& frame) const;
 	FVector2D GetOpeningHalfSize() const;
 	/** Server-only arrival after a trusted EntryCollision overlap notification. */
-	bool TryTraverseFromOverlap(ACharacter* character, FVector& outSafeExit) const;
+	bool TryTraverseFromOverlap(ACharacter* character, FVector& outSafeExit, bool* outPawnBlocked = nullptr) const;
+	bool IsCharacterInEntry(const ACharacter* character) const;
 	UBoxComponent* GetNearbyCollision() const { return nearbyCollision; }
 	double GetCapsuleNormalExtent(const ACharacter* character) const;
 	double GetPassageFrontExtent() const;

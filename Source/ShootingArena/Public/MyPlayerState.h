@@ -59,6 +59,10 @@ public:
 	// UI 표시에는 위의 CachedVotedCount/CachedEligibleCount(Multicast로 전달됨)를 사용합니다.)
 	static void ComputeReturnToLobbyVotes(const UWorld* World, int32& OutVotedCount, int32& OutEligibleCount);
 
+	void SetLobbyBotIdentity(FName CharacterId, int32 NameNumber);
+	FName GetLobbyBotCharacterId() const { return LobbyBotCharacterId; }
+	int32 GetLobbyBotNameNumber() const { return LobbyBotNameNumber; }
+
 	// bWantsReturnToLobby가 바뀔 때(리플리케이션 도착 시) UI 갱신 트리거용.
 	UFUNCTION(BlueprintImplementableEvent, Category = "Lobby")
 	void OnWantsReturnToLobbyChanged();
@@ -68,6 +72,12 @@ protected:
 	virtual void SetOwner(AActor* NewOwner) override;
 
 private:
+	UPROPERTY(Replicated)
+	FName LobbyBotCharacterId;
+
+	UPROPERTY(Replicated)
+	int32 LobbyBotNameNumber = 0;
+
 	UFUNCTION()
 	void OnRep_WantsReturnToLobby();
 };

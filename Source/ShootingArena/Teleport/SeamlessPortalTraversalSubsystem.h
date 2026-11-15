@@ -37,7 +37,13 @@ private:
 		uint64 revision = 0;
 	};
 	struct FNearbyEvent { TWeakObjectPtr<ASeamlessPortalActor> portal; TWeakObjectPtr<ACharacter> character; bool bBegin; };
-	struct FEntryEvent { TWeakObjectPtr<ASeamlessPortalActor> portal; TWeakObjectPtr<ACharacter> character; uint64 revision; };
+	struct FEntryEvent
+	{
+		TWeakObjectPtr<ASeamlessPortalActor> portal;
+		TWeakObjectPtr<ACharacter> character;
+		uint64 revision;
+		double retryAt = 0.0;
+	};
 	bool CanTrack(ACharacter* character, bool bAllowResetting = false) const;
 	void DrainNearbyEvents();
 	void StoreState(TWeakObjectPtr<ACharacter> key, FTraveller&& state);

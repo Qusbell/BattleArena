@@ -9,6 +9,45 @@
 #include "Engine/World.h"
 #include "TimerManager.h"
 
+void AMyReconnectionGameMode::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)
+{
+	Super::InitGame(MapName, Options, ErrorMessage);
+	if (!UGameplayStatics::HasOption(Options, TEXT("LobbyMatch"))) return;
+
+	TArray<FString> BotOptions;
+	UGameplayStatics::ParseOption(Options, TEXT("Bots")).ParseIntoArray(BotOptions, TEXT(","), true);
+	TMap<FName, int32> NameNumbers;
+	for (const FString& BotOption : BotOptions)
+	{
+		FString Character, Difficulty;
+		if (!BotOption.Split(TEXT("-"), &Character, &Difficulty) || Character.IsEmpty() || !Difficulty.IsNumeric()) continue;
+		const int32 DifficultyIndex = FCString::Atoi(*Difficulty);
+		if (DifficultyIndex < 0 || DifficultyIndex > 2) continue;
+		const FName CharacterId(*Character);
+		LobbyBotsBySpawnIndex.Add({CharacterId, DifficultyIndex, ++NameNumbers.FindOrAdd(CharacterId)});
+	}
+	// The match Blueprint spawns easy, normal, then hard. The roster suffix uses lobby order.
+	LobbyBotsBySpawnIndex.StableSort([](const FLobbyBotIdentity& A, const FLobbyBotIdentity& B)
+	{
+		return A.Difficulty < B.Difficulty;
+	});
+}
+
+FName AMyReconnectionGameMode::GetLobbyBotCharacter(int32 SpawnIndex) const
+{
+	return LobbyBotsBySpawnIndex.IsValidIndex(SpawnIndex) ? LobbyBotsBySpawnIndex[SpawnIndex].CharacterId : NAME_None;
+}
+
+void AMyReconnectionGameMode::AssignLobbyBotName(AController* Bot, int32 SpawnIndex)
+{
+	if (!IsValid(Bot) || !LobbyBotsBySpawnIndex.IsValidIndex(SpawnIndex)) return;
+	if (AMyPlayerState* State = Bot->GetPlayerState<AMyPlayerState>(); State && State->IsABot())
+	{
+		const FLobbyBotIdentity& Entry = LobbyBotsBySpawnIndex[SpawnIndex];
+		State->SetLobbyBotIdentity(Entry.CharacterId, Entry.Number);
+	}
+}
+
 void AMyReconnectionGameMode::NotifyClientGameplayReady(APlayerController* Player)
 {
 	if (!HasAuthority() || !IsValid(Player) || Player->GetWorld() != GetWorld()
@@ -100,12 +139,28 @@ void AMyReconnectionGameMode::PostLogin(APlayerController* NewPlayer)
 
 void AMyReconnectionGameMode::Logout(AController* Exiting)
 {
+	const bool bHumanLeaving = IsValid(Cast<APlayerController>(Exiting));
 	Super::Logout(Exiting);
 
-	if (UWorld* World = GetWorld())
+	if (UWorld* World = GetWorld(); bHumanLeaving && World && !World->bIsTearingDown)
 	{
-		World->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateUObject(this, &AMyReconnectionGameMode::CheckReturnToLobbyVotes));
+		World->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateUObject(this, &AMyReconnectionGameMode::HandleLogoutComplete));
 	}
+}
+
+void AMyReconnectionGameMode::HandleLogoutComplete()
+{
+	UWorld* World = GetWorld();
+	if (!World || World->bIsTearingDown || !World->NextURL.IsEmpty() || World->IsInSeamlessTravel()) return;
+
+	// Use the live controllers here, including players who just connected and have no vote state yet.
+	if (GetNetMode() == NM_DedicatedServer && UGameplayStatics::HasOption(OptionsString, TEXT("LobbyMatch"))
+		&& !World->GetPlayerControllerIterator())
+	{
+		TravelBackToLobby(true);
+		return;
+	}
+	CheckReturnToLobbyVotes();
 }
 
 void AMyReconnectionGameMode::CheckReturnToLobbyVotes()
@@ -133,16 +188,25 @@ void AMyReconnectionGameMode::CheckReturnToLobbyVotes()
 		return;
 	}
 
-	UWorld* World = GetWorld();
-	if (!World)
-	{
-		return;
-	}
-	if (!World->NextURL.IsEmpty() || World->IsInSeamlessTravel())
-	{
-		return;
-	}
+	TravelBackToLobby(false);
+}
 
-	UE_LOG(LogTemp, Warning, TEXT("[Match] 전원(%d/%d) 로비로 투표 완료 -> ServerTravel"), Voted, Eligible);
-	World->ServerTravel(TEXT("/Game/QuakeLike_1_0/GameFlow/Lobby/Lobby_Level"), true);
+void AMyReconnectionGameMode::TravelBackToLobby(bool bEmptyMatch)
+{
+	UWorld* World = GetWorld();
+	if (!World || World->bIsTearingDown || !World->NextURL.IsEmpty() || World->IsInSeamlessTravel()) return;
+
+	const bool bScheduled = World->ServerTravel(TEXT("/Game/QuakeLike_1_0/GameFlow/Lobby/Lobby_Level?LobbyReturn"), true);
+	if (bScheduled && bEmptyMatch)
+	{
+		if (UShootingArenaGameInstance* GameInstance = GetGameInstance<UShootingArenaGameInstance>())
+		{
+			GameInstance->SavedHostNetworkAddress.Reset();
+			GameInstance->PendingAIDifficulties.Reset();
+			GameInstance->PendingBotCharacterIds.Reset();
+			GameInstance->PendingTimeIdx = 0;
+			GameInstance->PendingKillIdx = 0;
+		}
+	}
+	UE_LOG(LogTemp, Log, TEXT("[Match] Lobby return scheduled=%d empty=%d"), bScheduled, bEmptyMatch);
 }

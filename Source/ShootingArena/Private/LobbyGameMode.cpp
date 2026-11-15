@@ -162,7 +162,7 @@ void ALobbyGameMode::TravelToMatch(const FString& MatchTravelURL)
 	// bAbsolute=true: 로비를 열 때 붙었던 "?Game=BP_LobbyGameMode" 등 이전 URL 옵션을
 	// 이어받지 않고, MatchTravelURL 에 명시된 GameMode/옵션으로만 매치 맵을 엽니다.
 	UE_LOG(LogTemp, Log, TEXT("[Lobby] TravelToMatch: %s"), *MatchTravelURL);
-	World->ServerTravel(MatchTravelURL, /*bAbsolute=*/true);
+	World->ServerTravel(MatchTravelURL + TEXT("?LobbyMatch"), /*bAbsolute=*/true);
 }
 
 void ALobbyGameMode::KickLobbyPlayer(APlayerController* Target)

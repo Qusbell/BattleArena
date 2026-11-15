@@ -7,6 +7,9 @@
 #include "HAL/PlatformTime.h"
 #include "PlayerDefaultNameSettings.h"
 #include "LocalDedicatedServerLibrary.h"
+#include "Loading/LoadingScreenSubsystem.h"
+#include "MyReconnectionGameMode.h"
+#include "Engine/NetDriver.h"
 #include "UObject/UObjectGlobals.h"
 #include "UObject/UnrealType.h"
 
@@ -20,7 +23,7 @@ void UShootingArenaGameInstance::Init()
 	{
 		// PostLoadMap 이 아니라 PreLoadMap 을 씁니다. 메인 메뉴 위젯(맵 선택의 서버 시작)이 맵 로드 중
 		// PostLoadMap 보다 먼저 실행되므로, PostLoadMap 에서 정지하면 방금 띄운 서버를 죽여버립니다.
-		PostLoadMapHandle = FCoreUObjectDelegates::PreLoadMap.AddUObject(
+		PreLoadMapHandle = FCoreUObjectDelegates::PreLoadMapWithContext.AddUObject(
 			this, &UShootingArenaGameInstance::HandlePreLoadMap);
 
 		// 멀티 접속 실패/끊김을 접속 화면의 메시지 키(fail/full/lost)로 바꾸기 위해 엔진 실패 이벤트를 듣습니다.
@@ -47,10 +50,10 @@ void UShootingArenaGameInstance::Shutdown()
 		ServerFrameRateTickerHandle.Reset();
 	}
 
-	if (PostLoadMapHandle.IsValid())
+	if (PreLoadMapHandle.IsValid())
 	{
-		FCoreUObjectDelegates::PreLoadMap.Remove(PostLoadMapHandle);
-		PostLoadMapHandle.Reset();
+		FCoreUObjectDelegates::PreLoadMapWithContext.Remove(PreLoadMapHandle);
+		PreLoadMapHandle.Reset();
 	}
 
 	if (GEngine)
@@ -93,12 +96,14 @@ bool UShootingArenaGameInstance::LogServerFrameRate(float DeltaTime)
 	return true;
 }
 
-void UShootingArenaGameInstance::HandlePreLoadMap(const FString& MapName)
+void UShootingArenaGameInstance::HandlePreLoadMap(const FWorldContext& LoadingContext, const FString& MapName)
 {
+	if (LoadingContext.OwningGameInstance != this) return;
 	FString BaseName = MapName;
 	BaseName.Split(TEXT("?"), &BaseName, nullptr);
 	if (BaseName.EndsWith(TEXT("MainMenu_Level")))
 	{
+		if (bLobbyReturnInProgress) HandleLobbyReturnFailure();
 		// 결과창 "레벨 선택"으로 돌아오는 경우(bOpenMapSelectDirectly)에는 로컬 서버를 유지합니다.
 		// 이 플래그는 BP_QuakeGameInstance 변수라 리플렉션으로 읽고, 메인 메뉴 Construct 에서 소비됩니다.
 		bool bKeepLocalServer = false;
@@ -119,6 +124,9 @@ void UShootingArenaGameInstance::HandlePreLoadMap(const FString& MapName)
 
 void UShootingArenaGameInstance::BeginConnectAttempt(const FString& IP, int32 Port)
 {
+	SetSuppressAutomaticReconnect(false);
+	MenuExitWorld.Reset();
+	bLobbyReturnFailed = false;
 	LastServerIP = IP;
 	LastServerPort = Port;
 	PendingConnectMessage = NAME_None;
@@ -135,8 +143,60 @@ void UShootingArenaGameInstance::EndConnectAttempt()
 
 void UShootingArenaGameInstance::NotifyLobbyJoined()
 {
+	if (bLobbyReturnInProgress)
+	{
+		bLobbyReturnInProgress = false;
+		MatchNetDriver.Reset();
+		if (ULoadingScreenSubsystem* Loading = GetSubsystem<ULoadingScreenSubsystem>()) Loading->EndExternalLoading();
+	}
+	SetSuppressAutomaticReconnect(false);
+	MenuExitWorld.Reset();
+	bLobbyReturnFailed = false;
 	ConnectState = ELobbyConnectState::Joined;
 	PendingConnectMessage = NAME_None;
+}
+
+void UShootingArenaGameInstance::SetSuppressAutomaticReconnect(bool bSuppress)
+{
+	// BP_QuakeGameInstance otherwise queues its generic reconnect on the old connection's network errors.
+	if (const FBoolProperty* Property = FindFProperty<FBoolProperty>(GetClass(), TEXT("bIntentionalDisconnect")))
+	{
+		Property->SetPropertyValue_InContainer(this, bSuppress);
+	}
+}
+
+void UShootingArenaGameInstance::BeginLobbyReturn(UWorld* World)
+{
+	bLobbyReturnInProgress = true;
+	bLobbyReturnFailed = false;
+	MatchNetDriver = World->GetNetDriver();
+	PendingConnectMessage = NAME_None;
+	SetSuppressAutomaticReconnect(true);
+	if (ULoadingScreenSubsystem* Loading = GetSubsystem<ULoadingScreenSubsystem>())
+	{
+		Loading->BeginExternalLoading(TEXT("로비로 돌아가는 중..."));
+	}
+}
+
+void UShootingArenaGameInstance::BeginIntentionalMenuExit(UWorld* World)
+{
+	bLobbyReturnInProgress = false;
+	MatchNetDriver.Reset();
+	MenuExitWorld = World;
+	if (ConnectState == ELobbyConnectState::Joined)
+	{
+		SetSuppressAutomaticReconnect(true);
+		ConnectState = ELobbyConnectState::Idle;
+	}
+}
+
+void UShootingArenaGameInstance::HandleLobbyReturnFailure()
+{
+	bLobbyReturnInProgress = false;
+	bLobbyReturnFailed = true;
+	MatchNetDriver.Reset();
+	SetPendingConnectMessage(TEXT("fail"));
+	ConnectState = ELobbyConnectState::Idle;
 }
 
 void UShootingArenaGameInstance::SetPendingConnectMessage(FName MessageKey)
@@ -152,17 +212,25 @@ FName UShootingArenaGameInstance::ConsumePendingConnectMessage()
 {
 	const FName Message = PendingConnectMessage;
 	PendingConnectMessage = NAME_None;
+	bLobbyReturnFailed = false;
 	return Message;
 }
 
 void UShootingArenaGameInstance::HandleNetworkFailure(UWorld* World, UNetDriver* NetDriver, ENetworkFailure::Type FailureType, const FString& ErrorString)
 {
 	// 다른 GameInstance(PIE 의 서버 등)의 실패는 무시합니다.
-	if (World && World->GetGameInstance() != this)
+	const FWorldContext* PendingContext = !World && NetDriver && GEngine
+		? GEngine->GetWorldContextFromPendingNetGameNetDriver(NetDriver) : nullptr;
+	if ((World && World->GetGameInstance() != this) || (!World && (!PendingContext || PendingContext->OwningGameInstance != this)))
 	{
 		return;
 	}
 
+	if (bLobbyReturnInProgress)
+	{
+		if (NetDriver != MatchNetDriver.Get()) HandleLobbyReturnFailure();
+		return;
+	}
 	if (ConnectState == ELobbyConnectState::Connecting)
 	{
 		// 서버가 PreLogin 에서 거절한 이유가 문자열로 실려옵니다 ("full").
@@ -184,6 +252,11 @@ void UShootingArenaGameInstance::HandleTravelFailure(UWorld* World, ETravelFailu
 		return;
 	}
 
+	if (bLobbyReturnInProgress)
+	{
+		HandleLobbyReturnFailure();
+		return;
+	}
 	if (ConnectState == ELobbyConnectState::Connecting)
 	{
 		SetPendingConnectMessage(TEXT("fail"));
@@ -194,6 +267,14 @@ void UShootingArenaGameInstance::HandleTravelFailure(UWorld* World, ETravelFailu
 		SetPendingConnectMessage(TEXT("lost"));
 		ConnectState = ELobbyConnectState::Idle;
 	}
+}
+
+FName UShootingArenaGameInstance::ResolveMatchBotCharacter(FName MapCharacterId, int32 SpawnIndex) const
+{
+	const UWorld* World = GetWorld();
+	const AMyReconnectionGameMode* Mode = World ? World->GetAuthGameMode<AMyReconnectionGameMode>() : nullptr;
+	const FName LobbyCharacterId = Mode ? Mode->GetLobbyBotCharacter(SpawnIndex) : NAME_None;
+	return LobbyCharacterId.IsNone() ? MapCharacterId : LobbyCharacterId;
 }
 
 FString UShootingArenaGameInstance::MakeDefaultPlayerName(bool bCampaign) const

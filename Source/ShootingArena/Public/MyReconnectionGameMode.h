@@ -31,6 +31,7 @@ class SHOOTINGARENA_API AMyReconnectionGameMode : public AGameModeBase
 	GENERATED_BODY()
 	
 protected:
+	virtual void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
 
 	// �α��� ������ ��ū�� �Ľ��ؼ� ��Ʈ�ѷ����� �������̽��� ������
 	virtual FString InitNewPlayer(APlayerController* NewPlayerController,
@@ -66,6 +67,11 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Server")
 	FString GetLevelOptionsString() const { return OptionsString; }
 
+	FName GetLobbyBotCharacter(int32 SpawnIndex) const;
+
+	UFUNCTION(BlueprintCallable, Category = "Lobby")
+	void AssignLobbyBotName(AController* Bot, int32 SpawnIndex);
+
 public:
 	/** Server-side entry point; duplicate reports from the same controller are ignored. */
 	void NotifyClientGameplayReady(APlayerController* Player);
@@ -82,5 +88,14 @@ public:
 	bool bFirstClientGameplayReady = false;
 
 private:
+	struct FLobbyBotIdentity
+	{
+		FName CharacterId;
+		int32 Difficulty;
+		int32 Number;
+	};
+	TArray<FLobbyBotIdentity> LobbyBotsBySpawnIndex;
+	void HandleLogoutComplete();
+	void TravelBackToLobby(bool bEmptyMatch);
 	TSet<TWeakObjectPtr<APlayerController>> GameplayReadyPlayers;
 };

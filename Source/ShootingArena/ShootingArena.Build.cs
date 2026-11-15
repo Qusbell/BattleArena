@@ -32,7 +32,7 @@ public class ShootingArena : ModuleRules
             "SQLiteCore"
         } );
 
-        PrivateDependencyModuleNames.AddRange(new string[] { "CoreOnline", "NetCore", "RHI", "RenderCore", "MovieScene", "MeshDescription", "StaticMeshDescription", "Navmesh", "MediaAssets", "AssetRegistry" });
+        PrivateDependencyModuleNames.AddRange(new string[] { "CoreOnline", "EngineSettings", "NetCore", "RHI", "RenderCore", "MovieScene", "MeshDescription", "StaticMeshDescription", "Navmesh", "MediaAssets", "AssetRegistry" });
 
         // Editor 전용 기능입니다.
         // 패키징/Shipping 빌드에는 UnrealEd와 GameplayValidatorEditor가 포함되지 않습니다.

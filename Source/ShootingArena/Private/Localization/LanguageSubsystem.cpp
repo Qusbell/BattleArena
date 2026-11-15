@@ -1,4 +1,5 @@
 #include "Localization/LanguageSubsystem.h"
+#include "MyPlayerState.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/TextBlock.h"
 #include "Components/EditableText.h"
@@ -214,9 +215,26 @@ FText ULanguageLibrary::DisplayName(FName Domain, FName Id)
     if (!Reported.Contains(Key)) { Reported.Add(Key); UE_LOG(LogArenaLanguage, Error, TEXT("Missing display-name String Table key: %s"), *Key); }
     return FText::AsCultureInvariant(Id.ToString());
 }
+FString ULanguageLibrary::LobbyBotResultName(APlayerState* State, const FString& ExistingName)
+{
+    const AMyPlayerState* Bot = Cast<AMyPlayerState>(State);
+    if (!IsValid(Bot) || !Bot->IsABot() || Bot->GetLobbyBotCharacterId().IsNone()) return ExistingName;
+    const FText Name = DisplayName(TEXT("Character"), Bot->GetLobbyBotCharacterId());
+    if (Bot->GetLobbyBotNameNumber() > 1)
+    {
+        const FText Number = FText::AsCultureInvariant(FString::FromInt(Bot->GetLobbyBotNameNumber()));
+        const FText Empty;
+        return DisplayString(TEXT("Common_NameNumber"), Name, Number, Empty, Empty, Empty, Empty, Empty, Empty);
+    }
+    FString Serialized;
+    FTextStringHelper::WriteToBuffer(Serialized, Name);
+    return FString(TEXT("\x1f" "ArenaText:")) + Serialized;
+}
+
 FString ULanguageLibrary::ParticipantDisplayString(APlayerState* State)
 {
     if (!IsValid(State)) return FString();
+    if (const FString LobbyName = LobbyBotResultName(State, FString()); !LobbyName.IsEmpty()) return LobbyName;
     const FStrProperty* Campaign = FindFProperty<FStrProperty>(State->GetClass(), TEXT("CampaignName"));
     FString Id = Campaign ? Campaign->GetPropertyValue_InContainer(State) : FString();
     if (State->IsABot() && Id.IsEmpty())
