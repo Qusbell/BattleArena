@@ -100,6 +100,7 @@
     "source_of_truth": "UAimAssistSettings / DefaultGame.ini [/Script/ShootingArena.AimAssistSettings]; enable state is controller-local memory",
     "validation": "Installed UE 5.6.1 final Editor Development and game Shipping compile/link succeeded; MCP automation BlueprintBridge and ConvergenceAndEligibility passed; manual hotkey/input/play feel, network shots and Git-source-engine server/Cook/packaged runtime not verified",
     "evidence": "docs/repository-audit/systems/evidence/aim-assist.json",
+    "availability_update_2026_11_16": "Shipping and Test compile out the controller hooks and assist implementation; inherited component and Blueprint status query retained for compatibility. Win64 Game and Server Shipping compile/link passed with source-built UE 5.6.1.",
     "baseline_recollection": "not_performed; historical whole-project inventory preserved"
   },
   "ui_recording_respawn_material_fix": {

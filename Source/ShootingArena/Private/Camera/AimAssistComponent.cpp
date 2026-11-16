@@ -1,4 +1,6 @@
 #include "Camera/AimAssistComponent.h"
+
+#if !UE_BUILD_SHIPPING && !UE_BUILD_TEST
 #include "AimAssistMath.h"
 #include "Camera/AimAssistSettings.h"
 #include "Camera/ShooterDisplayLibrary.h"
@@ -47,11 +49,6 @@ bool Focused(const APlayerController* PC)
 	const FViewport* Viewport = Player && Player->ViewportClient ? Player->ViewportClient->Viewport : nullptr;
 	return Viewport && Viewport->HasFocus() && Viewport->IsForegroundWindow();
 }
-}
-
-UAimAssistComponent::UAimAssistComponent()
-{
-	PrimaryComponentTick.bCanEverTick = false;
 }
 
 void UAimAssistComponent::ProcessToggle()
@@ -169,9 +166,27 @@ void UAimAssistComponent::ClearStatus()
 	StatusWidget.Reset();
 }
 
+#else
+void UAimAssistComponent::ProcessToggle()
+{
+}
+
+bool UAimAssistComponent::TryGetRotation(float, FRotator&)
+{
+	return false;
+}
+#endif
+
+UAimAssistComponent::UAimAssistComponent()
+{
+	PrimaryComponentTick.bCanEverTick = false;
+}
+
 void UAimAssistComponent::EndPlay(const EEndPlayReason::Type Reason)
 {
+#if !UE_BUILD_SHIPPING && !UE_BUILD_TEST
 	ClearStatus();
 	bEnabled = false;
+#endif
 	Super::EndPlay(Reason);
 }

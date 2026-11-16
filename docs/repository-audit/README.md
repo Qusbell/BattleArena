@@ -24,7 +24,7 @@
 
 - [2026-11-12 병합 후 게임 경로 안전성 점검](systems/MergeRuntimeSafety-2026-11-12.md) — 로딩 전환 재진입·월드 소유권과 사용 BP의 구조체 로드 오류를 점검한 부분 갱신입니다.
 
-- [로컬 에임 어시스트](systems/AimAssist.md) — Shipping 지원 토글, 화면 기반 적 선택과 조준 보간.
+- [로컬 에임 어시스트](systems/AimAssist.md) — 개발 빌드 전용 토글, 화면 기반 적 선택과 조준 보간.
 
 - [보고된 버프·결과창·부활 문제의 실행 조사 및 수정 검증](systems/ReportedIssues-2026-11-10.md)
 - [드롭 아이템 획득 판정](systems/DropItemPickup.md) — 공통 반경, 초기 접촉 처리 및 검증 범위.

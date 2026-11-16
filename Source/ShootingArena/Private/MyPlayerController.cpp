@@ -56,11 +56,14 @@ AMyPlayerController::AMyPlayerController()
 void AMyPlayerController::ProcessPlayerInput(const float DeltaTime, const bool bGamePaused)
 {
 	Super::ProcessPlayerInput(DeltaTime, bGamePaused);
+#if !UE_BUILD_SHIPPING && !UE_BUILD_TEST
 	if (AimAssist) AimAssist->ProcessToggle();
+#endif
 }
 
 void AMyPlayerController::UpdateRotation(float DeltaTime)
 {
+#if !UE_BUILD_SHIPPING && !UE_BUILD_TEST
 	FRotator Assisted;
 	if (AimAssist && AimAssist->TryGetRotation(DeltaTime, Assisted))
 	{
@@ -68,6 +71,7 @@ void AMyPlayerController::UpdateRotation(float DeltaTime)
 		RotationInput = FRotator::ZeroRotator;
 		SetControlRotation(Assisted);
 	}
+#endif
 	Super::UpdateRotation(DeltaTime);
 }
 
