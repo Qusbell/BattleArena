@@ -1,4 +1,4 @@
-﻿#include "Modules/ModuleManager.h"
+#include "Modules/ModuleManager.h"
 
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "AssetRegistry/AssetData.h"
@@ -24,12 +24,72 @@
 #include "UI/MatchTimerStyle.h"
 #include "UObject/StrongObjectPtr.h"
 #include "DressSwapTool.h"
+#include "Blueprint/UserWidget.h"
+#include "Blueprint/WidgetTree.h"
+#include "Components/TextBlock.h"
+#include "UObject/UnrealType.h"
+#include "WidgetBlueprint.h"
 
 
 DEFINE_LOG_CATEGORY_STATIC(LogBPRefreshTool, Log, All);
 
 namespace
 {
+    void SyncMapNameFormatting(UObject* Object, FPropertyChangedEvent& Event)
+    {
+        static const FName Left(TEXT("MapName_1"));
+        static const FName Right(TEXT("MapName_2"));
+        UTextBlock* Label = Cast<UTextBlock>(Object);
+        if (!Label || (Label->GetFName() != Left && Label->GetFName() != Right) || GIsTransacting)
+            return;
+
+        FProperty* Property = Event.MemberProperty ? Event.MemberProperty : Event.Property;
+        static const TSet<FName> FormattingProperties = {
+            TEXT("Font"), TEXT("ColorAndOpacity"), TEXT("ShadowOffset"), TEXT("ShadowColorAndOpacity"),
+            TEXT("Justification"), TEXT("Margin"), TEXT("LineHeightPercentage"), TEXT("bApplyLineHeightToBottomLine"),
+            TEXT("AutoWrapText"), TEXT("WrapTextAt"), TEXT("WrappingPolicy"), TEXT("TextOverflowPolicy"),
+            TEXT("TextTransformPolicy"), TEXT("ShapedTextOptions"), TEXT("MinDesiredWidth"),
+            TEXT("bSimpleTextMode"), TEXT("RenderOpacity"), TEXT("RenderTransform"), TEXT("RenderTransformPivot")
+        };
+        if (!Property || !FormattingProperties.Contains(Property->GetFName()))
+            return;
+
+        const UWidgetTree* Tree = Label->GetTypedOuter<UWidgetTree>();
+        if (!Tree)
+            return;
+
+        UWidgetBlueprint* Blueprint = Cast<UWidgetBlueprint>(Tree->GetOuter());
+        UUserWidget* Preview = Cast<UUserWidget>(Tree->GetOuter());
+        if (Preview && Preview->IsDesignTime())
+            Blueprint = Cast<UWidgetBlueprint>(Preview->GetClass()->ClassGeneratedBy);
+
+        static const FName PackageName(TEXT("/Game/QuakeLike_1_0/GameFlow/UI/WBP_MapSelect_SDM"));
+        if (!Blueprint || Blueprint->GetOutermost()->GetFName() != PackageName || !Blueprint->WidgetTree)
+            return;
+
+        const FName PeerName = Label->GetFName() == Left ? Right : Left;
+        const auto CopyProperty = [Label, Property](UTextBlock* Peer, bool bTemplate)
+        {
+            if (!Peer || Peer->GetClass() != Label->GetClass() || Property->Identical_InContainer(Label, Peer))
+                return false;
+            if (bTemplate)
+                Peer->Modify();
+            Property->CopyCompleteValue_InContainer(Peer, Label);
+            Peer->SynchronizeProperties();
+            return true;
+        };
+
+        // UMG commits interactive edits from the preview to the template on release.
+        if (!(Event.ChangeType & EPropertyChangeType::Interactive)
+            && CopyProperty(Cast<UTextBlock>(Blueprint->WidgetTree->FindWidget(PeerName)), true))
+        {
+            Blueprint->Status = BS_Dirty;
+            Blueprint->MarkPackageDirty();
+        }
+        if (Preview)
+            CopyProperty(Cast<UTextBlock>(Preview->GetWidgetFromName(PeerName)), false);
+    }
+
     class FMatchTimerStyleDetails : public IDetailCustomization
     {
     public:
@@ -82,6 +142,8 @@ public:
             return;
         }
 
+        MapNameFormattingHandle = FCoreUObjectDelegates::OnObjectPropertyChanged.AddStatic(&SyncMapNameFormatting);
+
         DressSwapTool = MakeUnique<FDressSwapTool>();
         DressSwapTool->Register();
 
@@ -113,6 +175,7 @@ public:
 
     virtual void ShutdownModule() override
     {
+        FCoreUObjectDelegates::OnObjectPropertyChanged.Remove(MapNameFormattingHandle);
         if (GIsEditor)
         {
             if (auto* PropertyEditor = FModuleManager::GetModulePtr<FPropertyEditorModule>("PropertyEditor"))
@@ -134,6 +197,7 @@ private:
 
     TUniquePtr<FAutoConsoleCommand> RefreshBlueprintsCommand;
     TUniquePtr<FDressSwapTool> DressSwapTool;
+    FDelegateHandle MapNameFormattingHandle;
 
 
     void RefreshBlueprints(const TArray<FString>& Args)

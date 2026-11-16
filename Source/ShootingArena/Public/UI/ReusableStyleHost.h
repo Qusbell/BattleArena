@@ -111,4 +111,12 @@ public:
 
     UFUNCTION(BlueprintCallable, Category="UI|Blueprint Styles")
     static void SetStyledButtonSelected(UButton* Button, bool bSelected);
+
+    /** Updates the visual states of the combined single-player selection screen. */
+    UFUNCTION(BlueprintCallable, Category="UI|Blueprint Styles")
+    static void UpdateSinglePlaySelectionVisuals(UUserWidget* Screen, int32 SelectedMap,
+        int32 SelectedDifficulty, float DeltaTime);
+
+    UFUNCTION(BlueprintCallable, Category="UI|Blueprint Styles")
+    static void SetSinglePlayBackground(UUserWidget* Screen, UImage* Background, UTexture2D* Texture);
 };

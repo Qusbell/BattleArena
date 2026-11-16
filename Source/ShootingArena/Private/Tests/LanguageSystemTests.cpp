@@ -8,6 +8,7 @@
 #include "Engine/World.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/TextBlock.h"
+#include "Engine/Font.h"
 #include "Misc/ScopeExit.h"
 #include "UObject/Package.h"
 #include "UObject/UnrealType.h"
@@ -54,6 +55,32 @@ bool FLanguageHistoryTest::RunTest(const FString&)
     TestEqual(TEXT("Language font preserves size"),Resolved.Size,37.f);
     TestEqual(TEXT("Language font preserves outline"),Resolved.OutlineSettings.OutlineSize,2);
     UKismetInternationalizationLibrary::SetCurrentCulture(Previous,false);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FLanguageFontWeightsTest,"ShootingArena.Localization.FontWeights",
+    EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
+bool FLanguageFontWeightsTest::RunTest(const FString&)
+{
+    UFont* Description = LoadObject<UFont>(nullptr,
+        TEXT("/Game/QuakeLike_Base/SDM/F_BITSPACE1.F_BITSPACE1"));
+    UFont* Default = LoadObject<UFont>(nullptr,
+        TEXT("/Game/QuakeLike_Base/SDM/F_BITCORE1.F_BITCORE1"));
+    if (!TestNotNull(TEXT("Description font"), Description) || !TestNotNull(TEXT("Default font"), Default)) return false;
+
+    const FString Previous = FInternationalization::Get().GetCurrentCulture()->GetName();
+    ON_SCOPE_EXIT { UKismetInternationalizationLibrary::SetCurrentCulture(Previous, false); };
+    for (const TCHAR* Culture : {TEXT("ko"), TEXT("en")})
+    {
+        UKismetInternationalizationLibrary::SetCurrentCulture(Culture, false);
+        const FSlateFontInfo Normal = ULanguageLibrary::ResolveFont(FSlateFontInfo());
+        const FSlateFontInfo Detail = ULanguageLibrary::ResolveFont(FSlateFontInfo(Description, 24, TEXT("Default")));
+        const FSlateFontInfo NamedBold = ULanguageLibrary::ResolveFont(FSlateFontInfo(Default, 24, TEXT("Bold")));
+        TestTrue(FString::Printf(TEXT("%s uses the default font for unassigned text"), Culture), Normal.FontObject.Get() == Default);
+        TestTrue(FString::Printf(TEXT("%s keeps the explicitly assigned description font"), Culture), Detail.FontObject.Get() == Description);
+        TestTrue(FString::Printf(TEXT("%s uses the default font for a named bold face"), Culture), NamedBold.FontObject.Get() == Default);
+        TestEqual(TEXT("BIT fonts use the Default typeface"), NamedBold.TypefaceFontName, FName(TEXT("Default")));
+    }
     return true;
 }
 

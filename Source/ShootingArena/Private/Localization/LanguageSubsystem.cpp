@@ -260,19 +260,42 @@ FSlateFontInfo ULanguageLibrary::ResolveFont(FSlateFontInfo Existing)
     static uint64 CachedFrame = MAX_uint64;
     static FString CachedLanguage;
     static TWeakObjectPtr<UFont> CachedFont;
+    static TWeakObjectPtr<UFont> CachedDescriptionFont;
+    static TArray<TWeakObjectPtr<UFont>> DescriptionFonts;
     const FString Language = FInternationalization::Get().GetCurrentLanguage()->GetName();
     if (CachedFrame != GFrameCounter || CachedLanguage != Language)
     {
         CachedFrame = GFrameCounter; CachedLanguage = Language; CachedFont.Reset();
+        CachedDescriptionFont.Reset();
+        DescriptionFonts.Reset();
         int32 BestMatch = -1;
         if (UDataTable* Table = ULanguageSubsystem::GetLanguageTable())
+        {
             for (const FName Key : Table->GetRowNames())
-                if (const FLanguageRow* Row = Table->FindRow<FLanguageRow>(Key, TEXT("Font")); Row && Row->IsEnabled && Row->Font)
-                    if (Row->CultureCode == Language || Language.StartsWith(Row->CultureCode + TEXT("-")))
-                        if (Row->CultureCode.Len() > BestMatch) { BestMatch = Row->CultureCode.Len(); CachedFont = Row->Font; }
+            {
+                const FLanguageRow* Row = Table->FindRow<FLanguageRow>(Key, TEXT("Font"));
+                if (!Row || !Row->IsEnabled || !Row->Font) continue;
+                if (Row->DescriptionFont) DescriptionFonts.AddUnique(Row->DescriptionFont.Get());
+                if (Row->CultureCode.Len() > BestMatch &&
+                    (Row->CultureCode == Language || Language.StartsWith(Row->CultureCode + TEXT("-"))))
+                {
+                    BestMatch = Row->CultureCode.Len();
+                    CachedFont = Row->Font;
+                    CachedDescriptionFont = Row->DescriptionFont;
+                }
+            }
+        }
     }
     if (UFont* Font = CachedFont.Get())
     {
+        if (UFont* Description = CachedDescriptionFont.Get())
+        {
+            if (DescriptionFonts.ContainsByPredicate([&Existing](const TWeakObjectPtr<UFont>& Candidate)
+                { return Candidate.IsValid() && Candidate.Get() == Existing.FontObject.Get(); }))
+            {
+                Font = Description;
+            }
+        }
         Existing.FontObject = Font;
         const FCompositeFont* Composite = Font->GetCompositeFont();
         if (Composite && Composite->DefaultTypeface.Fonts.Num() &&

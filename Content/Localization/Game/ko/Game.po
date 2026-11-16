@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-11-13 11:56\n"
-"PO-Revision-Date: 2026-11-13 11:56\n"
+"POT-Creation-Date: 2026-11-15 14:07\n"
+"PO-Revision-Date: 2026-11-15 14:07\n"
 "Language-Team: \n"
 "Language: ko\n"
 "MIME-Version: 1.0\n"
@@ -447,6 +447,48 @@ msgctxt "Game,Menu_Start"
 msgid "게임 시작"
 msgstr "게임 시작"
 
+#. Key:	QuitDialog_QuitDetail
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,QuitDialog_QuitDetail"
+msgid "게임 창을 닫고 바탕 화면으로 돌아갑니다."
+msgstr "게임 창을 닫고 바탕 화면으로 돌아갑니다."
+
+#. Key:	QuitDialog_RestartDetail
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,QuitDialog_RestartDetail"
+msgid "현재 레벨을 처음부터 다시 플레이합니다."
+msgstr "현재 레벨을 처음부터 다시 플레이합니다."
+
+#. Key:	QuitDialog_RestartTitle
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,QuitDialog_RestartTitle"
+msgid "레벨 재시작"
+msgstr "레벨 재시작"
+
+#. Key:	QuitDialog_ReturnDetail
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,QuitDialog_ReturnDetail"
+msgid "현재 플레이 세션에서 나갑니다."
+msgstr "현재 플레이 세션에서 나갑니다."
+
+#. Key:	QuitDialog_ReturnTitle
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,QuitDialog_ReturnTitle"
+msgid "메인 메뉴로 돌아가기"
+msgstr "메인 메뉴로 돌아가기"
+
+#. Key:	QuitDialog_SelectDetail
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,QuitDialog_SelectDetail"
+msgid "현재 플레이를 끝내고 다른 레벨을 선택할 수 있습니다."
+msgstr "현재 플레이를 끝내고 다른 레벨을 선택할 수 있습니다."
+
 #. Key:	Result_ReturnLobby
 #. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
 #: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
@@ -474,6 +516,41 @@ msgstr "설정 항목에 마우스를 올리면\n자세한 설명을 볼 수 있
 msgctxt "Game,Settings_Language"
 msgid "언어"
 msgstr "언어"
+
+#. Key:	SinglePlay_DescriptionEasy
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,SinglePlay_DescriptionEasy"
+msgid "조작에 쉽게 적응하며 부담 없이 즐길 수 있는 입문자용 난이도입니다."
+msgstr "조작에 쉽게 적응하며 부담 없이 즐길 수 있는 입문자용 난이도입니다."
+
+#. Key:	SinglePlay_DescriptionHard
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,SinglePlay_DescriptionHard"
+msgid "정밀한 사격과 빠른 상황 판단이 생존을 좌우하는 난이도입니다."
+msgstr "정밀한 사격과 빠른 상황 판단이 생존을 좌우하는 난이도입니다."
+
+#. Key:	SinglePlay_DescriptionNormal
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,SinglePlay_DescriptionNormal"
+msgid "적들과 대등한 조건에서 기본적인 전투 감각을 익히기 적합한 난이도입니다."
+msgstr "적들과 대등한 조건에서 기본적인 전투 감각을 익히기 적합한 난이도입니다."
+
+#. Key:	SinglePlay_MapBreadcrumb
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,SinglePlay_MapBreadcrumb"
+msgid "{0} > {1}"
+msgstr "{0} > {1}"
+
+#. Key:	SinglePlay_Next
+#. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+#: /Game/QuakeLike_1_0/Localization/ST_Game.ST_Game
+msgctxt "Game,SinglePlay_Next"
+msgid "다음"
+msgstr "다음"
 
 #. Key:	UI_007ee3d0dca8
 #. SourceLocation:	/Game/QuakeLike_1_0/Localization/ST_Game.ST_Game

@@ -2,6 +2,7 @@
 
 #include "UI/UIBackHandler.h"
 #include "UI/UIBackInputSettings.h"
+#include "UI/SinglePlaySteps.h"
 
 #include "Algo/StableSort.h"
 #include "Blueprint/UserWidget.h"
@@ -71,7 +72,9 @@ bool UUIBackInputSubsystem::HandleKeyPressed(const FKey& Key)
 {
 	const UUIBackInputSettings* Settings = GetDefault<UUIBackInputSettings>();
 	const bool bBackKey = Settings->BackKeys.Contains(Key);
-	if (!bBackKey && !Settings->HotkeyButtons.ContainsByPredicate([&Key](const FUIHotkeyButton& H) { return H.Key == Key; }))
+	const bool bStepKey = USinglePlaySteps::IsStepKey(Key);
+	const bool bHotkey = Settings->HotkeyButtons.ContainsByPredicate([&Key](const FUIHotkeyButton& H) { return H.Key == Key; });
+	if (!bStepKey && !bBackKey && !bHotkey)
 	{
 		return false;
 	}
@@ -86,7 +89,22 @@ bool UUIBackInputSubsystem::HandleKeyPressed(const FKey& Key)
 		}
 	}
 
-	return bBackKey ? HandleBackAction() : HandleHotkey(Key);
+	if (bStepKey)
+	{
+		TArray<UUserWidget*> Screens;
+		UWidgetBlueprintLibrary::GetAllWidgetsOfClass(this, Screens, USinglePlaySteps::StaticClass(), true);
+		for (UUserWidget* Screen : Screens)
+		{
+			USinglePlaySteps* Steps = CastChecked<USinglePlaySteps>(Screen);
+			if (Steps->IsInViewport() && Steps->IsVisible() && Steps->GetIsEnabled()
+				&& Steps->HasFocusedDescendants() && Steps->HandleStepKey(Key, false))
+			{
+				return true;
+			}
+		}
+	}
+
+	return bBackKey ? HandleBackAction() : bHotkey && HandleHotkey(Key);
 }
 
 bool UUIBackInputSubsystem::HandleHotkey(const FKey& Key)

@@ -6,6 +6,7 @@
 #include "Engine/SCS_Node.h"
 #include "Engine/SimpleConstructionScript.h"
 #include "WidgetBlueprint.h"
+#include "WidgetBlueprintEditorUtils.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/Widget.h"
 #include "Components/PanelWidget.h"
@@ -236,23 +237,11 @@ FString UMCPythonHelper::UmgRemoveWidget(UBlueprint* WidgetBP, const FString& Wi
     if (!Widget)
         return UmgErrorJson(FString::Printf(TEXT("Widget '%s' not found."), *WidgetName));
 
-    WT->Modify();
-
-    UPanelWidget* Parent = Cast<UPanelWidget>(Widget->GetParent());
-    if (Parent)
-    {
-        Parent->RemoveChild(Widget);
-    }
-    else if (WT->RootWidget && WT->RootWidget->GetName() == WidgetName)
-    {
-        WT->RootWidget = nullptr;
-    }
-    else
-    {
+    if (!Widget->GetParent() && WT->RootWidget != Widget)
         return UmgErrorJson(FString::Printf(TEXT("Cannot remove '%s': not attached to a panel or root."), *WidgetName));
-    }
 
-    FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WB);
+    FWidgetBlueprintEditorUtils::DeleteWidgets(
+        WB, {Widget}, FWidgetBlueprintEditorUtils::EDeleteWidgetWarningType::DeleteSilently);
 
     TSharedPtr<FJsonObject> Result = MakeShared<FJsonObject>();
     Result->SetBoolField(TEXT("success"), true);
