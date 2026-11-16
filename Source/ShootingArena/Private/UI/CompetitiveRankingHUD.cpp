@@ -64,6 +64,25 @@ namespace
 		if (!Widget.GetRenderTransform().Translation.Equals(Translation, KINDA_SMALL_NUMBER))
 			Widget.SetRenderTranslation(Translation);
 	}
+
+	void CenterPersonalMessageBackdrop(const UUserWidget& Message)
+	{
+		UWidget* Background = Message.GetWidgetFromName(TEXT("SB_Blur"));
+		const auto* Nickname = Cast<UTextBlock>(Message.GetWidgetFromName(TEXT("Child1")));
+		if (!Background || !Nickname || Nickname->GetText().IsEmpty()) return;
+
+		const FGeometry& BackgroundGeometry = Background->GetCachedGeometry();
+		const FGeometry& NicknameGeometry = Nickname->GetCachedGeometry();
+		const auto BackgroundLayout = BackgroundGeometry.GetAccumulatedLayoutTransform();
+		if (FMath::IsNearlyZero(BackgroundLayout.GetScale()) || BackgroundGeometry.GetLocalSize().IsNearlyZero()
+			|| NicknameGeometry.GetLocalSize().IsNearlyZero()) return;
+
+		// Layout geometry excludes the backdrop translation applied on the previous frame.
+		const auto NicknameToBackground = Concatenate(NicknameGeometry.GetAccumulatedLayoutTransform(), Inverse(BackgroundLayout));
+		const FVector2D Offset = TransformPoint(NicknameToBackground, NicknameGeometry.GetLocalSize() * 0.5)
+			- BackgroundGeometry.GetLocalSize() * 0.5;
+		if (!Offset.ContainsNaN()) SetTranslationIfChanged(*Background, Offset);
+	}
 }
 
 UCompetitiveRankingHUD::UCompetitiveRankingHUD(const FObjectInitializer& ObjectInitializer)
@@ -103,8 +122,46 @@ void UCompetitiveRankingHUD::ApplyPersonalKillMessageStyle(APlayerController* Pl
 		if (UUserWidget* Message = Widget->FindPersonalMessage()) Widget->StylePersonalKillMessage(*Message);
 }
 
+void UCompetitiveRankingHUD::StylePersonalMessageText(UUserWidget& Message, bool bDeathMessage)
+{
+	auto* InlineName = Cast<UTextBlock>(Message.GetWidgetFromName(TEXT("Head2")));
+	if (bDeathMessage && (!InlineName || InlineName->GetText().IsEmpty())) return;
+
+	const FName TitleName(TEXT("Head1"));
+	const FName NameLabel(TEXT("Child1"));
+	auto* Title = Cast<UTextBlock>(Message.GetWidgetFromName(TitleName));
+	auto* Nickname = Cast<UTextBlock>(Message.GetWidgetFromName(NameLabel));
+	const auto* Class = Cast<UWidgetBlueprintGeneratedClass>(Message.GetClass());
+	const UWidgetTree* Template = Class ? Class->GetWidgetTreeArchetype() : nullptr;
+	const auto* OriginalTitle = Template ? Cast<UTextBlock>(Template->FindWidget(TitleName)) : nullptr;
+	const auto* OriginalNickname = Template ? Cast<UTextBlock>(Template->FindWidget(NameLabel)) : nullptr;
+	if (!Title || !Nickname || !OriginalTitle || !OriginalNickname) return;
+
+	if (bDeathMessage)
+	{
+		Nickname->SetText(InlineName->GetText());
+		InlineName->SetText(FText::GetEmpty());
+		Title->SetColorAndOpacity(FSlateColor(FLinearColor::White));
+		Nickname->SetColorAndOpacity(FSlateColor(FLinearColor(0.713542f, 0.0f, 0.043725f)));
+	}
+
+	FSlateFontInfo TitleFont = Title->GetFont();
+	FSlateFontInfo NicknameFont = Nickname->GetFont();
+	TitleFont.Size = OriginalNickname->GetFont().Size;
+	NicknameFont.Size = OriginalTitle->GetFont().Size;
+	Title->SetFont(TitleFont);
+	Nickname->SetFont(NicknameFont);
+
+	for (const FName RowName : {FName(TEXT("b_HeadAnim")), FName(TEXT("b_ChildAnim"))})
+		if (UWidget* Row = Message.GetWidgetFromName(RowName))
+			if (auto* Slot = Cast<UVerticalBoxSlot>(Row->Slot)) Slot->SetHorizontalAlignment(HAlign_Center);
+	for (const FName SpacerName : {FName(TEXT("Head2")), FName(TEXT("Scale_Icon")), FName(TEXT("Child2"))})
+		if (UWidget* Spacer = Message.GetWidgetFromName(SpacerName)) Spacer->SetVisibility(ESlateVisibility::Collapsed);
+}
+
 void UCompetitiveRankingHUD::StylePersonalKillMessage(UUserWidget& Message)
 {
+	StylePersonalMessageText(Message, false);
 	if (!ActiveStreakSettings) ActiveStreakSettings = KillMedalUISettings.LoadSynchronous();
 	const UKillMedalUISettings* Settings = ActiveStreakSettings ? ActiveStreakSettings.Get() : GetDefault<UKillMedalUISettings>();
 	if (UImage* Background = Cast<UImage>(Message.GetWidgetFromName(TEXT("Img_Blur"))))
@@ -599,6 +656,7 @@ void UCompetitiveRankingHUD::NativeTick(const FGeometry& MyGeometry, float InDel
 	PositionBesideTimer(MyGeometry);
 	if (UWidget* MessageArea = GetWidgetFromName(TEXT("SB_Killmessage")))
 	{
+		UUserWidget* Message = FindPersonalMessage();
 		APlayerController* PC = GetOwningPlayer();
 		const auto* DeathProperty = PC ? FindFProperty<FObjectPropertyBase>(PC->GetClass(), TEXT("deathScreen")) : nullptr;
 		UUserWidget* DeathScreen = DeathProperty ? Cast<UUserWidget>(DeathProperty->GetObjectPropertyValue_InContainer(PC)) : nullptr;
@@ -611,7 +669,7 @@ void UCompetitiveRankingHUD::NativeTick(const FGeometry& MyGeometry, float InDel
 				? Scoreboard->GetWidgetFromName(TEXT("Overlay_ScorePanelEdge")) : nullptr;
 			const bool bAboveScoreboard = ScorePanel && ScorePanel->GetCachedGeometry().GetLocalSize().X > 0;
 			const FGeometry& Anchor = (bAboveScoreboard ? ScorePanel : RespawnBar)->GetCachedGeometry();
-			UUserWidget* Message = FindPersonalMessage();
+			if (Message) StylePersonalMessageText(*Message, true);
 			UWidget* Text = Message ? Message->GetWidgetFromName(TEXT("VerticalBox_0")) : nullptr;
 			if (Text && Anchor.GetLocalSize().X > 0 && Text->GetCachedGeometry().GetLocalSize().Y > 0
 				&& !FMath::IsNearlyZero(MyGeometry.GetAccumulatedLayoutTransform().GetScale()))
@@ -631,7 +689,6 @@ void UCompetitiveRankingHUD::NativeTick(const FGeometry& MyGeometry, float InDel
 		}
 		else if (StreakPanel && DisplayedStreak > 0 && StreakIcons)
 		{
-			UUserWidget* Message = FindPersonalMessage();
 			UWidget* Text = Message ? Message->GetWidgetFromName(TEXT("VerticalBox_0")) : nullptr;
 			if (Text && StreakIcons->GetCachedGeometry().GetLocalSize().Y > 0 && Text->GetCachedGeometry().GetLocalSize().Y > 0
 				&& !FMath::IsNearlyZero(MyGeometry.GetAccumulatedLayoutTransform().GetScale()))
@@ -646,6 +703,7 @@ void UCompetitiveRankingHUD::NativeTick(const FGeometry& MyGeometry, float InDel
 			}
 		}
 		else SetTranslationIfChanged(*MessageArea, FVector2D::ZeroVector);
+		if (Message) CenterPersonalMessageBackdrop(*Message);
 	}
 	RefreshElapsed += InDeltaTime;
 	// Player joins/leaves and late replication can arrive without a score-change broadcast.

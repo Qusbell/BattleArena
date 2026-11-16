@@ -11,6 +11,7 @@
 #include "Components/Image.h"
 #include "Components/HorizontalBox.h"
 #include "Components/VerticalBox.h"
+#include "Components/VerticalBoxSlot.h"
 #include "Audio/KillStreakVoiceComponent.h"
 #include "Audio/KillStreakSettingsDataAsset.h"
 #include "Animation/WidgetAnimation.h"
@@ -389,6 +390,9 @@ bool FKillMedalAutomaticAwardsTest::RunTest(const FString& Parameters)
 	const FVector2D OriginalVictimShadow = Victim->GetShadowOffset();
 	const FVector2D OriginalTitlePosition = Title->GetRenderTransform().Translation;
 	const FVector2D OriginalVictimPosition = Victim->GetRenderTransform().Translation;
+	FSlateFontInfo ExpectedTitleFont = Title->GetFont();
+	FSlateFontInfo ExpectedVictimFont = Victim->GetFont();
+	Swap(ExpectedTitleFont.Size, ExpectedVictimFont.Size);
 	CustomSettings->KillMessageBackgroundColor = FLinearColor(0.5f, 0.01f, 0.02f, 1.0f);
 	CustomSettings->KillMessageBackgroundOpacity = 0.35f;
 	CustomSettings->KillMessageBackgroundOffset = FVector2D(12.0, -4.0);
@@ -396,6 +400,19 @@ bool FKillMedalAutomaticAwardsTest::RunTest(const FString& Parameters)
 	CustomSettings->KillMessageShadowScale = 0.5f;
 	StreakHUD->StylePersonalKillMessage(*Message);
 	StreakHUD->StylePersonalKillMessage(*Message);
+	TestTrue(TEXT("Repeated kill styling exchanges only the two font sizes"),
+		Title->GetFont() == ExpectedTitleFont && Victim->GetFont() == ExpectedVictimFont);
+	const auto RowsAreCentered = [](UUserWidget& Notification)
+	{
+		for (const FName RowName : {FName(TEXT("b_HeadAnim")), FName(TEXT("b_ChildAnim"))})
+		{
+			const UWidget* Row = Notification.GetWidgetFromName(RowName);
+			const auto* Slot = Row ? Cast<UVerticalBoxSlot>(Row->Slot) : nullptr;
+			if (!Slot || Slot->GetHorizontalAlignment() != HAlign_Center) return false;
+		}
+		return true;
+	};
+	TestTrue(TEXT("Kill notification centers each row independently"), RowsAreCentered(*Message));
 	TestTrue(TEXT("Message background RGB and opacity come from their own DA fields"),
 		MessageBackground->GetColorAndOpacity().Equals(FLinearColor(0.5f, 0.01f, 0.02f, 0.35f)));
 	TestTrue(TEXT("The DA backdrop offset moves only the backdrop and does not accumulate"),
@@ -417,6 +434,30 @@ bool FKillMedalAutomaticAwardsTest::RunTest(const FString& Parameters)
 	StreakHUD->StylePersonalKillMessage(*Message);
 	TestTrue(TEXT("Zero shadow scale disables both text shadows"), Title->GetShadowOffset().IsZero()
 		&& Victim->GetShadowOffset().IsZero() && Title->GetShadowColorAndOpacity().A == 0.0f && Victim->GetShadowColorAndOpacity().A == 0.0f);
+
+	UUserWidget* DeathMessage = CreateWidget<UUserWidget>(PC, MessageClass);
+	if (!TestNotNull(TEXT("Death notification widget"), DeathMessage)) return false;
+	auto* DeathTitle = CastChecked<UTextBlock>(DeathMessage->GetWidgetFromName(TEXT("Head1")));
+	auto* InlineName = CastChecked<UTextBlock>(DeathMessage->GetWidgetFromName(TEXT("Head2")));
+	auto* DeathNickname = CastChecked<UTextBlock>(DeathMessage->GetWidgetFromName(TEXT("Child1")));
+	DeathTitle->SetText(FText::FromString(TEXT("You Died")));
+	InlineName->SetText(FText::GetEmpty());
+	DeathNickname->SetText(FText::GetEmpty());
+	const FSlateFontInfo FallbackFont = DeathTitle->GetFont();
+	StreakHUD->StylePersonalMessageText(*DeathMessage, true);
+	TestTrue(TEXT("Unnamed death keeps its single title"), DeathTitle->GetText().ToString() == TEXT("You Died")
+		&& DeathTitle->GetFont() == FallbackFont && DeathNickname->GetText().IsEmpty());
+	DeathTitle->SetText(FText::FromString(TEXT("Killed by")));
+	InlineName->SetText(FText::FromString(TEXT("TestKiller")));
+	StreakHUD->StylePersonalMessageText(*DeathMessage, true);
+	StreakHUD->StylePersonalMessageText(*DeathMessage, true);
+	TestTrue(TEXT("Named death moves the nickname to a centered second line"), RowsAreCentered(*DeathMessage)
+		&& InlineName->GetText().IsEmpty() && InlineName->GetVisibility() == ESlateVisibility::Collapsed
+		&& DeathNickname->GetText().ToString() == TEXT("TestKiller"));
+	TestTrue(TEXT("Named death uses the kill notification's sizes and colors"),
+		DeathTitle->GetFont().Size == ExpectedTitleFont.Size && DeathNickname->GetFont().Size == ExpectedVictimFont.Size
+		&& DeathTitle->GetColorAndOpacity().GetSpecifiedColor().Equals(FLinearColor::White)
+		&& DeathNickname->GetColorAndOpacity().GetSpecifiedColor().Equals(FLinearColor(0.713542f, 0.0f, 0.043725f)));
 
 	CustomSettings->LargeMedalMinKills = 5;
 	CustomSettings->LargeMedalTexture = LoadObject<UTexture2D>(nullptr,

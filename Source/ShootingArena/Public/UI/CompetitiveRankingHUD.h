@@ -54,6 +54,7 @@ private:
 	void StartMedalStamp(UWidget* Medal);
 	void UpdateMedalStamps(float DeltaTime);
 	UUserWidget* FindPersonalMessage() const;
+	static void StylePersonalMessageText(UUserWidget& Message, bool bDeathMessage);
 	void StylePersonalKillMessage(UUserWidget& Message);
 	struct FMedalStamp
 	{
