@@ -38,7 +38,7 @@
 	"fireVolumeMultiplier": 1,
 	"emptyAmmoVolumeMultiplier": 1,
 	"chHitVolumeMultiplier": 1,
-	"projectileVisualForwardOffset": 200,
+	"projectileVisualForwardOffset": 0,
 	"projectileDestroyVolumeMultiplier": 1,
 	"selfDamage": 40,
 	"lockTimeMultiplier": 1,

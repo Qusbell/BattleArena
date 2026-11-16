@@ -2358,6 +2358,15 @@
 					"advancedDisplay": false,
 					"type": "object",
 					"objectClass": "/Script/Engine.Font"
+				},
+				{
+					"name": "descriptionFont",
+					"displayName": "Description Font",
+					"cppType": "TObjectPtr<UFont>",
+					"order": 5,
+					"advancedDisplay": false,
+					"type": "object",
+					"objectClass": "/Script/Engine.Font"
 				}
 			]
 		}
