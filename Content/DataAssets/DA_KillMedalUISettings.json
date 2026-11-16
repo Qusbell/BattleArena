@@ -20,8 +20,8 @@
 	"killMessageBackgroundOpacity": 0.85000002384185791,
 	"killMessageBackgroundOffset":
 	{
-		"x": -8,
-		"y": -9
+		"x": 0,
+		"y": 0
 	},
 	"killMessageShadowColor":
 	{
