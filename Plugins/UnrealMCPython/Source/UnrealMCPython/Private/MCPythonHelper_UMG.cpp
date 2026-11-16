@@ -205,6 +205,7 @@ FString UMCPythonHelper::UmgAddWidget(UBlueprint* WidgetBP, const FString& Widge
         ActualParent = RootPanel->GetName();
     }
 
+    WB->OnVariableAdded(NewWidget->GetFName());
     FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WB);
 
     TSharedPtr<FJsonObject> Result = MakeShared<FJsonObject>();
