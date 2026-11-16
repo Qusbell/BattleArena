@@ -9,6 +9,12 @@ public class ShootingArenaTarget : TargetRules
 	{
 		Type = TargetType.Game;
 		DefaultBuildSettings = BuildSettingsVersion.V5;
+		if (Target.Configuration == UnrealTargetConfiguration.Shipping)
+		{
+			BuildEnvironment = TargetBuildEnvironment.Unique;
+			bUseLoggingInShipping = true;
+		}
+
         WindowsPlatform.CompilerVersion = "14.38.33130"; // 커스텀 데디케이트 전용 엔진과 같은 vs 버전 사용
 
         ExtraModuleNames.AddRange( new string[] { "ShootingArena" } );

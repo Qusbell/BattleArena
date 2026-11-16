@@ -4,7 +4,9 @@
 
 ## 사용과 설정
 
-Ctrl+Shift+Alt+F10으로 전환합니다. 기본 OFF이며 화면에 상태를 2초 표시합니다. ON 상태에서 좌클릭을 누르면 살아 있는 적의 가슴으로 카메라와 조준 방향을 보간합니다. 탄약과 발사 가능 상태는 검사하지 않습니다. Shipping에서도 동일한 경로입니다.
+개발 빌드에서 Ctrl+Shift+Alt+F10으로 전환합니다. 기본 OFF이며 화면에 상태를 2초 표시합니다. ON 상태에서 좌클릭을 누르면 살아 있는 적의 가슴으로 카메라와 조준 방향을 보간합니다. 탄약과 발사 가능 상태는 검사하지 않습니다.
+
+2026-11-16부터 Shipping과 Test 빌드에서는 입력 처리와 조준 갱신에서 에임 보조 호출을 제외합니다. 상속된 컴포넌트와 Blueprint 조회 함수는 호환성을 위해 유지하며, 이 빌드에서 `IsAimAssistEnabled`는 항상 false를 반환합니다.
 
 `Project Settings > Game > Aim Assist > Convergence Time`은 고정 목표에 대한 초기 각도 오차의 90%가 줄어드는 시간(초)이며 기본 0.3입니다. 설정 원본은 native `UAimAssistSettings` 기본값 및 `DefaultGame.ini`의 `[/Script/ShootingArena.AimAssistSettings] ConvergenceTime`입니다. JsonAssetSync/DT/DA와 연결하지 않습니다. 토글 상태는 저장하지 않습니다.
 
@@ -18,9 +20,13 @@ Ctrl+Shift+Alt+F10으로 전환합니다. 기본 OFF이며 화면에 상태를 2
 - 로컬 플레이어이며 Playing 상태, 자신의 Pawn을 관측 중, FP_Camera 존재, 생존, 커서 숨김, 시점 입력 허용, 게임 viewport 포커스가 모두 필요합니다. 일시정지·메뉴·사망·관전·포커스 상실 시 중지하고 정상 복귀 후 현재 좌클릭 상태에 따라 재개합니다.
 - 보간이 적용되는 프레임에만 `RotationInput`을 제거합니다. ignore-look-input 스택을 수정하지 않으므로 다음 프레임의 대상 상실·버튼 해제 시 입력이 자연스럽게 복귀합니다. 이동·발사 입력은 유지합니다.
 - `UpdateRotation`에서 ControlRotation을 변경한 뒤 기본 카메라 제한/FaceRotation을 적용합니다. 기존 `BP_PlayerShooter.GetAim → GetBaseAimRotation`과 사격 복제 경로를 사용합니다. 선행 조준과 명중 판정 변경은 없습니다.
-- 토글은 컨트롤러 수명 동안만 유지합니다. 리스폰/Seamless travel에서 같은 컨트롤러를 유지하면 ON도 유지하며, 새 컨트롤러 생성 시 OFF입니다. 일반 Slate 위젯을 사용하여 Shipping에서 debug-message 제한의 영향을 받지 않습니다.
+- 토글은 컨트롤러 수명 동안만 유지합니다. 리스폰/Seamless travel에서 같은 컨트롤러를 유지하면 ON도 유지하며, 새 컨트롤러 생성 시 OFF입니다. 상태 표시는 Slate 위젯을 사용합니다.
 
-## 검증 범위
+## 2026-11-16 빌드 검증
+
+소스 빌드 UE 5.6.1에서 Win64 게임과 데디케이티드 서버의 Shipping 컴파일·링크가 성공했습니다. 패키징과 변경 후 플레이는 검증 범위에 포함되지 않습니다.
+
+## 2026-11-10 초기 구현 검증
 
 설치형 UE 5.6.1 (`5.6.1-44394996`, `D:/UE_5.6`)에서 최종 Editor Development 빌드와 게임 Win64 Shipping 컴파일·링크가 성공했습니다. Shipping 실행 파일 빌드는 Cook·패키징이나 서버 빌드 검증이 아닙니다. 사용자가 확인한 Git 소스 빌드 엔진은 이 컴퓨터에 없으므로 서버/Cook/패키징 실행은 별도 환경에서 확인해야 합니다.
 

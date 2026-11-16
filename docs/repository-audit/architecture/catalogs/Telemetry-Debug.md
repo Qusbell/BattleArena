@@ -3,6 +3,10 @@
 이 그룹은 경로 키워드에 따른 **분류 추론**입니다. 소유권·실행 여부를 증명하지 않습니다.
 아래 역할 요약은 클래스 선언 주석, 상속 태그와 실제 그래프 이름을 근거로 하며, 이름만으로 동작을 확정하지 않습니다.
 
+## Shipping 실행 로그
+
+게임과 데디케이티드 서버의 `Target.cs`에서 Shipping에 `bUseLoggingInShipping`을 활성화합니다. 두 타깃은 이 구성에서 소스 빌드 엔진의 독립 빌드 환경을 사용합니다. Win64 클라이언트의 기본 로그 폴더는 `%LOCALAPPDATA%/ShootingArena/Saved/Logs`이며, 데디케이티드 서버는 패키지의 `ShootingArena/Saved/Logs`에 기록합니다. 같은 PC에서 여러 인스턴스를 실행할 때는 인스턴스마다 `-abslog=` 경로를 지정할 수 있습니다. 경기 데이터 기록은 `DA_ArenaLogging`에서 제어합니다. [게임 타깃](../../../../Source/ShootingArena.Target.cs) · [서버 타깃](../../../../Source/ShootingArenaServer.Target.cs)
+
 ## C++ 선언
 
 | 타입 | 역할 근거 / 헤더 함수 검색어 | 선언 위치 |

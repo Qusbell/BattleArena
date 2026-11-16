@@ -1,4 +1,4 @@
-#if WITH_DEV_AUTOMATION_TESTS
+#if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING && !UE_BUILD_TEST
 #include "../Camera/AimAssistMath.h"
 #include "Camera/AimAssistComponent.h"
 #include "Camera/AimAssistSettings.h"
