@@ -42,7 +42,6 @@ namespace
 	constexpr float PanelWidth = 286.0f;
 	constexpr float PanelHeight = 56.0f;
 	constexpr float RankingScale = 0.975f;
-	constexpr float TimerGap = 5.0f;
 	const FName TimerMinutesName(TEXT("Text_Minutes"));
 	const FName TimerSeparatorName(TEXT("Text_Points"));
 	const FName TimerSecondsName(TEXT("Text_Seconds"));
@@ -628,6 +627,8 @@ void UCompetitiveRankingHUD::PositionBesideTimer(const FGeometry& Geometry)
 			}
 		}
 	}
+	const float RawGap = (MatchTimerStyle ? MatchTimerStyle.Get() : GetDefault<UMatchTimerStyle>())->RankingGap;
+	const float TimerGap = FMath::IsFinite(RawGap) ? FMath::Max(0.0f, RawGap) : GetDefault<UMatchTimerStyle>()->RankingGap;
 	const double Shift = (Geometry.GetLocalSize().X - (Left.X + Right.X + TimerGap + PanelWidth * Scale)) * 0.5;
 	SetTranslationIfChanged(*TimerContainer, FVector2D(Shift, TimerContainer->GetRenderTransform().Translation.Y));
 	if (RankingPanel->GetVisibility() != ESlateVisibility::HitTestInvisible)

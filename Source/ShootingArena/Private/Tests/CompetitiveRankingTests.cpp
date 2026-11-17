@@ -4,6 +4,7 @@
 #include "GameFramework/PlayerState.h"
 #include "Misc/AutomationTest.h"
 #include "UI/CompetitiveRankingHUD.h"
+#include "UI/MatchTimerStyle.h"
 #include "Camera/ShooterDisplayLibrary.h"
 #include "Components/Border.h"
 #include "Components/CanvasPanelSlot.h"
@@ -180,8 +181,9 @@ bool FCompetitiveRankingPIETest::RunTest(const FString& Parameters)
 					const FGeometry& Frame = TimerFrame->GetCachedGeometry();
 					const double Left = Root.AbsoluteToLocal(Frame.LocalToAbsolute(FVector2D::ZeroVector)).X;
 					const double TimerRight = Root.AbsoluteToLocal(Frame.LocalToAbsolute(FVector2D(Frame.GetLocalSize().X, 0))).X;
-					TestTrue(TEXT("Ranking uses the fixed timer frame with a 5-unit gap"),
-						FMath::Abs(HUD->RankingSlot->GetPosition().X - TimerRight - 5.0) < 2.0);
+					const double Gap = (HUD->MatchTimerStyle ? HUD->MatchTimerStyle.Get() : GetDefault<UMatchTimerStyle>())->RankingGap;
+					TestTrue(TEXT("Ranking uses the fixed timer frame with the style's gap"),
+						FMath::Abs(HUD->RankingSlot->GetPosition().X - TimerRight - Gap) < 2.0);
 					const double Right = Root.AbsoluteToLocal(Panel.LocalToAbsolute(FVector2D(Panel.GetLocalSize().X, 0))).X;
 					TestTrue(TEXT("Timer and ranking form one centered group"), FMath::Abs((Left + Right - Root.GetLocalSize().X) * 0.5) < 2.0);
 				}
